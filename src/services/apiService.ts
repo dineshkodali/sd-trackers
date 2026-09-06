@@ -1,0 +1,622 @@
+import { diagnosticLogger } from '../utils/diagnosticLogger';
+
+/**
+ * SafeHaven API Client
+ * Routes all database, authentication, and email services through server API routes (/api/*).
+ * Zero credentials or secrets stored in webapp bundle; completely governed by root .env.
+ */
+
+export interface SystemConfigStatus {
+  status: string;
+  environment: string;
+  services: {
+    supabase: {
+      configured: boolean;
+      url: string | null;
+      hasAnonKey: boolean;
+      hasServiceRoleKey: boolean;
+    };
+    smtp: {
+      configured: boolean;
+      host: string | null;
+      port: string | number;
+      user: string | null;
+      from: string | null;
+    };
+    gemini: {
+      configured: boolean;
+    };
+  };
+}
+
+export interface DbStatusResponse {
+  connected: boolean;
+  mode: 'supabase-cloud' | 'offline-local';
+  message?: string;
+  url?: string;
+  tables?: Record<string, number | string>;
+  error?: string;
+}
+
+export type DbEntityName =
+  | 'referrals'
+  | 'vulnerable'
+  | 'challenging'
+  | 'maintenance'
+  | 'spcd'
+  | 'sites'
+  | 'userGroups'
+  | 'property_user_assignments'
+  | 'audit'
+  | 'audit_trails'
+  | 'laundry'
+  | 'laundry_logs'
+  | 'property_laundry_logs'
+  | 'food'
+  | 'hot_food_logs'
+  | 'food_vendor_buffet_logs'
+  | 'escalations'
+  | 'documents'
+  | 'requests'
+  | 'profiles'
+  | 'users'
+  | 'passwordAudit'
+  | string;
+
+export interface AuditUserContext {
+  userId?: string;
+  userEmail?: string;
+  userName?: string;
+  role?: string;
+  site?: string;
+  token?: string | null;
+}
+
+export interface AuditTrailPayload {
+  id?: string;
+  timestamp?: string;
+  user?: string;
+  userId?: string;
+  role?: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ARCHIVE' | 'RESTORE' | 'SETTINGS_UPDATE' | 'ROLE_CHANGE' | 'LOGIN' | 'LOGOUT';
+  details: string;
+  site?: string;
+  entityType?: string;
+  entityId?: string;
+  createdBy?: string;
+}
+
+let activeAuditContext: AuditUserContext | null = null;
+
+function getAuditHeaders(actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'READ' = 'READ'): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+
+  if (activeAuditContext) {
+    if (activeAuditContext.userId) headers['x-user-id'] = activeAuditContext.userId;
+    if (activeAuditContext.userEmail) headers['x-user-email'] = activeAuditContext.userEmail;
+    if (activeAuditContext.userName) headers['x-user-name'] = activeAuditContext.userName;
+    if (activeAuditContext.role) headers['x-user-role'] = activeAuditContext.role;
+    if (activeAuditContext.site) headers['x-user-site'] = activeAuditContext.site;
+    if (activeAuditContext.token) headers['Authorization'] = `Bearer ${activeAuditContext.token}`;
+  }
+  headers['x-action-type'] = actionType;
+  return headers;
+}
+
+export const apiService = {
+  // Centralized Audit Middleware Context
+  setAuditUserContext(ctx: AuditUserContext | null) {
+    activeAuditContext = ctx;
+  },
+
+  getAuditUserContext(): AuditUserContext | null {
+    return activeAuditContext;
+  },
+
+  // Record into audit_trails table directly
+  async recordAuditTrail(entry: AuditTrailPayload): Promise<{ success: boolean; error?: string }> {
+    try {
+      const now = new Date().toISOString();
+      const payload = {
+        id: entry.id || `aud-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: entry.timestamp || now,
+        user: entry.user || activeAuditContext?.userName || activeAuditContext?.userEmail || 'Staff',
+        userId: entry.userId || activeAuditContext?.userId || null,
+        role: entry.role || activeAuditContext?.role || 'Staff',
+        action: entry.action,
+        details: entry.details,
+        site: entry.site || activeAuditContext?.site || 'All Sites',
+        entityType: entry.entityType || 'General',
+        entityId: entry.entityId || null,
+        createdBy: entry.createdBy || entry.userId || activeAuditContext?.userId || null,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      const res = await fetch('/api/db/audit_trails', {
+        method: 'POST',
+        headers: getAuditHeaders(entry.action as any),
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      
+      diagnosticLogger.logAuditDispatch({
+        action: entry.action,
+        entity: entry.entityType || 'audit_trails',
+        entityId: entry.entityId,
+        userId: activeAuditContext?.userId,
+        success: json.success !== false
+      });
+
+      return json;
+    } catch (err: any) {
+      diagnosticLogger.logAuditDispatch({
+        action: entry.action,
+        entity: entry.entityType || 'audit_trails',
+        entityId: entry.entityId,
+        userId: activeAuditContext?.userId,
+        success: false,
+        error: err.message
+      });
+      return { success: false, error: err.message };
+    }
+  },
+
+  // System Configuration & Status
+  async getConfigStatus(): Promise<SystemConfigStatus> {
+    try {
+      const res = await fetch('/api/config/status');
+      return await res.json();
+    } catch (err) {
+      console.warn('Could not fetch config status:', err);
+      return {
+        status: 'error',
+        environment: 'client-only',
+        services: {
+          supabase: { configured: false, url: null, hasAnonKey: false, hasServiceRoleKey: false },
+          smtp: { configured: false, host: null, port: 587, user: null, from: null },
+          gemini: { configured: false }
+        }
+      };
+    }
+  },
+
+  async testSupabase(): Promise<{ success: boolean; message: string; details?: any }> {
+    try {
+      const res = await fetch('/api/config/test-supabase');
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, message: `Request failed: ${err.message}` };
+    }
+  },
+
+  async testSmtp(recipientEmail?: string): Promise<{ success: boolean; message: string; config?: any }> {
+    try {
+      const res = await fetch('/api/smtp/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testRecipient: recipientEmail })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, message: `SMTP test request failed: ${err.message}` };
+    }
+  },
+
+  async sendOperationalAlert(alert: {
+    recipient: string;
+    alertType: string;
+    title: string;
+    message: string;
+    entityId?: string;
+    site?: string;
+    severity?: 'Routine' | 'Urgent' | 'Critical';
+  }): Promise<{ success: boolean; message: string; simulated?: boolean }> {
+    try {
+      const res = await fetch('/api/smtp/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alert)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, message: `Failed to dispatch alert: ${err.message}` };
+    }
+  },
+
+  // Database API
+  async getDbStatus(): Promise<DbStatusResponse> {
+    try {
+      const res = await fetch('/api/db/status');
+      return await res.json();
+    } catch (err: any) {
+      return { connected: false, mode: 'offline-local', error: err.message };
+    }
+  },
+
+  async fetchEntityRecords<T = any>(entity: DbEntityName): Promise<{ success: boolean; data: T[]; fallback?: boolean; tableMissing?: boolean }> {
+    try {
+      const res = await fetch(`/api/db/${entity}`);
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      console.warn(`Failed to fetch ${entity} from API:`, err);
+      return { success: false, data: [], fallback: true };
+    }
+  },
+
+  async saveEntityRecord<T = any>(entity: DbEntityName, record: T): Promise<{ success: boolean; record?: T; error?: string }> {
+    try {
+      const res = await fetch(`/api/db/${entity}`, {
+        method: 'POST',
+        headers: getAuditHeaders('CREATE'),
+        body: JSON.stringify(record)
+      });
+      const json = await res.json();
+      if (json.success !== false) {
+        diagnosticLogger.logAuditDispatch({
+          action: 'CREATE',
+          entity,
+          entityId: (record as any)?.id,
+          userId: activeAuditContext?.userId,
+          success: true
+        });
+      }
+      return json;
+    } catch (err: any) {
+      diagnosticLogger.logAuditDispatch({
+        action: 'CREATE',
+        entity,
+        entityId: (record as any)?.id,
+        userId: activeAuditContext?.userId,
+        success: false,
+        error: err.message
+      });
+      return { success: false, error: err.message };
+    }
+  },
+
+  async updateEntityRecord<T = any>(entity: DbEntityName, id: string, record: Partial<T>): Promise<{ success: boolean; record?: T; error?: string }> {
+    try {
+      const res = await fetch(`/api/db/${entity}/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: getAuditHeaders('UPDATE'),
+        body: JSON.stringify(record)
+      });
+      const json = await res.json();
+      if (json.success !== false) {
+        diagnosticLogger.logAuditDispatch({
+          action: 'UPDATE',
+          entity,
+          entityId: id,
+          userId: activeAuditContext?.userId,
+          success: true
+        });
+      }
+      return json;
+    } catch (err: any) {
+      diagnosticLogger.logAuditDispatch({
+        action: 'UPDATE',
+        entity,
+        entityId: id,
+        userId: activeAuditContext?.userId,
+        success: false,
+        error: err.message
+      });
+      return { success: false, error: err.message };
+    }
+  },
+
+  async deleteEntityRecord(entity: DbEntityName, id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(`/api/db/${entity}/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getAuditHeaders('DELETE')
+      });
+      const json = await res.json();
+      if (json.success !== false) {
+        diagnosticLogger.logAuditDispatch({
+          action: 'DELETE',
+          entity,
+          entityId: id,
+          userId: activeAuditContext?.userId,
+          success: true
+        });
+      }
+      return json;
+    } catch (err: any) {
+      diagnosticLogger.logAuditDispatch({
+        action: 'DELETE',
+        entity,
+        entityId: id,
+        userId: activeAuditContext?.userId,
+        success: false,
+        error: err.message
+      });
+      return { success: false, error: err.message };
+    }
+  },
+
+  async syncPushAll(payload: Record<string, any[]>): Promise<{ success: boolean; message: string; results?: any }> {
+    try {
+      const res = await fetch('/api/db/sync/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  },
+
+  async runMigration(): Promise<{ success: boolean; message: string; details?: any }> {
+    try {
+      const res = await fetch('/api/db/migrate', {
+        method: 'POST'
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, message: `Migration request failed: ${err.message}` };
+    }
+  },
+
+  // Authentication API — Supabase Only
+  async getAuthStatus(): Promise<{
+    configured?: boolean;
+    supabaseConfigured?: boolean;
+    features?: any;
+  }> {
+    try {
+      const res = await fetch('/api/auth/status');
+      return await res.json();
+    } catch {
+      return { configured: false, supabaseConfigured: false };
+    }
+  },
+
+  async updateUserPassword(password: string, accessToken?: string): Promise<{
+    success?: boolean;
+    message?: string;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({ password, accessToken })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  },
+
+  async login(email: string, password: string): Promise<{
+    success?: boolean;
+    user?: { id: string; email: string; name: string; role: string; assignedSite: string };
+    token?: string;
+    session?: { accessToken: string; expiresAt?: number };
+    fallbackMode?: boolean;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  },
+
+  async verifySession(token: string): Promise<{
+    success?: boolean;
+    user?: { id: string; email: string; name: string; role: string; assignedSite: string; status?: string };
+    error?: string;
+    blockedReason?: string;
+  }> {
+    const startTime = performance.now();
+    diagnosticLogger.logTokenExpiration(token, 'Session Verification');
+    try {
+      const res = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const json = await res.json();
+      const durationMs = Math.round(performance.now() - startTime);
+
+      if (res.ok && json.success && json.user) {
+        diagnosticLogger.logProfileRetrieval({
+          success: true,
+          profile: json.user,
+          source: 'Supabase /api/auth/me',
+          durationMs
+        });
+        diagnosticLogger.logSessionStatus('active', `Session verified for ${json.user.email} (${json.user.role})`);
+      } else {
+        const errMsg = String(json?.error || `HTTP ${res.status}`);
+        diagnosticLogger.logProfileRetrieval({
+          success: false,
+          error: errMsg,
+          source: 'Supabase /api/auth/me',
+          durationMs
+        });
+        const errLower = errMsg.toLowerCase();
+        if (res.status === 401 || errLower.includes('expired') || errLower.includes('invalid')) {
+          diagnosticLogger.logSessionStatus('invalidated', `Session token invalidated or expired: ${errMsg}`);
+        } else {
+          diagnosticLogger.logSessionStatus('blocked', `Authentication verification failed: ${errMsg}`);
+        }
+      }
+      return json;
+    } catch (err: any) {
+      const durationMs = Math.round(performance.now() - startTime);
+      diagnosticLogger.logProfileRetrieval({
+        success: false,
+        error: err.message,
+        source: 'Supabase /api/auth/me',
+        durationMs
+      });
+      diagnosticLogger.logSessionStatus('invalidated', `Network error during session verification: ${err.message}`);
+      return { error: err.message };
+    }
+  },
+
+  async logout(token?: string): Promise<{ success: boolean }> {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      return { success: true };
+    } catch {
+      return { success: true };
+    }
+  },
+
+  // Automated Email Notification & Alert API
+  async sendAlert(payload: {
+    title: string;
+    message?: string;
+    alertType?: string;
+    severity?: 'Low' | 'Medium' | 'High' | 'Critical' | 'Urgent';
+    site?: string;
+    entityId?: string;
+    recipient?: string;
+    metadata?: Record<string, any>;
+  }): Promise<{ success: boolean; message: string; messageId?: string; simulated?: boolean }> {
+    try {
+      const res = await fetch('/api/smtp/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  },
+
+  async sendEscalationAlert(payload: {
+    suName: string;
+    site: string;
+    roomNo?: string;
+    incidentTitle: string;
+    urgency?: string;
+    escalatedTo?: string;
+    reason?: string;
+    actionRequired?: string;
+    reportedBy?: string;
+    recipientEmail?: string;
+  }): Promise<{ success: boolean; message: string; messageId?: string; simulated?: boolean }> {
+    try {
+      const res = await fetch('/api/smtp/escalation-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  },
+
+  async registerUser(userData: { email: string; password: string; name: string; role: string; assignedSite?: string }): Promise<{
+    success?: boolean;
+    user?: any;
+    error?: string;
+    message?: string;
+  }> {
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  },
+
+  async adminUpdatePassword(payload: { userId?: string; email: string; newPassword: string }): Promise<{
+    success?: boolean;
+    message?: string;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch('/api/auth/admin/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  },
+
+  async resetPassword(email: string): Promise<{ success?: boolean; message?: string; error?: string }> {
+    try {
+      const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : undefined;
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, origin })
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  },
+
+  async fetchPasswordAuditLogs(): Promise<{ success?: boolean; logs?: any[]; error?: string }> {
+    try {
+      const res = await fetch('/api/auth/password-audit-logs');
+      return await res.json();
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  },
+
+  async fetchSupabaseUsers(): Promise<{ success?: boolean; users?: any[]; error?: string }> {
+    try {
+      const res = await fetch('/api/auth/users');
+      return await res.json();
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  },
+
+  async updateUserAssignment(userId: string, updates: {
+    name?: string;
+    role?: string;
+    assignedSites?: string[];
+    assignedSite?: string;
+    status?: string;
+  }): Promise<{ success: boolean; message?: string; user?: any; error?: string }> {
+    try {
+      const res = await fetch(`/api/auth/users/${encodeURIComponent(userId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
