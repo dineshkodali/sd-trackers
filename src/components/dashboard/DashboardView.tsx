@@ -20,7 +20,6 @@ import { useApp } from '../../context/AppContext';
 import { FilterBar } from '../common/FilterBar';
 import { QuickIncidentModal } from './QuickIncidentModal';
 import { DashboardAnalytics } from './DashboardAnalytics';
-import { CommercialTrackersGrid } from './CommercialTrackersGrid';
 import { PropertyLoadBreakdown } from './PropertyLoadBreakdown';
 import { VulnerabilityRiskBreakdown } from './VulnerabilityRiskBreakdown';
 import { CommercialWelfareBreakdown } from './CommercialWelfareBreakdown';
@@ -66,12 +65,10 @@ export const DashboardView: React.FC = () => {
 
   const [widgetVisibility, setWidgetVisibility] = useState({
     stats: true,
-    escalations: true,
     laundryFoodOperations: true,
     analytics: true,
     vulnerable: true,
-    quickOps: true,
-    recentActivity: true
+    quickOps: true
   });
   const [showWidgetMenu, setShowWidgetMenu] = useState(false);
   const widgetMenuRef = useRef<HTMLDivElement>(null);
@@ -339,7 +336,7 @@ export const DashboardView: React.FC = () => {
                 <div className="font-bold text-[#242424] pb-1 border-b border-[#edebe9] flex items-center justify-between">
                   <span>Dashboard Widget Visibility</span>
                   <button 
-                    onClick={() => setWidgetVisibility({ stats: true, escalations: true, analytics: true, vulnerable: true, quickOps: true, recentActivity: true })}
+                    onClick={() => setWidgetVisibility({ stats: true, laundryFoodOperations: true, analytics: true, vulnerable: true, quickOps: true })}
                     className="text-[10px] text-[#0d9488] hover:underline font-normal"
                   >
                     Reset All
@@ -352,15 +349,6 @@ export const DashboardView: React.FC = () => {
                       type="checkbox" 
                       checked={widgetVisibility.stats} 
                       onChange={e => setWidgetVisibility({ ...widgetVisibility, stats: e.target.checked })} 
-                      className="rounded accent-[#0d9488]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
-                    <span className="text-[#323130]">Trackers Directory Grid</span>
-                    <input 
-                      type="checkbox" 
-                      checked={widgetVisibility.escalations} 
-                      onChange={e => setWidgetVisibility({ ...widgetVisibility, escalations: e.target.checked })} 
                       className="rounded accent-[#0d9488]"
                     />
                   </label>
@@ -400,15 +388,6 @@ export const DashboardView: React.FC = () => {
                       className="rounded accent-[#0d9488]"
                     />
                   </label>
-                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
-                    <span className="text-[#323130]">Recent Activity Cards</span>
-                    <input 
-                      type="checkbox" 
-                      checked={widgetVisibility.recentActivity} 
-                      onChange={e => setWidgetVisibility({ ...widgetVisibility, recentActivity: e.target.checked })} 
-                      className="rounded accent-[#0d9488]"
-                    />
-                  </label>
                 </div>
               </div>
             )}
@@ -426,14 +405,6 @@ export const DashboardView: React.FC = () => {
           />
         </div>
       </div>
-
-      {/* Commercial Trackers Directory: Redirection links to all related pages */}
-      {widgetVisibility.escalations && (
-        <CommercialTrackersGrid 
-          onNavigate={setActivePage}
-          onOpenQuickIncident={() => setIsQuickIncidentModalOpen(true)}
-        />
-      )}
 
       {/* Executive Key Summary Cards Section */}
       {widgetVisibility.stats && (
@@ -789,50 +760,6 @@ export const DashboardView: React.FC = () => {
         </div>
         )}
       </div>
-
-      {/* Recent Activity Cards */}
-      {widgetVisibility.recentActivity && (
-        <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs">
-          <div className="px-4 py-3 border-b border-[#e1dfdd] flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[#242424]">Recent Safeguarding Activity Across Sites</h3>
-            <span className="text-xs text-[#605e5c]">Showing latest 6 entries</span>
-          </div>
-
-          <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {activeReferrals.slice(0, 6).map(r => (
-                <div 
-                  key={r.id} 
-                  className="border border-[#e1dfdd] p-3 rounded-xs hover:border-[#0d9488] transition-colors bg-white space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-xs text-[#242424] truncate max-w-[160px]">
-                      {r.suName}
-                    </h4>
-                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                      r.status === 'Open' ? 'bg-[#f0fdfa] text-[#0f766e]' :
-                      r.status === 'In progress' ? 'bg-[#fff4ce] text-[#7f6000]' :
-                      'bg-[#e8f5e9] text-[#107c10]'
-                    }`}>
-                      {r.status}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#605e5c]">
-                    {r.site} · {r.portRef} · {r.referralType}
-                  </p>
-                  <p className="text-xs text-[#323130] line-clamp-2 leading-snug">
-                    {r.notesActionTaken}
-                  </p>
-                  <div className="pt-1 text-[10px] text-neutral-400 flex items-center justify-between">
-                    <span>Referred: {r.dateReferred}</span>
-                    <span className="text-[#0d9488] font-medium">{r.referralCouncil}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Quick Incident Log Modal for Immediate Escalation Reporting */}
       <QuickIncidentModal
