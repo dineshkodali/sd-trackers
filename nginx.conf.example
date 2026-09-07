@@ -1,0 +1,40 @@
+# ==============================================================================
+# Nginx Configuration for SafeHaven Operations (trackers.sdcdms.co.uk)
+# Place in /etc/nginx/sites-available/trackers.sdcdms.co.uk
+# Enable with: sudo ln -s /etc/nginx/sites-available/trackers.sdcdms.co.uk /etc/nginx/sites-enabled/
+# Test with:   sudo nginx -t && sudo systemctl reload nginx
+# SSL with:    sudo certbot --nginx -d trackers.sdcdms.co.uk
+# ==============================================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name trackers.sdcdms.co.uk;
+
+    # Maximum file upload size (e.g. documents, exports, imports)
+    client_max_body_size 50M;
+
+    location / {
+        # Proxy to the Docker container port mapped to host (3020)
+        # CRITICAL: Do NOT add a trailing slash after 3020
+        proxy_pass http://127.0.0.1:3020;
+        proxy_http_version 1.1;
+
+        # WebSocket / Connection upgrade headers
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Standard proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        # Timeout settings
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}

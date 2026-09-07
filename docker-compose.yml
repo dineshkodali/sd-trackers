@@ -17,9 +17,9 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - OPEN_BROWSER=false
-      - APP_URL=${APP_URL:-}
+      - APP_URL=${APP_URL:-https://trackers.sdcdms.co.uk}
       - AUTH_TOKEN_SECRET=${AUTH_TOKEN_SECRET:-}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://trackers.sdcdms.co.uk,http://trackers.sdcdms.co.uk,http://localhost:3020}
       # Supabase Configuration
       - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
       - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
