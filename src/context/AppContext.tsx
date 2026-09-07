@@ -841,7 +841,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             reason: 'missing_permissions',
             title: 'Account Clearance Suspended',
             message: res.error,
-            details: 'Active staff standing is required to access SafeHaven Operations.',
+            details: 'Active staff standing is required to access SD Operations.',
             userEmail: email,
             timestamp: new Date().toISOString(),
             actionRequired: 'Please contact your administrator to activate your account.'

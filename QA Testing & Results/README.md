@@ -1,6 +1,6 @@
 # QA Testing & Results
 
-All quality-engineering assets for the SafeHaven Operations platform. Nothing in
+All quality-engineering assets for the SD Operations platform. Nothing in
 here is application code, and no application source was modified to produce it.
 
 ## Layout

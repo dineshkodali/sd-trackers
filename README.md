@@ -1,14 +1,8 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
-
-# SafeHaven Operations Platform
+# SD Operations Platform
 
 Safeguarding and accommodation-compliance management for vulnerable people
 placed in contracted hotel accommodation. React frontend and Express API served
 from a single origin, backed by PostgreSQL on Supabase.
-
-View in AI Studio: https://ai.studio/apps/c19b8d78-1b33-44e5-b647-7dc5d770ed4a
 
 ## Project structure
 
@@ -56,8 +50,7 @@ Node.js 20+, and a Supabase project.
    npm install
    ```
 2. Copy `.env.example` to `.env` and fill in your Supabase URL and keys. SMTP
-   and Gemini credentials are optional — the app degrades gracefully without
-   them.
+   credentials are optional — the app degrades gracefully without them.
 3. Apply `db/schema.sql` in the Supabase SQL editor (the server also attempts
    this on boot when a direct PostgreSQL connection string is available).
 

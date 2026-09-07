@@ -47,14 +47,14 @@ export const DiagnosticInspectorModal: React.FC<DiagnosticInspectorModalProps> =
 
   if (!isOpen) return null;
 
-  const parsedToken = parseJwtPayload(currentToken || localStorage.getItem('safehaven_session_token'));
+  const parsedToken = parseJwtPayload(currentToken || localStorage.getItem('sdtracker_session_token'));
 
   const filteredEvents = selectedCategory === 'all' 
     ? events 
     : events.filter(e => e.category === selectedCategory);
 
   const handleCopyReport = () => {
-    const report = `=== SafeHaven Diagnostics Summary ===
+    const report = `=== SD Operations Diagnostics Summary ===
 Timestamp: ${new Date().toISOString()}
 Token Status: ${parsedToken.statusDescription}
 Token Expire At: ${parsedToken.expiresAtFormatted || 'N/A'}
@@ -76,7 +76,7 @@ ${events.slice(0, 15).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] [
       const startTime = performance.now();
       const statusRes = await apiService.getAuthStatus();
       const dbStatus = await apiService.getDbStatus();
-      const token = currentToken || localStorage.getItem('safehaven_session_token');
+      const token = currentToken || localStorage.getItem('sdtracker_session_token');
       let meRes: any = { note: 'No token' };
       if (token) {
         meRes = await apiService.verifySession(token);

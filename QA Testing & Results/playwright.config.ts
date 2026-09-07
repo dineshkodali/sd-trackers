@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 /**
- * SafeHaven Operations — E2E configuration.
+ * SD Operations — E2E configuration.
  *
  * This config lives in "QA Testing & Results/", one level below the application
  * root. `testDir` and `outputDir` resolve relative to this file, but the dev

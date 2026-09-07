@@ -147,7 +147,7 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
         {/* Footer info */}
         <div className="px-4 py-2.5 bg-[#f8f9fa] border-t border-[#edebe9] flex items-center justify-between text-[11px] text-[#8a8886]">
           <span>Use arrow keys or click to navigate instantly</span>
-          <span className="font-mono">SafeHaven Operations OS</span>
+          <span className="font-mono">SD Operations Portal</span>
         </div>
 
       </div>

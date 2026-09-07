@@ -1,5 +1,5 @@
 /**
- * Schema Adapter for SafeHaven Supabase Database
+ * Schema Adapter for SD Commercial Supabase Database
  * Converts between frontend application models and exact Supabase PostgreSQL table schemas.
  * Ensures zero data loss, exact column matching, and bidirectional mapping.
  * 

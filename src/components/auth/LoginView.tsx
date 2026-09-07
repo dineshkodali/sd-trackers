@@ -193,7 +193,7 @@ export const LoginView: React.FC = () => {
             </div>
 
             <h1 className="text-2xl font-bold text-white tracking-tight leading-snug">
-              SafeHaven Operations Portal
+              SD Commercial Operations Portal
             </h1>
             <p className="text-xs text-slate-400 mt-2.5 leading-relaxed">
               Unified compliance and management system for housing operations, safeguarding referrals, resident welfare, and maintenance workflows.

@@ -1,7 +1,7 @@
 import { diagnosticLogger } from '../utils/diagnosticLogger';
 
 /**
- * SafeHaven API Client
+ * SD Operations API Client
  * Routes all database, authentication, and email services through server API routes (/api/*).
  * Zero credentials or secrets stored in webapp bundle; completely governed by root .env.
  */
@@ -22,9 +22,6 @@ export interface SystemConfigStatus {
       port: string | number;
       user: string | null;
       from: string | null;
-    };
-    gemini: {
-      configured: boolean;
     };
   };
 }
@@ -189,8 +186,7 @@ export const apiService = {
         environment: 'client-only',
         services: {
           supabase: { configured: false, url: null, hasAnonKey: false, hasServiceRoleKey: false },
-          smtp: { configured: false, host: null, port: 587, user: null, from: null },
-          gemini: { configured: false }
+          smtp: { configured: false, host: null, port: 587, user: null, from: null }
         }
       };
     }

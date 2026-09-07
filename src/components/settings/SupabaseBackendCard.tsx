@@ -150,7 +150,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
-SMTP_FROM="SafeHaven Operations <noreply@safehavenops.org>"
+SMTP_FROM="SD Operations <noreply@sdcommercial.co.uk>"
 SMTP_SECURE=false`;
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -387,7 +387,7 @@ SMTP_SECURE=false`;
                   type="email"
                   value={smtpEmail}
                   onChange={e => setSmtpEmail(e.target.value)}
-                  placeholder="Recipient (e.g. ops@safehaven.org)..."
+                  placeholder="Recipient (e.g. ops@sdcommercial.co.uk)..."
                   className="flex-1 px-2.5 py-1 text-xs border border-[#c8c6c4] rounded-xs bg-white focus:outline-none focus:border-[#0d9488]"
                 />
                 <button

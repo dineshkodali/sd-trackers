@@ -50,7 +50,7 @@ export const AuthenticationBlockedView: React.FC<AuthenticationBlockedViewProps>
   const isSessionIssue = blockedInfo.reason === 'session_invalidated' || blockedInfo.reason === 'token_expired';
 
   const handleCopyDiagnostics = () => {
-    const report = `[SafeHaven Auth Block Report]
+    const report = `[SD Operations Auth Block Report]
 Reason: ${blockedInfo.reason}
 Title: ${blockedInfo.title}
 Message: ${blockedInfo.message}
@@ -78,7 +78,7 @@ ${events.slice(0, 5).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] ${
       <div className="sm:mx-auto sm:w-full sm:max-w-lg text-center flex flex-col items-center mb-6">
         <Logo size="lg" />
         <p className="mt-2 text-xs text-[#605e5c] font-medium tracking-wider uppercase">
-          SafeHaven Accommodation & Safeguarding System
+          SD Operations &amp; Safeguarding System
         </p>
       </div>
 
@@ -276,9 +276,9 @@ ${events.slice(0, 5).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] ${
 
             {/* Support Desk Footer */}
             <div className="border-t border-[#edebe9] pt-4 flex items-center justify-between text-[11px] text-[#605e5c]">
-              <span>SafeHaven Compliance Portal &bull; ISO 27001 Security</span>
+              <span>SD Compliance Portal &bull; ISO 27001 Security</span>
               <a
-                href="mailto:dineshkodali16@gmail.com?subject=SafeHaven%20Access%20Request%20/%20Session%20Issue"
+                href="mailto:dineshkodali16@gmail.com?subject=SD%20Operations%20Access%20Request%20/%20Session%20Issue"
                 className="text-[#0078d4] hover:underline flex items-center gap-1 font-medium"
               >
                 <Mail className="w-3 h-3" />

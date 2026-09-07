@@ -61,7 +61,7 @@ export async function testSmtpConnection(): Promise<{ success: boolean; message:
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT || 587,
         user: process.env.SMTP_USER,
-        from: process.env.SMTP_FROM || 'SafeHaven Operations'
+        from: process.env.SMTP_FROM || 'SD Operations'
       }
     };
   } catch (err: any) {
@@ -91,7 +91,7 @@ export async function sendEmail(options: {
       throw new Error('Transporter unavailable');
     }
 
-    const fromAddress = process.env.SMTP_FROM || `SafeHaven Operations <${process.env.SMTP_USER}>`;
+    const fromAddress = process.env.SMTP_FROM || `SD Operations <${process.env.SMTP_USER}>`;
 
     const info = await mailer.sendMail({
       from: fromAddress,

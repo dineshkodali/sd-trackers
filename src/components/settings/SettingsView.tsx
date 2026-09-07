@@ -538,13 +538,13 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Smart Data-Caching Layer Diagnostics */}
+      {/* High-Speed Operational Data Cache Diagnostics */}
       <div className="bg-white border border-[#99f6e4] rounded-xs shadow-xs overflow-hidden">
         <div className="p-4 border-b border-[#99f6e4] bg-[#f3f8fd] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-[#0d9488]" />
             <div>
-              <h3 className="font-semibold text-xs text-[#0f766e]">Smart Data-Caching Layer (0ms Lookup & Delta Sync)</h3>
+              <h3 className="font-semibold text-xs text-[#0f766e]">High-Speed Operational Data Cache (0ms Instant Lookup &amp; Sync)</h3>
               <p className="text-[11px] text-[#0f766e]/80">
                 Maintains instant in-memory indices with local storage hydration and background delta sync.
               </p>

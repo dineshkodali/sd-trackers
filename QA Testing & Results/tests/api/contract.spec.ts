@@ -10,7 +10,7 @@ test.describe('TS-21 API contract', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('ok');
-    expect(body.service).toMatch(/SafeHaven/i);
+    expect(body.service).toMatch(/SD Operations/i);
     expect(body).toHaveProperty('detectedOrigin');
     expect(body).toHaveProperty('timestamp');
   });

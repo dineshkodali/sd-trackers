@@ -12,10 +12,10 @@ services:
     container_name: sdtracker-app
     restart: unless-stopped
     ports:
-      - "${HOST_PORT:-3020}:3000"
+      - "${HOST_PORT:-3020}:3020"
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=3020
       - HOST_PORT=${HOST_PORT:-3020}
       - OPEN_BROWSER=false
       - APP_URL=${APP_URL:-https://trackers.sdcdms.co.uk}

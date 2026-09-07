@@ -1,5 +1,5 @@
 # ==============================================================================
-# Nginx Configuration for SafeHaven Operations (trackers.sdcdms.co.uk)
+# Nginx Configuration for SD Operations Platform (trackers.sdcdms.co.uk)
 # Place in /etc/nginx/sites-available/trackers.sdcdms.co.uk
 # Enable with: sudo ln -s /etc/nginx/sites-available/trackers.sdcdms.co.uk /etc/nginx/sites-enabled/
 # Test with:   sudo nginx -t && sudo systemctl reload nginx

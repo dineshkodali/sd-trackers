@@ -201,9 +201,9 @@ router.post('/signup', requireAuth, requireRole('Super Admin', 'Admin'), async (
       if (isSmtpConfigured()) {
         sendEmail({
           to: email,
-          subject: 'SafeHaven Operations - Account Created',
+          subject: 'SD Operations - Account Created',
           html: `
-            <h2>Welcome to SafeHaven Operations</h2>
+            <h2>Welcome to SD Operations</h2>
             <p>Hello ${name || email},</p>
             <p>Your user profile has been created with role: <strong>${role}</strong>.</p>
             <p>Assigned Site: <strong>${assignedSite}</strong></p>
@@ -445,7 +445,7 @@ async function savePasswordAuditLog(entry: {
 // POST /api/auth/reset-password
 router.post('/reset-password', async (req: Request, res: Response) => {
   const { email } = req.body;
-  const adminEmail = (req.headers['x-admin-email'] as string) || 'system@safehavenops.org';
+  const adminEmail = (req.headers['x-admin-email'] as string) || 'system@sdcommercial.co.uk';
 
   if (!email || !email.trim()) {
     await savePasswordAuditLog({ adminEmail, targetEmail: email || 'unknown', action: 'RESET_PASSWORD', status: 'FAILURE', error: 'Missing email address' });
@@ -488,7 +488,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 // POST /api/auth/admin/update-password
 router.post('/admin/update-password', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
   const { userId, email, newPassword } = req.body;
-  const adminEmail = (req.headers['x-admin-email'] as string) || 'admin@safehavenops.org';
+  const adminEmail = (req.headers['x-admin-email'] as string) || 'admin@sdcommercial.co.uk';
 
   if ((!userId && !email) || !newPassword) {
     await savePasswordAuditLog({ adminEmail, targetEmail: email || userId || 'unknown', targetUserId: userId, action: 'UPDATE_PASSWORD', status: 'FAILURE', error: 'Missing user identifier or password' });

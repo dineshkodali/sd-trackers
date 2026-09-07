@@ -1,6 +1,6 @@
 {
-  "name": "SG Accommodation Support Tracker",
-  "description": "Comprehensive accommodation and safeguarding management system with strict role-based access control, full CRUD operations with confirmation dialogs, and smart performance settings.",
+  "name": "SD Operations Platform",
+  "description": "Comprehensive accommodation and safeguarding management system with strict role-based access control, full CRUD operations with confirmation dialogs, and high-performance operational caching.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

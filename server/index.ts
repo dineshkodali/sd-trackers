@@ -17,8 +17,8 @@ import { getNetworkIps, getClientOrigin } from './urlHelper.js';
 import { requireAuth } from './middleware/requireAuth.js';
 
 const HOST = process.env.HOST || '0.0.0.0';
-const DEFAULT_PORT = Number(process.env.PORT || 3000);
-const PUBLIC_URL = process.env.PUBLIC_URL || process.env.VITE_PUBLIC_URL || process.env.AI_STUDIO_URL || '';
+const DEFAULT_PORT = Number(process.env.PORT || 3020);
+const PUBLIC_URL = process.env.PUBLIC_URL || process.env.VITE_PUBLIC_URL || process.env.APP_URL || '';
 
 function getDisplayUrls(port: number): { local: string; networkUrls: string[]; publicUrl: string } {
   const localUrl = `http://localhost:${port}`;
@@ -159,7 +159,7 @@ async function startServer() {
     const host = (req.headers['x-forwarded-host'] as string) || req.get('host');
     res.json({
       status: 'ok',
-      service: 'SafeHaven Operations API',
+      service: 'SD Operations API',
       detectedOrigin,
       host,
       protocol: req.protocol,
@@ -197,7 +197,7 @@ async function startServer() {
 
   app.listen(PORT, HOST, () => {
     console.log(`\n  ======================================================`);
-    console.log(`  SafeHaven Operations Platform Ready:`);
+    console.log(`  SD Operations Platform Ready:`);
     console.log(`  ➜  Local:     ${local}`);
     if (networkUrls.length > 0) {
       networkUrls.forEach(url => console.log(`  ➜  Network:   ${url}`));

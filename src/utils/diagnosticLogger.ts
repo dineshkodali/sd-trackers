@@ -1,5 +1,5 @@
 /**
- * SafeHaven Supabase Session & Authentication Diagnostic Utility
+ * SD Commercial Supabase Session & Authentication Diagnostic Utility
  * Captures Supabase session status, JWT token expiration, and database profile retrieval.
  */
 
@@ -165,7 +165,7 @@ export const diagnosticLogger = {
       fullEvent.level === 'success' ? '#059669' : '#0284c7';
 
     console.log(
-      `%c[SafeHaven Diag: ${fullEvent.category.toUpperCase()}]%c ${fullEvent.title} - ${fullEvent.details}`,
+      `%c[SD Diag: ${fullEvent.category.toUpperCase()}]%c ${fullEvent.title} - ${fullEvent.details}`,
       `background: ${color}; color: white; padding: 2px 5px; border-radius: 2px; font-weight: bold; font-size: 10px;`,
       'color: inherit; font-size: 11px;',
       fullEvent.metadata || ''

@@ -31,9 +31,6 @@ router.get('/status', async (req, res) => {
         port: process.env.SMTP_PORT || '587',
         user: process.env.SMTP_USER ? `${process.env.SMTP_USER.split('@')[0]}@...` : null,
         from: process.env.SMTP_FROM || null
-      },
-      gemini: {
-        configured: Boolean(process.env.GEMINI_API_KEY)
       }
     }
   });
