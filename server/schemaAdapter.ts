@@ -93,6 +93,19 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   ])
 };
 
+/**
+ * Coerce to a number, or null when nothing was supplied.
+ *
+ * Deliberately distinct from `Number(x || fallback)`: a genuine 0 must survive
+ * (0 items delivered is a real, meaningful reading) while an absent value must
+ * become NULL rather than an invented figure.
+ */
+function numberOrNull(value: any): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function isValidUuid(val: any): boolean {
   return typeof val === 'string' && UUID_REGEX.test(val.trim());
@@ -305,10 +318,13 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.resident_name = record.serviceUserName || record.residentName || record.suName || '';
       dbRow.ref = record.suPortReference || record.ref || '';
       dbRow.date = record.date || record.dropOffDate || nowIso.split('T')[0];
-      dbRow.tokens_issued = Number(record.tokensIssued || record.bagCount || 1);
-      dbRow.bag_count = Number(record.bagCount || 1);
-      dbRow.dirty_laundry_sent = Number(record.dirtyLaundrySent || record.bagCount || 1);
-      dbRow.clean_laundry_returned = Number(record.cleanLaundryReturned || (record.status === 'Returned' || record.status === 'Delivered' ? record.bagCount || 1 : 0));
+      // Counted quantities are attested figures — store what was supplied, or
+      // NULL. Defaulting an absent count to 1 invented laundry movements that
+      // nobody recorded (BUG-012).
+      dbRow.tokens_issued = numberOrNull(record.tokensIssued ?? record.bagCount);
+      dbRow.bag_count = numberOrNull(record.bagCount);
+      dbRow.dirty_laundry_sent = numberOrNull(record.dirtyLaundrySent ?? record.bagCount);
+      dbRow.clean_laundry_returned = numberOrNull(record.cleanLaundryReturned);
       dbRow.discrepancies = record.discrepancies || 'None';
       dbRow.discrepancy_count = Number(record.discrepancyCount || 0);
       dbRow.remarks_actions_taken = record.remarksActionsTaken || record.remarks || '';
@@ -322,13 +338,18 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.site = record.site || record.assignedSite || 'All Sites';
       dbRow.date = record.date || record.mealDate || nowIso.split('T')[0];
       dbRow.meal_type = record.mealType || 'Dinner';
-      dbRow.vendor_name = record.vendorName || record.supplierName || 'Primary Catering';
-      dbRow.supplier_name = record.supplierName || record.vendorName || 'Primary Catering';
-      dbRow.meals_delivered = Number(record.mealsDelivered || record.mealsOrdered || 1);
-      dbRow.temperature_c = Number(record.temperatureC || record.temperatureReadingC || 65.0);
-      dbRow.quality_check = record.qualityCheck || (record.temperatureCheckPassed !== false ? 'Passed' : 'Failed');
-      dbRow.staff_name = record.staffName || 'Duty Staff';
-      dbRow.staff_signoff = record.staffSignoff || record.staffName || 'Duty Staff';
+      // Attested food-safety values are never invented. Previously an absent
+      // temperature was stored as 65.0 and the quality check stamped 'Passed',
+      // which fabricated safety evidence nobody recorded (BUG-012). Missing
+      // measurements are now persisted as NULL so an unrecorded check is
+      // visibly unrecorded rather than silently passing.
+      dbRow.vendor_name = record.vendorName || record.supplierName || null;
+      dbRow.supplier_name = record.supplierName || record.vendorName || null;
+      dbRow.meals_delivered = numberOrNull(record.mealsDelivered ?? record.mealsOrdered);
+      dbRow.temperature_c = numberOrNull(record.temperatureC ?? record.temperatureReadingC);
+      dbRow.quality_check = record.qualityCheck || null;
+      dbRow.staff_name = record.staffName || null;
+      dbRow.staff_signoff = record.staffSignoff || record.staffName || null;
       dbRow.notes = typeof record.notes === 'string' ? record.notes : '';
       break;
     }
@@ -722,12 +743,14 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         ref: row.ref,
         date: row.date,
         dropOffDate: row.date,
-        tokensIssued: Number(row.tokens_issued || 1),
-        bagCount: Number(row.bag_count || 1),
-        dirtyLaundrySent: Number(row.dirty_laundry_sent || 1),
-        cleanLaundryReturned: Number(row.clean_laundry_returned || 0),
+        // `Number(x || 1)` both invented a count for unrecorded rows AND turned a
+        // genuine stored 0 into 1. Preserve what was recorded; null means unrecorded.
+        tokensIssued: numberOrNull(row.tokens_issued),
+        bagCount: numberOrNull(row.bag_count),
+        dirtyLaundrySent: numberOrNull(row.dirty_laundry_sent),
+        cleanLaundryReturned: numberOrNull(row.clean_laundry_returned),
         discrepancies: row.discrepancies,
-        discrepancyCount: Number(row.discrepancy_count || 0),
+        discrepancyCount: numberOrNull(row.discrepancy_count),
         remarksActionsTaken: row.remarks_actions_taken,
         status: row.status,
         staffInitials: row.staff_initials,
@@ -746,9 +769,12 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         mealType: row.meal_type,
         vendorName: row.vendor_name,
         supplierName: row.supplier_name,
-        mealsDelivered: Number(row.meals_delivered || 0),
-        mealsOrdered: Number(row.meals_delivered || 0),
-        temperatureC: Number(row.temperature_c || 65.0),
+        mealsDelivered: numberOrNull(row.meals_delivered),
+        mealsOrdered: numberOrNull(row.meals_delivered),
+        // Previously `Number(row.temperature_c || 65.0)`: an unrecorded reading —
+        // or a genuine 0 °C — was reported as a compliant 65 °C, which also
+        // inflated the dashboard's food-temperature compliance figure.
+        temperatureC: numberOrNull(row.temperature_c),
         qualityCheck: row.quality_check,
         temperatureCheckPassed: row.quality_check === 'Passed',
         staffName: row.staff_name,

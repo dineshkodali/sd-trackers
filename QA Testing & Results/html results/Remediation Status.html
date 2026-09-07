@@ -1,0 +1,444 @@
+<title>SafeHaven Remediation Status</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
+<style>
+  :root{--paper:#f5f7f9;--surface:#fff;--surface-2:#eef1f5;--ink:#10202c;--ink-2:#3d4c58;--ink-3:#6b7885;
+    --rule:#d7dee6;--rule-soft:#e6ebf0;--accent:#0f6cbd;--accent-ink:#0a4d88;
+    --crit:#a4262c;--high:#b8500f;--med:#8a6d00;--low:#5b6672;--ok:#0f7b3f;--code-bg:#eaeef3;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --paper:#0c161e;--surface:#121e28;--surface-2:#18262f;--ink:#e6edf3;--ink-2:#b3c1cc;--ink-3:#8496a3;
+    --rule:#26363f;--rule-soft:#1d2b34;--accent:#57a8ec;--accent-ink:#8cc4f2;
+    --crit:#f08b8b;--high:#efa878;--med:#d8bf63;--low:#9aa8b3;--ok:#6fc797;--code-bg:#17252e;}}
+  :root[data-theme="dark"]{--paper:#0c161e;--surface:#121e28;--surface-2:#18262f;--ink:#e6edf3;--ink-2:#b3c1cc;--ink-3:#8496a3;
+    --rule:#26363f;--rule-soft:#1d2b34;--accent:#57a8ec;--accent-ink:#8cc4f2;
+    --crit:#f08b8b;--high:#efa878;--med:#d8bf63;--low:#9aa8b3;--ok:#6fc797;--code-bg:#17252e;}
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:40px 28px 88px}
+  .masthead{border-bottom:2px solid var(--ink);padding-bottom:22px}
+  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);margin:0 0 12px}
+  h1{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.08;letter-spacing:-.015em;margin:0 0 10px;text-wrap:balance}
+  .standfirst{font-family:Newsreader,Georgia,serif;font-size:19px;font-style:italic;color:var(--ink-2);margin:0;max-width:62ch}
+  .verdict{margin:26px 0 6px;border:1px solid var(--crit);border-left:4px solid var(--crit);background:var(--surface);padding:18px 22px}
+  .verdict h2{font-family:"IBM Plex Sans",sans-serif;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--crit);margin:0 0 8px;font-weight:600;display:block}
+  .verdict p{margin:0;max-width:78ch}
+  .scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:22px 0 12px}
+  .scoreboard div{background:var(--surface);padding:13px 15px}
+  .scoreboard dt{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-bottom:4px}
+  .scoreboard dd{margin:0;font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+  .scoreboard dd small{font-size:12px;font-weight:400;color:var(--ink-3);display:block;margin-top:2px;letter-spacing:0}
+  .sb-ok dd{color:var(--ok)}.sb-crit dd{color:var(--crit)}.sb-accent dd{color:var(--accent)}
+  section{margin:0 0 40px}
+  h2{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.01em;margin:46px 0 6px;display:flex;align-items:baseline;gap:12px}
+  h2 .num{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent)}
+  h3{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin:30px 0 10px}
+  .lede{color:var(--ink-2);max-width:76ch;margin:0 0 18px}
+  p{max-width:76ch}
+  code{font-family:"IBM Plex Mono",monospace;font-size:.89em;background:var(--code-bg);padding:1px 5px;border-radius:2px}
+  pre{font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.7;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--ok);padding:14px 17px;overflow-x:auto;margin:0 0 16px}
+  pre.warn{border-left-color:var(--high)}
+  pre code{background:none;padding:0}
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface);margin-bottom:10px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);padding:9px 11px;border-bottom:1px solid var(--rule);background:var(--surface-2);white-space:nowrap}
+  td{padding:9px 11px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+  tbody tr:last-child td{border-bottom:0}
+  td.id{font-family:"IBM Plex Mono",monospace;font-size:12.5px;white-space:nowrap}
+  .pill{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;border:1px solid currentColor;border-radius:2px;white-space:nowrap}
+  .p-crit{color:var(--crit)}.p-high{color:var(--high)}.p-med{color:var(--med)}
+  .p-low{color:var(--low)}.p-ok{color:var(--ok)}.p-accent{color:var(--accent)}
+  .item{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--ok);padding:18px 22px;margin:0 0 16px}
+  .item.crit{border-left-color:var(--crit)}
+  .item.high{border-left-color:var(--high)}
+  .item.med{border-left-color:var(--med)}
+  .item.blocked{border-left-color:var(--low)}
+  .item h4{margin:0 0 3px;font-size:16px;font-family:Newsreader,Georgia,serif;font-weight:600}
+  .item .meta{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:11px;font-weight:600}
+  .item p{margin:0 0 9px}
+  .item dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:13.5px}
+  .item dt{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding-top:3px}
+  .item dd{margin:0}
+  .note{color:var(--ink-3);font-size:13px;margin-top:8px;max-width:76ch}
+  ol.steps{counter-reset:s;list-style:none;padding:0;margin:10px 0 0;max-width:76ch}
+  ol.steps li{counter-increment:s;position:relative;padding:0 0 12px 32px}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:1px;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:500;color:var(--accent);border:1px solid var(--rule);width:20px;height:20px;display:grid;place-items:center;border-radius:50%}
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--ink-3)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Quality Engineering · Remediation Status</p>
+    <h1>SafeHaven Remediation Status</h1>
+    <p class="standfirst">Thirteen defects closed and verified, one self-inflicted regression caught and fixed, and an honest account of the nine things still standing between this system and a release.</p>
+  </header>
+
+  <div class="verdict">
+    <h2>Release recommendation — Not ready for release</h2>
+    <p>All four Critical defects are fixed and verified. <strong>One High-severity defect (BUG-009, no login rate limiting) remains unfixed</strong>, and final regression testing surfaced a new audit-integrity defect (BUG-026). By the stated criterion — no release while Critical or High defects remain open — this cannot ship.</p>
+  </div>
+
+  <dl class="scoreboard">
+    <div class="sb-accent"><dt>Tests executed</dt><dd>351<small>full suite, 34.4 min</small></dd></div>
+    <div class="sb-ok"><dt>Passed</dt><dd>349<small>99.4%</small></dd></div>
+    <div class="sb-crit"><dt>Failed</dt><dd>2<small>1 blocked, 1 real</small></dd></div>
+    <div class="sb-ok"><dt>Critical fixed</dt><dd>4/4<small>all verified</small></dd></div>
+    <div><dt>High fixed</dt><dd>8/9<small>BUG-009 open</small></dd></div>
+    <div class="sb-ok"><dt>Data left behind</dt><dd>0<small>baseline restored</small></dd></div>
+  </dl>
+  <p class="note">Every figure above comes from a single complete run of <code>npx playwright test</code>. No claim here rests on a subset.</p>
+
+  <section>
+    <h2><span class="num">01</span> Resolved — full log</h2>
+    <p class="lede">Each entry records the original failure, the root cause, the fix, the exact command used to verify it, and the observed result.</p>
+
+    <div class="item crit">
+      <h4>BUG-001 · Unauthenticated access to every data endpoint</h4>
+      <div class="meta">Critical · Backend · Tests 02.a×8, 02.b, 02.c</div>
+      <p><strong>Original failure.</strong> Every <code>/api/db/*</code> route accepted anonymous requests and executed them with the Supabase <em>service-role</em> key, bypassing Row Level Security. The safeguarding database was readable and writable by anyone who could reach the port.</p>
+      <p><strong>Root cause.</strong> No authentication middleware existed anywhere in <code>server/</code>. Routers were mounted directly after the body parser. Site isolation and role checks lived only in the browser.</p>
+      <dl>
+        <dt>Fix</dt><dd>New <code>server/middleware/requireAuth.ts</code> verifies a Supabase token or the signed built-in token, rejects suspended accounts, and attaches <code>req.user</code>. Mounted on <code>/api/db</code> and <code>/api/smtp</code>.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/authorization/api-authorization.spec.ts</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">20/20 passed</span></dd>
+      </dl>
+      <p class="note">02.c goes further than a status check — it proves a seeded record <em>survives</em> an unauthorised delete attempt. 02.m proves legitimate access still works.</p>
+    </div>
+
+    <div class="item crit">
+      <h4>BUG-002 · Forgeable session token granted Super Admin</h4>
+      <div class="meta">Critical · Authentication · Tests 02.e, 02.f</div>
+      <p><strong>Original failure.</strong> <code>Bearer sm-jwt-x</code> returned a full Super Admin profile. The prefix <em>was</em> the credential.</p>
+      <p><strong>Root cause.</strong> The token was <code>'sm-jwt-' + base64url(payload)</code> with no signature, and <code>/api/auth/me</code> short-circuited on <code>startsWith('sm-jwt-')</code>. A second, independent backdoor sat in the frontend: <code>AppContext.login</code> granted itself a Super Admin session with a self-minted token whenever the server login errored.</p>
+      <dl>
+        <dt>Fix</dt><dd><code>server/tokenSigner.ts</code> HMAC-signs the token; signature, issuer and expiry are verified with <code>crypto.timingSafeEqual</code>. Lifetime cut from 30 days to 12 hours. The frontend self-grant was removed entirely.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/authorization/api-authorization.spec.ts</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">passed</span></dd>
+      </dl>
+<pre><code>sm-jwt-FORGED / sm-jwt-x / sm-jwt-default-superadmin   -> 401
+payload re-signed with a stolen signature              -> 401
+legitimate login                                        -> 200, signed token</code></pre>
+      <p class="note"><strong>Deliberate behaviour change:</strong> offline login as the built-in administrator no longer works. It granted full Super Admin from a check that ran only in the browser.</p>
+    </div>
+
+    <div class="item crit">
+      <h4>BUG-003 · CORS reflected any origin with credentials</h4>
+      <div class="meta">Critical · Backend · Tests SEC.1–SEC.5</div>
+      <p><strong>Original failure.</strong> A request carrying <code>Origin: https://evil.example.com</code> came back with that exact value plus <code>Allow-Credentials: true</code>. Combined with BUG-001, any website a signed-in member of staff visited could act on the database.</p>
+      <p><strong>Root cause.</strong> <code>server/index.ts</code> echoed <code>req.headers.origin</code> straight back, with no allow-list.</p>
+      <dl>
+        <dt>Fix</dt><dd>Allow-list built from <code>ALLOWED_ORIGINS</code>, <code>APP_URL</code>, <code>PUBLIC_URL</code> and the host's own advertised addresses, so LAN access is preserved. Un-listed origins get no CORS headers. <code>Vary: Origin</code> added; <code>PATCH</code> removed from <code>Allow-Methods</code> as no PATCH route exists.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/authorization/security-headers.spec.ts</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">13/13 passed</span></dd>
+      </dl>
+      <p class="note">Originally verified only by manual probe. Automated coverage was added during final regression, including a lookalike domain and a <code>null</code> origin.</p>
+    </div>
+
+    <div class="item crit">
+      <h4>BUG-004 · A one-click status change destroyed the record</h4>
+      <div class="meta">Critical · Data integrity · Test WF.4</div>
+      <p><strong>Original failure.</strong> Archiving a referral, or changing its status from the table, erased the service user's name, references, council and case notes — leaving a blank shell with a new status.</p>
+      <p><strong>Root cause.</strong> <code>PUT /api/db/:entity/:id</code> passed the request body to <code>toDatabaseRow()</code>, which always builds a <em>complete</em> row and defaults anything absent to <code>''</code>. That was written with <code>.update()</code>, so every unlisted column was blanked. The Edit modal was unaffected — it submits the full record.</p>
+      <dl>
+        <dt>Fix</dt><dd>Read the stored row, merge the partial body onto it, then map. Unknown id now returns <code>404</code> rather than <code>500</code>.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/workflows tests/crud</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">WF.4 passes · 9/9 CRUD</span></dd>
+      </dl>
+<pre><code>UI probe, inline status dropdown:
+  PUT {"status":"In progress","updatedAt":"…","lastUpdatedBy":"Stack Master"}
+  FIELDS DESTROYED BY A SINGLE STATUS CHANGE: none</code></pre>
+      <p class="note"><strong>Residual risk:</strong> read-modify-write has a small race window — under simultaneous edits the last write still wins.</p>
+    </div>
+
+    <div class="item high">
+      <h4>BUG-005 · Password-recovery endpoint returned 404</h4>
+      <div class="meta">High · Authentication · Tests 21.13, 21.15, 21.16</div>
+      <p><strong>Root cause.</strong> The route registration sat <em>inside the catch block</em> of the <code>/me</code> handler, so it only ran if token verification threw during a request. It was never registered at startup, and the entire recovery-link flow was dead.</p>
+      <dl>
+        <dt>Fix</dt><dd>Registration lifted to module scope in <code>server/routes/auth.ts</code>.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/api</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">16/16 passed</span> — empty body → 400, no token → 401, session token correctly rejected as not a recovery token</dd>
+      </dl>
+    </div>
+
+    <div class="item high">
+      <h4>BUG-006 / 007 / 008 / 022 · Unauthenticated administrative endpoints</h4>
+      <div class="meta">High · Authentication · Tests 02.d, 02.i, 02.j, 02.k, 02.l</div>
+      <p><strong>Root cause.</strong> <code>/auth/signup</code>, <code>/auth/admin/update-password</code>, <code>/db/migrate</code> and <code>/db/ensure</code> performed no checks. Signup took <code>role</code> from the request body, so an anonymous caller could create a confirmed Super Admin. The staff directory and password history were readable by anyone.</p>
+      <dl>
+        <dt>Fix</dt><dd><code>requireAuth</code> + <code>requireRole('Super Admin','Admin')</code> on signup, admin password change, user management, password audit logs, and both migration routes.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/authorization/api-authorization.spec.ts</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">all return 401/403</span></dd>
+      </dl>
+    </div>
+
+    <div class="item high">
+      <h4>BUG-010 · Urgency dropdown offered a single option</h4>
+      <div class="meta">High · Referrals · Tests 05.e, 05.g</div>
+      <p><strong>Root cause.</strong> <code>getFieldOptions('riskLevels')</code> queried a category that did not exist, so the control rendered only a fallback. Because urgency drives the automated High/Critical safeguarding email, <strong>that alert could never be triggered from the UI.</strong></p>
+      <dl>
+        <dt>Fix</dt><dd>Added a <code>riskLevels</code> category matching the <code>RiskLevel</code> union.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/modules/referrals.spec.ts</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">13/13 passed</span> — 05.g confirms <code>Critical</code> is selectable</dd>
+      </dl>
+      <p class="note">The obvious one-word fix — repointing at <code>incidentRiskFactors</code> — would have been wrong. That category grades severity on a different vocabulary (Minor / Moderate / High / Critical) and would have written values outside the <code>RiskLevel</code> type.</p>
+    </div>
+
+    <div class="item high">
+      <h4>BUG-011 · Background sync running at ~18× the intended rate</h4>
+      <div class="meta">High · Application shell · Tests PERF.1, PERF.2</div>
+      <p><strong>Root cause.</strong> The scheduling effect depended on a callback that closed over <code>sites</code> and <code>users</code>; the sync replaced both, so the callback identity changed every run, the effect re-ran, and its 1500 ms initial timer re-armed. The 45 s interval was never reached.</p>
+      <dl>
+        <dt>Fix</dt><dd>The sync function is held in a ref; the scheduling effect is mount-only.</dd>
+        <dt>Command</dt><dd>100-second instrumented measurement</dd>
+        <dt>Result</dt><dd><span class="pill p-ok">585 → 39 requests / 100s</span></dd>
+      </dl>
+<pre><code>before: 585 requests / 100s, continuous   (~505,000/day per idle tab)
+after :  39 requests / 100s, bursts at 0s, 45s, 90s</code></pre>
+      <p class="note">The application now reaches network idle, which also lifts the standing ban on <code>waitForLoadState('networkidle')</code> in test authoring.</p>
+    </div>
+
+    <div class="item high">
+      <h4>BUG-012 · Compliance forms fabricated records</h4>
+      <div class="meta">High · Laundry &amp; Hot Meals · Tests 10.d, 11.d</div>
+      <p><strong>Root cause — two independent causes.</strong> The forms opened pre-filled (115 sent / 115 returned, plus a written food-safety attestation), so nothing was invalid and one click filed a complete record. Separately, <code>schemaAdapter.ts</code> invented values server-side: <code>temperature_c: 65.0</code>, <code>quality_check: 'Passed'</code>, vendor and staff names. Its read path repeated this with <code>Number(x || fallback)</code>, which <strong>also turned a genuine stored <code>0</code> into <code>1</code></strong>, and an unrecorded or genuinely 0 °C reading into a compliant 65 °C.</p>
+      <dl>
+        <dt>Fix</dt><dd>Attested fields start empty. <code>numberOrNull()</code> applied on both read and write paths, so unrecorded stays <code>NULL</code> and a real <code>0</code> survives. No migration needed — all affected columns were already nullable.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/modules/operations.spec.ts tests/validation</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">24/24 + 53/54</span> (the remaining one is a known pin)</dd>
+      </dl>
+      <p class="note"><strong>Expect a visible change:</strong> the dashboard's food-temperature compliance figure will now read <em>lower</em>, because unrecorded temperatures no longer count as compliant. That is a correction, but it will look like a regression to anyone watching the number.</p>
+    </div>
+
+    <div class="item high">
+      <h4>BUG-025 · API silently truncated every read at 1000 rows</h4>
+      <div class="meta">High · Backend · Test 21.14</div>
+      <p><strong>Root cause.</strong> A bare <code>select('*')</code> hits PostgREST's default 1000-row ceiling with no indication. The audit trail crossed it during testing and 133 records became unreachable — an audit log presented as complete while missing entries.</p>
+      <dl>
+        <dt>Fix</dt><dd><code>selectAllRows()</code> pages with <code>.range()</code> until exhausted, ordered by primary key. A 50,000-row ceiling guards memory and is reported honestly through a new <code>truncated</code> flag. <code>total</code> and <code>truncated</code> are additive, so existing clients are unaffected.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/api</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">1211 of 1211 rows</span> (previously 1000)</dd>
+      </dl>
+    </div>
+
+    <div class="item med">
+      <h4>BUG-016 · Create permission defined, configurable — and ignored</h4>
+      <div class="meta">Medium · Authorization · Test 02.5</div>
+      <p><strong>Wider than reported.</strong> Only <strong>2 of 11</strong> create-capable views honoured <code>canCreateRecords</code>. Referrals imported it and never called it; eight others never referenced it. Delete and Edit <em>were</em> correctly gated, which is what made this an omission rather than a design stance.</p>
+      <dl>
+        <dt>Fix</dt><dd>Create controls gated in Referrals, Vulnerable SUs and Challenging SUs.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/authorization/rbac.spec.ts tests/modules/referrals.spec.ts …</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">40/40 passed</span></dd>
+      </dl>
+      <p class="note">Six views remain ungated — see the outstanding section.</p>
+    </div>
+
+    <div class="item med">
+      <h4>BUG-017 · RBAC matrix omitted roles</h4>
+      <div class="meta">Medium · Authorization · Test 19.a</div>
+      <p><strong>Worse than reported.</strong> The report named Site Manager. In fact <strong>both Site Manager and Staff</strong> were missing — 5 of 7 roles were configurable, and Staff is the most common role in the system. My earlier check gave a false positive because the page heading contains the word "Staff".</p>
+      <dl>
+        <dt>Fix</dt><dd>Both roles added to <code>RolesView.tsx</code>.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/modules/read-only-views.spec.ts</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">passed</span></dd>
+      </dl>
+    </div>
+
+    <div class="item med">
+      <h4>D-9 · Retention filtered on fields that do not exist</h4>
+      <div class="meta">Medium · Settings · Surfaced by INF-001</div>
+      <p><strong>Root cause.</strong> Batch retention read <code>m.reportedDate</code> and <code>m.status</code> on <code>MaintenanceRecord</code>; neither exists. <code>m.status</code> was always <code>undefined</code>, so every record read as active and none as archived — "delete only archived" never matched a maintenance record. Invisible while <code>@types/react</code> was missing.</p>
+      <dl>
+        <dt>Fix</dt><dd>Now uses <code>date</code> / <code>defectStatus</code> / <code>action</code>. <code>AppContext</code> is type-clean.</dd>
+        <dt>Result</dt><dd><span class="pill p-med">Fixed, but not covered by any test</span> — see outstanding</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <h4>INF-001 · <code>npm run lint</code> was a false green</h4>
+      <div class="meta">Infrastructure · Prerequisite</div>
+      <p><code>tsc --noEmit</code> reported zero errors while <code>@types/react</code> was not installed — React resolved to <code>any</code>, so the entire component and context layer went unchecked. Installing the types surfaced <strong>130 real type errors</strong>, including D-9 above.</p>
+      <dl>
+        <dt>Fix</dt><dd><code>npm i -D @types/react @types/react-dom</code>. Errors tied to failures were fixed; the rest are a documented backlog.</dd>
+      </dl>
+    </div>
+
+    <h3>Regression introduced during remediation — and fixed</h3>
+    <div class="item high">
+      <h4>REG-001 · The authentication lockdown broke all frontend data loading</h4>
+      <div class="meta">High · Self-inflicted · Tests WF.1, WF.3 and 32 others</div>
+      <p>The full suite immediately after BUG-001 landed came back <strong>34 failed / 304 passed</strong> — worse than before the work started.</p>
+      <p><strong>Root cause.</strong> <code>src/services/apiService.ts</code> sent <em>no</em> <code>Authorization</code> header on reads. <code>fetchEntityRecords</code>, <code>getDbStatus</code>, <code>runMigration</code> and the SMTP calls all used a bare <code>fetch(url)</code>. Harmless while the API was open; once <code>requireAuth</code> was mounted every read returned 401 and the application loaded no data at all. Writes were unaffected because they already used <code>getAuditHeaders()</code>.</p>
+      <dl>
+        <dt>Fix</dt><dd>An <code>authHeaders()</code> helper applied to every call against a now-protected route.</dd>
+        <dt>Command</dt><dd><code>npx playwright test tests/workflows/archive-restore.spec.ts tests/tables tests/authorization/rbac.spec.ts</code></dd>
+        <dt>Result</dt><dd><span class="pill p-ok">6/6, then 32/33</span> (the single failure being BUG-016, since fixed)</dd>
+      </dl>
+      <p class="note">This is exactly the "could the fix break existing clients?" case. The contract went from open to authenticated, and the primary client had never been written to send credentials on reads.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span> Outstanding — with remediation detail</h2>
+    <p class="lede">Nine items. One is a release blocker on its own; the rest are ordered by the harm they permit.</p>
+
+    <div class="item high">
+      <h4>BUG-009 · No rate limiting or account lockout on login</h4>
+      <div class="meta">High · Release blocker · Not started</div>
+      <p><strong>Evidence.</strong> Twelve rapid failed logins for one address returned twelve plain <code>401</code>s with no delay, throttle or lockout. Credential-stuffing and brute force against staff accounts are unimpeded.</p>
+      <p><strong>Why it blocks release.</strong> It is the last remaining High-severity defect, and it undermines the authentication work now in place: strong token verification does not help if a password can be guessed at unlimited speed.</p>
+      <h3>Remediation</h3>
+      <ol class="steps">
+        <li>Add a small in-memory limiter keyed on <em>both</em> client IP and submitted email, so one attacker cannot rotate addresses and one victim cannot be locked out by a third party's traffic.</li>
+        <li>Apply to <code>POST /api/auth/login</code>, <code>/auth/reset-password</code> and <code>/auth/admin/update-password</code>. Suggested budget: 10 attempts per 15 minutes per key, with exponential backoff on repeat offenders.</li>
+        <li>Return <code>429</code> with a <code>Retry-After</code> header. Do <em>not</em> reveal whether the account exists.</li>
+        <li>Mount before the route handlers in <code>server/index.ts</code>, and exempt nothing.</li>
+        <li>Behind a proxy the limiter must read the client IP from <code>req.ip</code> with <code>trust proxy</code> already set — it is.</li>
+      </ol>
+      <p><strong>Verification.</strong> A test issuing 15 rapid failed logins should observe <code>401</code> then <code>429</code>, and a legitimate login from a clean key must still succeed. Add to <code>tests/authorization/</code>.</p>
+      <p class="note">A dependency-free implementation is fine at this scale; a shared store (Redis) becomes necessary only when running more than one instance.</p>
+    </div>
+
+    <div class="item high">
+      <h4>BUG-026 · Audit trail double-writes, and one copy has no entity link</h4>
+      <div class="meta">New · Compliance integrity · Test 20.2 left failing as evidence</div>
+      <p><strong>Root cause.</strong> <code>addAuditEntry</code> dispatches <em>two</em> writes per action: <code>saveEntityRecord('audit', newEntry)</code> and <code>recordAuditTrail(...)</code>. The first sends <code>targetItem</code>, which has no matching column; the generic adapter maps it to <code>target_item</code>, the column whitelist drops it, and the row persists with <code>entity_id = null</code>. The second sends <code>entityId</code> correctly.</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Action</th><th>Rows</th><th>Missing entity link</th></tr></thead>
+          <tbody>
+            <tr><td>CREATE</td><td>1305</td><td>46 (4%)</td></tr>
+            <tr><td>DELETE</td><td>1179</td><td>8 (1%)</td></tr>
+            <tr><td>UPDATE</td><td>72</td><td>9 (13%)</td></tr>
+            <tr><td>SETTINGS_UPDATE</td><td>115</td><td>29 (25%)</td></tr>
+            <tr><td>ARCHIVE</td><td>8</td><td>2 (25%)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Impact.</strong> Two defects in one. Every operator action produces two rows, inflating the trail and making it hard to read; and a consistent fraction of entries cannot be tied to the record they describe. In a safeguarding system the audit trail is the record of who did what, so an entry without a subject is weakened evidence.</p>
+      <h3>Remediation</h3>
+      <ol class="steps">
+        <li>Remove one of the two dispatches in <code>addAuditEntry</code> — <code>recordAuditTrail</code> is the correct one to keep, as it populates <code>entityId</code>.</li>
+        <li>Add an <code>audit_trails</code> case to <code>toDatabaseRow</code> mapping <code>targetItem</code> onto <code>entity_id</code>, so the link cannot be silently dropped by the generic path.</li>
+        <li>Consider a backfill decision for the ~94 existing unlinked rows: they cannot be reconstructed, so they should probably be left and the gap documented.</li>
+      </ol>
+      <p><strong>Verification.</strong> <code>npx playwright test tests/workflows/audit-trail.spec.ts</code> — 20.2 should pass, and a new assertion should confirm exactly one audit row per action.</p>
+      <p class="note">20.2 is deliberately left red. It asserts that a create produces an audit row naming the record — correct behaviour the application does not reliably deliver. Making it pass would mean asserting the broken behaviour.</p>
+    </div>
+
+    <div class="item med">
+      <h4>API-13 · <code>/api/config/*</code> is entirely unauthenticated</h4>
+      <div class="meta">Medium · Information disclosure · Verified, not applied</div>
+      <p><code>GET /api/config/status</code> returns the environment name, SMTP host, partially-masked SMTP user and <strong>every internal LAN IP of the host</strong> to anonymous callers. <code>/config/test-supabase</code> and <code>/config/test-smtp</code> let anyone trigger outbound connections from the server.</p>
+      <h3>Remediation</h3>
+      <ol class="steps">
+        <li>Mount the config router behind <code>requireAuth</code> in <code>server/index.ts</code>, exactly as <code>/api/db</code> is.</li>
+        <li>Consider <code>requireRole('Super Admin','Admin')</code> for the two <em>test</em> endpoints, which cause the server to make outbound connections.</li>
+        <li>Remove <code>networkIps</code> from the response, or gate it — it has no client use beyond diagnostics.</li>
+      </ol>
+      <p><strong>Safety already confirmed:</strong> <code>getConfigStatus</code> and <code>testSupabase</code> are called only from <code>SupabaseBackendCard</code> in the Settings view, which is post-login and admin-only. Gating will <em>not</em> break the login screen.</p>
+      <p class="note">Not applied because it would mean changing production code after the verification run without re-running the full suite.</p>
+    </div>
+
+    <div class="item med">
+      <h4>API-14 · <code>/api/db/sync/push</code> has authentication but no role check</h4>
+      <div class="meta">Medium · Authorization</div>
+      <p>Any authenticated user — including <code>Staff</code> — can bulk-upsert twelve tables in a single request. There is no per-record validation, no transaction, and no size ceiling beyond the 15 MB body limit, so a partial failure leaves some tables written and others not.</p>
+      <h3>Remediation</h3>
+      <ol class="steps">
+        <li>Add <code>requireRole('Super Admin','Admin')</code> to the route in <code>server/routes/db.ts</code>.</li>
+        <li>Validate each record against the entity's schema before upserting, rather than trusting the array.</li>
+        <li>Report per-entity success/failure as a status, not a free-text string, so a partial write is machine-detectable.</li>
+      </ol>
+    </div>
+
+    <div class="item med">
+      <h4>API-15 · Any authenticated user can enumerate the full staff directory</h4>
+      <div class="meta">Medium · Authorization</div>
+      <p><code>GET /api/auth/users</code> requires a session but no role, returning every user's email, name, role, site assignments and last sign-in. Both this and <code>/auth/password-audit-logs</code> also mask errors as an empty <code>200</code>, so a failure is indistinguishable from an empty result.</p>
+      <h3>Remediation</h3>
+      <ol class="steps">
+        <li>Decide the intended audience. The frontend calls this during sync for <em>all</em> roles, so gating it to admin will need the non-admin sync path adjusting first — do not simply add <code>requireRole</code> without checking that.</li>
+        <li>At minimum, reduce the payload for non-admin callers to what the UI actually needs (id and display name), withholding email, role and site.</li>
+        <li>Return real error statuses instead of an empty <code>200</code>.</li>
+      </ol>
+    </div>
+
+    <div class="item med">
+      <h4>LOG-001 / LOG-002 · Residual logging concerns</h4>
+      <div class="meta">Low–Medium · Privacy</div>
+      <p>No passwords or tokens are logged. Two residuals remain:</p>
+      <ul>
+        <li><code>server/routes/auth.ts:466</code> logs a <strong>user's email address</strong> during password reset — personal data in server logs, in a safeguarding context.</li>
+        <li><code>src/utils/diagnosticLogger.ts:124</code> retains a token's first 16 <em>and last 8</em> characters. For the signed token the tail is part of the HMAC signature. Eight characters of a 43-character signature is not forgeable, but it is unnecessary exposure in a log the UI can export.</li>
+      </ul>
+      <h3>Remediation</h3>
+      <ol class="steps">
+        <li>Log a stable user id, or a hash, instead of the email.</li>
+        <li>Redact to the prefix only: drop <code>+ token.substring(token.length - 8)</code>.</li>
+      </ol>
+    </div>
+
+    <div class="item blocked">
+      <h4>BUG-015 · Proof Documents cannot accept a document</h4>
+      <div class="meta">Medium · Blocked on a product decision · Test 13.b failing</div>
+      <p>The "Upload Compliance Document" form contains <strong>no file input</strong>. Its seven controls capture metadata only, while the button reads "Confirm &amp; Upload". The module records that evidence exists without ever storing it. Referrals <em>does</em> expose a file input, so this is an inconsistency rather than a platform limitation.</p>
+      <h3>This needs a decision, not a fix</h3>
+      <p>Either implement genuine upload and persistence — reusing the existing <code>AttachmentsSection</code> component and adding an attachment field to <code>DocumentRecord</code> — <strong>or</strong> relabel the module and its button to reflect that it is a metadata register. Both are legitimate; the choice is yours, and I have not guessed at it.</p>
+      <p class="note">13.b is left failing so the gap stays visible rather than being quietly accepted.</p>
+    </div>
+
+    <div class="item med">
+      <h4>Untested change · Batch retention</h4>
+      <div class="meta">Medium · Coverage gap</div>
+      <p>D-9 corrected retention to use <code>date</code> / <code>defectStatus</code> / <code>action</code>. The type-checker proved the old code matched nothing and the new field names are correct — but <strong>no automated test exercises this feature at all</strong>. A token smoke test would not catch a real fault here, so the gap is named rather than papered over.</p>
+      <h3>Remediation</h3>
+      <ol class="steps">
+        <li>Seed maintenance records either side of a cutoff date, with mixed <code>defectStatus</code> and <code>action</code> values.</li>
+        <li>Assert the Settings preview counts match, then that archive moves exactly the previewed set.</li>
+        <li>Assert "only archived" excludes records that are neither <code>Completed</code> nor <code>Closed</code>.</li>
+      </ol>
+    </div>
+
+    <div class="item">
+      <h4>Remaining pinned defects and backlog</h4>
+      <div class="meta">Medium / Low</div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>ID</th><th>Defect</th><th>Remediation summary</th></tr></thead>
+          <tbody>
+            <tr><td class="id">BUG-018</td><td>Duplicate records accepted with no warning</td><td>Add a uniqueness rule on the business key (Port ref + site) and surface a confirmation on near-duplicates.</td></tr>
+            <tr><td class="id">BUG-019</td><td>Dropdown defaults absent from their own option lists</td><td>Derive defaults from the field-options catalogue rather than hardcoding. Not DOM-observable — needs a unit or source-level check.</td></tr>
+            <tr><td class="id">BUG-021</td><td>Server-side deletions never reach the UI</td><td>Remove the <code>data.length &gt; 0</code> guard in <code>syncFromDatabase</code>; distinguish "no data" from "request failed".</td></tr>
+            <tr><td class="id">BUG-023</td><td><code>srNo</code>, <code>attachments</code>, <code>lastUpdatedBy</code> lost on round trip</td><td>Add real columns instead of overloading the <code>notes</code> JSON blob; fix <code>acknowledgementReceived</code> flipping text → boolean.</td></tr>
+            <tr><td class="id">BUG-024</td><td>Status vocabularies disagree across layers</td><td>Derive filter and form options from one source aligned to the TypeScript unions.</td></tr>
+            <tr><td class="id">BUG-016b</td><td>Six views still ignore <code>canCreateRecords</code></td><td>Wrap create controls in <code>canCreateRecord() &amp;&amp;</code> in Escalations, Documents, Properties, Users, Laundry, Food.</td></tr>
+            <tr><td class="id">INF-001</td><td>130 type errors now visible</td><td>Triage the backlog. Includes a real rendering bug: the Maintenance <em>edit</em> modal renders an object, showing <code>[object Object]</code> in its priority dropdown.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span> Recommended order</h2>
+    <ol class="steps">
+      <li><strong>BUG-009</strong> — the only remaining release blocker.</li>
+      <li><strong>BUG-026</strong> — the audit trail is compliance evidence; it should not be doubled or unlinked.</li>
+      <li><strong>API-13, API-14</strong> — both small, and API-13's safety is already proven.</li>
+      <li><strong>LOG-001 / LOG-002</strong> — two-line changes.</li>
+      <li><strong>BUG-015</strong> — needs your product decision before any work starts.</li>
+      <li>Batch-retention coverage, then the Medium/Low backlog.</li>
+      <li><strong>Re-run the full suite</strong> for a clean release baseline before shipping.</li>
+    </ol>
+    <p class="note">As each pinned defect is fixed, its <code>test.fail()</code> annotation must be removed — Playwright reports "expected to fail, but passed", and that is the signal.</p>
+  </section>
+
+  <footer>
+    Final verification: 351 tests executed, 349 passed, 2 failed, 34.4 minutes, Chromium, one worker against the live Supabase project.
+    Changes made after that run were limited to test code and <code>.env.example</code> documentation; no production code changed after the baseline.
+    Database restored to its pre-engagement state. Running log: <code>docs/qa-remediation.md</code>.
+  </footer>
+
+</div>

@@ -58,6 +58,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
     restoreVulnerableSU,
     deleteVulnerableSU,
     canDeleteRecord,
+    canCreateRecord,
     canEditRecord,
     canAccessAllSites,
     canManageFiles,
@@ -359,7 +360,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
             </button>
           </div>
 
-          {!isArchive && (
+          {!isArchive && canCreateRecord() && (
             <button
               onClick={() => {
                 setFormData({ ...initialFormData, site: allowedSites[0] || 'Hotel A' });

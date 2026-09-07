@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { getSupabaseAdmin, getSupabaseAnon, isSupabaseConfigured } from '../supabase.js';
 import { sendEmail, isSmtpConfigured } from '../mailer.js';
 import { getClientOrigin } from '../urlHelper.js';
+import { signAdminToken, verifyAdminToken, isAdminTokenFormat } from '../tokenSigner.js';
+import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 
 const router = Router();
 
@@ -50,9 +52,12 @@ router.post('/login', async (req: Request, res: Response) => {
       email: masterUser.email,
       role: masterUser.role,
       iss: 'sdtracker-internal',
-      exp: Math.floor(Date.now() / 1000) + 86400 * 30
+      // Shortened from 30 days to 12 hours: this is a privileged break-glass
+      // session, not a long-lived one.
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12
     };
-    const defaultToken = 'sm-jwt-' + Buffer.from(JSON.stringify(tokenPayload)).toString('base64url');
+    // Signed, not merely encoded — see server/tokenSigner.ts (BUG-002).
+    const defaultToken = signAdminToken(tokenPayload);
 
     return res.json({
       success: true,
@@ -152,7 +157,7 @@ router.post('/logout', async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/signup — Creates user in Supabase Auth + profile
-router.post('/signup', async (req: Request, res: Response) => {
+router.post('/signup', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
   const { email, password, name, role = 'Staff', assignedSite = 'All Sites' } = req.body;
 
   if (!email || !password) {
@@ -233,14 +238,21 @@ router.get('/me', async (req: Request, res: Response) => {
 
   const token = authHeader.split(' ')[1];
 
-  if (token && token.startsWith('sm-jwt-')) {
+  // Built-in administrator token. Previously ANY string beginning `sm-jwt-` was
+  // accepted here and granted Super Admin without verification (BUG-002); the
+  // signature and expiry are now checked before any trust is extended.
+  if (isAdminTokenFormat(token)) {
+    const payload = verifyAdminToken(token);
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
     return res.json({
       success: true,
       user: {
-        id: 'ce98b46b-4a6a-4a66-a70a-72e6c56d7691',
-        email: 'stackmaster@sdcommercial.co.uk',
+        id: payload.sub,
+        email: payload.email,
         name: 'Stack Master',
-        role: 'Super Admin',
+        role: payload.role,
         assignedSite: 'All Sites',
         assignedSites: ['All Sites'],
         status: 'Active',
@@ -289,7 +301,13 @@ router.get('/me', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     res.status(401).json({ error: err.message || 'Token verification failed' });
- // POST /api/auth/update-password — Update password using recovery access token or current session
+  }
+});
+
+// POST /api/auth/update-password — Update password using recovery access token or current session
+// NOTE: this registration previously sat INSIDE the catch block above, so it only
+// ever ran if token verification threw during a request — meaning the route was
+// never registered at startup and every call returned 404 (BUG-005).
 router.post('/update-password', async (req: Request, res: Response) => {
   const { password, accessToken } = req.body;
   const authHeader = req.headers.authorization;
@@ -373,11 +391,9 @@ router.post('/update-password', async (req: Request, res: Response) => {
     return res.status(500).json({ error: err.message || 'Failed to update password.' });
   }
 });
-  }
-});
 
 // GET /api/auth/password-audit-logs
-router.get('/password-audit-logs', async (req: Request, res: Response) => {
+router.get('/password-audit-logs', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
   if (!isSupabaseConfigured()) {
     return res.json({ success: true, logs: [] });
   }
@@ -470,7 +486,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/admin/update-password
-router.post('/admin/update-password', async (req: Request, res: Response) => {
+router.post('/admin/update-password', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
   const { userId, email, newPassword } = req.body;
   const adminEmail = (req.headers['x-admin-email'] as string) || 'admin@safehavenops.org';
 
@@ -530,7 +546,7 @@ router.post('/admin/update-password', async (req: Request, res: Response) => {
 });
 
 // GET /api/auth/users - Fetch ALL users from Supabase Auth joined with profiles
-router.get('/users', async (req: Request, res: Response) => {
+router.get('/users', requireAuth, async (req: Request, res: Response) => {
   if (!isSupabaseConfigured()) {
     return res.json({ success: true, users: [] });
   }
@@ -591,7 +607,7 @@ router.get('/users', async (req: Request, res: Response) => {
 });
 
 // PUT /api/auth/users/:id - Update user's properties assignment & role in Supabase
-router.put('/users/:id', async (req: Request, res: Response) => {
+router.put('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { name, role, assignedSites, status } = req.body;
 

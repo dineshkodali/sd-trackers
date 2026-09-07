@@ -189,7 +189,11 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     startDate: todayBounds.start,
     endDate: todayBounds.end,
     dailyCounts: defaultDailyCounts(),
-    notes: 'Hot holding temperature logged on arrival at >68°C. Halal certified supply.',
+    // Previously pre-filled with "Hot holding temperature logged on arrival at
+    // >68°C. Halal certified supply." — a food-safety attestation the operator
+    // had not made, saved verbatim unless they noticed and overwrote it (BUG-012).
+    // Notes must start empty so any claim recorded is one someone actually wrote.
+    notes: '',
     lastUpdatedBy: loggedInUserName
   });
 

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<!-- saved from url=(0253)https://dc422d3b-40bb-4c66-a271-65f8d4b9e4c1.frame.claudeusercontent.com/_f/1788731305-31eb/?__frame_t=C_-UxwEjWXWJCjqiLXOWhj9K.140e67c1-376d-47bc-8194-0d74c4e3dee8.e5431e00-3193-4e44-9078-355d32588e82.1788734914&__frame_v=manifest.44244f2523adb29d.json -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!-- frame-runtime --><script>window.__FRAME_PREAMBLE={"v":1,"capabilities":{"artifact":"artifact.DfA2To-s.js","assets":"assets.8Gk803W0.js","comments":"comments.hEoja5zd.js","db":"db.h-3sndFg.js","downloads":"downloads.th1YuAIk.js","embed":"embed.eqL6deQM.js","endpoints":"endpoints.CfzSv5nM.js","mcp":"mcp.Bvma3qD7.js","network":"network.B5UA9Su4.js","permissions":"permissions.BNySkLV5.js","room":"room.VSdFwTE9.js","sample":"sample.BW2Uysoh.js","self":"artifact.DfA2To-s.js","user":"user.BpKav-Rf.js"},"transforms":"_transforms.-IAc0qoT.js","comments":"_comments.C-AkolIB.js","translate":"_translate.5HCW4BJh.js","ldx":"_ldx.6JS5dhCp.js"}</script><script>(function(){"use strict";var le=["light","dark","system"],ue=/^[A-Za-z0-9_-]{1,64}$/,J=/^[a-zA-Z_:][a-zA-Z0-9_:.-]{0,127}$/,fe=new Set(["class","hidden","value","checked","style","title","alt","placeholder","lang","dir","role","tabindex","disabled","readonly","contenteditable","open","colspan","rowspan"]);function de(e){const t=e.toLowerCase();return t.startsWith("data-")||t.startsWith("aria-")||fe.has(t)}var We="http://www.w3.org/1999/xhtml",pe="http://www.w3.org/2000/svg",me=new Set(["script","style","iframe","noscript","noframes","noembed","xmp","plaintext","template","title","textarea","object","embed"]),he=new Set(["script","style"]);function _e(e){const t=e.localName.toLowerCase();return e.namespaceURI==="http://www.w3.org/1999/xhtml"?!me.has(t):e.namespaceURI===pe?!he.has(t):!1}function I(e,t){return e===t||(e===160||e===32)&&(t===160||t===32)}function ve(e,t){const r=e.length,n=t.length;let a=0;for(;a<r&&a<n&&I(e.charCodeAt(a),t.charCodeAt(a));)a++;let s=0;for(;s<r-a&&s<n-a&&I(e.charCodeAt(r-1-s),t.charCodeAt(n-1-s));)s++;return{p:a,s}}function ye(e,t){const r=e.firstChild;if(e.childNodes.length!==1||r===null||r.nodeType!==Node.TEXT_NODE){e.textContent=t;return}const n=r.data,a=n.length,s=t.length,{p:c,s:i}=ve(n,t);c===a&&i===0&&a===s||r.replaceData(c,a-c-i,t.slice(c,s-i));const p=r.data,f=e.ownerDocument.getSelection?.()??null,v=f!==null&&f.rangeCount>0&&(f.anchorNode===r||f.focusNode===r)?{anchor:f.anchorNode,anchorOffset:f.anchorOffset,focus:f.focusNode,focusOffset:f.focusOffset}:null;let d=-1,y=-1;for(let _=0;_<p.length&&_<t.length;_++){const E=p.charCodeAt(_),T=t.charCodeAt(_);E!==T&&I(E,T)&&(d<0&&(d=_),y=_)}const w=d>=0;if(w&&r.replaceData(d,y-d+1,t.slice(d,y+1)),w&&v!==null&&v.anchor!==null&&v.focus!==null)try{f.setBaseAndExtent(v.anchor,v.anchorOffset,v.focus,v.focusOffset)}catch{}}var we=new Set(["html","head","body","frameset"]);function be(e){return e.namespaceURI==="http://www.w3.org/1999/xhtml"&&we.has(e.localName)}function Ee(e){if(e===null||typeof e!="object")return!1;const t=e;if(typeof t.target!="string"||!ue.test(t.target)||t.text!==void 0&&typeof t.text!="string")return!1;if(t.attrsSet!==void 0){if(t.attrsSet===null||typeof t.attrsSet!="object")return!1;for(const[r,n]of Object.entries(t.attrsSet))if(!J.test(r)||typeof n!="string")return!1}if(t.attrsRemoved!==void 0){if(!Array.isArray(t.attrsRemoved))return!1;for(const r of t.attrsRemoved)if(typeof r!="string"||!J.test(r))return!1}return!0}function ge(e,t){if(e===null||typeof e!="object")return!1;const{seq:r,elements:n}=e;if(typeof r!="number"||!Number.isSafeInteger(r)||!Array.isArray(n)||n.length===0||n.length>64)return!1;for(let a=0;a<n.length;a++)if(!t(n[a]))return!1;return!0}function Ae(e){return e===null||typeof e!="object"?!1:ge(e.__frame_patch,Ee)}function Te(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_init;return t!==null&&typeof t=="object"}function Re(e){return e!==null&&typeof e=="object"&&e.__frame_size_poke===!0}function Le(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_theme;if(t===null||typeof t!="object")return!1;const r=t.theme;return typeof r=="string"&&le.includes(r)}var L=/^[\w.-]+\.js$/;function Se(e,t,r){return r?"inert":typeof t=="string"&&L.test(t)?e?[t]:"inert":e?"inert":"framed"}var Ke="frame_ldx_runtime",$e="script#an-form";function ke(){return{post(e,t){parent.postMessage(e,t)},on(e){const t=r=>{r.source===parent&&e(r.data,r.origin,r.isTrusted)};return addEventListener("message",t),()=>removeEventListener("message",t)}}}function Pe(){return{post:()=>{},on:()=>()=>{}}}var U="__frame_scroll",Oe=150,Ce=310,Me=160,je=3e4;function Ne(){let e=0,t=!1,r=!1,n=!1,a=0,s=null;const c=u=>{try{sessionStorage.setItem(U,JSON.stringify({y:u}))}catch{}},i=()=>{if(clearTimeout(e),s===null)return;const u=s;s=null,c(u)},p=()=>{if(t){t=!1;return}r=!0,s=scrollY,clearTimeout(e),e=setTimeout(i,Oe)};try{addEventListener("scroll",p,{passive:!0}),addEventListener("pagehide",i)}catch{}const f=()=>{let u;try{u=sessionStorage.getItem(U)}catch{return null}if(u===null)return null;let b;try{b=JSON.parse(u)}catch{b=null}const o=b?.y;if(!(typeof o=="number"&&Number.isFinite(o)&&o>=0)){try{sessionStorage.removeItem(U)}catch{}return null}return o};let v=!1;const d=u=>{try{const b=scrollY;scrollTo({top:u,left:0,behavior:"instant"}),a=u,n=!0,clearTimeout(e),s=null,c(u);const o=scrollY;o!==b&&(t=!0),o!==u&&!v&&(v=!0,addEventListener("load",()=>{try{if(scrollY===o){const m=f();d(m!==null?m:a)}}catch{}},{once:!0}))}catch{}},y=()=>{try{return!!location.hash}catch{return!0}};let w=!1;const _=()=>{try{if(w||innerWidth>Ce||innerHeight>Me)return;w=!0;const u=Date.now(),b=()=>{try{removeEventListener("resize",b)}catch{}if(Date.now()-u>je||r||y())return;const o=f();d(o!==null?o:a)};addEventListener("resize",b)}catch{}};let E=!1,T=!1;return{restore(){if(E||(E=!0,y()))return;const u=f();u!==null&&(d(u),_())},promoted(){if(T||(T=!0,y()))return;const u=f();u!==null?(d(u),_()):n&&d(a)}}}function Be(e,t,r,n){let a=null;try{a=window.trustedTypes?.createPolicy("frame-runtime",{createScriptURL:p=>p})??null}catch{}const s=window.Worker,c=s?.prototype,i=Object.freeze({Worker:s,workerOn:c?.addEventListener,workerPost:c?.postMessage,workerTerminate:c?.terminate,fetch:window.fetch.bind(window),preventDefault:Event.prototype.preventDefault,policy:a,origins:t});r(e).then(p=>p?.bootTopLevel?p.bootTopLevel(i,n):n.settle()).catch(()=>n.settle())}var qe="modulepreload",Xe=function(e){return"/"+e},Ye={},De=function(t,r,n){let a=Promise.resolve();function s(c){const i=new Event("vite:preloadError",{cancelable:!0});if(i.payload=c,window.dispatchEvent(i),!i.defaultPrevented)throw c}return a.then(c=>{for(const i of c||[])i.status==="rejected"&&s(i.reason);return t().catch(s)})},Ie=window===top,Q=Object.getOwnPropertyDescriptor(window,"claude"),C=Se(Ie,window.__FRAME_PREAMBLE?.topLevel,Q?.writable===!1),x=typeof C=="object"&&C[0],h=x?Pe():ke();(function(){const e=Object.defineProperty,t=globalThis,r=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let n=0;for(let a=0;a<r.length;a++){const s=r[a];try{e(t,s,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[s]}catch{}try{e(t,s,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[s]=="function"&&n++}if(n&&C==="framed")try{h.post({__frame_rtc_lockdown_failed:n},"*")}catch{}})();var Ue=1e4,xe=2e3,ee=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function te(e){for(const t of ee)if(t.endsWith(":*"))try{const r=new URL(e);if(`${r.protocol}//${r.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}var M=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities}),F=window.__FRAME_PREAMBLE?.transforms,z=window.__FRAME_PREAMBLE?.comments,H=window.__FRAME_PREAMBLE?.translate,W=window.__FRAME_PREAMBLE?.ldx;function S(e){return De(()=>import("/_runtime/"+e),void 0)}function re(e,t){return{contract:e.contract,changes:new Set(e.changes??[]),flags:new Set(e.flags??[]),capabilities:e.capabilities??{},capBudgets:e.capBudgets??{},transforms:new Map,shellOrigin:t,mount:q,hooks:N,pipe:()=>({wrap:(r,n)=>(...a)=>{try{return n(...a)}catch(s){return Promise.reject(s)}}})}}var j=null,A=null;function ne(e,t,r){try{Object.defineProperty(e,t,{value:r,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:r,writable:!1,configurable:!0,enumerable:!0})}catch{}}}var K=!1,N={editBefore:null,edit:null};function Fe(e,t,r=!1){const n=[];let a;if(r)try{N.editBefore?.(e)}catch{}for(const s of e.elements){const c=document.querySelector(`[data-id="${s.target}"]`);if(!c){a=s.target;break}if([...Object.keys(s.attrsSet??{}),...s.attrsRemoved??[]].some(i=>!de(i))){a=s.target;break}if(s.text!==void 0&&(!_e(c)||be(c))){a=s.target;break}for(const[i,p]of Object.entries(s.attrsSet??{}))if(!se(c,i)){try{c.setAttribute(i,p)}catch{}oe(c,i,p)}for(const i of s.attrsRemoved??[])se(c,i)||(c.removeAttribute(i),oe(c,i,null));typeof s.text=="string"&&ye(c,s.text),n.push(s.target)}if(r)try{N.edit?.(e.seq,n,a)}catch{}if(a!==void 0){h.post({__frame_patch_miss:{seq:e.seq}},t);return}try{document.dispatchEvent(new CustomEvent("claude:edit",{detail:{seq:e.seq,targets:n}}))}catch{}}function oe(e,t,r){if(!(e instanceof HTMLInputElement))return;const n=t.toLowerCase();n==="checked"?e.checked=r!==null:n==="value"&&e.type!=="file"&&(e.value=r??"")}function se(e,t){const r=t.toLowerCase(),n=e;return r==="data-id"||(r==="value"||r==="checked")&&(n.__artifactSecret===!0||/^(password|hidden|file)$/.test(n.type??"")||/(^|\s)(cc-|one-time-code|current-password|new-password)/i.test(`${e.getAttribute("autocomplete")??""} ${n.autocomplete??""}`))}function ae(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,K=!0):K&&(delete t.dataset.theme,t.style.colorScheme="",K=!1)}var B=new Map;function ze(){let e;const t={u:new Promise(r=>{e=r}),r:r=>{t.done=!0,e(r)},done:!1,nulled:!1};return t}function $(){for(const e of B.values())e.done||(e.nulled=!0,e.r(null))}var He=Object.freeze(Object.assign(Object.create(null),{call:Function.prototype.call,apply:Function.prototype.apply,bind:Function.prototype.bind})),q=(e,t)=>{const r=B.get(e);if(!r||r.done){r?.nulled&&A&&h.post({__frame_cap_telemetry:{kind:"cap-load-error",cap:e}},A);return}const n=typeof t=="function"?Object.setPrototypeOf(t,He):Object.assign(Object.create(null),t);typeof n.then=="function"&&delete n.then,r.r(Object.freeze(n))};function ie(){const e=Q?.value??{};ne(window,"claude",e);for(const t of Object.keys(M)){if(e[t]!==void 0){ne(e,t,e[t]);continue}B.set(t,ze())}if(e.use===void 0){const t=r=>{if(typeof r!="string"||!Object.hasOwn(M,r))return Promise.resolve(null);const n=B.get(r);return n?n.u:Promise.resolve(e[r]??null)};try{Object.defineProperty(e,"use",{value:t,writable:!0,configurable:!0,enumerable:!1})}catch{}}}if(C==="framed"){const e=F&&L.test(F)?S(F).catch(()=>{}):Promise.resolve(void 0),t=o=>{if(o.type==="auxclick"&&o.button!==1)return;const m=o.target,k=m&&m.closest?m.closest("a[href],area[href]"):null;if(!k)return;const O=k.getAttribute("href");if(!O)return;let R;try{R=new URL(O,document.baseURI)}catch{return}if((R.protocol==="http:"||R.protocol==="https:")&&R.origin!==location.origin){o.preventDefault();const P=(k.getAttribute("target")??"").toLowerCase(),g=o.type==="auxclick"||o.metaKey||o.ctrlKey||o.shiftKey||o.altKey||!["","_self","_top","_parent"].includes(P);h.post({__frame_nav:!0,url:R.href,newTab:g},"*")}};addEventListener("click",t,!0),addEventListener("auxclick",t,!0);const r={},n=o=>{o.isTrusted&&(r.pointer=!0)},a=o=>{o.isTrusted&&(r.click=!0)};addEventListener("pointermove",n,{capture:!0,passive:!0}),addEventListener("click",a,{capture:!0,passive:!0});const s={cb:null};addEventListener("keydown",o=>s.cb?.(o),!0),e.then(o=>o?.installEscapeForward?.(s,m=>{A&&h.post(m,A)})),e.then(o=>{o?.wireNav&&(o.wireNav(),removeEventListener("click",t,!0),removeEventListener("auxclick",t,!0),removeEventListener("pointermove",n,!0),removeEventListener("click",a,!0),o.wireEngagement?.(r))});let c=null;try{c=Ne()}catch{}ie();let i=null,p=null,f=0;const v=h.on((o,m)=>{te(m)&&Te(o)&&(i=o.__frame_init,A=m,v(),clearTimeout(f),p?.())});h.post({__frame_connect:!0},"*");const d=setTimeout,y=clearTimeout;let w=0;const _=()=>{try{h.post({__frame_alive:!0},"*")}catch{}w=d(_,xe)},E=()=>y(w);_(),addEventListener("load",E,{once:!0});const T=new Promise(o=>{p=o,f=setTimeout(()=>{v(),o()},Ue)}),u=document.readyState==="loading"?new Promise(o=>document.addEventListener("DOMContentLoaded",()=>o(),{once:!0})):Promise.resolve();u.then(()=>{try{c?.restore()}catch{}});const b={cb:null};h.on((o,m)=>{if(te(m)&&Re(o)){try{c?.promoted()}catch{}b.cb?.()}}),T.then(async()=>{if(!i||!A){$();return}ae(i.theme);const o=A;let m=!1,k=!1;h.on((l,Y,D)=>{if(Y!==o)return;Le(l)&&ae(l.__frame_theme.theme),Ae(l)&&Fe(l.__frame_patch,o,D);const G=l?.__fc_mode;G&&typeof G=="object"&&!m&&z&&L.test(z)&&(m=!0,S(z).then(Z=>Z.install?.(o,G.on===!0)).catch(()=>{}));const V=l?.__ft_cmd;V&&typeof V=="object"&&!k&&H&&L.test(H)&&(k=!0,S(H).then(Z=>Z.install?.(o,V)).catch(()=>{}))});const O=Object.keys(i.capabilities??{}).filter(l=>Object.hasOwn(M,l)).map(l=>[l,M[l]]).filter(l=>typeof l[1]=="string"&&L.test(l[1])),R=await Promise.allSettled(O.map(([,l])=>S(l))),P=await e,g=A;if(P?.buildBoot||h.post({__frame_cap_telemetry:{kind:"cap-load-error",cap:"_transforms"}},g),P?.buildBoot)try{j=P.buildBoot(i,P.TRANSFORMS??{},{shellOrigin:g,mount:q,hooks:N},l=>h.post({__frame_cap_telemetry:l},g))}catch{h.post({__frame_cap_telemetry:{kind:"cap-load-error",cap:"_transforms"}},g),j=re(i,g)}else j=re(i,g);const X=l=>h.post({__frame_cap_telemetry:{kind:"cap-load-error",cap:l}},g),ce=j;R.forEach((l,Y)=>{const D=O[Y][0];if(l.status!=="fulfilled"){X(D);return}try{l.value?.install?.(ce)}catch{X(D)}}),$(),await u,E(),h.post({__frame_ready:!0},A),e.then(l=>l?.installSizeReporter?.(g,b)),ce.flags.has("frame_ldx_runtime")&&W&&L.test(W)&&document.querySelector("script#an-form")&&S(W).then(l=>l?.boot?.()).catch(()=>!1).then(l=>{l!==!0&&X("_ldx")})})}else x&&(ie(),Be(x,ee,S,{settle:$,mount:q}))})();</script><!-- /frame-runtime --><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>SafeHaven API Audit</title>
+<link rel="stylesheet" href="./css2">
+<style>
+  :root{--paper:#f5f7f9;--surface:#fff;--surface-2:#eef1f5;--ink:#10202c;--ink-2:#3d4c58;--ink-3:#6b7885;
+    --rule:#d7dee6;--rule-soft:#e6ebf0;--accent:#0f6cbd;--accent-ink:#0a4d88;
+    --crit:#a4262c;--high:#b8500f;--med:#8a6d00;--low:#5b6672;--ok:#0f7b3f;--code-bg:#eaeef3;
+    --get:#0f7b3f;--post:#0f6cbd;--put:#8a6d00;--del:#a4262c}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --paper:#0c161e;--surface:#121e28;--surface-2:#18262f;--ink:#e6edf3;--ink-2:#b3c1cc;--ink-3:#8496a3;
+    --rule:#26363f;--rule-soft:#1d2b34;--accent:#57a8ec;--accent-ink:#8cc4f2;
+    --crit:#f08b8b;--high:#efa878;--med:#d8bf63;--low:#9aa8b3;--ok:#6fc797;--code-bg:#17252e;
+    --get:#6fc797;--post:#57a8ec;--put:#d8bf63;--del:#f08b8b}}
+  :root[data-theme="dark"]{
+    --paper:#0c161e;--surface:#121e28;--surface-2:#18262f;--ink:#e6edf3;--ink-2:#b3c1cc;--ink-3:#8496a3;
+    --rule:#26363f;--rule-soft:#1d2b34;--accent:#57a8ec;--accent-ink:#8cc4f2;
+    --crit:#f08b8b;--high:#efa878;--med:#d8bf63;--low:#9aa8b3;--ok:#6fc797;--code-bg:#17252e;
+    --get:#6fc797;--post:#57a8ec;--put:#d8bf63;--del:#f08b8b}
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:40px 28px 88px}
+  .masthead{border-bottom:2px solid var(--ink);padding-bottom:22px}
+  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);margin:0 0 12px}
+  h1{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.08;letter-spacing:-.015em;margin:0 0 10px;text-wrap:balance}
+  .standfirst{font-family:Newsreader,Georgia,serif;font-size:19px;font-style:italic;color:var(--ink-2);margin:0;max-width:62ch}
+  .scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:26px 0 14px}
+  .scoreboard div{background:var(--surface);padding:13px 15px}
+  .scoreboard dt{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-bottom:4px}
+  .scoreboard dd{margin:0;font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+  .scoreboard dd small{font-size:12px;font-weight:400;color:var(--ink-3);display:block;margin-top:2px;letter-spacing:0}
+  .sb-ok dd{color:var(--ok)}.sb-crit dd{color:var(--crit)}.sb-accent dd{color:var(--accent)}
+  section{margin:0 0 42px}
+  h2{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.01em;margin:44px 0 6px;display:flex;align-items:baseline;gap:12px}
+  h2 .num{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent);letter-spacing:0}
+  h3{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin:28px 0 10px}
+  .lede{color:var(--ink-2);max-width:74ch;margin:0 0 18px}
+  p{max-width:74ch}
+  code{font-family:"IBM Plex Mono",monospace;font-size:.89em;background:var(--code-bg);padding:1px 5px;border-radius:2px}
+  pre{font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.7;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--crit);padding:15px 18px;overflow-x:auto;margin:0 0 18px}
+  pre code{background:none;padding:0}
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface);margin-bottom:10px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);padding:9px 11px;border-bottom:1px solid var(--rule);background:var(--surface-2);white-space:nowrap}
+  td{padding:9px 11px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+  tbody tr:last-child td{border-bottom:0}
+  td.path{font-family:"IBM Plex Mono",monospace;font-size:12.5px;white-space:nowrap}
+  .verb{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;padding:1px 6px;border:1px solid currentColor;border-radius:2px}
+  .v-get{color:var(--get)}.v-post{color:var(--post)}.v-put{color:var(--put)}.v-del{color:var(--del)}
+  .pill{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;border:1px solid currentColor;border-radius:2px;white-space:nowrap}
+  .p-crit{color:var(--crit)}.p-high{color:var(--high)}.p-med{color:var(--med)}
+  .p-low{color:var(--low)}.p-ok{color:var(--ok)}.p-accent{color:var(--accent)}
+  .none{color:var(--crit);font-weight:600}
+  .callout{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--crit);padding:16px 20px;margin:0 0 20px}
+  .callout p{margin:0}.callout p+p{margin-top:9px}
+  .callout strong{color:var(--crit)}
+  .note{color:var(--ink-3);font-size:13px;margin-top:8px;max-width:74ch}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--ink-3)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Quality Engineering · Backend Audit</p>
+    <h1>SafeHaven API Audit</h1>
+    <p class="standfirst">Twenty-seven endpoints, read from source and confirmed against the running server. One of them checks a credential, and it can be defeated with a nine-character string.</p>
+  </header>
+
+  <dl class="scoreboard">
+    <div class="sb-accent"><dt>Endpoints</dt><dd>27<small>4 routers</small></dd></div>
+    <div class="sb-crit"><dt>Require auth</dt><dd>1<small>of 27</small></dd></div>
+    <div class="sb-crit"><dt>Check authz</dt><dd>0<small>of 27</small></dd></div>
+    <div><dt>Entity ops</dt><dd>88<small>22 aliases × 4 verbs</small></dd></div>
+    <div class="sb-crit"><dt>Search / filter / page</dt><dd>0<small>none exist</small></dd></div>
+    <div><dt>Test coverage</dt><dd>44%<small>12 of 27</small></dd></div>
+  </dl>
+
+  <section>
+    <h2><span class="num">01</span> Security posture</h2>
+    <div class="callout">
+      <p><strong>There is no authentication or authorization middleware anywhere in the backend.</strong> No guard function, no route wrapper, no role check. A search across <code>server/</code> for any auth middleware returns nothing.</p>
+      <p>The single endpoint that inspects a token is <code>GET /api/auth/me</code> — and it grants full Super Admin to any bearer string starting <code>sm-jwt-</code>, with no signature verification.</p>
+    </div>
+
+    <h3>Cross-cutting behaviour, verified live</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Control</th><th>Status</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Authentication on data routes</td><td><span class="pill p-crit">Absent</span></td><td>All 17 <code>/api/db/*</code> reads returned <code>200</code> with no credentials</td></tr>
+          <tr><td>Authorization / role checks</td><td><span class="pill p-crit">Absent</span></td><td>No role is read from any request; site isolation is client-side only</td></tr>
+          <tr><td>Token verification</td><td><span class="pill p-crit">Bypassable</span></td><td><code>Bearer sm-jwt-FORGED</code> → <code>200</code> with a Super Admin profile</td></tr>
+          <tr><td>CORS origin policy</td><td><span class="pill p-crit">Reflects any origin</span></td><td>Request with <code>Origin: https://evil.example.com</code> came back with that exact value plus <code>Allow-Credentials: true</code></td></tr>
+          <tr><td>Rate limiting / lockout</td><td><span class="pill p-crit">Absent</span></td><td>12 rapid failed logins: twelve <code>401</code>s, no throttle or delay</td></tr>
+          <tr><td>Request body limit</td><td><span class="pill p-ok">15 MB</span></td><td>16 MB payload → <code>413</code> (HTML body, not JSON)</td></tr>
+          <tr><td>Malformed JSON handling</td><td><span class="pill p-ok">Handled</span></td><td><code>400</code> with a JSON error, applied app-wide before routing</td></tr>
+          <tr><td>Service-role key usage</td><td><span class="pill p-crit">All traffic</span></td><td>Every <code>/api/db</code> call uses the Supabase service-role client, bypassing RLS entirely</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>The CORS finding compounds the others.</strong> Because the origin is reflected rather than allow-listed and credentials are permitted, any website a staff member visits can issue cross-origin reads and writes against the full safeguarding database — no token needed, since the data routes require none.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span> GET endpoints</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Endpoint</th><th>Auth</th><th>Authz</th><th>Params</th><th>Validation</th><th>Responses</th><th>Database</th></tr></thead>
+        <tbody>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/health</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code></td><td>none</td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/config/status</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code></td><td>none — reads env only</td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/config/test-supabase</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code> always</td><td><code>select id,name from sites limit 1</code></td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/config/test-smtp</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code></td><td>none — SMTP verify</td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/auth/status</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code></td><td>none</td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/auth/me</td><td><span class="pill p-med">Bearer</span></td><td class="none">none</td><td>—</td><td>Header must start <code>Bearer </code></td><td><code>200</code> / <code>401</code> / <code>503</code></td><td><code>select * from profiles where id=…</code></td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/auth/password-audit-logs</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code> always, <code>[]</code> on error</td><td><code>select * from password_audit_logs order by timestamp desc limit 100</code></td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/auth/users</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code> always</td><td>Supabase Admin <code>listUsers()</code> + <code>select * from profiles</code></td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/db/status</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code> / <code>500</code></td><td><strong>22 sequential COUNT queries</strong>, one per alias</td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/db/:entity</td><td class="none">none</td><td class="none">none</td><td><code>:entity</code> — must be in TABLE_MAP</td><td>Entity name only</td><td><code>200</code> / <code>404</code> / <code>500</code></td><td><code>select *</code> — <strong>whole table, no limit</strong>; on <code>42P01</code> auto-runs migration then retries</td></tr>
+          <tr><td class="path"><span class="verb v-get">GET</span> /api/smtp/status</td><td class="none">none</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code></td><td>none</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><code>GET /api/auth/password-audit-logs</code> and <code>GET /api/auth/users</code> expose the full staff directory and password-change history to anonymous callers, and both swallow errors into a <code>200</code>, so a failure is indistinguishable from an empty result.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span> POST endpoints</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Endpoint</th><th>Auth</th><th>Body</th><th>Validation</th><th>Responses</th><th>Database</th></tr></thead>
+        <tbody>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/auth/login</td><td class="none">none</td><td><code>email, password</code></td><td>Both present</td><td><code>200</code> / <code>400</code> / <code>401</code> / <code>503</code></td><td>Supabase <code>signInWithPassword</code>; upserts <code>profiles</code> if missing</td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/auth/logout</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code> always</td><td>Supabase <code>signOut()</code> on a shared server client</td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/auth/signup</td><td class="none"><strong>none</strong></td><td><code>email, password, name, role, assignedSite</code></td><td>Email + password present. <strong>Role is caller-supplied</strong></td><td><code>201</code> / <code>400</code> / <code>500</code></td><td><code>admin.createUser</code> with <code>email_confirm:true</code>; upserts <code>profiles</code>; sends mail</td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/auth/update-password</td><td>n/a</td><td><code>password, accessToken</code></td><td>Password ≥ 6</td><td><span class="pill p-crit">404 — unreachable</span></td><td>never executes</td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/auth/reset-password</td><td class="none">none</td><td><code>email</code></td><td>Non-empty email</td><td><code>200</code> / <code>400</code> / <code>503</code></td><td><code>resetPasswordForEmail</code>; inserts <code>password_audit_logs</code></td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/auth/admin/update-password</td><td class="none"><strong>none</strong></td><td><code>userId | email, newPassword</code></td><td>Identifier + password present. <strong>No strength rule</strong></td><td><code>200</code> / <code>400</code> / <code>404</code> / <code>503</code></td><td><code>admin.updateUserById</code>; inserts audit log</td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/db/ensure</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code> / <code>500</code></td><td><strong>Executes the entire schema SQL file</strong></td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/db/migrate</td><td class="none">none</td><td>—</td><td>—</td><td><code>200</code> / <code>500</code></td><td><strong>Executes the entire schema SQL file</strong></td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/db/sync/push</td><td class="none">none</td><td>12 named arrays</td><td><code>Array.isArray</code> and non-empty only</td><td><code>200</code> / <code>400</code> / <code>500</code></td><td><strong>Bulk upsert across 12 tables</strong>, unbounded</td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/db/:entity</td><td class="none">none</td><td>Entity record</td><td><strong>Entity name only — no field validation</strong></td><td><code>201</code> / <code>404</code> / <code>500</code></td><td><code>upsert</code> then async insert into <code>audit_trails</code></td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/smtp/test</td><td class="none">none</td><td><code>testRecipient</code></td><td>Recipient or <code>SMTP_USER</code></td><td><code>200</code> / <code>400</code> / <code>500</code></td><td>none — sends mail</td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/smtp/alert</td><td class="none">none</td><td><code>title, message, severity…</code></td><td><code>title</code> required</td><td><code>200</code> / <code>400</code></td><td>none — sends mail</td></tr>
+          <tr><td class="path"><span class="verb v-post">POST</span> /api/smtp/escalation-alert</td><td class="none">none</td><td>Escalation fields</td><td><span class="pill p-med">none</span> — empty body → <code>200</code></td><td><code>200</code></td><td>none — sends mail</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Three of these are unauthenticated administrative operations: <code>/auth/signup</code> lets an anonymous caller create a confirmed account <em>and choose its role</em>; <code>/auth/admin/update-password</code> lets one change any user's password given only their email; and <code>/db/ensure</code> and <code>/db/migrate</code> each replay the full schema file against the production database.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span> PUT, PATCH and DELETE</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Endpoint</th><th>Auth</th><th>Params / body</th><th>Validation</th><th>Responses</th><th>Database</th></tr></thead>
+        <tbody>
+          <tr><td class="path"><span class="verb v-put">PUT</span> /api/auth/users/:id</td><td class="none">none</td><td><code>:id</code>; <code>name, role, assignedSites, status</code></td><td>None on role value</td><td><code>200</code> / <code>404</code> / <code>500</code> / <code>503</code></td><td>Updates auth metadata, upserts <code>profiles</code>, then <strong>deletes and re-inserts</strong> <code>property_user_assignments</code></td></tr>
+          <tr><td class="path"><span class="verb v-put">PUT</span> /api/db/:entity/:id</td><td class="none">none</td><td><code>:entity</code>, <code>:id</code>; partial record</td><td>Entity name only</td><td><code>200</code> / <code>404</code> / <code>500</code></td><td><span class="pill p-crit">Destructive</span> rebuilds the whole row from the partial body and <code>update</code>s it, blanking omitted fields</td></tr>
+          <tr><td class="path"><span class="verb v-del">DELETE</span> /api/db/:entity/:id</td><td class="none">none</td><td><code>:entity</code>, <code>:id</code></td><td>Entity name only</td><td><code>200</code> / <code>404</code> / <code>500</code></td><td><strong>Hard delete.</strong> No soft-delete, no ownership check, no cascade guard</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>No PATCH route exists</strong>, although <code>PATCH</code> is advertised in the CORS <code>Allow-Methods</code> header. A <code>PATCH</code> to a real entity falls through to the SPA catch-all and returns <code>404</code> with an HTML body.</p>
+    <p class="note">The <code>PUT /api/db/:entity/:id</code> behaviour is defect F-01 from the failure report: the Archive action and the inline status dropdown both send partial payloads, and both erase every field they omit.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span> Endpoint categories</h2>
+
+    <h3>Authentication endpoints — 8</h3>
+    <p><code>/auth/status</code>, <code>/auth/login</code>, <code>/auth/logout</code>, <code>/auth/signup</code>, <code>/auth/me</code>, <code>/auth/reset-password</code>, <code>/auth/admin/update-password</code>, and <code>/auth/update-password</code> (unreachable). Only <code>/auth/me</code> reads a credential; none of the others require one, including the two that change passwords and create accounts.</p>
+
+    <h3>Search, filter, pagination and sorting endpoints — none</h3>
+    <p class="lede">The API has no query capability whatsoever. Every one of these was ignored, each returning the complete 16-row table:</p>
+<pre><code>?limit=1              -&gt; 16 rows   ?search=Brit          -&gt; 16 rows
+?page=1&amp;pageSize=1    -&gt; 16 rows   ?site=Brit%20Hotel    -&gt; 16 rows
+?offset=5             -&gt; 16 rows   ?status=Active        -&gt; 16 rows
+?order=name&amp;sort=asc  -&gt; 16 rows   ?filter[city]=London  -&gt; 16 rows</code></pre>
+    <p><code>GET /api/db/:entity</code> issues a bare <code>select('*')</code> and returns the whole table. All searching, filtering, sorting and pagination happen in the browser after the entire dataset has been transferred. That is workable at 16 sites and 6 profiles; it does not survive real caseload volumes, and it means every client holds a full copy of the safeguarding database in memory.</p>
+
+    <h3>Bulk endpoints — 1</h3>
+    <p><code>POST /api/db/sync/push</code> accepts twelve named arrays and upserts each into its table. It validates only that each value is a non-empty array — no per-record validation, no size ceiling beyond the 15 MB body limit, no transaction, and no authentication. A partial failure leaves some tables written and others not; the response reports per-entity strings rather than a status.</p>
+    <p class="note">There is no bulk delete, bulk update or batch-operation endpoint. The application's “batch retention” feature is implemented entirely client-side and issues individual requests.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span> Test coverage</h2>
+    <p class="lede">12 of 27 endpoints are exercised by the automated suite — 44%.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Status</th><th>Endpoints</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill p-ok">Covered · 12</span></td><td><code>/health</code>, <code>/config/status</code>, <code>/auth/status</code>, <code>/auth/login</code>, <code>/auth/me</code>, <code>/auth/update-password</code>, <code>/db/status</code>, <code>/db/ensure</code>, and all four verbs of <code>/db/:entity</code></td></tr>
+          <tr><td><span class="pill p-med">Uncovered · 12</span></td><td><code>/config/test-supabase</code>, <code>/config/test-smtp</code>, <code>/auth/logout</code>, <code>/auth/signup</code>, <code>/auth/reset-password</code>, <code>/auth/admin/update-password</code>, <code>/auth/password-audit-logs</code>, <code>/auth/users</code> (GET and PUT), <code>/db/migrate</code>, <code>/db/sync/push</code>, <code>/smtp/status</code></td></tr>
+          <tr><td><span class="pill p-accent">Uncovered, side-effecting · 3</span></td><td><code>/smtp/test</code>, <code>/smtp/alert</code>, <code>/smtp/escalation-alert</code> — these dispatch real email when SMTP is configured, so they need a stubbed transport before automation</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Orphan endpoints</h3>
+    <p>Three endpoints are defined on the server but never called by the application: <code>GET /api/config/test-smtp</code>, <code>GET /api/smtp/status</code> and <code>POST /api/db/ensure</code>. The last is the more notable — an unauthenticated, uncalled route that replays the entire schema file against the live database.</p>
+
+    <h3>Highest-value additions</h3>
+    <p><code>/auth/signup</code> and <code>/auth/admin/update-password</code> should be covered first: both are unauthenticated account-control operations, and a test asserting they reject anonymous callers would pin the most dangerous gap in the surface.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span> Findings</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>ID</th><th>Sev</th><th>Finding</th></tr></thead>
+        <tbody>
+          <tr><td class="path">API-01</td><td><span class="pill p-crit">Critical</span></td><td>No authentication on any data route; all 88 entity operations are anonymous and run with the service-role key, bypassing RLS</td></tr>
+          <tr><td class="path">API-02</td><td><span class="pill p-crit">Critical</span></td><td><code>/auth/me</code> accepts any <code>sm-jwt-</code> prefixed string and returns Super Admin, unsigned and unverified</td></tr>
+          <tr><td class="path">API-03</td><td><span class="pill p-crit">Critical</span></td><td>CORS reflects the caller's <code>Origin</code> with <code>Allow-Credentials: true</code>, so any site can issue credentialed cross-origin requests</td></tr>
+          <tr><td class="path">API-04</td><td><span class="pill p-crit">Critical</span></td><td><code>PUT /api/db/:entity/:id</code> blanks every field absent from a partial payload</td></tr>
+          <tr><td class="path">API-05</td><td><span class="pill p-high">High</span></td><td><code>/auth/signup</code> creates a confirmed account with a caller-chosen role, unauthenticated</td></tr>
+          <tr><td class="path">API-06</td><td><span class="pill p-high">High</span></td><td><code>/auth/admin/update-password</code> changes any user's password given only an email, unauthenticated and with no strength rule</td></tr>
+          <tr><td class="path">API-07</td><td><span class="pill p-high">High</span></td><td><code>/db/ensure</code> and <code>/db/migrate</code> replay the schema file against production, unauthenticated</td></tr>
+          <tr><td class="path">API-08</td><td><span class="pill p-high">High</span></td><td>No rate limiting or lockout on login; twelve rapid failures drew no throttle</td></tr>
+          <tr><td class="path">API-09</td><td><span class="pill p-med">Medium</span></td><td>No request-body validation on any write route — the entity name is the only thing checked</td></tr>
+          <tr><td class="path">API-10</td><td><span class="pill p-med">Medium</span></td><td>No pagination, filtering, sorting or search; every read returns the full table</td></tr>
+          <tr><td class="path">API-11</td><td><span class="pill p-med">Medium</span></td><td><code>/auth/users</code> and <code>/auth/password-audit-logs</code> expose the staff directory and password history anonymously, and mask errors as empty <code>200</code>s</td></tr>
+          <tr><td class="path">API-12</td><td><span class="pill p-low">Low</span></td><td><code>PATCH</code> advertised in CORS but unimplemented; <code>/smtp/escalation-alert</code> accepts an empty body; three orphan endpoints</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    27 endpoints across 4 routers, read from <code>server/routes/*.ts</code> and confirmed against the running instance. No backend code was modified; all probes were read-only or validation-only.
+  </footer>
+
+</div>
+
+</body></html>

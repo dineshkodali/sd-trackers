@@ -1222,6 +1222,7 @@ export const MaintenanceTrackerView: React.FC = () => {
                     value={formData.priority}
                     onChange={e => handlePriorityChange(e.target.value as MaintenancePriority)}
                     className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-semibold focus:outline-none focus:border-[#0d9488]"
+                    required
                   >
                     {priorityOptions.map(opt => (
                       <option key={opt.id} value={opt.value}>{opt.label}</option>
@@ -1262,6 +1263,7 @@ export const MaintenanceTrackerView: React.FC = () => {
                     value={formData.site}
                     onChange={e => setFormData({ ...formData, site: e.target.value })}
                     className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
+                    required
                   >
                     {allowedSites.map((s, idx) => (
                       <option key={`${s}-${idx}`} value={s}>{s}</option>

@@ -14,11 +14,11 @@ export async function runDatabaseMigrations(): Promise<{ success: boolean; messa
     };
   }
 
-  const schemaPath = path.join(process.cwd(), 'supabase-schema.sql');
+  const schemaPath = path.join(process.cwd(), 'db', 'schema.sql');
   if (!fs.existsSync(schemaPath)) {
     return {
       success: false,
-      message: 'supabase-schema.sql not found at project root.'
+      message: 'db/schema.sql not found.'
     };
   }
 
@@ -64,7 +64,7 @@ export async function runDatabaseMigrations(): Promise<{ success: boolean; messa
 
       return {
         success: false,
-        message: 'Direct PostgreSQL hostname could not be resolved from local network (Supabase direct host requires IPv6 or connection pooler). Please execute supabase-schema.sql directly in the Supabase Dashboard SQL Editor at: https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new'
+        message: 'Direct PostgreSQL hostname could not be resolved from local network (Supabase direct host requires IPv6 or connection pooler). Please execute db/schema.sql directly in the Supabase Dashboard SQL Editor at: https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new'
       };
     }
 

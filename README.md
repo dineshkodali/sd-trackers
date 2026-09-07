@@ -2,19 +2,94 @@
 <img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
 </div>
 
-# Run and deploy your AI Studio app
+# SafeHaven Operations Platform
 
-This contains everything you need to run your app locally.
+Safeguarding and accommodation-compliance management for vulnerable people
+placed in contracted hotel accommodation. React frontend and Express API served
+from a single origin, backed by PostgreSQL on Supabase.
 
-View your app in AI Studio: https://ai.studio/apps/c19b8d78-1b33-44e5-b647-7dc5d770ed4a
+View in AI Studio: https://ai.studio/apps/c19b8d78-1b33-44e5-b647-7dc5d770ed4a
 
-## Run Locally
+## Project structure
 
-**Prerequisites:**  Node.js
+```
+.
+├── src/                      React frontend
+│   ├── components/           Views, grouped by module
+│   ├── context/              AppContext — state, RBAC, CRUD
+│   ├── services/             API client
+│   ├── utils/                Export, cache, validation schemas
+│   ├── data/                 Seed data and field options
+│   ├── lib/                  Browser Supabase client
+│   └── types/                Shared TypeScript models
+│
+├── server/                   Express API
+│   ├── index.ts              Entry point — mounts routers, hosts Vite
+│   ├── routes/               config · auth · db · smtp
+│   ├── supabase.ts           Server Supabase clients
+│   ├── schemaAdapter.ts      App model ↔ database column mapping
+│   ├── migrate.ts            Schema bootstrap
+│   ├── mailer.ts             SMTP transport
+│   └── urlHelper.ts          Dynamic origin resolution
+│
+├── db/                       Database
+│   ├── schema.sql            Full schema, RLS policies, triggers
+│   └── migrations/           Incremental migrations
+│
+├── public/                   Static assets
+├── QA Testing & Results/     Test suite, reports, test plan  (see its README)
+│
+├── index.html                Vite entry point
+├── vite.config.ts            Frontend build config
+├── tsconfig.json             TypeScript config
+└── package.json
+```
 
+## Prerequisites
+
+Node.js 20+, and a Supabase project.
+
+## Setup
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+2. Copy `.env.example` to `.env` and fill in your Supabase URL and keys. SMTP
+   and Gemini credentials are optional — the app degrades gracefully without
+   them.
+3. Apply `db/schema.sql` in the Supabase SQL editor (the server also attempts
+   this on boot when a direct PostgreSQL connection string is available).
+
+## Running
+
+```bash
+npm run dev      # dev server + API on http://localhost:3000
+npm run build    # frontend to dist/, API bundled to dist/server.cjs
+npm start        # run the production build
+npm run lint     # type-check
+npm run clean    # remove dist/
+```
+
+The API and the single-page app share one origin — in development Vite runs as
+Express middleware, so there is no separate frontend port.
+
+Useful environment flags:
+
+| Flag | Effect |
+|---|---|
+| `PORT` | Port to bind (default 3000; auto-increments if taken) |
+| `OPEN_BROWSER=false` | Do not open a browser on start |
+| `DISABLE_HMR=true` | Disable Vite file watching |
+
+## Testing
+
+The full QA suite, test plan and reports live in **`QA Testing & Results/`**.
+
+```bash
+cd "QA Testing & Results"
+npx playwright test
+```
+
+Start the app first — the test runner attaches to a running instance. See that
+folder's README for conventions and current results.

@@ -59,6 +59,13 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'ShieldAlert'
   },
   {
+    key: 'riskLevels',
+    name: 'Urgency / Risk Levels',
+    department: 'Safeguarding',
+    description: 'Urgency grading applied to referrals and safeguarding records',
+    iconName: 'ShieldAlert'
+  },
+  {
     key: 'challengingStatuses',
     name: 'Challenging Behaviour Statuses',
     department: 'Safeguarding',
@@ -178,6 +185,16 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-sev-2', category: 'incidentRiskFactors', label: 'Moderate Risk (Stage 2)', value: 'Moderate', color: 'blue', description: 'Repeated non-compliance or heightened disruption', isActive: true, isSystem: true, order: 2 },
   { id: 'opt-sev-3', category: 'incidentRiskFactors', label: 'High Severity (Stage 3)', value: 'High', color: 'amber', description: 'Requires management intervention, formal written warning', isActive: true, isSystem: true, order: 3 },
   { id: 'opt-sev-4', category: 'incidentRiskFactors', label: 'Critical Emergency (Stage 4)', value: 'Critical', color: 'red', description: 'Immediate police / 999 call or emergency eviction referral', isActive: true, isSystem: true, order: 4 },
+
+  // Urgency / Risk Levels — values MUST match the RiskLevel union in types/index.ts.
+  // ReferralsView reads this category for its Urgency Priority control; the
+  // category did not exist, so the control rendered a single fallback option and
+  // High / Critical could never be selected — which also meant the automated
+  // High/Critical safeguarding email alert could never fire (BUG-010).
+  { id: 'opt-risk-1', category: 'riskLevels', label: 'Low', value: 'Low', color: 'slate', description: 'Routine monitoring, no immediate action required', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-risk-2', category: 'riskLevels', label: 'Medium', value: 'Medium', color: 'blue', description: 'Standard safeguarding follow-up within agreed timescales', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-risk-3', category: 'riskLevels', label: 'High', value: 'High', color: 'amber', description: 'Priority response required; triggers an automated alert', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-risk-4', category: 'riskLevels', label: 'Critical', value: 'Critical', color: 'red', description: 'Immediate escalation; triggers an automated alert', isActive: true, isSystem: true, order: 4 },
 
   // 6. Escalation Authorities
   { id: 'opt-esc-1', category: 'escalationAuthorities', label: 'Metropolitan Police Service (999/101)', value: 'Met Police', color: 'blue', description: 'Emergency 999 or non-emergency 101 incident CAD log', isActive: true, isSystem: true, order: 1 },

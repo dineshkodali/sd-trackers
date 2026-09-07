@@ -405,6 +405,10 @@ export type FieldOptionCategory =
   | 'vulnerableStatuses'
   | 'incidentTypes'
   | 'incidentRiskFactors'
+  // Urgency / risk grading matching the RiskLevel union. Distinct from
+  // 'incidentRiskFactors', which grades incident severity on a different
+  // vocabulary (Minor / Moderate / High / Critical).
+  | 'riskLevels'
   | 'challengingStatuses'
   | 'escalationAuthorities'
   | 'escalationStatuses'

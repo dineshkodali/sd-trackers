@@ -8,3 +8,6 @@ coverage/
 scratch/
 .env*
 !.env.example
+
+# Playwright artefacts
+QA Testing & Results/test-results/

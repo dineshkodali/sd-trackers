@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
   RoleType, 
   SiteInfo, 
@@ -819,31 +819,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthLoading(true);
     setAuthError(null);
     const cleanEmail = (email || '').trim().toLowerCase();
-    const isMaster = (cleanEmail === 'stackmaster@sdcommercial.co.uk' || cleanEmail === 'stackamster@sdcommercial.co.uk') && pass === 'Focusmode123!';
 
     try {
       const res = await apiService.login(email, pass);
       if (res.error) {
-        if (isMaster) {
-          const authUser: AuthUser = {
-            id: 'ce98b46b-4a6a-4a66-a70a-72e6c56d7691',
-            email: 'stackmaster@sdcommercial.co.uk',
-            name: 'Stack Master',
-            role: 'Super Admin',
-            assignedSite: 'All Sites'
-          };
-          const token = 'sm-jwt-default-superadmin';
-          setAuthBlockedState(null);
-          setSessionTokenState(token);
-          setAuthProfileState(authUser);
-          saveStorage('token', token);
-          saveStorage('auth_user', authUser);
-          saveStorage('role', 'Super Admin');
-          setCurrentUserRoleState('Super Admin');
-          setAssignedSiteState('All Sites');
-          return true;
-        }
-
+        // A client-side fallback used to run here: if the server login failed and
+        // the typed credentials matched a hardcoded pair, the browser granted
+        // itself a Super Admin session with a self-minted token. That was a
+        // privilege grant decided entirely in the frontend — anyone reading the
+        // bundle could reproduce it — and the token it created is no longer
+        // accepted now that the server verifies signatures (BUG-002).
+        //
+        // Authentication is server-side only. A failed login is a failed login,
+        // including for the built-in administrator, whose session must be issued
+        // by POST /api/auth/login.
         setAuthError(res.error);
         const errStr = String(res.error || '').toLowerCase();
         if (errStr.includes('inactive') || errStr.includes('suspended') || errStr.includes('permission')) {
@@ -1130,6 +1119,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [syncFromDatabase, sites, users]);
 
+  /**
+   * Latest sync function, held in a ref so the scheduling effect below can call
+   * it without depending on its identity.
+   *
+   * `triggerBackgroundDeltaSync` depends on `sites` and `users`, and the sync it
+   * performs calls `setSites`/`setUsers` with freshly-built arrays. Its identity
+   * therefore changed on every run. With that identity in the effect's dependency
+   * array the effect tore down and re-ran each time, re-arming its 1500ms initial
+   * timer — so the 45s interval was never reached and a full sync fired roughly
+   * every 2.4 seconds, unauthenticated, even on the login screen (~505k requests
+   * per day per idle tab). The ref breaks that feedback loop.
+   */
+  const backgroundSyncRef = useRef(triggerBackgroundDeltaSync);
+  useEffect(() => {
+    backgroundSyncRef.current = triggerBackgroundDeltaSync;
+  }, [triggerBackgroundDeltaSync]);
+
   useEffect(() => {
     const unsubscribe = smartCache.subscribeStats(stats => {
       setCacheStats(stats);
@@ -1137,12 +1143,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Run non-blocking background sync after initial render
     const initialSyncTimer = setTimeout(() => {
-      triggerBackgroundDeltaSync();
+      backgroundSyncRef.current();
     }, 1500);
 
     // Periodic sync check every 45 seconds
     const interval = setInterval(() => {
-      triggerBackgroundDeltaSync();
+      backgroundSyncRef.current();
     }, 45000);
 
     return () => {
@@ -1150,7 +1156,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clearTimeout(initialSyncTimer);
       clearInterval(interval);
     };
-  }, [triggerBackgroundDeltaSync]);
+    // Mount-only: the timers must be created exactly once. The ref above keeps
+    // them calling the current sync implementation.
+  }, []);
 
   // Fast Indexed Lookups (0ms O(1)) with null guards
   const lookupPropertyById = useCallback((id?: string) => id ? fastIndices.getPropertyById(id) : undefined, []);
@@ -2529,9 +2537,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const spcdArchived = spcdOlder.filter(s => s.isArchived);
 
     // Maintenance Records
-    const maintOlder = maintenanceRecords.filter(m => (m.reportedDate || m.createdAt.slice(0, 10)) <= cutoffDate);
-    const maintActive = maintOlder.filter(m => m.status !== 'Resolved' && m.status !== 'Cancelled');
-    const maintArchived = maintOlder.filter(m => m.status === 'Resolved' || m.status === 'Cancelled');
+    const maintOlder = maintenanceRecords.filter(m => (m.date || m.createdAt.slice(0, 10)) <= cutoffDate);
+    const maintActive = maintOlder.filter(m => m.defectStatus !== 'Completed' && m.action !== 'Closed');
+    const maintArchived = maintOlder.filter(m => m.defectStatus === 'Completed' || m.action === 'Closed');
 
     // Escalations
     const escOlder = escalations.filter(e => (e.dateOfIncident || e.createdAt.slice(0, 10)) <= cutoffDate);
@@ -2539,7 +2547,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const escArchived = escOlder.filter(e => e.status === 'Resolved');
 
     // Food Records
-    const foodOlder = foodRecords.filter(f => (f.date || f.createdAt.slice(0, 10)) <= cutoffDate);
+    const foodOlder = foodRecords.filter(f => f.createdAt.slice(0, 10) <= cutoffDate);
 
     // Laundry Records
     const laundryOlder = laundryRecords.filter(l => (l.date || l.createdAt.slice(0, 10)) <= cutoffDate);
@@ -2721,8 +2729,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (targetModule === 'all' || targetModule === 'maintenance') {
       let count = 0;
       setMaintenanceRecords(prev => prev.map(m => {
-        const d = m.reportedDate || m.createdAt.slice(0, 10);
-        if (d <= cutoffDate && m.status !== 'Resolved' && m.status !== 'Cancelled') {
+        const d = m.date || m.createdAt.slice(0, 10);
+        if (d <= cutoffDate && m.defectStatus !== 'Completed' && m.action !== 'Closed') {
           count++;
           return { ...m, status: 'Resolved' };
         }
@@ -2852,15 +2860,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (targetModule === 'all' || targetModule === 'maintenance') {
       const removed = maintenanceRecords.filter(m => {
-        const d = m.reportedDate || m.createdAt.slice(0, 10);
-        return d <= cutoffDate && (!onlyArchived || m.status === 'Resolved' || m.status === 'Cancelled');
+        const d = m.date || m.createdAt.slice(0, 10);
+        return d <= cutoffDate && (!onlyArchived || m.defectStatus === 'Completed' || m.action === 'Closed');
       }).length;
 
       setMaintenanceRecords(prev => prev.filter(m => {
-        const d = m.reportedDate || m.createdAt.slice(0, 10);
+        const d = m.date || m.createdAt.slice(0, 10);
         const matchesDate = d <= cutoffDate;
         if (!matchesDate) return true;
-        if (onlyArchived) return m.status !== 'Resolved' && m.status !== 'Cancelled';
+        if (onlyArchived) return m.defectStatus !== 'Completed' && m.action !== 'Closed';
         return false;
       }));
 
@@ -2891,8 +2899,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (targetModule === 'all' || targetModule === 'food') {
-      const removed = foodRecords.filter(f => (f.date || f.createdAt.slice(0, 10)) <= cutoffDate).length;
-      setFoodRecords(prev => prev.filter(f => (f.date || f.createdAt.slice(0, 10)) > cutoffDate));
+      const removed = foodRecords.filter(f => f.createdAt.slice(0, 10) <= cutoffDate).length;
+      setFoodRecords(prev => prev.filter(f => f.createdAt.slice(0, 10) > cutoffDate));
       if (removed > 0) {
         moduleCounts['Food Distribution Logs'] = removed;
         totalAffected += removed;

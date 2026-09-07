@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin, isSupabaseConfigured } from '../supabase.js';
 import { runDatabaseMigrations } from '../migrate.js';
 import { toDatabaseRow, fromDatabaseRow } from '../schemaAdapter.js';
+import { requireRole } from '../middleware/requireAuth.js';
 
 const router = Router();
 
@@ -65,13 +67,27 @@ function isValidUuid(val: any): boolean {
   return typeof val === 'string' && UUID_REGEX.test(val.trim());
 }
 
-// Helper to extract caller user context from request headers & body
+/**
+ * Caller identity for the audit trail.
+ *
+ * The verified session (`req.user`, set by requireAuth) is authoritative. The
+ * `x-user-*` headers are client-supplied and were previously the sole source of
+ * audit attribution, so any caller could write audit entries naming somebody
+ * else. They are retained only as a fallback for the fields a session does not
+ * carry, and can never override a verified identity.
+ */
 function extractAuditCallerContext(req: Request) {
-  const userId = (req.headers['x-user-id'] as string) || req.body?.createdBy || req.body?.created_by || req.body?.userId || null;
-  const userEmail = (req.headers['x-user-email'] as string) || req.body?.userEmail || null;
-  const userName = (req.headers['x-user-name'] as string) || req.body?.userName || req.body?.lastUpdatedBy || req.body?.staffName || null;
-  const role = (req.headers['x-user-role'] as string) || req.body?.userRole || req.body?.role || 'Staff';
-  const site = (req.headers['x-user-site'] as string) || req.body?.site || req.body?.siteName || 'All Sites';
+  const authenticated = req.user;
+
+  const userId = authenticated?.id
+    || (req.headers['x-user-id'] as string) || req.body?.createdBy || req.body?.created_by || req.body?.userId || null;
+  const userEmail = authenticated?.email
+    || (req.headers['x-user-email'] as string) || req.body?.userEmail || null;
+  const userName = authenticated?.name
+    || (req.headers['x-user-name'] as string) || req.body?.userName || req.body?.lastUpdatedBy || req.body?.staffName || null;
+  const role = authenticated?.role
+    || (req.headers['x-user-role'] as string) || req.body?.userRole || req.body?.role || 'Staff';
+  const site = (req.headers['x-user-site'] as string) || req.body?.site || req.body?.siteName || authenticated?.assignedSite || 'All Sites';
   const actionHeader = req.headers['x-action-type'] as string;
 
   return {
@@ -146,6 +162,42 @@ async function recordAuditTrailEntry(params: {
   }
 }
 
+/**
+ * PostgREST (which Supabase sits on) caps a single response at 1000 rows and
+ * gives no indication when it does so. A bare `.select('*')` therefore returned
+ * a silently truncated table once any entity passed that mark — the audit trail
+ * hit it first. Page through with `.range()` until the table is exhausted.
+ *
+ * Paging requires a deterministic sort or rows can repeat or vanish between
+ * pages, so results are ordered by primary key. Callers already sort client-side.
+ */
+const PAGE_SIZE = 1000;
+const MAX_ROWS = 50_000; // hard ceiling so one enormous table cannot exhaust memory
+
+async function selectAllRows(
+  client: SupabaseClient,
+  tableName: string
+): Promise<{ data: any[] | null; error: any; truncated: boolean }> {
+  const rows: any[] = [];
+
+  while (rows.length < MAX_ROWS) {
+    const { data, error } = await client
+      .from(tableName)
+      .select('*')
+      .order('id', { ascending: true })
+      .range(rows.length, rows.length + PAGE_SIZE - 1);
+
+    if (error) return { data: null, error, truncated: false };
+    if (!data || data.length === 0) break;
+
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break; // last page
+  }
+
+  // If we stopped at the ceiling the caller must be told, not left guessing.
+  return { data: rows, error: null, truncated: rows.length >= MAX_ROWS };
+}
+
 // -------------------------------------------------------------
 // 1. Static API Routes (Must be declared BEFORE /:entity)
 // -------------------------------------------------------------
@@ -216,7 +268,7 @@ router.get('/status', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/ensure', async (req: Request, res: Response) => {
+router.post('/ensure', requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
   const result = await runDatabaseMigrations();
   if (!result.success) {
     return res.status(500).json({ success: false, ...result });
@@ -226,7 +278,7 @@ router.post('/ensure', async (req: Request, res: Response) => {
 });
 
 // POST /api/db/migrate - Execute supabase-schema.sql using PostgreSQL connection string
-router.post('/migrate', async (req: Request, res: Response) => {
+router.post('/migrate', requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
   const result = await runDatabaseMigrations();
   if (result.success) {
     res.json(result);
@@ -354,14 +406,14 @@ router.get('/:entity', async (req: Request, res: Response) => {
     const client = getSupabaseAdmin();
     if (!client) throw new Error('Supabase client unavailable');
 
-    const { data, error } = await client.from(tableName).select('*');
+    const { data, error, truncated } = await selectAllRows(client, tableName);
     if (error) {
       if (error.code === '42P01') {
         const migration = await runDatabaseMigrations();
         if (migration.success) {
-          const { data: rerunData, error: rerunError } = await client.from(tableName).select('*');
+          const { data: rerunData, error: rerunError } = await selectAllRows(client, tableName);
           if (!rerunError && rerunData) {
-            return res.json({ success: true, data: (rerunData || []).map((row: any) => fromDatabaseRow(tableName, row)) });
+            return res.json({ success: true, data: rerunData.map((row: any) => fromDatabaseRow(tableName, row)) });
           }
         }
 
@@ -376,7 +428,9 @@ router.get('/:entity', async (req: Request, res: Response) => {
     }
 
     const resultData = (data || []).map((row: any) => fromDatabaseRow(tableName, row));
-    res.json({ success: true, data: resultData });
+    // `total` and `truncated` are additive: existing clients read `data` as before,
+    // but a caller can now tell a complete result from a capped one.
+    res.json({ success: true, data: resultData, total: resultData.length, truncated });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -448,7 +502,23 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
     const client = getSupabaseAdmin();
     if (!client) throw new Error('Supabase client unavailable');
 
-    const dbRow = toDatabaseRow(tableName, req.body, caller.validUuid);
+    // `toDatabaseRow` always builds a COMPLETE row, defaulting anything absent
+    // to ''. Mapping a partial body directly would therefore blank every column
+    // the caller did not send — which is what the row Archive action and the
+    // inline status dropdown do, since both PUT only { status, updatedAt }.
+    // Merge onto the stored record first so untouched columns survive.
+    const { data: existingRow, error: readError } = await client
+      .from(tableName)
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (readError || !existingRow) {
+      return res.status(404).json({ error: `${entity} record ${id} not found` });
+    }
+
+    const merged = { ...fromDatabaseRow(tableName, existingRow), ...req.body };
+    const dbRow = toDatabaseRow(tableName, merged, caller.validUuid);
     delete dbRow.id;
 
     const { data, error } = await client.from(tableName).update(dbRow).eq('id', id).select().single();

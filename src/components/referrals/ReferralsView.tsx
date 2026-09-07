@@ -387,7 +387,11 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
             </button>
           </div>
 
-          {!isArchive && (
+          {/* `canCreateRecord` was imported but never called: the button was gated
+              on `!isArchive` alone, so a role explicitly denied creation could
+              still create records (BUG-016). Delete and Edit were already gated,
+              which is what made this an omission rather than a design choice. */}
+          {!isArchive && canCreateRecord() && (
             <button
               id="btn-new-referral"
               onClick={() => {

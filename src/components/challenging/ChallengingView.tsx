@@ -62,6 +62,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
     restoreChallengingSU,
     deleteChallengingSU,
     canDeleteRecord,
+    canCreateRecord,
     canEditRecord,
     canAccessAllSites,
     canManageFiles,
@@ -378,7 +379,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
             </button>
           </div>
 
-          {!isArchive && (
+          {!isArchive && canCreateRecord() && (
             <button
               onClick={() => {
                 setFormData({ ...initialFormData, site: allowedSites[0] || 'Hotel A' });

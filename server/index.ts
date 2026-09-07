@@ -8,12 +8,13 @@ import { createServer as createViteServer } from 'vite';
 // Load environment variables from .env
 dotenv.config();
 
-import configRouter from './server/routes/config.js';
-import authRouter from './server/routes/auth.js';
-import dbRouter from './server/routes/db.js';
-import smtpRouter from './server/routes/smtp.js';
-import { runDatabaseMigrations } from './server/migrate.js';
-import { getNetworkIps, getClientOrigin } from './server/urlHelper.js';
+import configRouter from './routes/config.js';
+import authRouter from './routes/auth.js';
+import dbRouter from './routes/db.js';
+import smtpRouter from './routes/smtp.js';
+import { runDatabaseMigrations } from './migrate.js';
+import { getNetworkIps, getClientOrigin } from './urlHelper.js';
+import { requireAuth } from './middleware/requireAuth.js';
 
 const HOST = process.env.HOST || '0.0.0.0';
 const DEFAULT_PORT = Number(process.env.PORT || 3000);
@@ -90,16 +91,48 @@ async function startServer() {
   // Ensures req.protocol and req.get('host') adapt automatically to incoming domain/IP
   app.set('trust proxy', true);
 
-  // Dynamic CORS & pre-flight handling: adapts to whichever domain or IP the browser loads
+  /**
+   * CORS allow-list.
+   *
+   * This previously reflected whatever `Origin` the caller sent and paired it
+   * with `Access-Control-Allow-Credentials: true`, so any website a signed-in
+   * member of staff visited could issue credentialed cross-origin reads and
+   * writes against the safeguarding database (BUG-003).
+   *
+   * The platform is genuinely meant to be reachable over the LAN and behind a
+   * proxy, so the list is built rather than hardcoded: explicit configuration
+   * first, then this host's own advertised addresses. Anything else gets no CORS
+   * headers at all, which the browser turns into a blocked cross-origin request.
+   * Same-origin traffic — the application itself — never needs these headers and
+   * is unaffected.
+   */
+  const allowedOrigins = new Set<string>();
+  const addOrigin = (value?: string | null) => {
+    const trimmed = (value || '').trim().replace(/\/+$/, '');
+    if (trimmed.startsWith('http')) allowedOrigins.add(trimmed);
+  };
+
+  (process.env.ALLOWED_ORIGINS || '').split(',').forEach(addOrigin);
+  addOrigin(process.env.APP_URL);
+  addOrigin(process.env.PUBLIC_URL);
+  addOrigin(PUBLIC_URL);
+  for (const scheme of ['http', 'https']) {
+    addOrigin(`${scheme}://localhost:${PORT}`);
+    addOrigin(`${scheme}://127.0.0.1:${PORT}`);
+    for (const ip of getNetworkIps()) addOrigin(`${scheme}://${ip}:${PORT}`);
+  }
+
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin) {
+    if (origin && allowedOrigins.has(origin.replace(/\/+$/, ''))) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Admin-Email, Origin, Accept');
+      res.setHeader('Vary', 'Origin');
     }
     if (req.method === 'OPTIONS') {
+      // Un-allow-listed pre-flight gets no CORS headers, so the browser refuses.
       return res.sendStatus(204);
     }
     next();
@@ -138,8 +171,12 @@ async function startServer() {
   // Mount API routers
   app.use('/api/config', configRouter);
   app.use('/api/auth', authRouter);
-  app.use('/api/db', dbRouter);
-  app.use('/api/smtp', smtpRouter);
+  // Every data route now requires a verified session. Previously these accepted
+  // anonymous requests and ran with the service-role key, bypassing RLS entirely
+  // (BUG-001). Authorization decisions downstream use req.user, not the
+  // client-supplied x-user-* headers, which any caller can forge.
+  app.use('/api/db', requireAuth, dbRouter);
+  app.use('/api/smtp', requireAuth, smtpRouter);
 
   // Vite middleware for development / Static files for production
   if (process.env.NODE_ENV !== 'production') {

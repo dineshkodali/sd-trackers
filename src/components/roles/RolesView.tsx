@@ -92,12 +92,32 @@ export const RolesView: React.FC = () => {
       badgeColor: 'bg-[#fff8ed] text-[#8a3700] border-[#fedbb0]',
       scope: 'Assigned Property Scope'
     },
-    { 
-      role: 'Employee', 
-      title: 'Employee', 
+    {
+      role: 'Employee',
+      title: 'Employee',
       subtitle: 'Frontline Staff',
       desc: 'Frontline duty staff handling daily welfare logs, hot meals, laundry support, and direct safeguarding referrals.',
       badgeColor: 'bg-[#f1faf0] text-[#107c10] border-[#cbe8cb]',
+      scope: 'Assigned Property Scope'
+    },
+    // Site Manager and Staff were absent from this matrix while remaining
+    // assignable in the Add User form, present in userAccountSchema, and branched
+    // on explicitly by canEditRecord. Their permissions could therefore be held
+    // by real accounts but never configured or reviewed here (BUG-017).
+    {
+      role: 'Site Manager',
+      title: 'Site Manager',
+      subtitle: 'Property Supervisor',
+      desc: 'Supervises a single assigned property: resident records, incident logging, and day-to-day welfare oversight.',
+      badgeColor: 'bg-[#eff6fc] text-[#004578] border-[#b3d7f2]',
+      scope: 'Assigned Property Scope'
+    },
+    {
+      role: 'Staff',
+      title: 'Staff',
+      subtitle: 'Duty Officer',
+      desc: 'Day-to-day duty officer recording welfare checks, laundry and meal logs, and raising safeguarding concerns.',
+      badgeColor: 'bg-[#faf9f8] text-[#323130] border-[#e1dfdd]',
       scope: 'Assigned Property Scope'
     }
   ];

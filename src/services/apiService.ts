@@ -88,6 +88,19 @@ export interface AuditTrailPayload {
 
 let activeAuditContext: AuditUserContext | null = null;
 
+/**
+ * Authorization header for the current session.
+ *
+ * `/api/db/*` and `/api/smtp/*` now require a verified session server-side
+ * (BUG-001). Reads previously went out with no headers at all, which was fine
+ * while the API was open and returns 401 now, so every call must carry the token.
+ */
+function authHeaders(): Record<string, string> {
+  return activeAuditContext?.token
+    ? { Authorization: `Bearer ${activeAuditContext.token}` }
+    : {};
+}
+
 function getAuditHeaders(actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'READ' = 'READ'): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
@@ -185,7 +198,7 @@ export const apiService = {
 
   async testSupabase(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
-      const res = await fetch('/api/config/test-supabase');
+      const res = await fetch('/api/config/test-supabase', { headers: authHeaders() });
       return await res.json();
     } catch (err: any) {
       return { success: false, message: `Request failed: ${err.message}` };
@@ -196,7 +209,7 @@ export const apiService = {
     try {
       const res = await fetch('/api/smtp/test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ testRecipient: recipientEmail })
       });
       return await res.json();
@@ -217,7 +230,7 @@ export const apiService = {
     try {
       const res = await fetch('/api/smtp/alert', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(alert)
       });
       return await res.json();
@@ -229,7 +242,7 @@ export const apiService = {
   // Database API
   async getDbStatus(): Promise<DbStatusResponse> {
     try {
-      const res = await fetch('/api/db/status');
+      const res = await fetch('/api/db/status', { headers: authHeaders() });
       return await res.json();
     } catch (err: any) {
       return { connected: false, mode: 'offline-local', error: err.message };
@@ -238,7 +251,7 @@ export const apiService = {
 
   async fetchEntityRecords<T = any>(entity: DbEntityName): Promise<{ success: boolean; data: T[]; fallback?: boolean; tableMissing?: boolean }> {
     try {
-      const res = await fetch(`/api/db/${entity}`);
+      const res = await fetch(`/api/db/${entity}`, { headers: authHeaders() });
       const json = await res.json();
       return json;
     } catch (err: any) {
@@ -343,7 +356,7 @@ export const apiService = {
     try {
       const res = await fetch('/api/db/sync/push', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
       });
       return await res.json();
@@ -355,7 +368,8 @@ export const apiService = {
   async runMigration(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
       const res = await fetch('/api/db/migrate', {
-        method: 'POST'
+        method: 'POST',
+        headers: authHeaders()
       });
       return await res.json();
     } catch (err: any) {
@@ -408,7 +422,7 @@ export const apiService = {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ email, password })
       });
       return await res.json();
@@ -500,7 +514,7 @@ export const apiService = {
     try {
       const res = await fetch('/api/smtp/alert', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
       });
       return await res.json();
@@ -524,7 +538,7 @@ export const apiService = {
     try {
       const res = await fetch('/api/smtp/escalation-alert', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
       });
       return await res.json();
@@ -542,7 +556,7 @@ export const apiService = {
     try {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(userData)
       });
       return await res.json();
@@ -559,7 +573,7 @@ export const apiService = {
     try {
       const res = await fetch('/api/auth/admin/update-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
       });
       return await res.json();
@@ -573,7 +587,7 @@ export const apiService = {
       const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : undefined;
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ email, origin })
       });
       return await res.json();
@@ -584,7 +598,7 @@ export const apiService = {
 
   async fetchPasswordAuditLogs(): Promise<{ success?: boolean; logs?: any[]; error?: string }> {
     try {
-      const res = await fetch('/api/auth/password-audit-logs');
+      const res = await fetch('/api/auth/password-audit-logs', { headers: authHeaders() });
       return await res.json();
     } catch (err: any) {
       return { error: err.message };
@@ -593,7 +607,7 @@ export const apiService = {
 
   async fetchSupabaseUsers(): Promise<{ success?: boolean; users?: any[]; error?: string }> {
     try {
-      const res = await fetch('/api/auth/users');
+      const res = await fetch('/api/auth/users', { headers: authHeaders() });
       return await res.json();
     } catch (err: any) {
       return { error: err.message };
@@ -610,7 +624,7 @@ export const apiService = {
     try {
       const res = await fetch(`/api/auth/users/${encodeURIComponent(userId)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(updates)
       });
       return await res.json();

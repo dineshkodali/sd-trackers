@@ -194,12 +194,18 @@ export const PropertyLaundryLogSection: React.FC = () => {
     periodLabel: initialWeeklyPeriod.periodLabel,
     startDate: todayBounds.start,
     endDate: todayBounds.end,
-    dirtyLaundrySent: 115,
-    cleanLaundryReturned: 115,
+    // Attested figures and narrative start empty. They previously opened
+    // pre-filled (115 sent / 115 returned, plus written remarks), which meant
+    // the form had no invalid controls and a single click on "Add Log Record"
+    // filed a complete compliance record nobody had actually entered.
+    // Site and the period dates remain defaulted — they are context, not
+    // attestations, and the operator can see and change them.
+    dirtyLaundrySent: '' as number | '',
+    cleanLaundryReturned: '' as number | '',
     discrepanciesCount: 0,
     hasDiscrepancy: false,
-    discrepancyDetails: 'Tokens distribution matched resident wash bookings. No issues.',
-    remarksActionsTaken: 'Batch verified upon arrival. All hotel counts reconciled.',
+    discrepancyDetails: '',
+    remarksActionsTaken: '',
     loggedBy: defaultAuditor
   };
 
@@ -456,11 +462,19 @@ export const PropertyLaundryLogSection: React.FC = () => {
       return;
     }
 
+    // The two attested counts are held as '' until the operator types a figure,
+    // so normalise them to numbers before they leave the form.
+    const normalised = {
+      ...formData,
+      dirtyLaundrySent: Number(formData.dirtyLaundrySent || 0),
+      cleanLaundryReturned: Number(formData.cleanLaundryReturned || 0),
+    };
+
     if (editingLog) {
-      updatePropertyLaundryLog(editingLog.id, formData);
+      updatePropertyLaundryLog(editingLog.id, normalised);
       setEditingLog(null);
     } else {
-      addPropertyLaundryLog(formData);
+      addPropertyLaundryLog(normalised);
     }
     setIsCreateModalOpen(false);
     setFormData(initialFormData);
@@ -956,7 +970,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                     type="number"
                     min="0"
                     value={formData.dirtyLaundrySent}
-                    onChange={e => handleCountChange(parseInt(e.target.value) || 0, formData.cleanLaundryReturned)}
+                    onChange={e => handleCountChange(parseInt(e.target.value) || 0, Number(formData.cleanLaundryReturned || 0))}
                     className="w-full p-2 border border-[#8a8886] rounded-xs font-mono font-bold text-[#0f766e]"
                     required
                   />
@@ -968,7 +982,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                     type="number"
                     min="0"
                     value={formData.cleanLaundryReturned}
-                    onChange={e => handleCountChange(formData.dirtyLaundrySent, parseInt(e.target.value) || 0)}
+                    onChange={e => handleCountChange(Number(formData.dirtyLaundrySent || 0), parseInt(e.target.value) || 0)}
                     className="w-full p-2 border border-[#8a8886] rounded-xs font-mono font-bold text-emerald-800"
                     required
                   />
