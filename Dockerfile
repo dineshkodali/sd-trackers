@@ -4,12 +4,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Accept Vite build-time environment variables
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
-ARG VITE_AZURE_CLIENT_ID
-ARG VITE_AZURE_TENANT_ID
-ARG VITE_AZURE_REDIRECT_URI
+ARG VITE_SUPABASE_URL=https://kxikojvpcyprfbyxsdaa.supabase.co
+ARG VITE_SUPABASE_ANON_KEY=sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd
+ARG VITE_AZURE_CLIENT_ID=8902bae4-3763-4455-ae7d-8c7c5aac4011
+ARG VITE_AZURE_TENANT_ID=common
+ARG VITE_AZURE_REDIRECT_URI=https://kxikojvpcyprfbyxsdaa.supabase.co/auth/v1/callback
 
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \

@@ -4,11 +4,11 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
-        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
-        - VITE_AZURE_CLIENT_ID=${VITE_AZURE_CLIENT_ID:-}
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-https://kxikojvpcyprfbyxsdaa.supabase.co}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd}
+        - VITE_AZURE_CLIENT_ID=${VITE_AZURE_CLIENT_ID:-8902bae4-3763-4455-ae7d-8c7c5aac4011}
         - VITE_AZURE_TENANT_ID=${VITE_AZURE_TENANT_ID:-common}
-        - VITE_AZURE_REDIRECT_URI=${VITE_AZURE_REDIRECT_URI:-}
+        - VITE_AZURE_REDIRECT_URI=${VITE_AZURE_REDIRECT_URI:-https://kxikojvpcyprfbyxsdaa.supabase.co/auth/v1/callback}
     container_name: sdtracker-app
     restart: unless-stopped
     ports:
@@ -16,33 +16,33 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - HOST_PORT=${HOST_PORT:-3020}
       - OPEN_BROWSER=false
       - APP_URL=${APP_URL:-https://trackers.sdcdms.co.uk}
-      - AUTH_TOKEN_SECRET=${AUTH_TOKEN_SECRET:-}
+      - AUTH_TOKEN_SECRET=${AUTH_TOKEN_SECRET:-39dee3d43e2f3ac8d9481ce0fe572a7d2866ea3c658a5d2d192e701f58c3e25b}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://trackers.sdcdms.co.uk,http://trackers.sdcdms.co.uk,http://localhost:3020}
       # Supabase Configuration
-      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
-      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
-      - SUPABASE_URL=${SUPABASE_URL:-}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
-      - SUPABASE_DB_URL=${SUPABASE_DB_URL:-}
-      - DATABASE_URL=${DATABASE_URL:-}
-      - DIRECT_URL=${DIRECT_URL:-}
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-https://kxikojvpcyprfbyxsdaa.supabase.co}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd}
+      - SUPABASE_URL=${SUPABASE_URL:-https://kxikojvpcyprfbyxsdaa.supabase.co}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-sb_secret_hkMhAeypuxPGhijCfW0LHA_aTGe2_C3}
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL:-postgresql://postgres:Focusmode123!@db.kxikojvpcyprfbyxsdaa.supabase.co:5432/postgres}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:Focusmode123!@db.kxikojvpcyprfbyxsdaa.supabase.co:5432/postgres}
+      - DIRECT_URL=${DIRECT_URL:-postgresql://postgres:Focusmode123!@db.kxikojvpcyprfbyxsdaa.supabase.co:5432/postgres}
       # Azure Entra ID / SSO
-      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-8902bae4-3763-4455-ae7d-8c7c5aac4011}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID:-common}
-      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET:-}
-      - AZURE_REDIRECT_URI=${AZURE_REDIRECT_URI:-}
-      - VITE_AZURE_CLIENT_ID=${VITE_AZURE_CLIENT_ID:-}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET:-laE8Q~iArFyJ5GGccPj9b9A7zCoMxLZYUMtFlbw5}
+      - AZURE_REDIRECT_URI=${AZURE_REDIRECT_URI:-https://kxikojvpcyprfbyxsdaa.supabase.co/auth/v1/callback}
+      - VITE_AZURE_CLIENT_ID=${VITE_AZURE_CLIENT_ID:-8902bae4-3763-4455-ae7d-8c7c5aac4011}
       - VITE_AZURE_TENANT_ID=${VITE_AZURE_TENANT_ID:-common}
-      - VITE_AZURE_REDIRECT_URI=${VITE_AZURE_REDIRECT_URI:-}
+      - VITE_AZURE_REDIRECT_URI=${VITE_AZURE_REDIRECT_URI:-https://kxikojvpcyprfbyxsdaa.supabase.co/auth/v1/callback}
       # SMTP Email Service
-      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - SMTP_FROM=${SMTP_FROM:-SafeHaven Operations <noreply@safehavenops.org>}
+      - SMTP_USER=${SMTP_USER:-dineshkodali16@gmail.com}
+      - SMTP_PASS=${SMTP_PASS:-eakb swtt dhav timq}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-eakb swtt dhav timq}
+      - SMTP_FROM=${SMTP_FROM:-SD Trackers<dineshkodali16@gmail.com>}
       - SMTP_SECURE=${SMTP_SECURE:-false}
-      # Gemini AI
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
