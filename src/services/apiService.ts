@@ -85,6 +85,51 @@ export interface AuditTrailPayload {
 
 let activeAuditContext: AuditUserContext | null = null;
 
+const rawApiBase = typeof window !== 'undefined'
+  ? ((window as any).__VITE_API_URL__ || (import.meta as any).env?.VITE_API_URL || '')
+  : ((import.meta as any).env?.VITE_API_URL || '');
+const API_BASE = (rawApiBase || '').replace(/\/+$/, '');
+
+/**
+ * Resolves an API path against the configured backend base URL (if any).
+ * In local development or when reverse-proxied via Amplify/Nginx, returns the relative `/api/...`.
+ * In separated deployments (Amplify frontend + VPS/Render backend), returns `https://api.domain.com/api/...`.
+ */
+export function getApiUrl(path: string): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return API_BASE ? `${API_BASE}${cleanPath}` : cleanPath;
+}
+
+/**
+ * Safely parses API responses, providing clear diagnostics if the endpoint
+ * returns HTML (e.g. Amplify SPA rewrite, offline server, or 404/502 gateway error)
+ * instead of unhandled `SyntaxError: Unexpected token <, <!DOCTYPE... is not valid JSON`.
+ */
+async function parseApiResponse<T = any>(res: Response): Promise<T> {
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await res.text();
+    if (
+      text.trim().startsWith('<!DOCTYPE') ||
+      text.trim().startsWith('<html') ||
+      text.includes('__vite_plugin_react_preamble_installed__') ||
+      text.includes('<title>')
+    ) {
+      throw new Error(
+        `Backend API unreachable (HTTP ${res.status} ${res.statusText}). ` +
+        `The server returned a web page (HTML) instead of JSON. ` +
+        `If hosted on AWS Amplify, ensure your Express backend is running and either the /api rewrite rule or VITE_API_URL environment variable is set.`
+      );
+    }
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(text.slice(0, 150) || `HTTP error ${res.status} ${res.statusText}`);
+    }
+  }
+  return await res.json();
+}
+
 /**
  * Authorization header for the current session.
  *
@@ -145,12 +190,12 @@ export const apiService = {
         updatedAt: now
       };
 
-      const res = await fetch('/api/db/audit_trails', {
+      const res = await fetch(getApiUrl('/api/db/audit_trails'), {
         method: 'POST',
         headers: getAuditHeaders(entry.action as any),
         body: JSON.stringify(payload)
       });
-      const json = await res.json();
+      const json = await parseApiResponse<any>(res);
       
       diagnosticLogger.logAuditDispatch({
         action: entry.action,
@@ -177,8 +222,8 @@ export const apiService = {
   // System Configuration & Status
   async getConfigStatus(): Promise<SystemConfigStatus> {
     try {
-      const res = await fetch('/api/config/status');
-      return await res.json();
+      const res = await fetch(getApiUrl('/api/config/status'));
+      return await parseApiResponse<SystemConfigStatus>(res);
     } catch (err) {
       console.warn('Could not fetch config status:', err);
       return {
@@ -194,8 +239,8 @@ export const apiService = {
 
   async testSupabase(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
-      const res = await fetch('/api/config/test-supabase', { headers: authHeaders() });
-      return await res.json();
+      const res = await fetch(getApiUrl('/api/config/test-supabase'), { headers: authHeaders() });
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { success: false, message: `Request failed: ${err.message}` };
     }
@@ -203,12 +248,12 @@ export const apiService = {
 
   async testSmtp(recipientEmail?: string): Promise<{ success: boolean; message: string; config?: any }> {
     try {
-      const res = await fetch('/api/smtp/test', {
+      const res = await fetch(getApiUrl('/api/smtp/test'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ testRecipient: recipientEmail })
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { success: false, message: `SMTP test request failed: ${err.message}` };
     }
@@ -224,12 +269,12 @@ export const apiService = {
     severity?: 'Routine' | 'Urgent' | 'Critical';
   }): Promise<{ success: boolean; message: string; simulated?: boolean }> {
     try {
-      const res = await fetch('/api/smtp/alert', {
+      const res = await fetch(getApiUrl('/api/smtp/alert'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(alert)
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { success: false, message: `Failed to dispatch alert: ${err.message}` };
     }
@@ -238,8 +283,8 @@ export const apiService = {
   // Database API
   async getDbStatus(): Promise<DbStatusResponse> {
     try {
-      const res = await fetch('/api/db/status', { headers: authHeaders() });
-      return await res.json();
+      const res = await fetch(getApiUrl('/api/db/status'), { headers: authHeaders() });
+      return await parseApiResponse<DbStatusResponse>(res);
     } catch (err: any) {
       return { connected: false, mode: 'offline-local', error: err.message };
     }
@@ -247,8 +292,8 @@ export const apiService = {
 
   async fetchEntityRecords<T = any>(entity: DbEntityName): Promise<{ success: boolean; data: T[]; fallback?: boolean; tableMissing?: boolean }> {
     try {
-      const res = await fetch(`/api/db/${entity}`, { headers: authHeaders() });
-      const json = await res.json();
+      const res = await fetch(getApiUrl(`/api/db/${entity}`), { headers: authHeaders() });
+      const json = await parseApiResponse<any>(res);
       return json;
     } catch (err: any) {
       console.warn(`Failed to fetch ${entity} from API:`, err);
@@ -258,12 +303,12 @@ export const apiService = {
 
   async saveEntityRecord<T = any>(entity: DbEntityName, record: T): Promise<{ success: boolean; record?: T; error?: string }> {
     try {
-      const res = await fetch(`/api/db/${entity}`, {
+      const res = await fetch(getApiUrl(`/api/db/${entity}`), {
         method: 'POST',
         headers: getAuditHeaders('CREATE'),
         body: JSON.stringify(record)
       });
-      const json = await res.json();
+      const json = await parseApiResponse<any>(res);
       if (json.success !== false) {
         diagnosticLogger.logAuditDispatch({
           action: 'CREATE',
@@ -289,12 +334,12 @@ export const apiService = {
 
   async updateEntityRecord<T = any>(entity: DbEntityName, id: string, record: Partial<T>): Promise<{ success: boolean; record?: T; error?: string }> {
     try {
-      const res = await fetch(`/api/db/${entity}/${encodeURIComponent(id)}`, {
+      const res = await fetch(getApiUrl(`/api/db/${entity}/${encodeURIComponent(id)}`), {
         method: 'PUT',
         headers: getAuditHeaders('UPDATE'),
         body: JSON.stringify(record)
       });
-      const json = await res.json();
+      const json = await parseApiResponse<any>(res);
       if (json.success !== false) {
         diagnosticLogger.logAuditDispatch({
           action: 'UPDATE',
@@ -320,11 +365,11 @@ export const apiService = {
 
   async deleteEntityRecord(entity: DbEntityName, id: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const res = await fetch(`/api/db/${entity}/${encodeURIComponent(id)}`, {
+      const res = await fetch(getApiUrl(`/api/db/${entity}/${encodeURIComponent(id)}`), {
         method: 'DELETE',
         headers: getAuditHeaders('DELETE')
       });
-      const json = await res.json();
+      const json = await parseApiResponse<any>(res);
       if (json.success !== false) {
         diagnosticLogger.logAuditDispatch({
           action: 'DELETE',
@@ -350,12 +395,12 @@ export const apiService = {
 
   async syncPushAll(payload: Record<string, any[]>): Promise<{ success: boolean; message: string; results?: any }> {
     try {
-      const res = await fetch('/api/db/sync/push', {
+      const res = await fetch(getApiUrl('/api/db/sync/push'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -363,11 +408,11 @@ export const apiService = {
 
   async runMigration(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
-      const res = await fetch('/api/db/migrate', {
+      const res = await fetch(getApiUrl('/api/db/migrate'), {
         method: 'POST',
         headers: authHeaders()
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { success: false, message: `Migration request failed: ${err.message}` };
     }
@@ -380,8 +425,8 @@ export const apiService = {
     features?: any;
   }> {
     try {
-      const res = await fetch('/api/auth/status');
-      return await res.json();
+      const res = await fetch(getApiUrl('/api/auth/status'));
+      return await parseApiResponse<any>(res);
     } catch {
       return { configured: false, supabaseConfigured: false };
     }
@@ -393,7 +438,7 @@ export const apiService = {
     error?: string;
   }> {
     try {
-      const res = await fetch('/api/auth/update-password', {
+      const res = await fetch(getApiUrl('/api/auth/update-password'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -401,7 +446,7 @@ export const apiService = {
         },
         body: JSON.stringify({ password, accessToken })
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { error: err.message };
     }
@@ -416,12 +461,12 @@ export const apiService = {
     error?: string;
   }> {
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ email, password })
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { error: err.message };
     }
@@ -436,12 +481,12 @@ export const apiService = {
     const startTime = performance.now();
     diagnosticLogger.logTokenExpiration(token, 'Session Verification');
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(getApiUrl('/api/auth/me'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      const json = await res.json();
+      const json = await parseApiResponse<any>(res);
       const durationMs = Math.round(performance.now() - startTime);
 
       if (res.ok && json.success && json.user) {
@@ -483,7 +528,7 @@ export const apiService = {
 
   async logout(token?: string): Promise<{ success: boolean }> {
     try {
-      await fetch('/api/auth/logout', {
+      await fetch(getApiUrl('/api/auth/logout'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -508,12 +553,12 @@ export const apiService = {
     metadata?: Record<string, any>;
   }): Promise<{ success: boolean; message: string; messageId?: string; simulated?: boolean }> {
     try {
-      const res = await fetch('/api/smtp/alert', {
+      const res = await fetch(getApiUrl('/api/smtp/alert'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -532,12 +577,12 @@ export const apiService = {
     recipientEmail?: string;
   }): Promise<{ success: boolean; message: string; messageId?: string; simulated?: boolean }> {
     try {
-      const res = await fetch('/api/smtp/escalation-alert', {
+      const res = await fetch(getApiUrl('/api/smtp/escalation-alert'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -550,12 +595,12 @@ export const apiService = {
     message?: string;
   }> {
     try {
-      const res = await fetch('/api/auth/signup', {
+      const res = await fetch(getApiUrl('/api/auth/signup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(userData)
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { error: err.message };
     }
@@ -567,12 +612,12 @@ export const apiService = {
     error?: string;
   }> {
     try {
-      const res = await fetch('/api/auth/admin/update-password', {
+      const res = await fetch(getApiUrl('/api/auth/admin/update-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { error: err.message };
     }
@@ -581,12 +626,12 @@ export const apiService = {
   async resetPassword(email: string): Promise<{ success?: boolean; message?: string; error?: string }> {
     try {
       const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : undefined;
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch(getApiUrl('/api/auth/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ email, origin })
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { error: err.message };
     }
@@ -594,8 +639,8 @@ export const apiService = {
 
   async fetchPasswordAuditLogs(): Promise<{ success?: boolean; logs?: any[]; error?: string }> {
     try {
-      const res = await fetch('/api/auth/password-audit-logs', { headers: authHeaders() });
-      return await res.json();
+      const res = await fetch(getApiUrl('/api/auth/password-audit-logs'), { headers: authHeaders() });
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { error: err.message };
     }
@@ -603,8 +648,8 @@ export const apiService = {
 
   async fetchSupabaseUsers(): Promise<{ success?: boolean; users?: any[]; error?: string }> {
     try {
-      const res = await fetch('/api/auth/users', { headers: authHeaders() });
-      return await res.json();
+      const res = await fetch(getApiUrl('/api/auth/users'), { headers: authHeaders() });
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { error: err.message };
     }
@@ -618,12 +663,12 @@ export const apiService = {
     status?: string;
   }): Promise<{ success: boolean; message?: string; user?: any; error?: string }> {
     try {
-      const res = await fetch(`/api/auth/users/${encodeURIComponent(userId)}`, {
+      const res = await fetch(getApiUrl(`/api/auth/users/${encodeURIComponent(userId)}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(updates)
       });
-      return await res.json();
+      return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { success: false, error: err.message };
     }
