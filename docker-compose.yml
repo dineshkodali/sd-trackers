@@ -19,6 +19,7 @@ services:
       - HOST_PORT=${HOST_PORT:-3020}
       - OPEN_BROWSER=false
       - APP_URL=${APP_URL:-https://trackers.sdcdms.co.uk}
+      - PUBLIC_URL=${PUBLIC_URL:-https://trackers.sdcdms.co.uk}
       - AUTH_TOKEN_SECRET=${AUTH_TOKEN_SECRET:-39dee3d43e2f3ac8d9481ce0fe572a7d2866ea3c658a5d2d192e701f58c3e25b}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://trackers.sdcdms.co.uk,http://trackers.sdcdms.co.uk,http://localhost:3020}
       # Supabase Configuration
@@ -26,6 +27,8 @@ services:
       - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd}
       - SUPABASE_URL=${SUPABASE_URL:-https://kxikojvpcyprfbyxsdaa.supabase.co}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd}
+      - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY:-sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-sb_secret_hkMhAeypuxPGhijCfW0LHA_aTGe2_C3}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-sb_secret_hkMhAeypuxPGhijCfW0LHA_aTGe2_C3}
       - SUPABASE_DB_URL=${SUPABASE_DB_URL:-postgresql://postgres:Focusmode123!@db.kxikojvpcyprfbyxsdaa.supabase.co:5432/postgres}
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:Focusmode123!@db.kxikojvpcyprfbyxsdaa.supabase.co:5432/postgres}

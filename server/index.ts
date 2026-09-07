@@ -24,9 +24,13 @@ function getDisplayUrls(port: number): { local: string; networkUrls: string[]; p
   const localUrl = `http://localhost:${port}`;
   const networkIps = getNetworkIps();
   const networkUrls = networkIps.map(ip => `http://${ip}:${port}`);
-  const publicUrl = PUBLIC_URL 
+  let publicUrl = PUBLIC_URL 
     ? PUBLIC_URL.replace(/\/$/, '') 
     : (networkUrls[0] || `http://${HOST === '0.0.0.0' ? '127.0.0.1' : HOST}:${port}`);
+
+  if (publicUrl.includes(':3000')) {
+    publicUrl = publicUrl.replace(':3000', `:${port}`);
+  }
 
   return { local: localUrl, networkUrls, publicUrl };
 }
@@ -94,17 +98,7 @@ async function startServer() {
   /**
    * CORS allow-list.
    *
-   * This previously reflected whatever `Origin` the caller sent and paired it
-   * with `Access-Control-Allow-Credentials: true`, so any website a signed-in
-   * member of staff visited could issue credentialed cross-origin reads and
-   * writes against the safeguarding database (BUG-003).
-   *
-   * The platform is genuinely meant to be reachable over the LAN and behind a
-   * proxy, so the list is built rather than hardcoded: explicit configuration
-   * first, then this host's own advertised addresses. Anything else gets no CORS
-   * headers at all, which the browser turns into a blocked cross-origin request.
-   * Same-origin traffic — the application itself — never needs these headers and
-   * is unaffected.
+   * The platform is reachable over the LAN, behind a proxy, or accessed via VPS IP.
    */
   const allowedOrigins = new Set<string>();
   const addOrigin = (value?: string | null) => {
@@ -124,16 +118,35 @@ async function startServer() {
 
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && allowedOrigins.has(origin.replace(/\/+$/, ''))) {
+    const reqHost = req.headers['x-forwarded-host'] || req.headers.host;
+
+    let isAllowed = false;
+    if (origin) {
+      const cleanOrigin = origin.replace(/\/+$/, '');
+      if (allowedOrigins.has(cleanOrigin)) {
+        isAllowed = true;
+      } else if (reqHost) {
+        try {
+          const originHost = new URL(cleanOrigin).host;
+          const currentHost = (typeof reqHost === 'string' ? reqHost.split(',')[0].trim() : '');
+          if (originHost === currentHost) {
+            isAllowed = true;
+          }
+        } catch {}
+      }
+    } else {
+      isAllowed = true;
+    }
+
+    if (origin && isAllowed) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Admin-Email, Origin, Accept');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Admin-Email, Origin, Accept, x-user-id, x-user-email, x-user-name, x-user-role, x-user-site, x-action-type');
       res.setHeader('Vary', 'Origin');
     }
     if (req.method === 'OPTIONS') {
-      // Un-allow-listed pre-flight gets no CORS headers, so the browser refuses.
-      return res.sendStatus(204);
+      return res.sendStatus(isAllowed ? 204 : 403);
     }
     next();
   });

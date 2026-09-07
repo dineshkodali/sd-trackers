@@ -66,7 +66,7 @@ export function getClientOrigin(req: Request): string {
 
   // 6. Server network IP fallback if bound to 0.0.0.0
   const networkIps = getNetworkIps();
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3020;
   if (networkIps.length > 0) {
     return `http://${networkIps[0]}:${port}`;
   }
