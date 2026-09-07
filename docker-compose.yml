@@ -1,0 +1,48 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
+        - VITE_AZURE_CLIENT_ID=${VITE_AZURE_CLIENT_ID:-}
+        - VITE_AZURE_TENANT_ID=${VITE_AZURE_TENANT_ID:-common}
+        - VITE_AZURE_REDIRECT_URI=${VITE_AZURE_REDIRECT_URI:-}
+    container_name: sdtracker-app
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-3020}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - OPEN_BROWSER=false
+      - APP_URL=${APP_URL:-}
+      - AUTH_TOKEN_SECRET=${AUTH_TOKEN_SECRET:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      # Supabase Configuration
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_DB_URL=${SUPABASE_DB_URL:-}
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DIRECT_URL=${DIRECT_URL:-}
+      # Azure Entra ID / SSO
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID:-common}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET:-}
+      - AZURE_REDIRECT_URI=${AZURE_REDIRECT_URI:-}
+      - VITE_AZURE_CLIENT_ID=${VITE_AZURE_CLIENT_ID:-}
+      - VITE_AZURE_TENANT_ID=${VITE_AZURE_TENANT_ID:-common}
+      - VITE_AZURE_REDIRECT_URI=${VITE_AZURE_REDIRECT_URI:-}
+      # SMTP Email Service
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-SafeHaven Operations <noreply@safehavenops.org>}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      # Gemini AI
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
