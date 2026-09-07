@@ -7,7 +7,7 @@
  * are icon-only buttons with no text, so they are addressed by index.
  */
 
-export const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+export const BASE_URL = process.env.BASE_URL || 'http://localhost:3020';
 export const API = `${BASE_URL}/api`;
 
 /** Built-in Super Admin. Works with the database offline; see DEF-02. */

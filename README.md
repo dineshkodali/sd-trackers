@@ -57,7 +57,7 @@ Node.js 20+, and a Supabase project.
 ## Running
 
 ```bash
-npm run dev      # dev server + API on http://localhost:3000
+npm run dev      # dev server + API on http://localhost:3020
 npm run build    # frontend to dist/, API bundled to dist/server.cjs
 npm start        # run the production build
 npm run lint     # type-check
@@ -71,7 +71,7 @@ Useful environment flags:
 
 | Flag | Effect |
 |---|---|
-| `PORT` | Port to bind (default 3000; auto-increments if taken) |
+| `PORT` | Port to bind (default 3020; auto-increments if taken) |
 | `OPEN_BROWSER=false` | Do not open a browser on start |
 | `DISABLE_HMR=true` | Disable Vite file watching |
 

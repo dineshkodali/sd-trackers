@@ -46,7 +46,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://localhost:3020',
     actionTimeout: 20_000,
     navigationTimeout: 45_000,
     trace: 'on-first-retry',
@@ -69,7 +69,7 @@ export default defineConfig({
   /**
    * Start the application yourself before running tests:
    *
-   *     cd ..  &&  PORT=3000 OPEN_BROWSER=false DISABLE_HMR=true npm run dev
+   *     cd ..  &&  PORT=3020 OPEN_BROWSER=false DISABLE_HMR=true npm run dev
    *
    * `reuseExistingServer` means Playwright attaches to that instance instantly.
    * Auto-spawn is left configured as a fallback but is unreliable on Windows —
@@ -80,13 +80,13 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     cwd: PROJECT_ROOT,
-    url: 'http://localhost:3000/api/health',
+    url: 'http://localhost:3020/api/health',
     reuseExistingServer: true,
     timeout: 45_000,
     // `env` REPLACES the environment rather than extending it, so process.env
     // must be spread in — without it PATH is lost and `npm` cannot be found.
     // DISABLE_HMR stops Vite watching the repo root, where large saved HTML
     // reports have previously crashed the watcher with EBUSY.
-    env: { ...process.env, PORT: '3000', OPEN_BROWSER: 'false', DISABLE_HMR: 'true' } as Record<string, string>,
+    env: { ...process.env, PORT: '3020', OPEN_BROWSER: 'false', DISABLE_HMR: 'true' } as Record<string, string>,
   },
 });
