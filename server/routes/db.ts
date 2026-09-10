@@ -32,7 +32,9 @@ export const PAGE_TABLE_REGISTRY = {
   requests: { page: 'Data Change Requests', table: 'data_change_requests' },
   profiles: { page: 'User Profiles', table: 'profiles' },
   users: { page: 'Users', table: 'profiles' },
-  passwordAudit: { page: 'Password Audit', table: 'password_audit_logs' }
+  passwordAudit: { page: 'Password Audit', table: 'password_audit_logs' },
+  email_notification_rules: { page: 'Email Notification Rules', table: 'email_notification_rules' },
+  email_notification_logs: { page: 'Email Notification Logs', table: 'email_notification_logs' }
 } as const;
 
 // Canonical entity → table mapping (no legacy duplicates)
@@ -58,7 +60,9 @@ const TABLE_MAP: Record<string, string> = {
   requests: 'data_change_requests',
   profiles: 'profiles',
   users: 'profiles',
-  passwordAudit: 'password_audit_logs'
+  passwordAudit: 'password_audit_logs',
+  email_notification_rules: 'email_notification_rules',
+  email_notification_logs: 'email_notification_logs'
 };
 
 // Helper to test if a string is a valid UUID

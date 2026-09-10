@@ -27,7 +27,8 @@ import {
   UserCheck,
   PlaneTakeoff,
   BookOpen,
-  HandHeart
+  HandHeart,
+  BellRing
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -51,7 +52,8 @@ export const Sidebar: React.FC = () => {
     rfaWelfareRecords,
     dispersalRecords,
     bookletRecords,
-    vcsAgencies
+    vcsAgencies,
+    notificationRules
   } = useApp();
 
   const [openGroups, setOpenGroups] = useState<{ [key: string]: boolean }>({
@@ -747,6 +749,27 @@ export const Sidebar: React.FC = () => {
                 </div>
               </button>
             )}
+
+            {/* Email Notifications Management (Admin & Super Admin) */}
+            <button
+              id="nav-notifications"
+              onClick={() => setActivePage('notifications')}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                isNavActive('notifications')
+                  ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                  : 'text-[#333333] hover:bg-[#f0efeb]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <BellRing className={`w-4 h-4 ${isNavActive('notifications') ? 'text-white' : 'text-[#0d9488]'}`} />
+                <span>Email Notifications</span>
+              </div>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('notifications') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
+              }`}>
+                {notificationRules.filter(r => r.enabled).length}
+              </span>
+            </button>
           </div>
         )}
       </nav>

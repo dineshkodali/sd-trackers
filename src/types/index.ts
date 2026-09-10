@@ -563,3 +563,77 @@ export interface SDVCSAgency {
   createdAt: string;
 }
 
+// 8. Centralized Email Notification Types & Rules
+export type NotificationEventCode =
+  | 'referral.created'
+  | 'referral.urgent'
+  | 'referral.status_changed'
+  | 'vulnerable.created'
+  | 'challenging.critical'
+  | 'escalation.created'
+  | 'escalation.critical'
+  | 'compliance.created'
+  | 'compliance.expiring_soon'
+  | 'compliance.expired'
+  | 'maintenance.created'
+  | 'maintenance.cat1_emergency'
+  | 'maintenance.completed'
+  | 'transport.created'
+  | 'transport.exceptional_circumstance'
+  | 'gp.created'
+  | 'gp.dna_missed'
+  | 'welfare.created'
+  | 'welfare.mental_health_ticket'
+  | 'dispersal.created'
+  | 'dispersal.failed_to_travel'
+  | 'laundry.variance_flagged'
+  | 'food.temp_breach'
+  | 'change_request.created'
+  | 'change_request.reviewed'
+  | 'user.created'
+  | 'user.role_changed';
+
+export type NotificationModule =
+  | 'Safeguarding'
+  | 'Compliance'
+  | 'Maintenance'
+  | 'Transport'
+  | 'Health & Welfare'
+  | 'Operations'
+  | 'Governance';
+
+export type NotificationSeverityThreshold = 'All' | 'Low' | 'Medium' | 'High' | 'Critical';
+
+export interface NotificationRule {
+  id: string;
+  eventCode: NotificationEventCode;
+  module: NotificationModule;
+  title: string;
+  description: string;
+  enabled: boolean;
+  minSeverity: NotificationSeverityThreshold;
+  recipientRoles: RoleType[];
+  customRecipients: string[];
+  customCc: string[];
+  subjectTemplate: string;
+  includeMetadata: boolean;
+  lastDispatchedAt?: string | null;
+  dispatchCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailNotificationLog {
+  id: string;
+  ruleId?: string | null;
+  eventCode: NotificationEventCode | string;
+  module: NotificationModule | string;
+  subject: string;
+  recipients: string[];
+  site?: string;
+  status: 'delivered' | 'simulated' | 'failed';
+  errorMessage?: string;
+  dispatchedAt: string;
+  entityId?: string;
+  payloadSummary?: string;
+}

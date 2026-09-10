@@ -30,7 +30,10 @@ import {
   RFAWelfareCheckRecord,
   DispersalRecord,
   BookletCollectionRecord,
-  SDVCSAgency
+  SDVCSAgency,
+  NotificationEventCode,
+  NotificationRule,
+  EmailNotificationLog
 } from '../types';
 import { 
   INITIAL_SITES, 
@@ -63,6 +66,8 @@ import {
   FOOD_VENDORS 
 } from '../data/commercialCateringLaundryData';
 import { DEFAULT_FIELD_OPTIONS } from '../data/defaultFieldOptions';
+import { DEFAULT_NOTIFICATION_RULES } from '../data/defaultNotificationRules';
+import { emailNotificationService } from '../services/emailNotificationService';
 import { smartCache, fastIndices, SmartCacheStats } from '../utils/smartCache';
 import { apiService } from '../services/apiService';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
@@ -360,6 +365,24 @@ interface AppContextType {
   unlockSession: () => void;
   remainingInactivitySeconds: number;
   resetInactivityTimer: () => void;
+
+  // 8. Centralized Email Notifications Management
+  notificationRules: NotificationRule[];
+  emailNotificationLogs: EmailNotificationLog[];
+  updateNotificationRule: (id: string, updates: Partial<NotificationRule>) => Promise<void>;
+  toggleNotificationRule: (id: string) => Promise<void>;
+  resetNotificationRules: () => Promise<void>;
+  triggerEmailNotification: (
+    eventCode: NotificationEventCode | string,
+    payload: Record<string, any>,
+    options?: {
+      site?: string;
+      severity?: 'Low' | 'Medium' | 'High' | 'Critical';
+      entityId?: string;
+      targetRecipients?: string[];
+    }
+  ) => Promise<void>;
+  refreshNotificationData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -585,6 +608,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [vcsAgencies, setVcsAgencies] = useState<SDVCSAgency[]>(() => 
     loadStorage('vcs_agencies', INITIAL_VCS_AGENCIES)
   );
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => 
+    loadStorage('notification_rules', DEFAULT_NOTIFICATION_RULES)
+  );
+  const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>(() => 
+    loadStorage('email_notification_logs', [])
+  );
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const cached = smartCache.getUsersInstant();
     if (cached.data && cached.data.length > 0) {
@@ -687,6 +716,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const duration = Math.max(1, Math.round(performance.now() - start));
     setLastOperationDurationMs(duration);
   }, [currentUserRole, users, authProfile, currentUserName]);
+
+  // --- Centralized Email Notifications Engine ---
+  const updateNotificationRule = useCallback(async (id: string, updates: Partial<NotificationRule>) => {
+    setNotificationRules(prev => {
+      const next = prev.map(r => r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r);
+      saveStorage('notification_rules', next);
+      return next;
+    });
+    await emailNotificationService.updateRule(id, updates);
+    addAuditEntry('SETTINGS_UPDATE', 'Settings', `Notification Rule #${id}`, 'All Sites', `Updated email notification configuration for ${id}.`);
+  }, [addAuditEntry]);
+
+  const toggleNotificationRule = useCallback(async (id: string) => {
+    const current = notificationRules.find(r => r.id === id);
+    if (current) {
+      await updateNotificationRule(id, { enabled: !current.enabled });
+    }
+  }, [notificationRules, updateNotificationRule]);
+
+  const resetNotificationRules = useCallback(async () => {
+    setNotificationRules(DEFAULT_NOTIFICATION_RULES);
+    saveStorage('notification_rules', DEFAULT_NOTIFICATION_RULES);
+    await emailNotificationService.resetRules();
+    addAuditEntry('SETTINGS_UPDATE', 'Settings', 'Reset Notification Rules', 'All Sites', 'Reset all notification rules to system defaults.');
+  }, [addAuditEntry]);
+
+  const triggerEmailNotification = useCallback(async (
+    eventCode: NotificationEventCode | string,
+    payload: Record<string, any>,
+    options?: {
+      site?: string;
+      severity?: 'Low' | 'Medium' | 'High' | 'Critical';
+      entityId?: string;
+      targetRecipients?: string[];
+    }
+  ) => {
+    try {
+      const res = await emailNotificationService.triggerNotification(eventCode, payload, options);
+      if (res.success && res.delivered) {
+        console.log(`[Email Notification Dispatched] Event: ${eventCode}, Recipients:`, res.recipients);
+      } else if (res.simulated) {
+        console.log(`[Email Notification Simulated] Event: ${eventCode}, Recipients:`, res.recipients);
+      }
+      const updatedLogs = await emailNotificationService.getLogs();
+      if (updatedLogs && updatedLogs.length > 0) {
+        setEmailNotificationLogs(updatedLogs);
+        saveStorage('email_notification_logs', updatedLogs);
+      }
+    } catch (err) {
+      console.warn('Failed to trigger email notification:', err);
+    }
+  }, []);
+
+  const refreshNotificationData = useCallback(async () => {
+    try {
+      const rules = await emailNotificationService.getRules();
+      const logs = await emailNotificationService.getLogs();
+      if (rules && rules.length > 0) {
+        setNotificationRules(rules);
+        saveStorage('notification_rules', rules);
+      }
+      if (logs) {
+        setEmailNotificationLogs(logs);
+        saveStorage('email_notification_logs', logs);
+      }
+    } catch (err) {
+      console.warn('Could not refresh notification data:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshNotificationData();
+  }, [refreshNotificationData]);
 
   // Session verification on mount or token update with diagnostic logging & blocked state detection
   useEffect(() => {
@@ -988,11 +1090,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setDataChangeRequests(prev => [newReq, ...prev]);
     addAuditEntry('CREATE', 'Settings', `Change Request: ${newReq.recordTitle}`, newReq.site, `Submitted data change request (${newReq.requestType}) for review.`);
-  }, [addAuditEntry]);
+    
+    // Automated configurable email notification dispatch
+    triggerEmailNotification('change_request.created', newReq, {
+      site: newReq.site,
+      severity: 'Medium',
+      entityId: newReq.id
+    });
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const reviewDataChangeRequest = useCallback((id: string, decision: 'Approved' | 'Rejected', reviewNotes: string) => {
     const foundUser = users.find(u => u.role === currentUserRole);
     const reviewerName = foundUser ? foundUser.name : currentUserRole;
+    const targetReq = dataChangeRequests.find(r => r.id === id);
+
     setDataChangeRequests(prev => prev.map(r => {
       if (r.id === id) {
         return {
@@ -1006,7 +1117,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return r;
     }));
     addAuditEntry('UPDATE', 'Settings', `Change Request #${id}`, 'System', `Data change request ${decision}: ${reviewNotes}`);
-  }, [currentUserRole, users, addAuditEntry]);
+
+    // Automated configurable email notification dispatch
+    if (targetReq) {
+      triggerEmailNotification('change_request.reviewed', { ...targetReq, decision, reviewNotes, requestId: id }, {
+        site: targetReq.site,
+        severity: 'Low',
+        entityId: id
+      });
+    }
+  }, [currentUserRole, users, dataChangeRequests, addAuditEntry, triggerEmailNotification]);
 
   const [isSessionLocked, setIsSessionLocked] = useState<boolean>(false);
   const [sessionLockReason, setSessionLockReason] = useState<string>('Inactivity timeout');
@@ -1410,6 +1530,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apiService.saveEntityRecord('referrals', newRef).catch(err => console.error('Referral DB save error:', err));
       addAuditEntry('CREATE', 'Referrals', `${newRef.suName} (${newRef.portRef})`, newRef.site, `Created SG referral for ${newRef.referralCouncil}.`);
       
+      // Automated configurable email notification dispatch
+      triggerEmailNotification('referral.created', newRef, {
+        site: newRef.site,
+        severity: newRef.urgency === 'Critical' ? 'Critical' : newRef.urgency === 'High' ? 'High' : 'Medium',
+        entityId: newRef.portRef
+      });
+      if (newRef.urgency === 'Critical' || newRef.urgency === 'High') {
+        triggerEmailNotification('referral.urgent', newRef, {
+          site: newRef.site,
+          severity: newRef.urgency === 'Critical' ? 'Critical' : 'High',
+          entityId: newRef.portRef
+        });
+      }
+
       // Automated SMTP email dispatch for High/Critical safeguarding referrals
       if (newRef.urgency === 'Critical' || newRef.urgency === 'High') {
         apiService.sendAlert({
@@ -1549,8 +1683,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setVulnerableSUs(prev => [newSU, ...prev]);
       apiService.saveEntityRecord('vulnerable', newSU).catch(err => console.error('Vulnerable SU DB save error:', err));
-      addAuditEntry('CREATE', 'Vulnerable SUs', `${newSU.suName} (${newSU.roomOrFlatNo})`, newSU.site, `Logged vulnerable resident (${newSU.riskLevel} risk).`);
-      
+      // Automated configurable email notification dispatch
+      triggerEmailNotification('vulnerable.created', newSU, {
+        site: newSU.site,
+        severity: newSU.riskLevel === 'Critical' ? 'Critical' : newSU.riskLevel === 'High' ? 'High' : 'Medium',
+        entityId: newSU.id
+      });
+
       // Automated SMTP email dispatch for High/Critical Vulnerable SUs
       if (newSU.riskLevel === 'Critical' || newSU.riskLevel === 'High') {
         apiService.sendAlert({
@@ -1680,7 +1819,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setChallengingSUs(prev => [newRec, ...prev]);
       apiService.saveEntityRecord('challenging', newRec).catch(err => console.error('Challenging SU DB save error:', err));
-      addAuditEntry('CREATE', 'Challenging SUs', `${newRec.name} (${newRec.typeOfIssue})`, newRec.site, `Recorded incident: ${newRec.typeOfIssue}.`);
+      // Automated configurable email notification dispatch for critical incidents
+      if (newRec.riskFactor === 'High' || newRec.riskFactor === 'Critical') {
+        triggerEmailNotification('challenging.critical', newRec, {
+          site: newRec.site,
+          severity: newRec.riskFactor === 'Critical' ? 'Critical' : 'High',
+          entityId: newRec.id
+        });
+      }
 
       // Automated SMTP email alert for High/Critical incidents
       if (newRec.riskFactor === 'High' || newRec.riskFactor === 'Critical') {
@@ -2061,8 +2207,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setEscalations(prev => [rec, ...prev]);
       apiService.saveEntityRecord('escalations', rec).catch(err => console.error('Escalation DB save error:', err));
-      addAuditEntry('CREATE', 'Escalations', `${rec.suName} (${rec.urgency})`, rec.site, `CRITICAL ESCALATION submitted to ${rec.escalatedTo}.`);
-      
+      // Automated configurable email notification dispatch
+      triggerEmailNotification('escalation.created', rec, {
+        site: rec.site,
+        severity: rec.urgency === 'Critical' ? 'Critical' : 'High',
+        entityId: rec.id
+      });
+      if (rec.urgency === 'Critical') {
+        triggerEmailNotification('escalation.critical', rec, {
+          site: rec.site,
+          severity: 'Critical',
+          entityId: rec.id
+        });
+      }
+
       // Automated SMTP Email Dispatch for Escalations
       apiService.sendEscalationAlert({
         suName: rec.suName,
@@ -2190,7 +2348,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMaintenanceRecords(prev => [newRecord, ...prev]);
     apiService.saveEntityRecord('maintenance', newRecord).catch(err => console.error('Maintenance DB save error:', err));
     addAuditEntry('CREATE', 'Settings', `${newRecord.priority}: ${newRecord.description.substring(0, 30)}`, newRecord.site, `Logged maintenance defect (${newRecord.priorityTimeScale}).`);
-  }, [addAuditEntry]);
+    
+    // Automated configurable email notification dispatch
+    triggerEmailNotification('maintenance.created', newRecord, {
+      site: newRecord.site,
+      severity: newRecord.priority === 'CAT 1' ? 'Critical' : 'Medium',
+      entityId: newRecord.id
+    });
+    if (newRecord.priority === 'CAT 1') {
+      triggerEmailNotification('maintenance.cat1_emergency', newRecord, {
+        site: newRecord.site,
+        severity: 'Critical',
+        entityId: newRecord.id
+      });
+    }
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const updateMaintenanceRecord = useCallback((id: string, updates: Partial<MaintenanceRecord>) => {
     setMaintenanceRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates } : rec));
@@ -2309,7 +2481,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setPublicTransportRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Settings', `Transport: ${newRecord.approvalUrn}`, 'Site', `Created transport approval ${newRecord.approvalUrn} for ${newRecord.suNames}.`);
-  }, [addAuditEntry]);
+    
+    // Automated configurable email notification dispatch
+    triggerEmailNotification('transport.created', newRecord, {
+      site: newRecord.siteName || newRecord.accommodationAddress,
+      severity: 'Low',
+      entityId: newRecord.approvalUrn
+    });
+    if (newRecord.exceptionalCircumstances && newRecord.exceptionalCircumstances.trim() !== '') {
+      triggerEmailNotification('transport.exceptional_circumstance', newRecord, {
+        site: newRecord.siteName || newRecord.accommodationAddress,
+        severity: 'High',
+        entityId: newRecord.approvalUrn
+      });
+    }
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const updatePublicTransportRecord = useCallback((id: string, updates: Partial<PublicTransportRecord>) => {
     const now = new Date().toISOString();
@@ -2344,7 +2530,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setComplianceRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Settings', `Compliance: ${newRecord.complianceType}`, newRecord.siteName || 'All Sites', `Logged compliance asset ${newRecord.complianceType} by ${newRecord.contractorName}.`);
-  }, [addAuditEntry]);
+    
+    // Automated configurable email notification dispatch
+    triggerEmailNotification('compliance.created', newRecord, {
+      site: newRecord.siteName || 'All Sites',
+      severity: 'Medium',
+      entityId: newRecord.complianceType
+    });
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const updateComplianceRecord = useCallback((id: string, updates: Partial<SDComplianceRecord>) => {
     const now = new Date().toISOString();
@@ -2379,13 +2572,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setGpAppointmentRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Referrals', `GP: ${newRecord.portReference}`, newRecord.siteName || 'Site', `Booked GP appointment for Room ${newRecord.roomNo} (${newRecord.portReference}).`);
-  }, [addAuditEntry]);
+    
+    // Automated configurable email notification dispatch
+    triggerEmailNotification('gp.created', newRecord, {
+      site: newRecord.siteName || 'All Sites',
+      severity: 'Low',
+      entityId: newRecord.portReference
+    });
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const updateGPAppointmentRecord = useCallback((id: string, updates: Partial<GPAppointmentRecord>) => {
     const now = new Date().toISOString();
     setGpAppointmentRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates, updatedAt: now } : rec));
     addAuditEntry('UPDATE', 'Referrals', `GP #${id}`, 'Site', 'Updated GP appointment record.');
-  }, [addAuditEntry]);
+    
+    if (updates.status === 'Cancelled') {
+      triggerEmailNotification('gp.dna_missed', { id, ...updates }, {
+        severity: 'Medium',
+        entityId: id
+      });
+    }
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const deleteGPAppointmentRecord = useCallback((id: string) => {
     const current = gpAppointmentRecords.find(r => r.id === id);
@@ -2414,7 +2621,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setRfaWelfareRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Vulnerable SUs', `RFA Welfare: ${newRecord.name}`, newRecord.siteName, `Conducted RFA welfare check for ${newRecord.name} (Room ${newRecord.roomOrFlatNo}).`);
-  }, [addAuditEntry]);
+    
+    // Automated configurable email notification dispatch
+    triggerEmailNotification('welfare.created', newRecord, {
+      site: newRecord.siteName,
+      severity: 'Low',
+      entityId: newRecord.portOrNassRef
+    });
+    if (newRecord.mhTicket && newRecord.mhTicket.trim() !== '') {
+      triggerEmailNotification('welfare.mental_health_ticket', newRecord, {
+        site: newRecord.siteName,
+        severity: 'High',
+        entityId: newRecord.portOrNassRef
+      });
+    }
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const updateRFAWelfareRecord = useCallback((id: string, updates: Partial<RFAWelfareCheckRecord>) => {
     const now = new Date().toISOString();
@@ -2449,7 +2670,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setDispersalRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Referrals', `Dispersal: ${newRecord.suPortNassRef}`, newRecord.siteName, `Recorded dispersal entry for SU ${newRecord.suPortNassRef} (Flat ${newRecord.flatRoomNumber}).`);
-  }, [addAuditEntry]);
+    
+    // Automated configurable email notification dispatch
+    triggerEmailNotification('dispersal.created', newRecord, {
+      site: newRecord.siteName,
+      severity: 'Low',
+      entityId: newRecord.suPortNassRef
+    });
+    if (newRecord.travelled === 'No' || (newRecord.reasonFailedToTravel && newRecord.reasonFailedToTravel.trim() !== '')) {
+      triggerEmailNotification('dispersal.failed_to_travel', newRecord, {
+        site: newRecord.siteName,
+        severity: 'High',
+        entityId: newRecord.suPortNassRef
+      });
+    }
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const updateDispersalRecord = useCallback((id: string, updates: Partial<DispersalRecord>) => {
     const now = new Date().toISOString();
@@ -2638,6 +2873,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (updates.role && current && updates.role !== current.role) {
       changes.push(`Role changed: "${current.role}" → "${updates.role}"`);
+      triggerEmailNotification('user.role_changed', { ...current, newRole: updates.role, targetEmail: current.email }, {
+        site: (current.assignedSites && current.assignedSites[0]) || 'All Sites',
+        severity: 'High',
+        entityId: current.email
+      });
     }
     if (updates.status && current && updates.status !== current.status) {
       changes.push(`Status: "${current.status}" → "${updates.status}"`);
@@ -2659,7 +2899,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       (updates.assignedSites && updates.assignedSites[0]) || (current?.assignedSites && current.assignedSites[0]) || (current as any)?.assignedSite || 'All', 
       `Updated user record for ${userName}: ${desc}.`
     );
-  }, [users, addAuditEntry]);
+  }, [users, addAuditEntry, triggerEmailNotification]);
 
   const addUser = useCallback((userData: Omit<UserAccount, 'id' | 'lastActive'>) => {
     const safeAssignedSites = Array.isArray(userData.assignedSites) && userData.assignedSites.length > 0
@@ -2674,6 +2914,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setUsers(prev => [...prev, newUser]);
     apiService.saveEntityRecord('users', newUser).catch(err => console.error('User DB save error:', err));
+    
+    // Automated configurable email notification dispatch
+    triggerEmailNotification('user.created', newUser, {
+      site: safeAssignedSites[0] || 'All Sites',
+      severity: 'Medium',
+      entityId: newUser.email
+    });
+
     const assigned = safeAssignedSites.join(', ') || 'All Sites';
     addAuditEntry(
       'CREATE', 
@@ -2682,7 +2930,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       safeAssignedSites[0] || 'All', 
       `Created user account for ${newUser.name} (Role: ${newUser.role}, Status: ${newUser.status}, Assigned: ${assigned}).`
     );
-  }, [addAuditEntry]);
+  }, [addAuditEntry, triggerEmailNotification]);
 
   const deleteUser = useCallback((id: string) => {
     const current = users.find(u => u.id === id);
@@ -3547,7 +3795,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isPasswordRecoveryMode,
       setIsPasswordRecoveryMode,
       recoveryAccessToken,
-      recoveryEmail
+      recoveryEmail,
+      notificationRules,
+      emailNotificationLogs,
+      updateNotificationRule,
+      toggleNotificationRule,
+      resetNotificationRules,
+      triggerEmailNotification,
+      refreshNotificationData
     }}>
       {children}
     </AppContext.Provider>

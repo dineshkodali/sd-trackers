@@ -7,6 +7,8 @@
 -- =====================================================================
 -- PHASE 1: DROP ALL EXISTING TABLES (ordered by foreign key deps)
 -- =====================================================================
+DROP TABLE IF EXISTS public.email_notification_logs CASCADE;
+DROP TABLE IF EXISTS public.email_notification_rules CASCADE;
 DROP TABLE IF EXISTS public.password_audit_logs CASCADE;
 DROP TABLE IF EXISTS public.data_change_requests CASCADE;
 DROP TABLE IF EXISTS public.documents CASCADE;
@@ -343,6 +345,42 @@ CREATE TABLE public.password_audit_logs (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 17. Email Notification Rules
+CREATE TABLE IF NOT EXISTS public.email_notification_rules (
+  id TEXT PRIMARY KEY,
+  event_code TEXT NOT NULL UNIQUE,
+  module TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  enabled BOOLEAN DEFAULT true,
+  min_severity TEXT DEFAULT 'All',
+  recipient_roles JSONB DEFAULT '[]'::jsonb,
+  custom_recipients JSONB DEFAULT '[]'::jsonb,
+  custom_cc JSONB DEFAULT '[]'::jsonb,
+  subject_template TEXT,
+  include_metadata BOOLEAN DEFAULT true,
+  last_dispatched_at TIMESTAMPTZ,
+  dispatch_count INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 18. Email Notification Delivery Logs
+CREATE TABLE IF NOT EXISTS public.email_notification_logs (
+  id TEXT PRIMARY KEY,
+  rule_id TEXT,
+  event_code TEXT NOT NULL,
+  module TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  recipients JSONB DEFAULT '[]'::jsonb,
+  site TEXT,
+  status TEXT DEFAULT 'delivered',
+  error_message TEXT,
+  entity_id TEXT,
+  payload_summary TEXT,
+  dispatched_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- =====================================================================
 -- PHASE 4: AUTO-CREATE PROFILE TRIGGER ON AUTH.USERS INSERT
 -- =====================================================================
@@ -396,6 +434,7 @@ CREATE TRIGGER trg_escalations_updated_at BEFORE UPDATE ON public.escalations FO
 CREATE TRIGGER trg_documents_updated_at BEFORE UPDATE ON public.documents FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 CREATE TRIGGER trg_data_change_requests_updated_at BEFORE UPDATE ON public.data_change_requests FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 CREATE TRIGGER trg_password_audit_logs_updated_at BEFORE UPDATE ON public.password_audit_logs FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
+CREATE TRIGGER trg_email_notification_rules_updated_at BEFORE UPDATE ON public.email_notification_rules FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 
 -- =====================================================================
 -- PHASE 6: PERFORMANCE INDEXES
@@ -414,6 +453,9 @@ CREATE INDEX IF NOT EXISTS idx_challenging_site ON public.challenging_behavior(s
 CREATE INDEX IF NOT EXISTS idx_maintenance_site ON public.maintenance_records(site);
 CREATE INDEX IF NOT EXISTS idx_spcd_site ON public.spcd_records(site_name);
 CREATE INDEX IF NOT EXISTS idx_escalations_site ON public.escalations(site);
+CREATE INDEX IF NOT EXISTS idx_notif_rules_module ON public.email_notification_rules(module);
+CREATE INDEX IF NOT EXISTS idx_notif_logs_event ON public.email_notification_logs(event_code);
+CREATE INDEX IF NOT EXISTS idx_notif_logs_dispatched ON public.email_notification_logs(dispatched_at DESC);
 
 -- =====================================================================
 -- PHASE 7: ROW LEVEL SECURITY (Authenticated-only, no anon access)
@@ -436,6 +478,8 @@ ALTER TABLE public.escalations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_change_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.password_audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_notification_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_notification_logs ENABLE ROW LEVEL SECURITY;
 
 -- Schema grants (authenticated and service_role only — NO anon grants)
 GRANT USAGE ON SCHEMA public TO authenticated, service_role;
@@ -460,6 +504,8 @@ CREATE POLICY "authenticated_escalations_all" ON public.escalations FOR ALL TO a
 CREATE POLICY "authenticated_documents_all" ON public.documents FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_dcr_all" ON public.data_change_requests FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "authenticated_pwd_audit_all" ON public.password_audit_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_notif_rules_all" ON public.email_notification_rules FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_notif_logs_all" ON public.email_notification_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- Service role bypass policies (service_role bypasses RLS by default, but explicit for clarity)
 CREATE POLICY "service_profiles_all" ON public.profiles FOR ALL TO service_role USING (true) WITH CHECK (true);
@@ -478,3 +524,6 @@ CREATE POLICY "service_escalations_all" ON public.escalations FOR ALL TO service
 CREATE POLICY "service_documents_all" ON public.documents FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_dcr_all" ON public.data_change_requests FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "service_pwd_audit_all" ON public.password_audit_logs FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_notif_rules_all" ON public.email_notification_rules FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "service_notif_logs_all" ON public.email_notification_logs FOR ALL TO service_role USING (true) WITH CHECK (true);
+

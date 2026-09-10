@@ -34,6 +34,7 @@ import { BookletCollectionView } from './components/booklets/BookletCollectionVi
 import { SDVCSDirectoryView } from './components/vcs/SDVCSDirectoryView';
 import { RequestsApprovalsView } from './components/requests/RequestsApprovalsView';
 import { FieldOptionsSetupView } from './components/setup/FieldOptionsSetupView';
+import { NotificationsManagementView } from './components/notifications/NotificationsManagementView';
 import { LoginView } from './components/auth/LoginView';
 import { QuickJumpModal } from './components/common/QuickJumpModal';
 import { AuthenticationBlockedView } from './components/auth/AuthenticationBlockedView';
@@ -166,6 +167,8 @@ function AppLayout() {
         return <RolesView />;
       case 'setupOptions':
         return <FieldOptionsSetupView />;
+      case 'notifications':
+        return <NotificationsManagementView />;
       case 'settings':
         return <SettingsView />;
       default:
