@@ -911,28 +911,28 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
         onNavigate={onNavigate}
       />
 
-      {/* Strategic Manager Insights & Action Advisory */}
+      {/* Duty Manager Operational Briefing & Action Checklist */}
       <div className="bg-[#fcfdfd] border border-[#d2d0ce] p-4 rounded-xs shadow-xs">
         <div className="flex items-center gap-2 mb-2">
           <HelpCircle className="w-4 h-4 text-[#0d9488]" />
           <h4 className="text-xs font-semibold text-[#242424] uppercase tracking-wider">
-            Executive Operational Takeaways for Duty Managers
+            Duty Manager Operational Briefing & Action Checklist
           </h4>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-[#323130] mt-2">
           <div className="p-2.5 bg-white border border-[#e1dfdd] rounded-xs">
             <span className="font-semibold text-[#a4262c] block mb-1">
-              1. Incident Concentration
+              1. Incident Priority Areas
             </span>
             <p className="text-[#605e5c] leading-relaxed">
-              <strong className="text-[#242424]">{topIncidentCategory.name}</strong> represents the highest proportion ({topIncidentCategory.percentage}%) of logged escalations. Ensure overnight security rosters and 999 paramedic access routes are audited weekly.
+              <strong className="text-[#242424]">{topIncidentCategory.name}</strong> accounts for {topIncidentCategory.percentage}% of logged escalations. Verify overnight security cover and clear access routes during regular audits.
             </p>
           </div>
 
           <div className="p-2.5 bg-white border border-[#e1dfdd] rounded-xs">
             <span className="font-semibold text-[#0d9488] block mb-1">
-              2. Referral Pipeline Velocity
+              2. Active Referrals Tracker
             </span>
             <p className="text-[#605e5c] leading-relaxed">
               There are currently <strong className="text-[#242424]">{referralMetrics.open} open referrals</strong> awaiting local authority key worker assignment. Schedule routine Mosaic portal follow-ups on day 5 post-submission.
@@ -941,10 +941,10 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
 
           <div className="p-2.5 bg-white border border-[#e1dfdd] rounded-xs">
             <span className="font-semibold text-[#107c10] block mb-1">
-              3. Resolution Performance
+              3. Case Completion Review
             </span>
             <p className="text-[#605e5c] leading-relaxed">
-              Cumulative case completion stands at <strong className="text-[#242424]">{referralMetrics.resolutionRate}%</strong>. Accommodations with ground-floor mobility adaptations show significantly reduced secondary escalation rates.
+              Current case completion rate stands at <strong className="text-[#242424]">{referralMetrics.resolutionRate}%</strong>. Accommodations with ground-floor mobility adaptations show lower recurring support requests.
             </p>
           </div>
         </div>

@@ -7,7 +7,6 @@ import {
   Clock, 
   ArrowUpRight, 
   ThermometerSnowflake, 
-  Sparkles,
   Flame
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -47,7 +46,7 @@ export const CommercialWelfareBreakdown: React.FC<CommercialWelfareBreakdownProp
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#edebe9] gap-2">
         <div className="flex items-center gap-2">
           <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-xs">
-            <Sparkles className="w-4 h-4" />
+            <Soup className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-[#242424] flex items-center gap-2">

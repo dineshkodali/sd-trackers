@@ -10,7 +10,6 @@ import {
   ChevronRight, 
   ArrowUpRight, 
   Flame, 
-  Sparkles,
   Calendar,
   Building2,
   Layers,

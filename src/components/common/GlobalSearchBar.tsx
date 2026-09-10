@@ -14,7 +14,6 @@ import {
   ChevronRight, 
   ChevronDown, 
   SlidersHorizontal, 
-  Sparkles, 
   CornerDownLeft,
   ArrowRight
 } from 'lucide-react';
@@ -762,7 +761,7 @@ export const GlobalSearchBar: React.FC = () => {
           <div className="bg-[#faf9f8] p-2.5 border-b border-[#edebe9]">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-[#323130]">
-                <Sparkles className="w-3.5 h-3.5 text-[#0d9488]" />
+                <Search className="w-3.5 h-3.5 text-[#0d9488]" />
                 <span>
                   {query.trim() 
                     ? `Search Results (${totalResultsCount} matches)` 

@@ -17,7 +17,6 @@ import {
   ChevronRight,
   Info,
   Clock,
-  Sparkles,
   Edit3,
   Flame,
   Shield,
@@ -725,11 +724,11 @@ export const NotificationsManagementView: React.FC = () => {
 
             <div className="bg-[#f0fdf4] border border-[#bbf7d0] p-3 rounded-xs text-xs text-[#166534] space-y-1">
               <div className="font-bold flex items-center gap-1.5 text-[#15803d]">
-                <Sparkles className="w-3.5 h-3.5 text-[#16a34a]" />
-                Production SMTP Engine Active
+                <Mail className="w-3.5 h-3.5 text-[#16a34a]" />
+                Production Mail Relay Active
               </div>
               <p className="text-[11px] leading-relaxed text-[#14532d]">
-                Operating strictly in <strong>Production Mode</strong> using live credentials loaded directly from the root <code>.env</code> file. All system triggers, critical alerts, and escalation notices are dispatched directly to real recipients with verified Gmail TLS transmission.
+                Operating in <strong>Production Mode</strong> using server credentials configured in the root <code>.env</code> file. System triggers, urgent alerts, and escalation notices are dispatched directly to designated operational staff via secure TLS transmission.
               </p>
             </div>
           </div>

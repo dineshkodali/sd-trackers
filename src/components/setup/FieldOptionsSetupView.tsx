@@ -173,7 +173,7 @@ export const FieldOptionsSetupView: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  // Prompt delete
+  // Confirm delete
   const handleDelete = (opt: CustomFieldOption) => {
     requestConfirmation({
       title: `Delete Option: ${opt.label}`,

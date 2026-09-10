@@ -67,6 +67,7 @@ export const Header: React.FC = () => {
       case 'requests': return 'Requests & Approvals Workflow';
       case 'roles': return 'Staff Roles & Security Permissions';
       case 'setupOptions': return 'Field Options & Setup';
+      case 'notifications': return 'Email Notifications Management';
       case 'settings': return 'Settings & Preferences';
       default: return 'SD Commercial Trackers';
     }

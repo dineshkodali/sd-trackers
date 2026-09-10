@@ -17,7 +17,6 @@ import {
   Layers,
   AlertTriangle,
   Clock,
-  Sparkles,
   Info,
   ChevronRight,
   Filter,
@@ -544,9 +543,9 @@ export const SettingsView: React.FC = () => {
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-[#0d9488]" />
             <div>
-              <h3 className="font-semibold text-xs text-[#0f766e]">High-Speed Operational Data Cache (0ms Instant Lookup &amp; Sync)</h3>
+              <h3 className="font-semibold text-xs text-[#0f766e]">Operational Data Cache &amp; Synchronization</h3>
               <p className="text-[11px] text-[#0f766e]/80">
-                Maintains instant in-memory indices with local storage hydration and background delta sync.
+                Maintains local memory storage and regular background data synchronization.
               </p>
             </div>
           </div>
@@ -556,7 +555,7 @@ export const SettingsView: React.FC = () => {
             className="px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs transition-colors flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
           >
             <RotateCcw className={`w-3.5 h-3.5 ${syncingState || cacheStats.isBackgroundSyncing ? 'animate-spin' : ''}`} />
-            <span>{syncingState || cacheStats.isBackgroundSyncing ? 'Syncing...' : 'Sync Delta Changes'}</span>
+            <span>{syncingState || cacheStats.isBackgroundSyncing ? 'Syncing...' : 'Sync Now'}</span>
           </button>
         </div>
 
@@ -566,7 +565,7 @@ export const SettingsView: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="font-bold text-[#242424]">Properties Cache</span>
               <span className="text-[10px] bg-teal-50 text-[#0f766e] font-bold px-1.5 py-0.5 rounded border border-teal-200">
-                0ms Instant
+                Ready
               </span>
             </div>
             <div className="text-2xl font-bold text-[#0d9488]">{properties.length} <span className="text-xs font-normal text-neutral-500">sites cached</span></div>
@@ -582,7 +581,7 @@ export const SettingsView: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="font-bold text-[#242424]">Users Directory Cache</span>
               <span className="text-[10px] bg-teal-50 text-teal-800 font-bold px-1.5 py-0.5 rounded border border-teal-200">
-                0ms Instant
+                Ready
               </span>
             </div>
             <div className="text-2xl font-bold text-teal-700">{users.length} <span className="text-xs font-normal text-neutral-500">accounts cached</span></div>
@@ -593,10 +592,10 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
-          {/* Delta Engine Status */}
+          {/* Database Sync Status */}
           <div className="p-3 bg-white border border-[#e1dfdd] rounded-xs space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-[#242424]">Delta Engine Sync</span>
+              <span className="font-bold text-[#242424]">Database Sync</span>
               <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-1.5 py-0.5 rounded border border-emerald-200">
                 Active
               </span>
