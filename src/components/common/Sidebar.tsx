@@ -20,7 +20,14 @@ import {
   ChevronDown,
   ChevronRight,
   MessageSquareQuote,
-  ListFilter
+  ListFilter,
+  Bus,
+  ShieldCheck,
+  Stethoscope,
+  UserCheck,
+  PlaneTakeoff,
+  BookOpen,
+  HandHeart
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -37,7 +44,14 @@ export const Sidebar: React.FC = () => {
     spcdRecords,
     users,
     currentUserRole,
-    dataChangeRequests
+    dataChangeRequests,
+    publicTransportRecords,
+    complianceRecords,
+    gpAppointmentRecords,
+    rfaWelfareRecords,
+    dispersalRecords,
+    bookletRecords,
+    vcsAgencies
   } = useApp();
 
   const [openGroups, setOpenGroups] = useState<{ [key: string]: boolean }>({
@@ -280,6 +294,52 @@ export const Sidebar: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* RFA Welfare Checks */}
+          <button
+            id="nav-rfa-welfare"
+            onClick={() => setActivePage('rfaWelfare')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+              isNavActive('rfaWelfare')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <UserCheck className={`w-4 h-4 ${isNavActive('rfaWelfare') ? 'text-white' : 'text-rose-600'}`} />
+              <span>RFA Welfare Checks</span>
+            </div>
+            {rfaWelfareRecords.length > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('rfaWelfare') ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-800'
+              }`}>
+                {rfaWelfareRecords.length}
+              </span>
+            )}
+          </button>
+
+          {/* GP Appointments */}
+          <button
+            id="nav-gp-appointments"
+            onClick={() => setActivePage('gpAppointments')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+              isNavActive('gpAppointments')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Stethoscope className={`w-4 h-4 ${isNavActive('gpAppointments') ? 'text-white' : 'text-blue-600'}`} />
+              <span>GP Appointments</span>
+            </div>
+            {gpAppointmentRecords.length > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('gpAppointments') ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-800'
+              }`}>
+                {gpAppointmentRecords.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Section: Facilities & Welfare */}
@@ -336,6 +396,73 @@ export const Sidebar: React.FC = () => {
               isNavActive('spcd') ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
             }`}>
               {spcdCount}
+            </span>
+          </button>
+
+          {/* Public Transport Tracker */}
+          <button
+            id="nav-transport"
+            onClick={() => setActivePage('publicTransport')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+              isNavActive('publicTransport')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Bus className={`w-4 h-4 ${isNavActive('publicTransport') ? 'text-white' : 'text-teal-700'}`} />
+              <span>Public Transport</span>
+            </div>
+            {publicTransportRecords.length > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('publicTransport') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
+              }`}>
+                {publicTransportRecords.length}
+              </span>
+            )}
+          </button>
+
+          {/* Dispersal Sheet */}
+          <button
+            id="nav-dispersal"
+            onClick={() => setActivePage('dispersal')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+              isNavActive('dispersal')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <PlaneTakeoff className={`w-4 h-4 ${isNavActive('dispersal') ? 'text-white' : 'text-indigo-700'}`} />
+              <span>Dispersal Sheet</span>
+            </div>
+            {dispersalRecords.length > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('dispersal') ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-800'
+              }`}>
+                {dispersalRecords.length}
+              </span>
+            )}
+          </button>
+
+          {/* Booklets to be Collected */}
+          <button
+            id="nav-booklets"
+            onClick={() => setActivePage('booklets')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+              isNavActive('booklets')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <BookOpen className={`w-4 h-4 ${isNavActive('booklets') ? 'text-white' : 'text-amber-700'}`} />
+              <span>Booklet Inventory</span>
+            </div>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+              isNavActive('booklets') ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-800'
+            }`}>
+              {bookletRecords.length}
             </span>
           </button>
 
@@ -414,8 +541,52 @@ export const Sidebar: React.FC = () => {
         {/* Section: Compliance & SharePoint */}
         <div className="space-y-1">
           <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-            Compliance
+            Compliance &amp; Community
           </div>
+
+          {/* SD-Compliance Tracker */}
+          <button
+            id="nav-compliance"
+            onClick={() => setActivePage('compliance')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+              isNavActive('compliance')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck className={`w-4 h-4 ${isNavActive('compliance') ? 'text-white' : 'text-emerald-700'}`} />
+              <span>SD-Compliance Tracker</span>
+            </div>
+            {complianceRecords.length > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('compliance') ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800'
+              }`}>
+                {complianceRecords.length}
+              </span>
+            )}
+          </button>
+
+          {/* SD VCS Support Agencies */}
+          <button
+            id="nav-vcs"
+            onClick={() => setActivePage('vcsDirectory')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+              isNavActive('vcsDirectory')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <HandHeart className={`w-4 h-4 ${isNavActive('vcsDirectory') ? 'text-white' : 'text-teal-700'}`} />
+              <span>SD VCS Directory</span>
+            </div>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+              isNavActive('vcsDirectory') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
+            }`}>
+              {vcsAgencies.length}
+            </span>
+          </button>
 
           <button
             id="nav-reports"

@@ -523,21 +523,21 @@ export const UsersView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header Banner */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs p-5 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-[#242424]">Supabase Users &amp; Role Assignments</h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#f0fdfa] text-[#0d9488] border border-[#5eead4]">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Supabase Managed</span>
-              </span>
-            </div>
-            <p className="text-xs text-[#605e5c] mt-1">
-              User logins and credentials are managed in Supabase. Assign operational roles and hotel property access below.
-            </p>
+      {/* View Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
+        <div>
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-[#0d9488]" />
+            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">Supabase Users &amp; Role Assignments</h1>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4]">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Supabase Managed</span>
+            </span>
           </div>
+          <p className="text-xs text-[#605e5c] mt-0.5">
+            User logins and credentials are managed in Supabase. Assign operational roles and hotel property access below.
+          </p>
+        </div>
 
           <div className="flex items-center gap-2">
             {hasAdminAuthority && (
@@ -606,7 +606,6 @@ export const UsersView: React.FC = () => {
             User logins and accounts are authenticated through Supabase. Use <strong>+ Add User</strong> to register new team members, or click <strong>Assign Role</strong> on any user in the table to modify operational roles (Staff, Employee, Site Manager, Admin, etc.) and assigned hotel properties.
           </div>
         </div>
-      </div>
 
       {/* Main Tab Navigation */}
       <div className="bg-white border border-[#e1dfdd] rounded-xs p-2 shadow-xs flex items-center gap-2">

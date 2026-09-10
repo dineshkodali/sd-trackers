@@ -14,7 +14,14 @@ import {
   Settings, 
   CheckCircle,
   Command,
-  ArrowRight
+  ArrowRight,
+  Bus,
+  ShieldCheck,
+  Stethoscope,
+  UserCheck,
+  PlaneTakeoff,
+  BookOpen,
+  HeartHandshake
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -33,8 +40,15 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
     { id: 'referrals', name: 'Asylum Referrals', category: 'Resident Care', icon: Users, desc: 'Incoming referrals & placement tracking' },
     { id: 'vulnerable', name: 'Vulnerable SUs (SPCD)', category: 'Safeguarding', icon: Shield, desc: 'Safeguarding adults at risk register' },
     { id: 'challenging', name: 'Challenging Behavior SUs', category: 'Safeguarding', icon: AlertTriangle, desc: 'Risk assessments & behavior management' },
+    { id: 'rfaWelfare', name: 'RFA Welfare Checks', category: 'Safeguarding', icon: UserCheck, desc: 'Face-to-face welfare visits & MH tickets' },
+    { id: 'gpAppointments', name: 'GP Appointments', category: 'Safeguarding', icon: Stethoscope, desc: 'Primary healthcare appointments & clinics' },
     { id: 'maintenance', name: 'Maintenance Tracker', category: 'Operations', icon: Wrench, desc: 'Property defects & repair tickets' },
     { id: 'spcd', name: 'SPCD Follow-up Register', category: 'Safeguarding', icon: CheckCircle, desc: 'Special case protection directives' },
+    { id: 'publicTransport', name: 'Public Transport Tracker', category: 'Operations', icon: Bus, desc: 'Travel approvals, distance & circumstances' },
+    { id: 'dispersal', name: 'Dispersal Sheet', category: 'Operations', icon: PlaneTakeoff, desc: 'Departure notices, travel compliance & 2nd phase' },
+    { id: 'booklets', name: 'Booklets to be Collected', category: 'Operations', icon: BookOpen, desc: 'Multi-lingual IA induction booklets inventory' },
+    { id: 'compliance', name: 'SD-Compliance Tracker', category: 'Compliance', icon: ShieldCheck, desc: 'FRA, Gas, Legionella & electrical safety logs' },
+    { id: 'vcsDirectory', name: 'SD VCS Support Agencies', category: 'Compliance', icon: HeartHandshake, desc: 'Local voluntary, food banks & charity directory' },
     { id: 'laundry', name: 'Laundry Operations', category: 'Services', icon: FileText, desc: 'Weekly linen & laundry schedules' },
     { id: 'food', name: 'Hot Food & Catering', category: 'Services', icon: Utensils, desc: 'Meal distribution & dietary logging' },
     { id: 'escalations', name: 'Escalations & Incidents', category: 'Safety', icon: AlertTriangle, desc: 'Critical incident reporting' },

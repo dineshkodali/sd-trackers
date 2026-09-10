@@ -320,17 +320,17 @@ export const PropertiesView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Top Banner & Actions */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* View Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
         <div>
           <div className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-[#0d9488]" />
-            <h2 className="text-lg font-bold text-[#242424]">Properties Directory</h2>
-            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-bold px-2 py-0.5 rounded">
+            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">Properties Directory</h1>
+            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
               {visibleProperties.length} Properties
             </span>
           </div>
-          <p className="text-xs text-[#605e5c] mt-1">
+          <p className="text-xs text-[#605e5c] mt-0.5">
             Official accommodation list with Property IDs (PIDs), resident capacity, and lead officers.
           </p>
         </div>

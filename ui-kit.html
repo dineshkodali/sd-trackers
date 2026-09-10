@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SD Commercial | UI Design System &amp; Component Inventory</title>
+  <meta name="description" content="Pure UI Design Kit and Component Directory for SD Commercial applications. Documents all design tokens, UI components, states, styling rules, and where each UI element is used across the application without domain data." />
+  
+  <!-- Font Stacks -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ==========================================================================
+       SD COMMERCIAL UI DESIGN SYSTEM TOKENS
+       Pure UI Tokens, CSS Custom Properties, and Structural Dimensions
+       ========================================================================== */
+    :root {
+      /* Brand Color Tokens */
+      --sd-teal-50: #f0fdfa;
+      --sd-teal-100: #ccfbf1;
+      --sd-teal-200: #99f6e4;
+      --sd-teal-300: #5eead4;
+      --sd-teal-400: #2dd4bf;
+      --sd-teal-500: #14b8a6;
+      --sd-teal-600: #0d9488; /* Core Brand Primary */
+      --sd-teal-700: #0f766e; /* Hover & Emphasized Text */
+      --sd-teal-800: #115e59; /* Logo Dark Accent & Headings */
+      --sd-teal-900: #134e4a;
+      --sd-teal-950: #042f2e;
+
+      /* Neutral Surface Tokens */
+      --sd-neutral-canvas: #f3f2f1;       /* App Viewport Background */
+      --sd-neutral-sidebar: #fbfbfa;      /* Static Navigation Sidebar */
+      --sd-neutral-card: #ffffff;         /* Content Panels & Cards */
+      --sd-neutral-subtle: #faf9f8;       /* Alternating Rows & Summary Boxes */
+      --sd-neutral-hover: #edebe9;        /* Hover States */
+      --sd-neutral-border: #e1dfdd;       /* Structural Container Borders */
+      --sd-neutral-border-subtle: #edebe9;/* Inner Separators */
+      --sd-neutral-border-input: #8a8886; /* Form Controls & Outlines */
+      --sd-neutral-text-dim: #8c8c8c;     /* Category Captions */
+      --sd-neutral-text-muted: #605e5c;   /* Labels, Headers, Hints */
+      --sd-neutral-text-body: #323130;    /* Primary Reading Content */
+      --sd-neutral-text-headings: #242424;/* Section & Display Titles */
+      --sd-neutral-black: #111111;
+
+      /* Semantic Status Tokens */
+      --sd-danger-core: #a4262c;
+      --sd-danger-hover: #8f1f25;
+      --sd-danger-dark: #7f1d1d;
+      --sd-danger-text: #a80000;
+      --sd-danger-bg: #fdf3f2;
+      --sd-danger-bg-subtle: #fef2f2;
+      --sd-danger-border: #f5b8b5;
+      --sd-danger-border-subtle: #fecaca;
+
+      --sd-warning-core: #d83b01;
+      --sd-warning-amber: #ca8a04;
+      --sd-warning-orange: #f59e0b;
+      --sd-warning-bg: #fffbeb;
+      --sd-warning-bg-alt: #fef9c3;
+      --sd-warning-border: #fde68a;
+      --sd-warning-text: #92400e;
+      --sd-warning-dark: #78350f;
+
+      --sd-success-core: #107c10;
+      --sd-success-emerald: #059669;
+      --sd-success-dark: #0f766e;
+      --sd-success-green: #16a34a;
+      --sd-success-bg: #ecfdf5;
+      --sd-success-bg-subtle: #f0fdf4;
+      --sd-success-border: #a7f3d0;
+      --sd-success-text: #065f46;
+
+      --sd-info-core: #0078d4;
+      --sd-info-sky: #0284c7;
+      --sd-info-blue: #2563eb;
+      --sd-info-bg: #f3f8fd;
+      --sd-info-bg-subtle: #eff6ff;
+      --sd-info-border: #71afe5;
+      --sd-info-text: #1e40af;
+
+      --sd-purple-core: #7c3aed;
+      --sd-purple-bg: #faf5ff;
+      --sd-purple-border: #e9d5ff;
+      --sd-purple-text: #6b21a8;
+
+      /* Typography Font Stacks */
+      --sd-font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --sd-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+      /* Structural Radii */
+      --sd-radius-xs: 2px;
+      --sd-radius-sm: 4px;
+      --sd-radius-md: 6px;
+      --sd-radius-lg: 8px;
+      --sd-radius-xl: 12px;
+      --sd-radius-full: 9999px;
+
+      /* Elevation Shadows */
+      --sd-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --sd-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      --sd-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --sd-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --sd-shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Base Reset */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--sd-font-family);
+      background-color: var(--sd-neutral-canvas);
+      color: var(--sd-neutral-text-body);
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Scrollbars */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #d1d5db transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #d1d5db;
+      border-radius: 9999px;
+    }
+
+    /* Shell Layout */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .top-header {
+      height: 64px;
+      background-color: #ffffff;
+      border-bottom: 1px solid var(--sd-neutral-border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--sd-shadow-xs);
+    }
+
+    .brand-logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sd-emblem {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--sd-radius-xs);
+      box-shadow: var(--sd-shadow-xs);
+      overflow: hidden;
+      font-weight: 900;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .sd-emblem-s {
+      position: absolute;
+      inset: 0;
+      background-color: var(--sd-teal-600);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 900;
+      clip-path: polygon(0 0, 70% 0, 40% 100%, 0 100%);
+    }
+    .sd-emblem-d {
+      position: absolute;
+      inset: 0;
+      background-color: var(--sd-teal-800);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 900;
+      padding-left: 8px;
+      clip-path: polygon(70% 0, 100% 0, 100% 100%, 40% 100%);
+    }
+    .sd-emblem-label {
+      position: relative;
+      z-index: 10;
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 15px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Main Container */
+    .main-body {
+      display: flex;
+      flex: 1;
+      min-height: calc(100vh - 64px);
+    }
+
+    /* Sidebar Navigation */
+    .kit-sidebar {
+      width: 280px;
+      background-color: var(--sd-neutral-sidebar);
+      border-right: 1px solid var(--sd-neutral-border);
+      padding: 16px 12px;
+      position: sticky;
+      top: 64px;
+      height: calc(100vh - 64px);
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--sd-neutral-text-dim);
+      padding: 10px 10px 4px 10px;
+    }
+
+    .sidebar-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: var(--sd-radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--sd-neutral-text-body);
+      text-decoration: none;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .sidebar-nav-link:hover {
+      background-color: var(--sd-neutral-hover);
+      color: var(--sd-neutral-black);
+    }
+    .sidebar-nav-link.active {
+      background-color: var(--sd-teal-600);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: var(--sd-shadow-xs);
+    }
+    .sidebar-nav-link svg {
+      width: 15px;
+      height: 15px;
+      stroke: var(--sd-teal-600);
+      stroke-width: 2;
+      fill: none;
+      flex-shrink: 0;
+    }
+    .sidebar-nav-link.active svg {
+      stroke: #ffffff;
+    }
+
+    /* Main Content */
+    .kit-content {
+      flex: 1;
+      padding: 28px 36px;
+      max-width: 1480px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .kit-section {
+      margin-bottom: 56px;
+      scroll-margin-top: 80px;
+    }
+
+    .section-header {
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--sd-neutral-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--sd-neutral-text-headings);
+      letter-spacing: -0.3px;
+    }
+    .section-desc {
+      font-size: 12px;
+      color: var(--sd-neutral-text-muted);
+      margin-top: 3px;
+    }
+
+    /* UI Cards */
+    .ui-card {
+      background-color: var(--sd-neutral-card);
+      border: 1px solid var(--sd-neutral-border);
+      border-radius: var(--sd-radius-xs);
+      padding: 22px;
+      box-shadow: var(--sd-shadow-xs);
+      margin-bottom: 24px;
+    }
+
+    .ui-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--sd-neutral-text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Mapping Tables */
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+      margin-top: 10px;
+    }
+    .spec-table th {
+      background-color: var(--sd-neutral-subtle);
+      padding: 9px 12px;
+      font-weight: 600;
+      color: var(--sd-neutral-text-muted);
+      border-bottom: 1px solid var(--sd-neutral-border);
+      white-space: nowrap;
+    }
+    .spec-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--sd-neutral-border-subtle);
+      color: var(--sd-neutral-text-body);
+      vertical-align: middle;
+    }
+    .spec-table tr:hover td {
+      background-color: var(--sd-info-bg);
+    }
+    .spec-table code {
+      font-family: var(--sd-font-mono);
+      font-size: 11px;
+      background: #f1f5f9;
+      padding: 2px 5px;
+      border-radius: 2px;
+      color: var(--sd-teal-800);
+      font-weight: 600;
+    }
+
+    /* Swatches */
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .color-swatch {
+      background: #ffffff;
+      border: 1px solid var(--sd-neutral-border);
+      border-radius: var(--sd-radius-xs);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .color-swatch:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--sd-shadow-md);
+    }
+    .color-preview {
+      height: 48px;
+      width: 100%;
+    }
+    .color-info {
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+    .color-name {
+      font-weight: 600;
+      color: var(--sd-neutral-text-headings);
+    }
+    .color-hex {
+      font-family: var(--sd-font-mono);
+      font-size: 10px;
+      color: var(--sd-neutral-text-muted);
+      margin-top: 2px;
+    }
+
+    /* Generic UI Buttons */
+    .sd-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--sd-radius-xs);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+      font-family: var(--sd-font-family);
+      white-space: nowrap;
+    }
+    .sd-btn-sm {
+      padding: 4px 10px;
+      font-size: 11px;
+    }
+    .sd-btn-lg {
+      padding: 10px 20px;
+      font-size: 13px;
+    }
+
+    .sd-btn-primary {
+      background-color: var(--sd-teal-600);
+      color: #ffffff;
+      box-shadow: var(--sd-shadow-xs);
+    }
+    .sd-btn-primary:hover {
+      background-color: var(--sd-teal-700);
+    }
+
+    .sd-btn-secondary {
+      background-color: #ffffff;
+      color: var(--sd-neutral-text-body);
+      border-color: var(--sd-neutral-border-input);
+    }
+    .sd-btn-secondary:hover {
+      background-color: var(--sd-neutral-hover);
+    }
+
+    .sd-btn-danger {
+      background-color: var(--sd-danger-core);
+      color: #ffffff;
+    }
+    .sd-btn-danger:hover {
+      background-color: var(--sd-danger-hover);
+    }
+
+    .sd-btn-danger-soft {
+      background-color: var(--sd-danger-bg);
+      color: var(--sd-danger-text);
+      border-color: var(--sd-danger-border);
+    }
+    .sd-btn-danger-soft:hover {
+      background-color: #fae7e6;
+    }
+
+    .sd-btn-teal-soft {
+      background-color: var(--sd-teal-50);
+      color: var(--sd-teal-700);
+      border-color: var(--sd-teal-200);
+    }
+    .sd-btn-teal-soft:hover {
+      background-color: var(--sd-teal-100);
+    }
+
+    .sd-btn-emerald {
+      background-color: #ecfdf5;
+      color: #065f46;
+      border-color: #6ee7b7;
+    }
+
+    /* Split Export Button */
+    .split-btn {
+      display: inline-flex;
+      align-items: stretch;
+      border-radius: var(--sd-radius-xs);
+      overflow: hidden;
+      box-shadow: var(--sd-shadow-xs);
+    }
+    .split-btn-main {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background-color: var(--sd-info-bg);
+      color: var(--sd-teal-700);
+      border: 1px solid var(--sd-info-border);
+      border-right: none;
+      cursor: pointer;
+      font-family: var(--sd-font-family);
+    }
+    .split-btn-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 8px;
+      background-color: var(--sd-info-bg);
+      color: var(--sd-teal-700);
+      border: 1px solid var(--sd-info-border);
+      cursor: pointer;
+      font-family: var(--sd-font-family);
+    }
+
+    /* Generic Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: var(--sd-radius-xs);
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    .badge-critical {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+    .badge-high {
+      background-color: #fff1f2;
+      color: #be123c;
+      border-color: #fecdd3;
+    }
+    .badge-medium {
+      background-color: #fffbeb;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+    .badge-low {
+      background-color: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+
+    .badge-open {
+      background-color: #fefce8;
+      color: #854d0e;
+      border-color: #fef08a;
+    }
+    .badge-in-progress {
+      background-color: #eff6ff;
+      color: #1e40af;
+      border-color: #bfdbfe;
+    }
+    .badge-completed {
+      background-color: #f0fdf4;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+    .badge-pending {
+      background-color: #f5f3ff;
+      color: #5b21b6;
+      border-color: #ddd6fe;
+    }
+    .badge-archived {
+      background-color: #f3f4f6;
+      color: #4b5563;
+      border-color: #d1d5db;
+    }
+
+    /* Generic Form Controls */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--sd-neutral-text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .form-input, .form-select, .form-textarea {
+      padding: 7px 10px;
+      border: 1px solid var(--sd-neutral-border-input);
+      border-radius: var(--sd-radius-xs);
+      background-color: #ffffff;
+      color: var(--sd-neutral-text-body);
+      font-size: 12px;
+      font-family: var(--sd-font-family);
+      outline: none;
+      width: 100%;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: 2px solid var(--sd-info-border);
+      border-color: var(--sd-info-core);
+    }
+    .form-input:disabled {
+      background-color: var(--sd-neutral-subtle);
+      cursor: not-allowed;
+      opacity: 0.8;
+    }
+
+    /* Generic Metric Card */
+    .stat-card {
+      background: #ffffff;
+      border: 1px solid var(--sd-teal-300);
+      border-radius: var(--sd-radius-xs);
+      padding: 16px;
+      box-shadow: var(--sd-shadow-xs);
+      position: relative;
+    }
+    .stat-card-danger {
+      border-color: #fecaca;
+    }
+    .stat-card-neutral {
+      border-color: #d2d0ce;
+    }
+
+    /* Code Snippet Box */
+    .code-box {
+      background-color: #0f172a;
+      color: #f8fafc;
+      border-radius: var(--sd-radius-xs);
+      padding: 14px;
+      font-family: var(--sd-font-mono);
+      font-size: 11px;
+      line-height: 1.6;
+      overflow-x: auto;
+      position: relative;
+      margin-top: 8px;
+      border: 1px solid #334155;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 3px 8px;
+      font-size: 10px;
+      background-color: #334155;
+      color: #f1f5f9;
+      border: none;
+      border-radius: var(--sd-radius-xs);
+      cursor: pointer;
+      font-family: var(--sd-font-family);
+      font-weight: 600;
+    }
+    .copy-btn:hover {
+      background-color: var(--sd-teal-600);
+    }
+
+    /* Toast */
+    #copy-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background-color: #1e293b;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: var(--sd-radius-xs);
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: var(--sd-shadow-xl);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    #copy-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- Top Navigation Header -->
+  <header class="top-header">
+    <div class="brand-logo-area">
+      <div class="sd-emblem" title="SD Logo Geometry">
+        <div class="sd-emblem-s">S</div>
+        <div class="sd-emblem-d">D</div>
+        <span class="sd-emblem-label">SD</span>
+      </div>
+      <div>
+        <div style="font-size: 15px; font-weight: 900; color: var(--sd-teal-800);">SD COMMERCIAL</div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--sd-teal-600); text-transform: uppercase;">UI Component &amp; Token Directory</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="sd-btn sd-btn-primary sd-btn-sm" onclick="copySnippet('css-tokens-code')">Copy All Tokens</button>
+      <button class="sd-btn sd-btn-secondary sd-btn-sm" onclick="downloadTokensJson()">Download Tokens JSON</button>
+    </div>
+  </header>
+
+  <div class="main-body">
+    <!-- Navigation Sidebar -->
+    <aside class="kit-sidebar">
+      <div class="sidebar-section-label">1. UI Inventory &amp; Mapping</div>
+      <a class="sidebar-nav-link active" href="#ui-inventory">
+        <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"></path></svg>
+        <span>What We Used &amp; Where</span>
+      </a>
+      <a class="sidebar-nav-link" href="#module-layout-mapping">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+        <span>Module Layout Patterns</span>
+      </a>
+
+      <div class="sidebar-section-label">2. Core Design Tokens</div>
+      <a class="sidebar-nav-link" href="#color-tokens">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="m4.93 4.93 4.24 4.24"></path><path d="m14.83 9.17 4.24-4.24"></path><path d="m14.83 14.83 4.24 4.24"></path><path d="m9.17 14.83-4.24 4.24"></path></svg>
+        <span>Color Palette Tokens</span>
+      </a>
+      <a class="sidebar-nav-link" href="#typography-tokens">
+        <svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+        <span>Typography Scale</span>
+      </a>
+
+      <div class="sidebar-section-label">3. Component Standards</div>
+      <a class="sidebar-nav-link" href="#button-specs">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="12" x2="15" y2="12"></line></svg>
+        <span>Buttons &amp; Triggers</span>
+      </a>
+      <a class="sidebar-nav-link" href="#form-specs">
+        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <span>Form Fields &amp; Controls</span>
+      </a>
+      <a class="sidebar-nav-link" href="#badge-specs">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+        <span>Badges, Chips &amp; Pills</span>
+      </a>
+      <a class="sidebar-nav-link" href="#container-specs">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+        <span>Cards, Modals &amp; Tables</span>
+      </a>
+
+      <div class="sidebar-section-label">4. Code Implementation</div>
+      <a class="sidebar-nav-link" href="#code-export">
+        <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        <span>CSS Variables &amp; Tailwind</span>
+      </a>
+    </aside>
+
+    <!-- Content Area -->
+    <main class="kit-content">
+
+      <!-- SECTION 1: WHAT WE USED & WHERE WE USED IT -->
+      <section id="ui-inventory" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">UI Inventory: What We Used &amp; Where We Used It (By UI Modules &amp; Blocks)</h2>
+            <p class="section-desc">Master catalog mapping each design element, its visual style, token values, exact UI layout blocks, and functional purpose.</p>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">Core Visual Elements &amp; Application Usage Matrix</div>
+          
+          <table class="spec-table">
+            <thead>
+              <tr>
+                <th>UI Element Name</th>
+                <th>Visual Style &amp; Specifications</th>
+                <th>CSS / Tailwind Classes</th>
+                <th>Where Used (UI Modules &amp; Blocks)</th>
+                <th>What Used For (UI Function)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Primary Action Button</strong></td>
+                <td>Background: <code>#0d9488</code>, Hover: <code>#0f766e</code>, Text: White, Radius: 2px, Font: 12px/600</td>
+                <td><code>bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs px-3 py-1.5 font-semibold text-xs shadow-xs</code></td>
+                <td><strong>View Header Block</strong>, <strong>Modal Action Footer Block</strong></td>
+                <td>Primary Call To Action (CTA) &amp; Form Submission</td>
+              </tr>
+              <tr>
+                <td><strong>Secondary Outline Button</strong></td>
+                <td>Background: White, Border: <code>#8a8886</code>, Hover: <code>#edebe9</code>, Text: <code>#323130</code></td>
+                <td><code>bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs font-semibold text-xs px-3 py-1.5</code></td>
+                <td><strong>Filter Toolbar Block</strong>, <strong>Modal Action Footer Block</strong>, <strong>Data Table Action Cell</strong></td>
+                <td>Secondary Action, Filter Reset, Dialog Cancel</td>
+              </tr>
+              <tr>
+                <td><strong>Danger Action Button</strong></td>
+                <td>Background: <code>#a4262c</code>, Hover: <code>#8f1f25</code>, Text: White, Radius: 2px</td>
+                <td><code>bg-[#a4262c] hover:bg-[#8f1f25] text-white rounded-xs font-semibold text-xs px-3 py-1.5</code></td>
+                <td><strong>Destructive Modal Footer Block</strong>, <strong>Action Menu Dropdown</strong></td>
+                <td>Destructive Action &amp; Permanent Deletion Trigger</td>
+              </tr>
+              <tr>
+                <td><strong>Soft Danger Button</strong></td>
+                <td>Background: <code>#fdf3f2</code>, Border: <code>#f5b8b5</code>, Hover: <code>#fae7e6</code>, Text: <code>#a80000</code></td>
+                <td><code>bg-[#fdf3f2] hover:bg-[#fae7e6] text-[#a80000] border border-[#f5b8b5] rounded-xs font-medium text-[11px]</code></td>
+                <td><strong>User Profile Dropdown Menu Block</strong></td>
+                <td>Warning Action &amp; Session Logout Trigger</td>
+              </tr>
+              <tr>
+                <td><strong>Split Export Button</strong></td>
+                <td>Two-part button: Main action (PDF) + toggle chevron for dropdown (CSV), Blue/Teal tint</td>
+                <td><code>bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0f766e] border border-[#71afe5] rounded-xs font-semibold text-xs</code></td>
+                <td><strong>Filter Toolbar Block</strong>, <strong>View Header Action Group</strong></td>
+                <td>Multi-Format Export Controller (PDF &amp; CSV)</td>
+              </tr>
+              <tr>
+                <td><strong>Subnav Tab Pill Switcher</strong></td>
+                <td>Container: <code>#edebe9</code>, Active pill: White card with shadow, Inactive: <code>#605e5c</code></td>
+                <td><code>bg-[#edebe9] p-0.5 rounded-xs &rarr; active: bg-white text-[#0f766e] shadow-xs font-semibold</code></td>
+                <td><strong>View Header Sub-Navigation Block</strong></td>
+                <td>Tabbed View Switcher (Primary View / Archive View)</td>
+              </tr>
+              <tr>
+                <td><strong>Text Input &amp; Selects</strong></td>
+                <td>Border: <code>#8a8886</code>, Focus Ring: <code>#71afe5</code>, Background: White, Text: <code>#323130</code></td>
+                <td><code>border border-[#8a8886] rounded-xs p-2 text-xs bg-white focus:outline-2 focus:outline-[#71afe5]</code></td>
+                <td><strong>Form Block</strong>, <strong>Modal Dialog Body</strong>, <strong>Filter Toolbar Block</strong></td>
+                <td>Data Entry, Search Query Input, Option Selection</td>
+              </tr>
+              <tr>
+                <td><strong>Locked Field State</strong></td>
+                <td>Background: <code>#faf9f8</code>, Opacity: 0.8, Padlock icon + amber tag</td>
+                <td><code>bg-[#faf9f8] cursor-not-allowed opacity-80 border border-[#8a8886]</code></td>
+                <td><strong>Form Block</strong>, <strong>Filter Toolbar Block</strong></td>
+                <td>Permission-Restricted / Read-Only Field Constraint</td>
+              </tr>
+              <tr>
+                <td><strong>Filter Toolbar Container</strong></td>
+                <td>Background: White, Border: <code>#e1dfdd</code>, Radius: 2px, Padding: 14px, Flex-wrap layout</td>
+                <td><code>bg-white border border-[#e1dfdd] shadow-xs rounded-xs mb-4 p-3.5</code></td>
+                <td><strong>View Top Control Block</strong></td>
+                <td>Horizontal Filter &amp; Search Controls Container</td>
+              </tr>
+              <tr>
+                <td><strong>Data Table Header</strong></td>
+                <td>Background: <code>#faf9f8</code>, Border-bottom: <code>#edebe9</code>, Text: <code>#605e5c</code>, Font: 12px/600</td>
+                <td><code>bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold text-xs select-none</code></td>
+                <td><strong>Data Table Container Block (Header Row)</strong></td>
+                <td>Column Titles, Sorting Triggers &amp; Indicators</td>
+              </tr>
+              <tr>
+                <td><strong>Data Table Row</strong></td>
+                <td>Border-bottom: <code>#edebe9</code>, Hover: <code>#f3f8fd</code>, Text: <code>#323130</code>, Font: 12px</td>
+                <td><code>border-b border-[#edebe9] hover:bg-[#f3f8fd] transition-colors text-xs text-[#323130]</code></td>
+                <td><strong>Data Table Container Block (Body Rows)</strong></td>
+                <td>Record Row Display with Interactive Hover Highlight</td>
+              </tr>
+              <tr>
+                <td><strong>Table Pagination Bar</strong></td>
+                <td>Background: <code>#faf9f8</code>, Border-top: <code>#edebe9</code>, Flex justify-between, Font: 11px</td>
+                <td><code>px-4 py-2.5 border-t border-[#edebe9] bg-[#faf9f8] flex items-center justify-between text-xs</code></td>
+                <td><strong>Data Table Container Block (Footer Bar)</strong></td>
+                <td>Pagination Controls &amp; Total Records Counter</td>
+              </tr>
+              <tr>
+                <td><strong>Metric KPI Card</strong></td>
+                <td>Background: White, Border: <code>#5eead4</code>, Hover: <code>#0d9488</code> + shadow, Radius: 2px</td>
+                <td><code>bg-white border border-[#5eead4] rounded-xs p-3.5 shadow-xs hover:shadow-md transition-all</code></td>
+                <td><strong>Dashboard Metric Grid Block</strong></td>
+                <td>KPI Metric Display (Number, Icon, Sub-Metric, Link)</td>
+              </tr>
+              <tr>
+                <td><strong>Standard Confirmation Modal</strong></td>
+                <td>Backdrop: <code>rgba(0,0,0,0.4) blur(2px)</code>, Header: <code>#f3f8fd</code>, Border: <code>#e1dfdd</code></td>
+                <td><code>bg-white rounded shadow-2xl border border-[#e1dfdd] max-w-lg</code></td>
+                <td><strong>Application Modal Overlay Layer</strong></td>
+                <td>Non-Destructive Action Verification Dialog</td>
+              </tr>
+              <tr>
+                <td><strong>Strict Danger Audit Modal</strong></td>
+                <td>Header: <code>#fef2f2</code>, Border: <code>#fecaca</code>, Text: <code>#991b1b</code>, Audit Warning Box</td>
+                <td><code>bg-red-50/80 border-b border-red-200 text-red-900 with alert-warning notice</code></td>
+                <td><strong>Application Modal Overlay Layer</strong></td>
+                <td>High-Risk Destructive Action Verification Dialog</td>
+              </tr>
+              <tr>
+                <td><strong>Global Sticky Top Header</strong></td>
+                <td>Height: 64px, Background: White, Border-bottom: <code>#e1dfdd</code>, Z-index: 30</td>
+                <td><code>h-16 bg-white border-b border-[#e1dfdd] px-6 flex items-center justify-between sticky top-0</code></td>
+                <td><strong>Application Shell (Top Fixed Block)</strong></td>
+                <td>Global App Header (Logo, Context, Status, Menus)</td>
+              </tr>
+              <tr>
+                <td><strong>Static Navigation Sidebar</strong></td>
+                <td>Width: 256px (w-64), Background: <code>#fbfbfa</code>, Border-right: <code>#e5e5e5</code></td>
+                <td><code>w-64 bg-[#fbfbfa] border-r border-[#e5e5e5] h-full sticky top-0 left-0</code></td>
+                <td><strong>Application Shell (Left Static Block)</strong></td>
+                <td>App Navigation (Menu Links, Accordion Groups, Badges)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 2: MODULE LAYOUT PATTERNS -->
+      <section id="module-layout-mapping" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Module UI Layout Patterns: Where UI Is Placed</h2>
+            <p class="section-desc">Structural blueprints defining how UI components are arranged across different view layouts.</p>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">Three Standard Screen Layout Patterns</div>
+
+          <table class="spec-table">
+            <thead>
+              <tr>
+                <th>Pattern Name</th>
+                <th>UI Structure &amp; Layout Anatomy</th>
+                <th>Components Comprising Pattern</th>
+                <th>Layout Modules Using This Pattern</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Pattern A: Register / Data Table View</strong></td>
+                <td>
+                  1. View Header (Display Title + Subtitle + Subnav Tab Pill + Primary Action CTA + Export Dropdown)<br/>
+                  2. Filter Toolbar (Dropdown Filters, Period Selector, Quick Search Input, Reset, Export)<br/>
+                  3. Full-width Data Table (Sortable column headers, badge columns, monospace code cells, action column)<br/>
+                  4. Pagination Footer (Count summary + Prev/Next buttons)
+                </td>
+                <td>
+                  <code>Header</code>, <code>tab-pill-group</code>, <code>sd-btn-primary</code>, <code>split-btn</code>, <code>filter-bar</code>, <code>sd-table</code>, <code>badge</code>, <code>table-pagination</code>
+                </td>
+                <td>
+                  Listing &amp; Data Grid Modules (Primary Record Lists, History Registers, Document Inventories)
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Pattern B: Dashboard &amp; Analytics View</strong></td>
+                <td>
+                  1. View Header (Display Title + Filter toggle + Quick Action CTA + Export)<br/>
+                  2. 3-Column Metric KPI Grid (Stat cards with 32px values, icon boxes, sub-metrics, and arrow footer)<br/>
+                  3. 2-Column Operational Grid (Progress indicator cards, operational status monitors)<br/>
+                  4. Multi-column Analytics Chart Grid (Bar charts, pie distribution, historical trendlines)
+                </td>
+                <td>
+                  <code>stat-card</code>, <code>badge-pulse</code>, <code>split-btn</code>, <code>filter-bar</code>, <code>progress-bar</code>, <code>ui-card</code>
+                </td>
+                <td>
+                  Summary &amp; Analytics Modules (Executive Overviews, Operational Status Grids)
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Pattern C: Governance &amp; Administration View</strong></td>
+                <td>
+                  1. View Header (Display Title + Admin action triggers)<br/>
+                  2. Summary Alert Banner (System status, sync timestamps)<br/>
+                  3. Configuration Card / Form Grid (Toggle switches, select menus, input groups, checkbox matrices)<br/>
+                  4. Bottom Action Footer (Save preferences, restore backup, sync trigger)
+                </td>
+                <td>
+                  <code>alert-box</code>, <code>form-grid</code>, <code>form-group</code>, <code>toggle-switch</code>, <code>checkbox-grid</code>, <code>sd-btn-primary</code>
+                </td>
+                <td>
+                  Administrative &amp; Configuration Modules (Access Matrices, System Preferences, Option Setup)
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 3: CORE DESIGN TOKENS -->
+      <section id="color-tokens" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Color Palette Tokens</h2>
+            <p class="section-desc">Raw color tokens with hex codes, RGB channels, and role definitions. Click any swatch to copy its HEX value.</p>
+          </div>
+          <button class="sd-btn sd-btn-secondary sd-btn-sm" onclick="copySnippet('css-tokens-code')">Copy :root CSS</button>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">Brand Teal Scale</div>
+          <div class="palette-grid">
+            <div class="color-swatch" onclick="copyColor('#f0fdfa')">
+              <div class="color-preview" style="background-color: #f0fdfa; border-bottom: 1px solid #e2e8f0;"></div>
+              <div class="color-info"><div class="color-name">Teal 50</div><div class="color-hex">#f0fdfa</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#ccfbf1')">
+              <div class="color-preview" style="background-color: #ccfbf1;"></div>
+              <div class="color-info"><div class="color-name">Teal 100</div><div class="color-hex">#ccfbf1</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#99f6e4')">
+              <div class="color-preview" style="background-color: #99f6e4;"></div>
+              <div class="color-info"><div class="color-name">Teal 200</div><div class="color-hex">#99f6e4</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#5eead4')">
+              <div class="color-preview" style="background-color: #5eead4;"></div>
+              <div class="color-info"><div class="color-name">Teal 300</div><div class="color-hex">#5eead4</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#14b8a6')">
+              <div class="color-preview" style="background-color: #14b8a6;"></div>
+              <div class="color-info"><div class="color-name">Teal 500</div><div class="color-hex">#14b8a6</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#0d9488')">
+              <div class="color-preview" style="background-color: #0d9488;"></div>
+              <div class="color-info"><div class="color-name">Teal 600 (Core)</div><div class="color-hex">#0d9488</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#0f766e')">
+              <div class="color-preview" style="background-color: #0f766e;"></div>
+              <div class="color-info"><div class="color-name">Teal 700 (Hover)</div><div class="color-hex">#0f766e</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#115e59')">
+              <div class="color-preview" style="background-color: #115e59;"></div>
+              <div class="color-info"><div class="color-name">Teal 800 (Dark)</div><div class="color-hex">#115e59</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#134e4a')">
+              <div class="color-preview" style="background-color: #134e4a;"></div>
+              <div class="color-info"><div class="color-name">Teal 900</div><div class="color-hex">#134e4a</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">Commercial &amp; Fluent Surface Neutrals</div>
+          <div class="palette-grid">
+            <div class="color-swatch" onclick="copyColor('#f3f2f1')">
+              <div class="color-preview" style="background-color: #f3f2f1; border-bottom: 1px solid #d1d5db;"></div>
+              <div class="color-info"><div class="color-name">Canvas</div><div class="color-hex">#f3f2f1</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#fbfbfa')">
+              <div class="color-preview" style="background-color: #fbfbfa; border-bottom: 1px solid #d1d5db;"></div>
+              <div class="color-info"><div class="color-name">Sidebar</div><div class="color-hex">#fbfbfa</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#faf9f8')">
+              <div class="color-preview" style="background-color: #faf9f8; border-bottom: 1px solid #d1d5db;"></div>
+              <div class="color-info"><div class="color-name">Subtle Row</div><div class="color-hex">#faf9f8</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#edebe9')">
+              <div class="color-preview" style="background-color: #edebe9;"></div>
+              <div class="color-info"><div class="color-name">Hover</div><div class="color-hex">#edebe9</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#e1dfdd')">
+              <div class="color-preview" style="background-color: #e1dfdd;"></div>
+              <div class="color-info"><div class="color-name">Border</div><div class="color-hex">#e1dfdd</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#8a8886')">
+              <div class="color-preview" style="background-color: #8a8886;"></div>
+              <div class="color-info"><div class="color-name">Input Border</div><div class="color-hex">#8a8886</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#605e5c')">
+              <div class="color-preview" style="background-color: #605e5c;"></div>
+              <div class="color-info"><div class="color-name">Muted Text</div><div class="color-hex">#605e5c</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#323130')">
+              <div class="color-preview" style="background-color: #323130;"></div>
+              <div class="color-info"><div class="color-name">Body Text</div><div class="color-hex">#323130</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#242424')">
+              <div class="color-preview" style="background-color: #242424;"></div>
+              <div class="color-info"><div class="color-name">Headings</div><div class="color-hex">#242424</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">Semantic Status Colors</div>
+          <div class="palette-grid">
+            <div class="color-swatch" onclick="copyColor('#a4262c')">
+              <div class="color-preview" style="background-color: #a4262c;"></div>
+              <div class="color-info"><div class="color-name">Danger Core</div><div class="color-hex">#a4262c</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#fdf3f2')">
+              <div class="color-preview" style="background-color: #fdf3f2; border-bottom: 1px solid #fca5a5;"></div>
+              <div class="color-info"><div class="color-name">Danger Soft</div><div class="color-hex">#fdf3f2</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#d83b01')">
+              <div class="color-preview" style="background-color: #d83b01;"></div>
+              <div class="color-info"><div class="color-name">Warning Core</div><div class="color-hex">#d83b01</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#fffbeb')">
+              <div class="color-preview" style="background-color: #fffbeb; border-bottom: 1px solid #fde68a;"></div>
+              <div class="color-info"><div class="color-name">Warning Soft</div><div class="color-hex">#fffbeb</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#107c10')">
+              <div class="color-preview" style="background-color: #107c10;"></div>
+              <div class="color-info"><div class="color-name">Success Core</div><div class="color-hex">#107c10</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#ecfdf5')">
+              <div class="color-preview" style="background-color: #ecfdf5; border-bottom: 1px solid #a7f3d0;"></div>
+              <div class="color-info"><div class="color-name">Success Soft</div><div class="color-hex">#ecfdf5</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#0078d4')">
+              <div class="color-preview" style="background-color: #0078d4;"></div>
+              <div class="color-info"><div class="color-name">Info Blue</div><div class="color-hex">#0078d4</div></div>
+            </div>
+            <div class="color-swatch" onclick="copyColor('#7c3aed')">
+              <div class="color-preview" style="background-color: #7c3aed;"></div>
+              <div class="color-info"><div class="color-name">Purple Core</div><div class="color-hex">#7c3aed</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4: TYPOGRAPHY SCALE -->
+      <section id="typography-tokens" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Typography Scale &amp; Rules</h2>
+            <p class="section-desc">Type specifications mapping font size, weight, line-height, letter-spacing, and where they are used.</p>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <table class="spec-table">
+            <thead>
+              <tr>
+                <th>Level / Style</th>
+                <th>Font Size</th>
+                <th>Weight</th>
+                <th>Line Height</th>
+                <th>Tracking</th>
+                <th>Where Used in App</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Display H1</strong></td>
+                <td><code>24px (1.5rem)</code></td>
+                <td>700 (Bold)</td>
+                <td><code>32px</code></td>
+                <td><code>-0.4px</code></td>
+                <td>Page titles at the top of each view</td>
+              </tr>
+              <tr>
+                <td><strong>Section H2</strong></td>
+                <td><code>18px (1.125rem)</code></td>
+                <td>600 (SemiBold)</td>
+                <td><code>24px</code></td>
+                <td><code>-0.2px</code></td>
+                <td>Section titles, major panel headers</td>
+              </tr>
+              <tr>
+                <td><strong>Card H3</strong></td>
+                <td><code>14px (0.875rem)</code></td>
+                <td>600 (SemiBold)</td>
+                <td><code>20px</code></td>
+                <td><code>0px</code></td>
+                <td>Modal titles, widget titles</td>
+              </tr>
+              <tr>
+                <td><strong>Label H4</strong></td>
+                <td><code>12px (0.75rem)</code></td>
+                <td>700 (Bold)</td>
+                <td><code>16px</code></td>
+                <td><code>+0.6px</code></td>
+                <td>Uppercase card category labels, metric labels</td>
+              </tr>
+              <tr>
+                <td><strong>Standard Body</strong></td>
+                <td><code>13px (0.8125rem)</code></td>
+                <td>400 (Regular)</td>
+                <td><code>20px</code></td>
+                <td><code>0px</code></td>
+                <td>Default reading body text, descriptions</td>
+              </tr>
+              <tr>
+                <td><strong>Table / Input Text</strong></td>
+                <td><code>12px (0.75rem)</code></td>
+                <td>400 / 500</td>
+                <td><code>18px</code></td>
+                <td><code>0px</code></td>
+                <td>Table cell content, form inputs, dropdown options</td>
+              </tr>
+              <tr>
+                <td><strong>Caption / Helper</strong></td>
+                <td><code>11px (0.6875rem)</code></td>
+                <td>500 (Medium)</td>
+                <td><code>14px</code></td>
+                <td><code>0px</code></td>
+                <td>Form helper text, timestamps, table footer text</td>
+              </tr>
+              <tr>
+                <td><strong>Micro Badge</strong></td>
+                <td><code>10px (0.625rem)</code></td>
+                <td>700 (Bold)</td>
+                <td><code>12px</code></td>
+                <td><code>+0.5px</code></td>
+                <td>Status tags, notification counters, category chips</td>
+              </tr>
+              <tr>
+                <td><strong>Monospace Reference</strong></td>
+                <td><code>11px / 12px</code></td>
+                <td>500 (Medium)</td>
+                <td><code>14px</code></td>
+                <td><code>0px</code></td>
+                <td>Reference numbers, Port/NASS IDs, timestamps, criteria codes</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 5: COMPONENT STANDARDS -->
+      <section id="button-specs" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Component Standards: Buttons &amp; Triggers</h2>
+            <p class="section-desc">Visual variants, states, and specifications without sample data.</p>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">Button Hierarchy (Generic UI States)</div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 20px;">
+            <button class="sd-btn sd-btn-primary">
+              <span>Primary Button</span>
+            </button>
+
+            <button class="sd-btn sd-btn-secondary">
+              <span>Secondary Button</span>
+            </button>
+
+            <button class="sd-btn sd-btn-danger">
+              <span>Danger Button</span>
+            </button>
+
+            <button class="sd-btn sd-btn-danger-soft">
+              <span>Soft Danger Button</span>
+            </button>
+
+            <button class="sd-btn sd-btn-teal-soft">
+              <span>Soft Teal Button</span>
+            </button>
+
+            <button class="sd-btn sd-btn-emerald">
+              <span>Emerald Action</span>
+            </button>
+          </div>
+
+          <div class="ui-card-title">Sizing &amp; Disabled States</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 20px;">
+            <button class="sd-btn sd-btn-primary sd-btn-sm">Small Button (11px)</button>
+            <button class="sd-btn sd-btn-primary">Standard Button (12px)</button>
+            <button class="sd-btn sd-btn-primary sd-btn-lg">Large Button (13px)</button>
+            <button class="sd-btn sd-btn-primary" disabled>Disabled Primary</button>
+            <button class="sd-btn sd-btn-secondary" disabled>Disabled Secondary</button>
+          </div>
+
+          <div class="ui-card-title">Split Export Component</div>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <div class="split-btn">
+              <button class="split-btn-main">
+                <span>[Primary Export Action]</span>
+              </button>
+              <button class="split-btn-toggle">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6: FORM FIELDS & CONTROLS -->
+      <section id="form-specs" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Component Standards: Form Fields &amp; Controls</h2>
+            <p class="section-desc">Pure field structures, validation outlines, and locked state styling.</p>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+            <div class="form-group">
+              <label class="form-label">[Text Field Label] *</label>
+              <input type="text" class="form-input" placeholder="[Placeholder text...]" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>[Locked Field Label]</span>
+                <span style="font-size: 10px; color: #b45309; font-weight: 600;">[Locked]</span>
+              </label>
+              <input type="text" class="form-input" value="[Locked Value]" disabled />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">[Select Menu Label]</label>
+              <select class="form-select">
+                <option selected>[Select Option 1]</option>
+                <option>[Select Option 2]</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">[Date Input Label]</label>
+              <input type="date" class="form-input" />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 16px;">
+            <label class="form-label">[Multiline Textarea Label]</label>
+            <textarea class="form-textarea" rows="2" placeholder="[Enter multiline details...]"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 7: BADGES, CHIPS & PILLS -->
+      <section id="badge-specs" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Component Standards: Badges, Chips &amp; Pills</h2>
+            <p class="section-desc">Severity tags, status chips, and timescale SLA pills.</p>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">Urgency / Severity Badges</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+            <span class="badge badge-critical">[Critical Severity]</span>
+            <span class="badge badge-high">[High Severity]</span>
+            <span class="badge badge-medium">[Medium Severity]</span>
+            <span class="badge badge-low">[Low Severity]</span>
+          </div>
+
+          <div class="ui-card-title">Operational Workflow Status Chips</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+            <span class="badge badge-open">[Open State]</span>
+            <span class="badge badge-in-progress">[In Progress State]</span>
+            <span class="badge badge-completed">[Completed State]</span>
+            <span class="badge badge-pending">[Pending Approval State]</span>
+            <span class="badge badge-archived">[Archived State]</span>
+          </div>
+
+          <div class="ui-card-title">Contractual SLA Timescale Badges</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <span class="badge" style="background-color: #fee2e2; color: #991b1b; border-color: #fca5a5;">[SLA Level 1 - 4 Hours]</span>
+            <span class="badge" style="background-color: #ffedd5; color: #9a3412; border-color: #fed7aa;">[SLA Level 2 - 24 Hours]</span>
+            <span class="badge" style="background-color: #fef9c3; color: #854d0e; border-color: #fef08a;">[SLA Level 3 - 5 Days]</span>
+            <span class="badge" style="background-color: #f1f5f9; color: #475569; border-color: #cbd5e1;">[SLA Level 4 - 21 Days]</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 8: CARDS, MODALS & TABLES -->
+      <section id="container-specs" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Component Standards: Cards, Modals &amp; Tables</h2>
+            <p class="section-desc">Structural containers formatted with generic placeholders.</p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+          <!-- Metric KPI Card -->
+          <div class="stat-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div style="font-size: 11px; font-weight: 700; color: var(--sd-teal-700); text-transform: uppercase;">[Metric Label]</div>
+                <div style="font-size: 32px; font-weight: 700; color: var(--sd-neutral-text-headings); line-height: 1.1; margin-top: 6px;">[000]</div>
+                <div style="font-size: 11px; color: var(--sd-neutral-text-muted); margin-top: 4px;">[Sub-metric summary count]</div>
+              </div>
+              <div style="width: 38px; height: 38px; border-radius: var(--sd-radius-xs); background: var(--sd-teal-50); color: var(--sd-teal-600); display: flex; align-items: center; justify-content: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+              </div>
+            </div>
+            <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--sd-neutral-border-subtle); display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: var(--sd-teal-600);">
+              <span>[Action Link]</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </div>
+          </div>
+
+          <!-- Danger Metric Card -->
+          <div class="stat-card stat-card-danger">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div style="font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase;">[Urgent Metric Label]</div>
+                <div style="font-size: 32px; font-weight: 700; color: var(--sd-danger-core); line-height: 1.1; margin-top: 6px;">[00]</div>
+                <div style="font-size: 11px; color: #991b1b; margin-top: 4px;">[Immediate action required]</div>
+              </div>
+              <div style="width: 38px; height: 38px; border-radius: var(--sd-radius-xs); background: #fee2e2; color: var(--sd-danger-core); display: flex; align-items: center; justify-content: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              </div>
+            </div>
+            <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--sd-neutral-border-subtle); display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: var(--sd-danger-core);">
+              <span>[Review Action]</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generic Data Table -->
+        <div class="ui-card" style="padding: 0; overflow: hidden;">
+          <table class="spec-table" style="margin-top: 0;">
+            <thead>
+              <tr>
+                <th>[Header Column 1]</th>
+                <th>[Header Column 2]</th>
+                <th>[Monospace Ref]</th>
+                <th>[Status Column]</th>
+                <th style="text-align: right;">[Actions]</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>[Primary Entity Title]</strong></td>
+                <td>[Secondary Attribute Value]</td>
+                <td><code>REF-00001</code></td>
+                <td><span class="badge badge-in-progress">[In Progress]</span></td>
+                <td style="text-align: right;">
+                  <button class="sd-btn sd-btn-secondary sd-btn-sm" style="padding: 2px 6px;">[View]</button>
+                  <button class="sd-btn sd-btn-primary sd-btn-sm" style="padding: 2px 6px;">[Edit]</button>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>[Primary Entity Title]</strong></td>
+                <td>[Secondary Attribute Value]</td>
+                <td><code>REF-00002</code></td>
+                <td><span class="badge badge-completed">[Completed]</span></td>
+                <td style="text-align: right;">
+                  <button class="sd-btn sd-btn-secondary sd-btn-sm" style="padding: 2px 6px;">[View]</button>
+                  <button class="sd-btn sd-btn-primary sd-btn-sm" style="padding: 2px 6px;">[Edit]</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="padding: 10px 14px; background: var(--sd-neutral-subtle); border-top: 1px solid var(--sd-neutral-border); display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--sd-neutral-text-muted);">
+            <span>Showing <strong>1 to 2</strong> of <strong>[Total]</strong> items</span>
+            <div style="display: flex; gap: 4px;">
+              <button class="sd-btn sd-btn-secondary sd-btn-sm" disabled>&lt; Previous</button>
+              <button class="sd-btn sd-btn-secondary sd-btn-sm">Next &gt;</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 9: CODE EXPORT -->
+      <section id="code-export" class="kit-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Code Implementation &amp; Integration</h2>
+            <p class="section-desc">Exportable CSS custom properties and Tailwind CSS extensions ready for any external framework.</p>
+          </div>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">
+            <span>Vanilla CSS Custom Properties (:root)</span>
+            <button class="sd-btn sd-btn-secondary sd-btn-sm" onclick="copySnippet('css-tokens-code')">Copy CSS</button>
+          </div>
+          <div class="code-box" id="css-tokens-code">:root {
+  /* Brand Teal Scale */
+  --sd-teal-50: #f0fdfa;
+  --sd-teal-100: #ccfbf1;
+  --sd-teal-200: #99f6e4;
+  --sd-teal-300: #5eead4;
+  --sd-teal-400: #2dd4bf;
+  --sd-teal-500: #14b8a6;
+  --sd-teal-600: #0d9488; /* Core Brand */
+  --sd-teal-700: #0f766e; /* Hover */
+  --sd-teal-800: #115e59; /* Dark Accent */
+  --sd-teal-900: #134e4a;
+
+  /* Fluent Neutrals */
+  --sd-neutral-canvas: #f3f2f1;
+  --sd-neutral-sidebar: #fbfbfa;
+  --sd-neutral-card: #ffffff;
+  --sd-neutral-subtle: #faf9f8;
+  --sd-neutral-hover: #edebe9;
+  --sd-neutral-border: #e1dfdd;
+  --sd-neutral-border-input: #8a8886;
+  --sd-neutral-text-muted: #605e5c;
+  --sd-neutral-text-body: #323130;
+  --sd-neutral-text-headings: #242424;
+
+  /* Status Colors */
+  --sd-danger-core: #a4262c;
+  --sd-danger-bg: #fdf3f2;
+  --sd-warning-core: #d83b01;
+  --sd-warning-bg: #fffbeb;
+  --sd-success-core: #107c10;
+  --sd-success-bg: #ecfdf5;
+  --sd-info-core: #0078d4;
+  --sd-info-bg: #f3f8fd;
+
+  /* Typography */
+  --sd-font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --sd-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}</div>
+        </div>
+
+        <div class="ui-card">
+          <div class="ui-card-title">
+            <span>Tailwind CSS Configuration (tailwind.config.js)</span>
+            <button class="sd-btn sd-btn-secondary sd-btn-sm" onclick="copySnippet('tailwind-tokens-code')">Copy Tailwind Config</button>
+          </div>
+          <div class="code-box" id="tailwind-tokens-code">module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#0d9488', // Core Brand
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+        },
+        surface: {
+          canvas: '#f3f2f1',
+          sidebar: '#fbfbfa',
+          card: '#ffffff',
+          subtle: '#faf9f8',
+          hover: '#edebe9',
+          border: '#e1dfdd',
+        }
+      },
+      fontFamily: {
+        sans: ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+      }
+    }
+  }
+};</div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Copy Feedback Toast -->
+<div id="copy-toast">
+  <span>Copied to clipboard!</span>
+</div>
+
+<script>
+  function showToast(text) {
+    const toast = document.getElementById('copy-toast');
+    toast.textContent = text || 'Copied to clipboard!';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  function copyColor(hex) {
+    navigator.clipboard.writeText(hex).then(() => {
+      showToast('Color ' + hex + ' copied!');
+    });
+  }
+
+  function copySnippet(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    navigator.clipboard.writeText(el.innerText).then(() => {
+      showToast('Code copied to clipboard!');
+    });
+  }
+
+  function downloadTokensJson() {
+    const tokens = {
+      name: "SD Commercial UI Tokens",
+      version: "2.4.0",
+      colors: {
+        primary: {
+          50: "#f0fdfa", 100: "#ccfbf1", 200: "#99f6e4", 300: "#5eead4",
+          400: "#2dd4bf", 500: "#14b8a6", 600: "#0d9488", 700: "#0f766e",
+          800: "#115e59", 900: "#134e4a"
+        },
+        neutrals: {
+          canvas: "#f3f2f1", sidebar: "#fbfbfa", card: "#ffffff",
+          subtle: "#faf9f8", hover: "#edebe9", border: "#e1dfdd",
+          borderInput: "#8a8886", textMuted: "#605e5c", textBody: "#323130",
+          textHeadings: "#242424"
+        },
+        semantic: {
+          danger: { core: "#a4262c", bg: "#fdf3f2", border: "#f5b8b5" },
+          warning: { core: "#d83b01", bg: "#fffbeb", border: "#fde68a" },
+          success: { core: "#107c10", bg: "#ecfdf5", border: "#a7f3d0" },
+          info: { core: "#0078d4", bg: "#f3f8fd", border: "#71afe5" }
+        }
+      },
+      typography: {
+        fontFamily: "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        fontMono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+      }
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tokens, null, 2));
+    const a = document.createElement('a');
+    a.setAttribute("href", dataStr);
+    a.setAttribute("download", "sd-commercial-tokens.json");
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('Downloaded tokens JSON');
+  }
+
+  // Active link highlighters on scroll
+  window.addEventListener('DOMContentLoaded', () => {
+    const links = document.querySelectorAll('.sidebar-nav-link');
+    const sections = document.querySelectorAll('.kit-section');
+
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(section => {
+        const top = section.offsetTop - 100;
+        if (window.scrollY >= top) {
+          current = section.getAttribute('id');
+        }
+      });
+      links.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+          link.classList.add('active');
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

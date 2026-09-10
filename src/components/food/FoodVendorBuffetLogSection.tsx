@@ -555,9 +555,49 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
   };
 
   return (
-    <div className="space-y-3">
-      {/* Top Filter & Actions Toolbar (Week Switcher moved to Table Header) */}
-      <div className="bg-white border border-[#e1dfdd] p-2.5 rounded-xs flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
+    <div className="space-y-4">
+      {/* View Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
+        <div>
+          <div className="flex items-center gap-2">
+            <UtensilsCrossed className="w-5 h-5 text-[#0d9488]" />
+            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
+              Hot Food &amp; Catering Tracker
+            </h1>
+            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+              {filteredLogs.length} Buffet Logs
+            </span>
+          </div>
+          <p className="text-xs text-[#605e5c] mt-0.5">
+            Commercial 4-vendor hot food buffet matrix, daily breakfast, lunch, dinner, toddler &amp; special diet allocations.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ExportDropdown
+            moduleName="4-Vendor Hot Food Buffet Matrix"
+            totalRecordCount={foodVendorBuffetLogs.length}
+            filteredRecordCount={filteredLogs.length}
+            defaultOrientation="landscape"
+            availableColumns={buffetExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+            buttonVariant="toolbar"
+          />
+
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold text-xs rounded-xs shadow-xs transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Add Vendor Buffet Log</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
         <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
           {/* Contracted Property Dropdown */}
           <div className="flex items-center gap-1.5">
@@ -588,40 +628,26 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
           </div>
 
           {/* Search Input */}
-          <div className="relative min-w-[140px] flex-1 max-w-[200px]">
+          <div className="relative min-w-[140px] flex-1 max-w-[220px]">
             <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-[#605e5c]" />
             <input
               type="text"
               placeholder="Search matrix..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-6 pr-2 py-1 border border-[#8a8886] rounded-xs text-xs"
+              className="w-full pl-6 pr-2 py-1 border border-[#8a8886] rounded-xs text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
             />
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        {searchQuery && (
           <button
-            type="button"
-            onClick={handleOpenAddModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold text-xs rounded-xs shadow-xs transition-colors whitespace-nowrap"
+            onClick={() => setSearchQuery('')}
+            className="text-xs text-[#0d9488] hover:underline font-semibold"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Add Vendor Buffet Log</span>
+            Clear Search
           </button>
-
-          <ExportDropdown
-            moduleName="4-Vendor Hot Food Buffet Matrix"
-            totalRecordCount={foodVendorBuffetLogs.length}
-            filteredRecordCount={filteredLogs.length}
-            defaultOrientation="landscape"
-            availableColumns={buffetExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-        </div>
+        )}
       </div>
 
       {/* Table Controls Header with Integrated Week Switcher */}

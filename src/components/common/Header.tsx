@@ -32,10 +32,45 @@ export const Header: React.FC = () => {
     markNotificationAsRead,
     clearAllNotifications,
     setActivePage,
+    activePage,
     authProfile,
     logout,
     setDiagnosticModalOpen
   } = useApp();
+
+  const getPageTitle = (page: string) => {
+    switch (page) {
+      case 'dashboard': return 'Operations Dashboard';
+      case 'referrals': return 'Safeguarding Referrals';
+      case 'referralsArchive': return 'Archived SG Referrals';
+      case 'vulnerable': return 'Vulnerable / Safeguarding SUs';
+      case 'vulnerableArchive': return 'Archived Vulnerable SUs';
+      case 'challenging': return 'Challenging SUs';
+      case 'challengingArchive': return 'Archived Challenging SUs';
+      case 'rfaWelfare': return 'RFA Welfare Checks';
+      case 'gpAppointments': return 'GP Appointments Register';
+      case 'maintenance': return 'Maintenance & Defect Tracker';
+      case 'spcd': return 'SPCD Case Tracker';
+      case 'publicTransport': return 'Public Transport Tracker';
+      case 'dispersal': return 'Dispersal Sheet';
+      case 'booklets': return 'Booklets to be Collected';
+      case 'compliance': return 'SD-Compliance Tracker';
+      case 'vcsDirectory': return 'SD VCS Support Agencies';
+      case 'laundry': return 'Property Laundry Register';
+      case 'food': return 'Hot Food & Catering Tracker';
+      case 'escalations': return 'Safeguarding Escalations Log';
+      case 'documents': return 'Compliance & Document Repository';
+      case 'properties': return 'Properties Directory';
+      case 'users': return 'Users & Role Assignments';
+      case 'reports': return 'Reports & SharePoint Sync';
+      case 'audit': return 'Activity Log & Internal Accountability';
+      case 'requests': return 'Requests & Approvals Workflow';
+      case 'roles': return 'Staff Roles & Security Permissions';
+      case 'setupOptions': return 'Field Options & Setup';
+      case 'settings': return 'Settings & Preferences';
+      default: return 'SD Commercial Trackers';
+    }
+  };
 
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -83,6 +118,10 @@ export const Header: React.FC = () => {
       {/* Brand area */}
       <div className="flex items-center gap-3">
         <Logo size="sm" />
+        <div className="h-5 w-[1px] bg-[#e1dfdd] hidden md:block" />
+        <div className="hidden md:flex items-center gap-2">
+          <span className="text-xs font-semibold text-[#242424]">{getPageTitle(activePage)}</span>
+        </div>
       </div>
 
       {/* Right controls */}

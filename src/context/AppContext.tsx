@@ -23,7 +23,14 @@ import {
   DataChangeRequest,
   CustomFieldOption,
   FieldOptionCategory,
-  AuthUser
+  AuthUser,
+  PublicTransportRecord,
+  SDComplianceRecord,
+  GPAppointmentRecord,
+  RFAWelfareCheckRecord,
+  DispersalRecord,
+  BookletCollectionRecord,
+  SDVCSAgency
 } from '../types';
 import { 
   INITIAL_SITES, 
@@ -41,7 +48,14 @@ import {
   INITIAL_MAINTENANCE_RECORDS,
   INITIAL_SPCD_RECORDS,
   INITIAL_CHANGE_REQUESTS,
-  INITIAL_USER_GROUPS
+  INITIAL_USER_GROUPS,
+  INITIAL_PUBLIC_TRANSPORT_RECORDS,
+  INITIAL_COMPLIANCE_RECORDS,
+  INITIAL_GP_APPOINTMENT_RECORDS,
+  INITIAL_RFA_WELFARE_RECORDS,
+  INITIAL_DISPERSAL_RECORDS,
+  INITIAL_BOOKLET_RECORDS,
+  INITIAL_VCS_AGENCIES
 } from '../data/initialData';
 import { 
   INITIAL_PROPERTY_LAUNDRY_LOGS, 
@@ -249,6 +263,50 @@ interface AppContextType {
   archiveSPCDRecord: (id: string, dateLeft?: string, reason?: string) => void;
   restoreSPCDRecord: (id: string) => void;
   deleteSPCDRecord: (id: string) => void;
+
+  // 1. CRUD for Public Transport Tracker
+  publicTransportRecords: PublicTransportRecord[];
+  addPublicTransportRecord: (record: Omit<PublicTransportRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updatePublicTransportRecord: (id: string, updates: Partial<PublicTransportRecord>) => void;
+  deletePublicTransportRecord: (id: string) => void;
+
+  // 2. CRUD for SD-Compliance Tracker
+  complianceRecords: SDComplianceRecord[];
+  addComplianceRecord: (record: Omit<SDComplianceRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateComplianceRecord: (id: string, updates: Partial<SDComplianceRecord>) => void;
+  deleteComplianceRecord: (id: string) => void;
+
+  // 3. CRUD for GP Appointments
+  gpAppointmentRecords: GPAppointmentRecord[];
+  addGPAppointmentRecord: (record: Omit<GPAppointmentRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateGPAppointmentRecord: (id: string, updates: Partial<GPAppointmentRecord>) => void;
+  deleteGPAppointmentRecord: (id: string) => void;
+
+  // 4. CRUD for RFA Welfare Checks
+  rfaWelfareRecords: RFAWelfareCheckRecord[];
+  addRFAWelfareRecord: (record: Omit<RFAWelfareCheckRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateRFAWelfareRecord: (id: string, updates: Partial<RFAWelfareCheckRecord>) => void;
+  deleteRFAWelfareRecord: (id: string) => void;
+
+  // 5. CRUD for Dispersal Sheet
+  dispersalRecords: DispersalRecord[];
+  addDispersalRecord: (record: Omit<DispersalRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateDispersalRecord: (id: string, updates: Partial<DispersalRecord>) => void;
+  deleteDispersalRecord: (id: string) => void;
+
+  // 6. CRUD for Booklets to be Collected
+  bookletRecords: BookletCollectionRecord[];
+  addBookletRecord: (record: Omit<BookletCollectionRecord, 'id'>) => void;
+  updateBookletRecord: (id: string, updates: Partial<BookletCollectionRecord>) => void;
+  deleteBookletRecord: (id: string) => void;
+  resetBookletsToDefault: () => void;
+
+  // 7. CRUD for SD VCS Support Agencies
+  vcsAgencies: SDVCSAgency[];
+  addVCSAgency: (agency: Omit<SDVCSAgency, 'id' | 'createdAt'>) => void;
+  updateVCSAgency: (id: string, updates: Partial<SDVCSAgency>) => void;
+  deleteVCSAgency: (id: string) => void;
+  resetVCSToDefault: () => void;
 
   // CRUD for Properties (Sites) & Users
   properties: PropertyInfo[];
@@ -505,6 +563,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [spcdRecords, setSpcdRecords] = useState<SPCDRecord[]>(() => 
     migrateEntitySites('spcd', INITIAL_SPCD_RECORDS)
+  );
+  const [publicTransportRecords, setPublicTransportRecords] = useState<PublicTransportRecord[]>(() => 
+    loadStorage('public_transport_records', INITIAL_PUBLIC_TRANSPORT_RECORDS)
+  );
+  const [complianceRecords, setComplianceRecords] = useState<SDComplianceRecord[]>(() => 
+    loadStorage('compliance_records', INITIAL_COMPLIANCE_RECORDS)
+  );
+  const [gpAppointmentRecords, setGpAppointmentRecords] = useState<GPAppointmentRecord[]>(() => 
+    loadStorage('gp_appointment_records', INITIAL_GP_APPOINTMENT_RECORDS)
+  );
+  const [rfaWelfareRecords, setRfaWelfareRecords] = useState<RFAWelfareCheckRecord[]>(() => 
+    loadStorage('rfa_welfare_records', INITIAL_RFA_WELFARE_RECORDS)
+  );
+  const [dispersalRecords, setDispersalRecords] = useState<DispersalRecord[]>(() => 
+    loadStorage('dispersal_records', INITIAL_DISPERSAL_RECORDS)
+  );
+  const [bookletRecords, setBookletRecords] = useState<BookletCollectionRecord[]>(() => 
+    loadStorage('booklet_records', INITIAL_BOOKLET_RECORDS)
+  );
+  const [vcsAgencies, setVcsAgencies] = useState<SDVCSAgency[]>(() => 
+    loadStorage('vcs_agencies', INITIAL_VCS_AGENCIES)
   );
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const cached = smartCache.getUsersInstant();
@@ -1041,6 +1120,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { saveStorage('documents', documents); }, [documents]);
   useEffect(() => { saveStorage('audit', auditLogs); }, [auditLogs]);
   useEffect(() => { saveStorage('role_permissions', rolePermissions); }, [rolePermissions]);
+  useEffect(() => { saveStorage('public_transport_records', publicTransportRecords); }, [publicTransportRecords]);
+  useEffect(() => { saveStorage('compliance_records', complianceRecords); }, [complianceRecords]);
+  useEffect(() => { saveStorage('gp_appointment_records', gpAppointmentRecords); }, [gpAppointmentRecords]);
+  useEffect(() => { saveStorage('rfa_welfare_records', rfaWelfareRecords); }, [rfaWelfareRecords]);
+  useEffect(() => { saveStorage('dispersal_records', dispersalRecords); }, [dispersalRecords]);
+  useEffect(() => { saveStorage('booklet_records', bookletRecords); }, [bookletRecords]);
+  useEffect(() => { saveStorage('vcs_agencies', vcsAgencies); }, [vcsAgencies]);
 
   // Live Database Sync Engine (Webapp <-> Supabase PostgreSQL)
   const syncFromDatabase = useCallback(async () => {
@@ -2212,6 +2298,244 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [spcdRecords, addAuditEntry, requestConfirmation, closeConfirmation]);
 
+  // --- 1. CRUD: Public Transport Tracker ---
+  const addPublicTransportRecord = useCallback((data: Omit<PublicTransportRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: PublicTransportRecord = {
+      ...data,
+      id: 'pt-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setPublicTransportRecords(prev => [newRecord, ...prev]);
+    addAuditEntry('CREATE', 'Settings', `Transport: ${newRecord.approvalUrn}`, 'Site', `Created transport approval ${newRecord.approvalUrn} for ${newRecord.suNames}.`);
+  }, [addAuditEntry]);
+
+  const updatePublicTransportRecord = useCallback((id: string, updates: Partial<PublicTransportRecord>) => {
+    const now = new Date().toISOString();
+    setPublicTransportRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates, updatedAt: now } : rec));
+    addAuditEntry('UPDATE', 'Settings', `Transport #${id}`, 'Site', 'Updated public transport approval record.');
+  }, [addAuditEntry]);
+
+  const deletePublicTransportRecord = useCallback((id: string) => {
+    const current = publicTransportRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Transport Approval',
+      message: `Are you sure you want to remove transport approval for ${current.suNames} (URN: ${current.approvalUrn})?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: () => {
+        setPublicTransportRecords(prev => prev.filter(r => r.id !== id));
+        addAuditEntry('DELETE', 'Settings', `Transport: ${current.approvalUrn}`, 'Site', 'Deleted transport approval record.');
+        closeConfirmation();
+      }
+    });
+  }, [publicTransportRecords, addAuditEntry, requestConfirmation, closeConfirmation]);
+
+  // --- 2. CRUD: SD-Compliance Tracker ---
+  const addComplianceRecord = useCallback((data: Omit<SDComplianceRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: SDComplianceRecord = {
+      ...data,
+      id: 'comp-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setComplianceRecords(prev => [newRecord, ...prev]);
+    addAuditEntry('CREATE', 'Settings', `Compliance: ${newRecord.complianceType}`, newRecord.siteName || 'All Sites', `Logged compliance asset ${newRecord.complianceType} by ${newRecord.contractorName}.`);
+  }, [addAuditEntry]);
+
+  const updateComplianceRecord = useCallback((id: string, updates: Partial<SDComplianceRecord>) => {
+    const now = new Date().toISOString();
+    setComplianceRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates, updatedAt: now } : rec));
+    addAuditEntry('UPDATE', 'Settings', `Compliance #${id}`, 'Site', 'Updated compliance certificate status.');
+  }, [addAuditEntry]);
+
+  const deleteComplianceRecord = useCallback((id: string) => {
+    const current = complianceRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Compliance Asset',
+      message: `Permanently delete compliance record for "${current.complianceType}" (${current.contractorName})?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: () => {
+        setComplianceRecords(prev => prev.filter(r => r.id !== id));
+        addAuditEntry('DELETE', 'Settings', `Compliance: ${current.complianceType}`, current.siteName || 'All Sites', 'Deleted compliance asset record.');
+        closeConfirmation();
+      }
+    });
+  }, [complianceRecords, addAuditEntry, requestConfirmation, closeConfirmation]);
+
+  // --- 3. CRUD: GP Appointments ---
+  const addGPAppointmentRecord = useCallback((data: Omit<GPAppointmentRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: GPAppointmentRecord = {
+      ...data,
+      id: 'gp-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setGpAppointmentRecords(prev => [newRecord, ...prev]);
+    addAuditEntry('CREATE', 'Referrals', `GP: ${newRecord.portReference}`, newRecord.siteName || 'Site', `Booked GP appointment for Room ${newRecord.roomNo} (${newRecord.portReference}).`);
+  }, [addAuditEntry]);
+
+  const updateGPAppointmentRecord = useCallback((id: string, updates: Partial<GPAppointmentRecord>) => {
+    const now = new Date().toISOString();
+    setGpAppointmentRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates, updatedAt: now } : rec));
+    addAuditEntry('UPDATE', 'Referrals', `GP #${id}`, 'Site', 'Updated GP appointment record.');
+  }, [addAuditEntry]);
+
+  const deleteGPAppointmentRecord = useCallback((id: string) => {
+    const current = gpAppointmentRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete GP Appointment',
+      message: `Delete GP appointment record for Room ${current.roomNo} (Port Ref: ${current.portReference})?`,
+      confirmLabel: 'Delete Appointment',
+      isDanger: true,
+      onConfirm: () => {
+        setGpAppointmentRecords(prev => prev.filter(r => r.id !== id));
+        addAuditEntry('DELETE', 'Referrals', `GP: ${current.portReference}`, current.siteName || 'Site', 'Deleted GP appointment record.');
+        closeConfirmation();
+      }
+    });
+  }, [gpAppointmentRecords, addAuditEntry, requestConfirmation, closeConfirmation]);
+
+  // --- 4. CRUD: RFA Welfare Checks ---
+  const addRFAWelfareRecord = useCallback((data: Omit<RFAWelfareCheckRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: RFAWelfareCheckRecord = {
+      ...data,
+      id: 'rfa-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setRfaWelfareRecords(prev => [newRecord, ...prev]);
+    addAuditEntry('CREATE', 'Vulnerable SUs', `RFA Welfare: ${newRecord.name}`, newRecord.siteName, `Conducted RFA welfare check for ${newRecord.name} (Room ${newRecord.roomOrFlatNo}).`);
+  }, [addAuditEntry]);
+
+  const updateRFAWelfareRecord = useCallback((id: string, updates: Partial<RFAWelfareCheckRecord>) => {
+    const now = new Date().toISOString();
+    setRfaWelfareRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates, updatedAt: now } : rec));
+    addAuditEntry('UPDATE', 'Vulnerable SUs', `RFA #${id}`, 'Site', 'Updated RFA welfare check note.');
+  }, [addAuditEntry]);
+
+  const deleteRFAWelfareRecord = useCallback((id: string) => {
+    const current = rfaWelfareRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Welfare Check',
+      message: `Permanently delete RFA welfare check record for ${current.name} at ${current.siteName}?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: () => {
+        setRfaWelfareRecords(prev => prev.filter(r => r.id !== id));
+        addAuditEntry('DELETE', 'Vulnerable SUs', `RFA: ${current.name}`, current.siteName, 'Deleted RFA welfare entry.');
+        closeConfirmation();
+      }
+    });
+  }, [rfaWelfareRecords, addAuditEntry, requestConfirmation, closeConfirmation]);
+
+  // --- 5. CRUD: Dispersal Sheet ---
+  const addDispersalRecord = useCallback((data: Omit<DispersalRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: DispersalRecord = {
+      ...data,
+      id: 'disp-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setDispersalRecords(prev => [newRecord, ...prev]);
+    addAuditEntry('CREATE', 'Referrals', `Dispersal: ${newRecord.suPortNassRef}`, newRecord.siteName, `Recorded dispersal entry for SU ${newRecord.suPortNassRef} (Flat ${newRecord.flatRoomNumber}).`);
+  }, [addAuditEntry]);
+
+  const updateDispersalRecord = useCallback((id: string, updates: Partial<DispersalRecord>) => {
+    const now = new Date().toISOString();
+    setDispersalRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates, updatedAt: now } : rec));
+    addAuditEntry('UPDATE', 'Referrals', `Dispersal #${id}`, 'Site', 'Updated dispersal departure log.');
+  }, [addAuditEntry]);
+
+  const deleteDispersalRecord = useCallback((id: string) => {
+    const current = dispersalRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Dispersal Entry',
+      message: `Delete dispersal record for ${current.suPortNassRef} (Flat/Room ${current.flatRoomNumber})?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: () => {
+        setDispersalRecords(prev => prev.filter(r => r.id !== id));
+        addAuditEntry('DELETE', 'Referrals', `Dispersal: ${current.suPortNassRef}`, current.siteName, 'Deleted dispersal record.');
+        closeConfirmation();
+      }
+    });
+  }, [dispersalRecords, addAuditEntry, requestConfirmation, closeConfirmation]);
+
+  // --- 6. CRUD: Booklets to be Collected ---
+  const addBookletRecord = useCallback((data: Omit<BookletCollectionRecord, 'id'>) => {
+    const newRecord: BookletCollectionRecord = {
+      ...data,
+      id: 'bkl-' + Date.now()
+    };
+    setBookletRecords(prev => [...prev, newRecord]);
+    addAuditEntry('CREATE', 'Settings', `Booklet: ${newRecord.bookletType} (${newRecord.language})`, newRecord.hotelName, `Added booklet allocation record.`);
+  }, [addAuditEntry]);
+
+  const updateBookletRecord = useCallback((id: string, updates: Partial<BookletCollectionRecord>) => {
+    const today = new Date().toISOString().split('T')[0];
+    setBookletRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates, lastUpdated: today } : rec));
+  }, []);
+
+  const deleteBookletRecord = useCallback((id: string) => {
+    setBookletRecords(prev => prev.filter(r => r.id !== id));
+  }, []);
+
+  const resetBookletsToDefault = useCallback(() => {
+    setBookletRecords(INITIAL_BOOKLET_RECORDS);
+    saveStorage('booklet_records', INITIAL_BOOKLET_RECORDS);
+    addAuditEntry('SETTINGS_UPDATE', 'Settings', 'Reset Booklets', 'All Sites', 'Reset booklet inventory to factory master default.');
+  }, [addAuditEntry]);
+
+  // --- 7. CRUD: SD VCS Support Agencies ---
+  const addVCSAgency = useCallback((data: Omit<SDVCSAgency, 'id' | 'createdAt'>) => {
+    const newRecord: SDVCSAgency = {
+      ...data,
+      id: 'vcs-' + Date.now(),
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+    setVcsAgencies(prev => [...prev, newRecord]);
+    addAuditEntry('CREATE', 'Settings', `VCS Agency: ${newRecord.agencyName}`, newRecord.hotelName, `Registered partner support agency for ${newRecord.hotelName}.`);
+  }, [addAuditEntry]);
+
+  const updateVCSAgency = useCallback((id: string, updates: Partial<SDVCSAgency>) => {
+    setVcsAgencies(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    addAuditEntry('UPDATE', 'Settings', `VCS Agency #${id}`, 'Site', 'Updated partner support agency details.');
+  }, [addAuditEntry]);
+
+  const deleteVCSAgency = useCallback((id: string) => {
+    const current = vcsAgencies.find(a => a.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Remove VCS Partner Agency',
+      message: `Are you sure you want to remove "${current.agencyName}" from ${current.hotelName}?`,
+      confirmLabel: 'Remove Agency',
+      isDanger: true,
+      onConfirm: () => {
+        setVcsAgencies(prev => prev.filter(a => a.id !== id));
+        addAuditEntry('DELETE', 'Settings', `VCS: ${current.agencyName}`, current.hotelName, 'Removed support agency.');
+        closeConfirmation();
+      }
+    });
+  }, [vcsAgencies, addAuditEntry, requestConfirmation, closeConfirmation]);
+
+  const resetVCSToDefault = useCallback(() => {
+    setVcsAgencies(INITIAL_VCS_AGENCIES);
+    saveStorage('vcs_agencies', INITIAL_VCS_AGENCIES);
+    addAuditEntry('SETTINGS_UPDATE', 'Settings', 'Reset VCS Agencies', 'All Sites', 'Reset voluntary and community sector agencies to master dataset.');
+  }, [addAuditEntry]);
+
   // --- CRUD: Sites & Properties & Users ---
   const addSite = useCallback((data: Omit<SiteInfo, 'id'>) => {
     const newSite: SiteInfo = {
@@ -3086,6 +3410,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       archiveSPCDRecord,
       restoreSPCDRecord,
       deleteSPCDRecord,
+      publicTransportRecords,
+      addPublicTransportRecord,
+      updatePublicTransportRecord,
+      deletePublicTransportRecord,
+      complianceRecords,
+      addComplianceRecord,
+      updateComplianceRecord,
+      deleteComplianceRecord,
+      gpAppointmentRecords,
+      addGPAppointmentRecord,
+      updateGPAppointmentRecord,
+      deleteGPAppointmentRecord,
+      rfaWelfareRecords,
+      addRFAWelfareRecord,
+      updateRFAWelfareRecord,
+      deleteRFAWelfareRecord,
+      dispersalRecords,
+      addDispersalRecord,
+      updateDispersalRecord,
+      deleteDispersalRecord,
+      bookletRecords,
+      addBookletRecord,
+      updateBookletRecord,
+      deleteBookletRecord,
+      resetBookletsToDefault,
+      vcsAgencies,
+      addVCSAgency,
+      updateVCSAgency,
+      deleteVCSAgency,
+      resetVCSToDefault,
       properties,
       addProperty,
       updateProperty,

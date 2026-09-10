@@ -25,6 +25,13 @@ import { PropertiesView } from './components/properties/PropertiesView';
 import { UsersView } from './components/users/UsersView';
 import { MaintenanceTrackerView } from './components/maintenance/MaintenanceTrackerView';
 import { SPCDTrackerView } from './components/spcd/SPCDTrackerView';
+import { PublicTransportTrackerView } from './components/transport/PublicTransportTrackerView';
+import { SDComplianceTrackerView } from './components/compliance/SDComplianceTrackerView';
+import { GPAppointmentsView } from './components/gp/GPAppointmentsView';
+import { RFAWelfareChecksView } from './components/welfare/RFAWelfareChecksView';
+import { DispersalSheetView } from './components/dispersal/DispersalSheetView';
+import { BookletCollectionView } from './components/booklets/BookletCollectionView';
+import { SDVCSDirectoryView } from './components/vcs/SDVCSDirectoryView';
 import { RequestsApprovalsView } from './components/requests/RequestsApprovalsView';
 import { FieldOptionsSetupView } from './components/setup/FieldOptionsSetupView';
 import { LoginView } from './components/auth/LoginView';
@@ -119,10 +126,24 @@ function AppLayout() {
         return <ChallengingView isArchive={false} />;
       case 'challengingArchive':
         return <ChallengingView isArchive={true} />;
+      case 'rfaWelfare':
+        return <RFAWelfareChecksView />;
+      case 'gpAppointments':
+        return <GPAppointmentsView />;
       case 'maintenance':
         return <MaintenanceTrackerView />;
       case 'spcd':
         return <SPCDTrackerView />;
+      case 'publicTransport':
+        return <PublicTransportTrackerView />;
+      case 'dispersal':
+        return <DispersalSheetView />;
+      case 'booklets':
+        return <BookletCollectionView />;
+      case 'compliance':
+        return <SDComplianceTrackerView />;
+      case 'vcsDirectory':
+        return <SDVCSDirectoryView />;
       case 'laundry':
         return <LaundryView />;
       case 'food':

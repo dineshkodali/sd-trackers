@@ -432,3 +432,134 @@ export interface CustomFieldOption {
   isSystem?: boolean;
   order: number;
 }
+
+// 1. Public Transport Tracker Record
+export interface PublicTransportRecord {
+  id: string;
+  approvalUrn: string; // Approval URN
+  suNames: string; // Service User Name(s)
+  portRefs: string; // Port Ref Number(s)
+  accommodationAddress: string; // Accommodation Address
+  appointmentDate: string; // Appointment Date
+  appointmentTime: string; // Appointment Time
+  appointmentLocation: string; // Appointment Location
+  distanceMiles: number | string; // Distance (Miles)
+  modeOfTransport: string; // Mode of Transport (e.g., Bus, Train, Tube, Taxi, Walking)
+  exceptionalCircumstances: string; // Exceptional Circumstances
+  status?: 'Approved' | 'Pending' | 'Completed' | 'Cancelled';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 2. SD-Compliance Tracker Record
+export interface SDComplianceRecord {
+  id: string;
+  srNo: number; // S NO.
+  complianceType: string; // COMPLIANCE TYPE
+  contractorName: string; // CONTRACTOR'S NAME
+  contractorKeyContact: string; // CONTRACTOR KEY CONTACT
+  contractorEmail: string; // CONTRACTOR E-MAIL ID
+  issuedDate: string; // ISSUED DATE
+  expiryDate: string; // EXPIRY DATE
+  status: 'Compliant' | 'Expiring Soon' | 'Expired' | 'In Progress' | 'Overdue'; // STATUS
+  actionTaken: string; // Action Taken
+  previousContractor: string; // Previous Contractor
+  siteName?: string; // Associated Hotel / Site
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 3. GP Appointments Record
+export interface GPAppointmentRecord {
+  id: string;
+  roomNo: string; // Room No
+  portReference: string; // Port Reference
+  referralSentOn: string; // Referral sent on
+  appointmentDate: string; // Appointment date
+  timeOfGp: string; // Time of GP
+  comments: string; // Comments
+  status: 'Scheduled' | 'Attended' | 'Did Not Attend (DNA)' | 'Cancelled' | 'Rescheduled'; // Status
+  siteName?: string;
+  suName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 4. RFA Welfare Checks Record
+export interface RFAWelfareCheckRecord {
+  id: string;
+  date: string; // Date
+  siteName: string; // Site Name
+  roomOrFlatNo: string; // Room or Flat No
+  name: string; // Name
+  dob: string; // DOB
+  group: string; // Group (Single Adult, Family, Pregnant Woman, Elderly, Young Adult, etc.)
+  gender: string; // Gender
+  portOrNassRef: string; // Port or Nass Ref
+  vulnerability: string; // Vulnerability
+  actionTaken: string; // Action Taken
+  mhTicket: string; // MH ticket
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 5. Dispersal Sheet Record
+export interface DispersalRecord {
+  id: string;
+  sno: number; // SNO
+  siteName: string; // Site Name
+  dateReceived: string; // Date Received(MM/DD/YYYY)
+  suPortNassRef: string; // SU Port/Nass Reference
+  reasonForDeparture: string; // Reason for the Departure
+  flatRoomNumber: string; // Flat/Room Number
+  dispersalDate: string; // Dispersal Date (MM/DD/YYYY)
+  dateLetterHandedToSu: string; // Date Dispersal Letter handed to SU (MM/DD/YYYY)
+  iaExitBriefingCompleted: 'Yes' | 'No'; // IA Exit Briefing completed and signed (Yes/No)
+  hoDispersalLetterReceived: 'Yes' | 'No'; // Home Office Dispersal letter received by SU (Yes/No)
+  travelled: 'Yes' | 'No'; // Travelled (Yes / No)
+  dateLeftProperty: string; // Date left property (MM/DD/YYYY)
+  incidentWarningCompleted: 'Yes' | 'No need' | 'No'; // Incident/Warning completed (Yes/No need)
+  reasonFailedToTravel: string; // Reason for failed to travel
+  // 2nd Dispersal Cycle
+  secondDispersalDate: string; // 2nd Dispersal Date(MM/DD/YYYY)
+  dateSecondLetterHanded: string; // Date Second Dispersal Letter handed to SU (MM/DD/YYYY)
+  secondIaExitBriefingCompleted: 'Yes' | 'No'; // 2nd IA Exit Briefing completed and signed
+  secondDispersalTravelled: 'Yes' | 'No'; // 2nd DispersalTravelled (Yes / No)
+  secondDateLeftProperty: string; // 2nd Date left property (MM/DD/YYYY)
+  secondIncidentWarningCompleted: 'Yes' | 'No need' | 'No'; // 2ndIncident/Warning completed (Yes /No need)
+  reasonFailedToTravelSecond: string; // Reason for failed to travel 2nd Insistance
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 6. Booklets to be Collected Record
+export interface BookletCollectionRecord {
+  id: string;
+  hotelName: string; // IA Hotel Name
+  agentName: 'Ready Homes' | 'SD Commercial' | string;
+  bookletType: 'Migrant Help booklets' | 'Right & Expectation booklets' | 'Living In IA' | string;
+  language: string;
+  numberForCollection: number; // Number of booklets for collection
+  collectedBooklets: number; // Collected Booklets
+  bookletsReceived: number; // Booklets received
+  status?: 'Pending Collection' | 'Partially Collected' | 'Collected' | 'Received at Site';
+  notes?: string;
+  lastUpdated: string;
+}
+
+// 7. SD VCS Support Agencies Record
+export interface SDVCSAgency {
+  id: string;
+  hotelName: string; // Seven Kings, Parmiter St., Old St., etc.
+  agencyName: string; // Organization Name
+  category?: 'General Support' | 'Charity & Welfare' | 'Food & Nutrition' | 'ESOL & Education' | 'Family & Children' | 'Faith & Community' | 'Advocacy & Legal' | 'Statutory / Council';
+  servicesProvided?: string;
+  contactPerson?: string;
+  contactNumber?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  isVerified?: boolean;
+  createdAt: string;
+}
+
