@@ -755,9 +755,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const res = await emailNotificationService.triggerNotification(eventCode, payload, options);
       if (res.success && res.delivered) {
-        console.log(`[Email Notification Dispatched] Event: ${eventCode}, Recipients:`, res.recipients);
-      } else if (res.simulated) {
-        console.log(`[Email Notification Simulated] Event: ${eventCode}, Recipients:`, res.recipients);
+        console.log(`[Production Email Dispatched] Event: ${eventCode}, Recipients:`, res.recipients);
+      } else if (!res.success) {
+        console.warn(`[Production Email Failed] Event: ${eventCode}:`, res.error || res.message);
       }
       const updatedLogs = await emailNotificationService.getLogs();
       if (updatedLogs && updatedLogs.length > 0) {
@@ -3037,7 +3037,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSettings(INITIAL_SETTINGS);
         setMaintenanceRecords(INITIAL_MAINTENANCE_RECORDS);
         setSpcdRecords(INITIAL_SPCD_RECORDS);
-        addAuditEntry('DATA_RESTORE', 'Settings', 'Full System Database', 'System', 'Reverted database to baseline demonstration state.');
+        addAuditEntry('DATA_RESTORE', 'Settings', 'Full System Database', 'System', 'Reverted database to baseline system state.');
         closeConfirmation();
       }
     });

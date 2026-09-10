@@ -10,12 +10,28 @@ export function isSmtpConfigured(): boolean {
   return Boolean(host && host.trim() !== '' && user && user.trim() !== '' && pass && pass.trim() !== '');
 }
 
-export function getMailer(): Transporter | null {
+export function getSmtpConfigSummary() {
+  const host = process.env.SMTP_HOST?.trim() || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = process.env.SMTP_USER?.trim() || '';
+  const from = process.env.SMTP_FROM?.trim() || (user ? `SD Trackers <${user}>` : 'SD Trackers');
+  const configured = isSmtpConfigured();
+  return {
+    configured,
+    mode: 'production' as const,
+    host,
+    port: String(port),
+    user,
+    from
+  };
+}
+
+export function getMailer(forceFresh = false): Transporter | null {
   if (!isSmtpConfigured()) {
     return null;
   }
 
-  if (!transporterInstance) {
+  if (!transporterInstance || forceFresh) {
     const host = process.env.SMTP_HOST!.trim();
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
     const user = process.env.SMTP_USER!.trim();
@@ -31,7 +47,7 @@ export function getMailer(): Transporter | null {
         pass
       },
       tls: {
-        rejectUnauthorized: false // Allow self-signed or internal relays safely
+        rejectUnauthorized: false
       }
     });
   }
@@ -43,37 +59,34 @@ export async function testSmtpConnection(): Promise<{ success: boolean; message:
   if (!isSmtpConfigured()) {
     return {
       success: false,
-      message: 'SMTP credentials are not configured in .env. Please set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD.'
+      message: 'SMTP credentials are not configured in the root .env file. Please ensure SMTP_HOST, SMTP_USER, and SMTP_PASSWORD/SMTP_PASS are present.'
     };
   }
 
   try {
-    const mailer = getMailer();
+    const mailer = getMailer(true);
     if (!mailer) {
-      return { success: false, message: 'Failed to create SMTP transporter.' };
+      return { success: false, message: 'Failed to create SMTP transporter from .env credentials.' };
     }
 
     await mailer.verify();
+    const summary = getSmtpConfigSummary();
     return {
       success: true,
-      message: 'SMTP connection verified successfully! Mail server is reachable and credentials are valid.',
-      config: {
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT || 587,
-        user: process.env.SMTP_USER,
-        from: process.env.SMTP_FROM || 'SD Operations'
-      }
+      message: 'Production SMTP connection verified successfully! Live mail relay is active and authenticated.',
+      config: summary
     };
   } catch (err: any) {
     return {
       success: false,
-      message: `SMTP connection failed: ${err.message || String(err)}`
+      message: `Production SMTP connection failed: ${err.message || String(err)}`
     };
   }
 }
 
 export async function sendEmail(options: {
   to: string;
+  cc?: string;
   subject: string;
   text?: string;
   html?: string;
@@ -91,11 +104,12 @@ export async function sendEmail(options: {
       throw new Error('Transporter unavailable');
     }
 
-    const fromAddress = process.env.SMTP_FROM || `SD Operations <${process.env.SMTP_USER}>`;
+    const fromAddress = process.env.SMTP_FROM || (process.env.SMTP_USER ? `SD Trackers <${process.env.SMTP_USER}>` : 'SD Trackers');
 
     const info = await mailer.sendMail({
       from: fromAddress,
       to: options.to,
+      cc: options.cc,
       subject: options.subject,
       text: options.text || (options.html ? options.html.replace(/<[^>]+>/g, '') : ''),
       html: options.html || options.text

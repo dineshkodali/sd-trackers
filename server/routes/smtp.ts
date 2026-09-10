@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { isSmtpConfigured, testSmtpConnection, sendEmail } from '../mailer.js';
+import { isSmtpConfigured, testSmtpConnection, sendEmail, getSmtpConfigSummary } from '../mailer.js';
 import { getSupabaseAdmin, isSupabaseConfigured } from '../supabase.js';
 
 const router = Router();
@@ -597,13 +597,15 @@ function renderNotificationHtml(options: {
 
 // GET /api/smtp/status
 router.get('/status', async (req: Request, res: Response) => {
-  const configured = isSmtpConfigured();
+  const summary = getSmtpConfigSummary();
   res.json({
-    configured,
-    host: process.env.SMTP_HOST || null,
-    port: process.env.SMTP_PORT || '587',
-    from: process.env.SMTP_FROM || null,
-    user: process.env.SMTP_USER ? `${process.env.SMTP_USER.split('@')[0]}@...` : null
+    configured: summary.configured,
+    mode: 'production',
+    host: summary.host,
+    port: summary.port,
+    from: summary.from,
+    user: summary.user ? `${summary.user.split('@')[0]}@...` : null,
+    fullUser: summary.user
   });
 });
 
@@ -615,14 +617,14 @@ router.post('/test', async (req: Request, res: Response) => {
   if (!targetEmail) {
     return res.status(400).json({
       success: false,
-      message: 'Please provide a test recipient email address or set SMTP_USER in .env'
+      message: 'Please provide a test recipient email address or set SMTP_USER in root .env'
     });
   }
 
   if (!isSmtpConfigured()) {
     return res.status(400).json({
       success: false,
-      message: 'SMTP is not configured in .env. Please set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD.'
+      message: 'Production SMTP is not configured. Please ensure SMTP_HOST, SMTP_USER, and SMTP_PASSWORD exist in the root .env file.'
     });
   }
 
@@ -633,17 +635,18 @@ router.post('/test', async (req: Request, res: Response) => {
 
   const result = await sendEmail({
     to: targetEmail,
-    subject: 'SD Operations - SMTP Test Notification',
+    subject: 'SD Trackers - Production SMTP Live Verification',
     html: renderNotificationHtml({
-      title: 'SMTP Dispatch Verified',
-      module: 'Governance',
+      title: 'Production SMTP Verified',
+      module: 'System Operations',
       severity: 'Low',
-      message: 'This is a test notification confirming that your SD Operations application has successfully connected to your SMTP mail server and can deliver operational notifications.',
+      message: 'This live notification confirms that SD Trackers is operating in Production SMTP Mode using the credentials configured in the root .env file.',
       details: [
-        { label: 'Server Host', value: process.env.SMTP_HOST || 'Localhost' },
-        { label: 'Server Port', value: String(process.env.SMTP_PORT || 587) },
+        { label: 'Mode', value: 'Live Production' },
+        { label: 'SMTP Server', value: process.env.SMTP_HOST || 'smtp.gmail.com' },
+        { label: 'Port', value: String(process.env.SMTP_PORT || 587) },
         { label: 'Sender Address', value: process.env.SMTP_FROM || process.env.SMTP_USER || 'N/A' },
-        { label: 'Test Target', value: targetEmail }
+        { label: 'Recipient', value: targetEmail }
       ]
     })
   });
@@ -890,24 +893,42 @@ router.post('/trigger', async (req: Request, res: Response) => {
     metadata: rule.includeMetadata ? payload : undefined
   });
 
-  // 8. Dispatch Email via SMTP or Simulation
-  let dispatchResult: any;
-  let isSimulated = false;
-
-  if (isSmtpConfigured()) {
-    dispatchResult = await sendEmail({
-      to: recipientList.join(', '),
-      cc: ccList.length > 0 ? ccList.join(', ') : undefined,
+  // 8. Dispatch Email via Production SMTP
+  if (!isSmtpConfigured()) {
+    const errorMsg = 'Production SMTP Error: SMTP credentials (SMTP_HOST, SMTP_USER, SMTP_PASS) not found in root .env';
+    console.error(`[Production SMTP] ${errorMsg}`);
+    const failEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      ruleId: rule.id,
+      eventCode,
+      module: rule.module,
       subject,
-      html
-    });
-  } else {
-    isSimulated = true;
-    dispatchResult = {
-      success: true,
-      simulated: true,
-      message: 'SMTP credentials not present in .env. Notification logged in demonstration mode.'
+      recipients: recipientList,
+      site: mergedContext.site,
+      status: 'failed' as const,
+      errorMessage: errorMsg,
+      entityId: mergedContext.entityId,
+      payloadSummary: JSON.stringify({ site: mergedContext.site, severity, entity: mergedContext.entityId }),
+      dispatchedAt: new Date().toISOString()
     };
+    runtimeLogs.unshift(failEntry);
+    return res.status(500).json({
+      success: false,
+      delivered: false,
+      error: errorMsg,
+      ruleId: rule.id
+    });
+  }
+
+  const dispatchResult = await sendEmail({
+    to: recipientList.join(', '),
+    cc: ccList.length > 0 ? ccList.join(', ') : undefined,
+    subject,
+    html
+  });
+
+  if (!dispatchResult.success) {
+    console.error(`[Production SMTP Error] Failed dispatching ${eventCode} to ${recipientList.join(', ')}:`, dispatchResult.message);
   }
 
   // 9. Update Rule Dispatch Stats
@@ -924,7 +945,7 @@ router.post('/trigger', async (req: Request, res: Response) => {
     }
   } catch {}
 
-  // 10. Record Audit Log
+  // 10. Record Audit Log with real delivery outcome
   const logEntry = {
     id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
     ruleId: rule.id,
@@ -933,8 +954,8 @@ router.post('/trigger', async (req: Request, res: Response) => {
     subject,
     recipients: recipientList,
     site: mergedContext.site,
-    status: isSimulated ? 'simulated' : dispatchResult.success ? 'delivered' : 'failed',
-    errorMessage: dispatchResult.error || dispatchResult.message,
+    status: dispatchResult.success ? ('delivered' as const) : ('failed' as const),
+    errorMessage: dispatchResult.success ? undefined : dispatchResult.message,
     entityId: mergedContext.entityId,
     payloadSummary: JSON.stringify({ site: mergedContext.site, severity, entity: mergedContext.entityId }),
     dispatchedAt: new Date().toISOString()
@@ -964,11 +985,11 @@ router.post('/trigger', async (req: Request, res: Response) => {
   } catch {}
 
   res.json({
-    success: true,
-    delivered: !isSimulated && dispatchResult.success,
-    simulated: isSimulated,
+    success: dispatchResult.success,
+    delivered: dispatchResult.success,
     recipients: recipientList,
     subject,
+    messageId: dispatchResult.messageId,
     logId: logEntry.id
   });
 });
@@ -1045,23 +1066,19 @@ router.post('/test-rule', async (req: Request, res: Response) => {
     actionRequired: mockPayload.actionRequired
   });
 
-  let result: any;
-  let simulated = false;
-
-  if (isSmtpConfigured()) {
-    result = await sendEmail({
-      to: recipient,
-      subject: `[TEST] ${subject}`,
-      html
+  if (!isSmtpConfigured()) {
+    return res.status(400).json({
+      success: false,
+      delivered: false,
+      message: 'Production SMTP Error: SMTP credentials are not configured in root .env'
     });
-  } else {
-    simulated = true;
-    result = {
-      success: true,
-      simulated: true,
-      message: 'SMTP not configured. Test email verified in simulated demonstration mode.'
-    };
   }
+
+  const result = await sendEmail({
+    to: recipient,
+    subject: `[PROD TEST] ${subject}`,
+    html
+  });
 
   // Record in logs
   const logEntry = {
@@ -1069,22 +1086,22 @@ router.post('/test-rule', async (req: Request, res: Response) => {
     ruleId: rule.id,
     eventCode: rule.eventCode,
     module: rule.module,
-    subject: `[TEST] ${subject}`,
+    subject: `[PROD TEST] ${subject}`,
     recipients: [recipient],
     site: mockPayload.site,
-    status: simulated ? 'simulated' : result.success ? 'delivered' : 'failed',
-    errorMessage: result.message,
+    status: result.success ? ('delivered' as const) : ('failed' as const),
+    errorMessage: result.success ? undefined : result.message,
     dispatchedAt: new Date().toISOString()
   };
   runtimeLogs.unshift(logEntry);
 
   res.json({
-    success: true,
-    delivered: !simulated && result.success,
-    simulated,
-    message: simulated 
-      ? `Simulated test dispatch logged for ${recipient}. Rule formatting verified.`
-      : `Test email successfully dispatched to ${recipient}.`
+    success: result.success,
+    delivered: result.success,
+    messageId: result.messageId,
+    message: result.success 
+      ? `Live production email successfully dispatched to ${recipient}.`
+      : `Failed to dispatch test email to ${recipient}: ${result.message}`
   });
 });
 
@@ -1095,7 +1112,7 @@ router.post('/alert', async (req: Request, res: Response) => {
   const targetRecipient = recipient || process.env.SMTP_USER || 'admin@sdcommercial.co.uk';
 
   if (!isSmtpConfigured()) {
-    return res.json({ success: true, simulated: true, message: 'SMTP not configured. Alert logged in demonstration mode.' });
+    return res.status(500).json({ success: false, message: 'Production SMTP Error: SMTP is not configured in root .env' });
   }
 
   const result = await sendEmail({
@@ -1122,7 +1139,7 @@ router.post('/escalation-alert', async (req: Request, res: Response) => {
   const targetEmail = recipientEmail || process.env.SMTP_USER || 'admin@sdcommercial.co.uk';
 
   if (!isSmtpConfigured()) {
-    return res.json({ success: true, simulated: true, message: 'SMTP not configured. Escalation logged in demo mode.' });
+    return res.status(500).json({ success: false, message: 'Production SMTP Error: SMTP is not configured in root .env' });
   }
 
   const result = await sendEmail({

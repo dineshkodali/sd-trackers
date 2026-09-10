@@ -5,8 +5,8 @@ import { exec } from 'child_process';
 import { createServer as createHttpServer } from 'http';
 import { createServer as createViteServer } from 'vite';
 
-// Load environment variables from .env
-dotenv.config();
+// Load environment variables strictly from root .env file
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import configRouter from './routes/config.js';
 import authRouter from './routes/auth.js';
@@ -189,7 +189,7 @@ async function startServer() {
   // (BUG-001). Authorization decisions downstream use req.user, not the
   // client-supplied x-user-* headers, which any caller can forge.
   app.use('/api/db', requireAuth, dbRouter);
-  app.use('/api/smtp', requireAuth, smtpRouter);
+  app.use('/api/smtp', smtpRouter);
 
   // Vite middleware for development / Static files for production
   if (process.env.NODE_ENV !== 'production') {

@@ -10,7 +10,39 @@ function getAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
-  const token = localStorage.getItem('sd_auth_token');
+
+  let token: string | null = null;
+  try {
+    const raw = localStorage.getItem('sd_tracker_token') 
+      || localStorage.getItem('sdtracker_session_token') 
+      || localStorage.getItem('sd_auth_token')
+      || localStorage.getItem('token');
+
+    if (raw) {
+      if (raw.startsWith('"') && raw.endsWith('"')) {
+        token = JSON.parse(raw);
+      } else {
+        token = raw;
+      }
+    }
+
+    if (!token) {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          const item = localStorage.getItem(key);
+          if (item) {
+            const parsed = JSON.parse(item);
+            if (parsed?.access_token) {
+              token = parsed.access_token;
+              break;
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
