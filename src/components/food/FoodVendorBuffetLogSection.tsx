@@ -1336,30 +1336,30 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
         </div>
       )}
       {/* Dynamic Record View Modal */}
-      {viewRecord && (
-        <DynamicRecordViewModal
-          record={viewRecord}
-          columns={columns}
-          title="Hot Food Buffet Log Dossier"
-          onClose={() => setViewRecord(null)}
-        />
-      )}
+      <DynamicRecordViewModal
+        isOpen={!!viewRecord}
+        record={viewRecord}
+        columns={columns}
+        title="Hot Food Buffet Log Dossier"
+        onClose={() => setViewRecord(null)}
+      />
 
       {/* Table Schema Editor Modal (Super Admin only) */}
-      {isSchemaModalOpen && (
-        <TableSchemaEditorModal
-          columns={columns}
-          onSave={(updated) => {
-            saveColumns(updated);
-            setIsSchemaModalOpen(false);
-          }}
-          onReset={() => {
-            resetToDefault();
-            setIsSchemaModalOpen(false);
-          }}
-          onClose={() => setIsSchemaModalOpen(false)}
-        />
-      )}
+      <TableSchemaEditorModal
+        isOpen={isSchemaModalOpen}
+        moduleTitle="Hot Food & Catering Tracker"
+        columns={columns}
+        onSaveColumns={(updated) => {
+          saveColumns(updated);
+          setIsSchemaModalOpen(false);
+        }}
+        onResetToDefault={() => {
+          resetToDefault();
+          setIsSchemaModalOpen(false);
+        }}
+        onClose={() => setIsSchemaModalOpen(false)}
+        currentUserRole={currentUserRole}
+      />
     </div>
   );
 };
