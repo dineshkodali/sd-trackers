@@ -43,13 +43,13 @@ frontend:
 ## 3. Environment Variables (Required in Amplify Console)
 
 In AWS Amplify Console, navigate to:
-**App settings** > **Environment variables** > **Manage variables**, and add:
+**App settings** > **Environment variables** > **Manage variables**, and ensure the following are configured:
 
 | Variable Name | Value | Description |
 |---|---|---|
-| `VITE_API_URL` | `https://api.trackers.sdcdms.co.uk` (or `http://YOUR_VPS_IP:3020`) | *(Recommended)* Backend Express API URL |
-| `VITE_SUPABASE_URL` | `https://kxikojvpcyprfbyxsdaa.supabase.co` | Supabase API endpoint |
-| `VITE_SUPABASE_ANON_KEY` | `sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd` | Supabase publishable key |
+| `VITE_SUPABASE_URL` | `https://kxikojvpcyprfbyxsdaa.supabase.co` | Supabase API endpoint (Defaulted in bundle) |
+| `VITE_SUPABASE_ANON_KEY` | `sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd` | Supabase publishable key (Defaulted in bundle) |
+| `VITE_API_URL` | *(Leave empty for Direct Supabase Mode, or set to your external backend URL)* | Express Backend API URL |
 | `VITE_AZURE_CLIENT_ID` | `8902bae4-3763-4455-ae7d-8c7c5aac4011` | Azure Entra Client ID |
 | `VITE_AZURE_TENANT_ID` | `common` | Azure Tenant ID |
 | `VITE_AZURE_REDIRECT_URI` | `https://kxikojvpcyprfbyxsdaa.supabase.co/auth/v1/callback` | Azure OAuth callback |
@@ -58,39 +58,26 @@ In AWS Amplify Console, navigate to:
 
 ---
 
-## 4. Why "Invalid JSON / Authentication Error" Happens on Amplify
+## 4. Hosting Architecture & Database Connectivity
 
-AWS Amplify Hosting is a **static web host** (it serves the compiled frontend HTML, JS, CSS from `dist/`). It does **not** run the Node.js Express server (`server/index.ts` / `dist/server.cjs`).
+### Mode 1: Direct Client-Side Supabase Mode (No Backend Server Needed)
+If you are deploying exclusively to **AWS Amplify** without a separate Express server:
+1. The web application detects it is running on AWS Amplify and connects **directly to Supabase Cloud** via `@supabase/supabase-js`.
+2. All 30 database tables are queried and updated straight from the browser using the Supabase publishable key.
+3. **One-time Setup Required**: You must enable Row-Level Security (RLS) policies in Supabase so the browser client is authorized to read and write records:
+   - Open your [Supabase Project SQL Editor](https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new).
+   - Copy and paste the contents of [`db/enable-direct-supabase-rls.sql`](./db/enable-direct-supabase-rls.sql).
+   - Click **Run**.
+   - Your Amplify app is now fully connected to the live database!
 
-When you attempt to log in:
-1. The browser calls `POST /api/auth/login`.
-2. Because Amplify only has static files, Amplify's SPA redirect rule intercepts `/api/auth/login` and returns `/index.html` (HTML text starting with `<!DOCTYPE html>`).
-3. When the browser tries to parse this HTML web page as JSON, it fails with:
-   `SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`.
+---
 
-### How to Fix It (Choose Option A or Option B):
-
-#### Option A: Direct Backend URL with `VITE_API_URL` (Recommended)
-If your backend Express server is running on your VPS, Docker container, or cloud server (e.g., `https://api.trackers.sdcdms.co.uk` or `http://YOUR_VPS_IP:3020`):
-
-1. Go to AWS Amplify Console > **App settings** > **Environment variables**.
-2. Add `VITE_API_URL` = `https://api.trackers.sdcdms.co.uk` (or `http://YOUR_VPS_IP:3020`).
-3. Click **Save**.
-4. Go to **Build history** and click **Redeploy this version**.
-5. Ensure your backend server's `.env` has `ALLOWED_ORIGINS` containing your Amplify URL (e.g., `https://main.xxxx.amplifyapp.com` or `https://trackers.sdcdms.co.uk`).
-
-#### Option B: Reverse-Proxy `/api/*` Through Amplify
-If you want the frontend to make requests to `/api/*` on the same domain without CORS:
-
-1. In AWS Amplify Console, navigate to **App settings** > **Rewrites and redirects**.
-2. Ensure the order is exactly as follows (**The `/api/<*>` rule MUST be placed FIRST, above the SPA rewrite rule**):
-
-| Order | Source address | Target address | Type |
-|---|---|---|---|
-| 1 | `/api/<*>` | `http://YOUR_BACKEND_IP:3020/api/<*>` (or `https://api.yourdomain.com/api/<*>`) | `200 (Rewrite)` |
-| 2 | `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>` | `/index.html` | `200 (Rewrite)` |
-
-> ⚠️ **Important**: Do **NOT** set the target address of `/api/<*>` to the Amplify domain itself (`trackers.sdcdms.co.uk`), because that causes Amplify to route requests right back to its static files! It must point to your external Node.js backend server.
+### Mode 2: Full-Stack Express Backend Mode (With Dedicated Server)
+If you host the Express backend container on **AWS App Runner**, **EC2**, **Render**, or a **VPS**:
+1. Run the backend using `Dockerfile` or `docker-compose.yml` (or `node dist/server.cjs`).
+2. In AWS Amplify Console > **App settings** > **Environment variables**, set:
+   - `VITE_API_URL` = `https://api.trackers.sdcdms.co.uk` (or your backend domain)
+3. Click **Save** and **Redeploy this version**.
 
 #### Option C: Emergency In-Browser Override (No Redeploy Required)
 If your Amplify site is already built and you need to immediately connect it to your backend without waiting for an Amplify rebuild:

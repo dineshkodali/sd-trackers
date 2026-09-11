@@ -1,5 +1,15 @@
 import { diagnosticLogger } from '../utils/diagnosticLogger';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
+import {
+  directBatchFetchEntities,
+  directFetchEntityRecords,
+  directSaveEntityRecord,
+  directUpdateEntityRecord,
+  directDeleteEntityRecord,
+  directBulkSaveEntityRecords,
+  directBulkDeleteEntityRecords,
+  directGetDbStatus
+} from '../lib/directSupabaseAdapter';
 
 /**
  * SD Operations API Client
@@ -121,6 +131,28 @@ export interface AuditTrailPayload {
 }
 
 let activeAuditContext: AuditUserContext | null = null;
+let directFallbackActive = false;
+
+export function isDirectSupabaseActive(): boolean {
+  return directFallbackActive || shouldPreferDirectSupabase();
+}
+
+export function enableDirectSupabaseFallback(): void {
+  directFallbackActive = true;
+}
+
+export function shouldPreferDirectSupabase(): boolean {
+  if (directFallbackActive) return true;
+  if (typeof window !== 'undefined') {
+    const override = localStorage.getItem('sd_api_url');
+    if (override) return false;
+    const envVal = (import.meta as any).env?.VITE_API_URL || '';
+    if (!envVal && (window.location.hostname.endsWith('amplifyapp.com') || window.location.hostname.includes('amplify'))) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
@@ -393,14 +425,36 @@ export const apiService = {
 
   // Database API — every page's data lives in the live Supabase database.
   async getDbStatus(): Promise<DbStatusResponse> {
+    if (shouldPreferDirectSupabase()) {
+      const direct = await directGetDbStatus();
+      if (direct.connected) {
+        return {
+          connected: true,
+          live: true,
+          mode: 'supabase-cloud',
+          message: direct.message
+        };
+      }
+    }
     try {
       const res = await fetch(getApiUrl('/api/db/status'), { headers: authHeaders() });
       const json = await parseApiResponse<DbStatusResponse>(res);
       if (!res.ok && !json?.mode) {
+        // Fallback to direct client
+        const direct = await directGetDbStatus();
+        if (direct.connected) {
+          enableDirectSupabaseFallback();
+          return { connected: true, live: true, mode: 'supabase-cloud', message: direct.message };
+        }
         return { connected: false, mode: 'offline', error: (json as any)?.error || `HTTP ${res.status}` };
       }
       return json;
     } catch (err: any) {
+      const direct = await directGetDbStatus();
+      if (direct.connected) {
+        enableDirectSupabaseFallback();
+        return { connected: true, live: true, mode: 'supabase-cloud', message: direct.message };
+      }
       return { connected: false, mode: 'offline', error: err.message };
     }
   },
@@ -409,6 +463,9 @@ export const apiService = {
     entity: DbEntityName,
     options: { limit?: number; order?: string; eq?: Record<string, string> } = {}
   ): Promise<{ success: boolean; data: T[]; error?: string; status?: number; tableMissing?: boolean }> {
+    if (shouldPreferDirectSupabase()) {
+      return await directFetchEntityRecords<T>(entity, options);
+    }
     try {
       const params = new URLSearchParams();
       if (options.limit) params.set('limit', String(options.limit));
@@ -418,6 +475,12 @@ export const apiService = {
       const res = await fetch(getApiUrl(`/api/db/${entity}${qs ? `?${qs}` : ''}`), { headers: authHeaders() });
       const json = await parseApiResponse<any>(res);
       if (!res.ok || json?.success === false || !Array.isArray(json?.data)) {
+        // Fallback to direct client
+        const direct = await directFetchEntityRecords<T>(entity, options);
+        if (direct.success) {
+          enableDirectSupabaseFallback();
+          return direct;
+        }
         return {
           success: false,
           data: [],
@@ -428,12 +491,20 @@ export const apiService = {
       }
       return { success: true, data: json.data };
     } catch (err: any) {
+      const direct = await directFetchEntityRecords<T>(entity, options);
+      if (direct.success) {
+        enableDirectSupabaseFallback();
+        return direct;
+      }
       console.warn(`Failed to fetch ${entity} from API:`, err);
       return { success: false, data: [], error: err.message };
     }
   },
 
   async saveEntityRecord<T = any>(entity: DbEntityName, record: T, audit?: AuditDescriptor): Promise<WriteResult<T>> {
+    if (shouldPreferDirectSupabase()) {
+      return await directSaveEntityRecord<T>(entity, record, audit, activeAuditContext);
+    }
     try {
       const res = await fetch(getApiUrl(`/api/db/${entity}`), {
         method: 'POST',
@@ -442,14 +513,27 @@ export const apiService = {
       });
       const result = await toWriteResult<T>(res);
       diagnosticLogger.logAuditDispatch({ action: 'CREATE', entity, entityId: (record as any)?.id, userId: activeAuditContext?.userId, success: result.success, error: result.error });
+      if (!result.success && String(result.error || '').includes('Backend API unreachable')) {
+        const direct = await directSaveEntityRecord<T>(entity, record, audit, activeAuditContext);
+        if (direct.success) enableDirectSupabaseFallback();
+        return direct;
+      }
       return result;
     } catch (err: any) {
+      const direct = await directSaveEntityRecord<T>(entity, record, audit, activeAuditContext);
+      if (direct.success) {
+        enableDirectSupabaseFallback();
+        return direct;
+      }
       diagnosticLogger.logAuditDispatch({ action: 'CREATE', entity, entityId: (record as any)?.id, userId: activeAuditContext?.userId, success: false, error: err.message });
       return { success: false, error: `Network error: ${err.message}` };
     }
   },
 
   async updateEntityRecord<T = any>(entity: DbEntityName, id: string, record: Partial<T>, audit?: AuditDescriptor): Promise<WriteResult<T>> {
+    if (shouldPreferDirectSupabase()) {
+      return await directUpdateEntityRecord<T>(entity, id, record, audit, activeAuditContext);
+    }
     try {
       const res = await fetch(getApiUrl(`/api/db/${entity}/${encodeURIComponent(id)}`), {
         method: 'PUT',
@@ -458,14 +542,27 @@ export const apiService = {
       });
       const result = await toWriteResult<T>(res);
       diagnosticLogger.logAuditDispatch({ action: 'UPDATE', entity, entityId: id, userId: activeAuditContext?.userId, success: result.success, error: result.error });
+      if (!result.success && String(result.error || '').includes('Backend API unreachable')) {
+        const direct = await directUpdateEntityRecord<T>(entity, id, record, audit, activeAuditContext);
+        if (direct.success) enableDirectSupabaseFallback();
+        return direct;
+      }
       return result;
     } catch (err: any) {
+      const direct = await directUpdateEntityRecord<T>(entity, id, record, audit, activeAuditContext);
+      if (direct.success) {
+        enableDirectSupabaseFallback();
+        return direct;
+      }
       diagnosticLogger.logAuditDispatch({ action: 'UPDATE', entity, entityId: id, userId: activeAuditContext?.userId, success: false, error: err.message });
       return { success: false, error: `Network error: ${err.message}` };
     }
   },
 
   async deleteEntityRecord(entity: DbEntityName, id: string, audit?: AuditDescriptor): Promise<WriteResult> {
+    if (shouldPreferDirectSupabase()) {
+      return await directDeleteEntityRecord(entity, id, audit, activeAuditContext);
+    }
     try {
       const res = await fetch(getApiUrl(`/api/db/${entity}/${encodeURIComponent(id)}`), {
         method: 'DELETE',
@@ -473,8 +570,18 @@ export const apiService = {
       });
       const result = await toWriteResult(res);
       diagnosticLogger.logAuditDispatch({ action: 'DELETE', entity, entityId: id, userId: activeAuditContext?.userId, success: result.success, error: result.error });
+      if (!result.success && String(result.error || '').includes('Backend API unreachable')) {
+        const direct = await directDeleteEntityRecord(entity, id, audit, activeAuditContext);
+        if (direct.success) enableDirectSupabaseFallback();
+        return direct;
+      }
       return result;
     } catch (err: any) {
+      const direct = await directDeleteEntityRecord(entity, id, audit, activeAuditContext);
+      if (direct.success) {
+        enableDirectSupabaseFallback();
+        return direct;
+      }
       diagnosticLogger.logAuditDispatch({ action: 'DELETE', entity, entityId: id, userId: activeAuditContext?.userId, success: false, error: err.message });
       return { success: false, error: `Network error: ${err.message}` };
     }
@@ -484,6 +591,9 @@ export const apiService = {
   async batchFetchEntities(
     requests: Array<{ key: string; entity: DbEntityName; limit?: number; order?: string; eq?: Record<string, string> }>
   ): Promise<{ success: boolean; error?: string; status?: number; results: Record<string, { success: boolean; data: any[]; error?: string; tableMissing?: boolean }> }> {
+    if (shouldPreferDirectSupabase()) {
+      return await directBatchFetchEntities(requests);
+    }
     try {
       const res = await fetch(getApiUrl('/api/db/batch-read'), {
         method: 'POST',
@@ -492,10 +602,22 @@ export const apiService = {
       });
       const json = await parseApiResponse<any>(res);
       if (!res.ok || json?.success === false || !json?.results) {
+        // Fallback to direct client
+        const direct = await directBatchFetchEntities(requests);
+        if (direct.success && Object.keys(direct.results).length > 0) {
+          enableDirectSupabaseFallback();
+          return direct;
+        }
         return { success: false, error: json?.error || `HTTP ${res.status}`, status: res.status, results: {} };
       }
       return { success: true, results: json.results };
     } catch (err: any) {
+      // Automatic fallback for AWS Amplify and offline Express backends
+      const direct = await directBatchFetchEntities(requests);
+      if (direct.success && Object.keys(direct.results).length > 0) {
+        enableDirectSupabaseFallback();
+        return direct;
+      }
       return { success: false, error: err.message, results: {} };
     }
   },
@@ -503,6 +625,9 @@ export const apiService = {
   /** Upsert many records in one request (resets, restores, batch archives, local-data migration). */
   async bulkSaveEntityRecords<T = any>(entity: DbEntityName, records: T[], audit?: AuditDescriptor): Promise<{ success: boolean; count?: number; error?: string; status?: number; tableMissing?: boolean }> {
     if (records.length === 0) return { success: true, count: 0 };
+    if (shouldPreferDirectSupabase()) {
+      return await directBulkSaveEntityRecords<T>(entity, records, audit, activeAuditContext);
+    }
     try {
       const res = await fetch(getApiUrl(`/api/db/${entity}/bulk`), {
         method: 'POST',
@@ -511,16 +636,26 @@ export const apiService = {
       });
       const json = await parseApiResponse<any>(res);
       if (!res.ok || json?.success === false) {
-        return { success: false, error: json?.error || `HTTP ${res.status}`, status: res.status, tableMissing: !!json?.tableMissing };
+        const direct = await directBulkSaveEntityRecords<T>(entity, records, audit, activeAuditContext);
+        if (direct.success) enableDirectSupabaseFallback();
+        return direct;
       }
       return { success: true, count: json.count };
     } catch (err: any) {
+      const direct = await directBulkSaveEntityRecords<T>(entity, records, audit, activeAuditContext);
+      if (direct.success) {
+        enableDirectSupabaseFallback();
+        return direct;
+      }
       return { success: false, error: `Network error: ${err.message}` };
     }
   },
 
   async bulkDeleteEntityRecords(entity: DbEntityName, ids: string[], audit?: AuditDescriptor): Promise<{ success: boolean; deleted?: number; error?: string; status?: number }> {
     if (ids.length === 0) return { success: true, deleted: 0 };
+    if (shouldPreferDirectSupabase()) {
+      return await directBulkDeleteEntityRecords(entity, ids, audit, activeAuditContext);
+    }
     try {
       const res = await fetch(getApiUrl(`/api/db/${entity}/bulk-delete`), {
         method: 'POST',
@@ -529,10 +664,17 @@ export const apiService = {
       });
       const json = await parseApiResponse<any>(res);
       if (!res.ok || json?.success === false) {
-        return { success: false, error: json?.error || `HTTP ${res.status}`, status: res.status };
+        const direct = await directBulkDeleteEntityRecords(entity, ids, audit, activeAuditContext);
+        if (direct.success) enableDirectSupabaseFallback();
+        return direct;
       }
       return { success: true, deleted: json.deleted };
     } catch (err: any) {
+      const direct = await directBulkDeleteEntityRecords(entity, ids, audit, activeAuditContext);
+      if (direct.success) {
+        enableDirectSupabaseFallback();
+        return direct;
+      }
       return { success: false, error: `Network error: ${err.message}` };
     }
   },
@@ -914,10 +1056,30 @@ export const apiService = {
   },
 
   async fetchSupabaseUsers(): Promise<{ success?: boolean; users?: any[]; error?: string }> {
+    if (shouldPreferDirectSupabase()) {
+      const sb = getBrowserSupabaseClient();
+      if (sb) {
+        try {
+          const { data, error } = await sb.from('profiles').select('*');
+          if (!error && Array.isArray(data)) {
+            return { success: true, users: data };
+          }
+        } catch {}
+      }
+    }
     try {
       const res = await fetch(getApiUrl('/api/auth/users'), { headers: authHeaders() });
       return await parseApiResponse<any>(res);
     } catch (err: any) {
+      const sb = getBrowserSupabaseClient();
+      if (sb) {
+        try {
+          const { data, error } = await sb.from('profiles').select('*');
+          if (!error && Array.isArray(data)) {
+            return { success: true, users: data };
+          }
+        } catch {}
+      }
       return { error: err.message };
     }
   },
