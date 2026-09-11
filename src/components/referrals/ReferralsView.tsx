@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Plus, 
-  Eye, 
-  Edit3, 
-  Archive, 
-  RotateCcw, 
-  Trash2, 
-  X, 
+import {
+  Plus,
+  Eye,
+  Edit3,
+  Archive,
+  RotateCcw,
+  Trash2,
+  X,
   Download,
   AlertCircle,
   CheckCircle2,
@@ -15,7 +15,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Lock
+  Lock,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SGReferral, StatusType, RiskLevel, RecordAttachment } from '../../types';
@@ -26,6 +27,12 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrientation } from '../common/ExportModal';
 import { ExportDropdown } from '../common/ExportDropdown';
+import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { referralsTableConfig } from '../../config/trackerTableConfigs';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { TableColumnConfig } from '../../types/tableSchema';
 
 const referralExportColumns: ExportColumnOption[] = [
   { id: 'site', label: 'Hotel / Site' },
@@ -97,8 +104,18 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     }
   }, [globalSearchFilter, setGlobalSearchFilter]);
 
+  // Dynamic Table Schema & Columns (Local persistence with fallback to trackerTableConfigs)
+  const {
+    columns: referralsColumns,
+    tableColumns: visibleReferralsColumns,
+    saveColumns: handleSaveReferralsColumns,
+    resetToDefault: handleResetReferralsColumns
+  } = useTableSchema<SGReferral>('referrals', referralsTableConfig);
+
+  const [isSchemaEditorOpen, setIsSchemaEditorOpen] = useState<boolean>(false);
+
   // Sorting
-  const [sortField, setSortField] = useState<keyof SGReferral>('dateReferred');
+  const [sortField, setSortField] = useState<string>('dateReferred');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
   // Pagination
@@ -174,8 +191,8 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
   // Sorted dataset
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => {
-      let valA: any = a[sortField] ?? '';
-      let valB: any = b[sortField] ?? '';
+      let valA: any = (a as any)[sortField] ?? '';
+      let valB: any = (b as any)[sortField] ?? '';
       if (typeof valA === 'string') valA = valA.toLowerCase();
       if (typeof valB === 'string') valB = valB.toLowerCase();
       if (valA < valB) return sortAsc ? -1 : 1;
@@ -190,7 +207,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     return sortedData.slice(start, start + pageSize);
   }, [sortedData, currentPage, pageSize]);
 
-  const handleSort = (field: keyof SGReferral) => {
+  const handleSort = (field: string) => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
     } else {
@@ -259,8 +276,8 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
   }) => {
     const dataToExport = getExportDataForScope(scope, startDate, endDate);
     const colMap = getExportColumnMap();
-    const cols = selectedColumns && selectedColumns.length > 0 
-      ? selectedColumns 
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? selectedColumns
       : referralExportColumns.map(c => c.id);
     const activeCols = cols.filter(c => colMap[c]);
     const headers = activeCols.map(c => colMap[c].label);
@@ -287,8 +304,8 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     const title = isArchive ? 'Archived Safeguarding Referrals' : 'Safeguarding Referrals Register';
 
     const colMap = getExportColumnMap();
-    const cols = selectedColumns && selectedColumns.length > 0 
-      ? selectedColumns 
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? selectedColumns
       : referralExportColumns.map(c => c.id);
 
     const activeCols = cols.filter(c => colMap[c]);
@@ -351,6 +368,137 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     setEditingRecord(null);
   };
 
+  const renderColumnCell = (col: TableColumnConfig<SGReferral>, r: SGReferral) => {
+    const val = (r as any)[col.key];
+
+    if (col.renderCell) {
+      return col.renderCell(val, r);
+    }
+
+    if (col.key === 'site') {
+      return <span className="font-medium text-[#242424]">{r.site}</span>;
+    }
+
+    if (col.key === 'referralCouncil') {
+      return <span className="text-neutral-600">{r.referralCouncil}</span>;
+    }
+
+    if (col.key === 'suName') {
+      return (
+        <button
+          onClick={() => setViewRecord(r)}
+          className="hover:underline text-left font-semibold text-[#0f766e] cursor-pointer"
+        >
+          {r.suName || '—'}
+        </button>
+      );
+    }
+
+    if (col.key === 'status') {
+      return canEditRecord(r.site) && !isArchive ? (
+        <select
+          value={r.status}
+          onChange={e => updateReferral(r.id, { status: e.target.value as StatusType })}
+          className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
+            r.status === 'Open' ? 'bg-[#f0fdfa] text-[#0f766e] border-[#99f6e4]' :
+            r.status === 'In progress' ? 'bg-[#fff4ce] text-[#7f6000] border-[#ffe788]' :
+            r.status === 'Completed' ? 'bg-[#e8f5e9] text-[#107c10] border-[#c8e6c9]' :
+            r.status === 'Archived' ? 'bg-[#f0eafd] text-[#5c2d91] border-[#dcd0f9]' :
+            'bg-neutral-100 text-neutral-700 border-neutral-300'
+          }`}
+          title="Click to update referral status"
+        >
+          {referralStatusOptions.map(opt => (
+            <option key={opt.id} value={opt.value} className="bg-white text-neutral-900 font-normal">
+              {opt.label}
+            </option>
+          ))}
+          {!referralStatusOptions.some(o => o.value === r.status) && (
+            <option value={r.status} className="bg-white text-neutral-900 font-normal">
+              {r.status}
+            </option>
+          )}
+        </select>
+      ) : (
+        <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded ${
+          r.status === 'Open' ? 'bg-[#f0fdfa] text-[#0f766e]' :
+          r.status === 'In progress' ? 'bg-[#fff4ce] text-[#7f6000]' :
+          r.status === 'Completed' ? 'bg-[#e8f5e9] text-[#107c10]' :
+          r.status === 'Archived' ? 'bg-[#f0eafd] text-[#5c2d91]' :
+          'bg-neutral-100 text-neutral-700'
+        }`}>
+          {r.status}
+        </span>
+      );
+    }
+
+    if (col.key === 'mosaicId' || col.key === 'portRef' || col.key === 'dob' || col.key === 'dateReferred') {
+      return <span className="font-mono text-[11px] text-neutral-600">{val || '—'}</span>;
+    }
+
+    if (col.key === 'raisedBy' || col.key === 'officerLeadingHotel') {
+      return <span className="text-neutral-700">{r.raisedBy || r.officerLeadingHotel || '—'}</span>;
+    }
+
+    if (col.key === 'acknowledgementReceived') {
+      return (
+        <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+          r.acknowledgementReceived === 'Yes'
+            ? 'bg-emerald-100 text-emerald-800'
+            : r.acknowledgementReceived === 'Pending'
+              ? 'bg-amber-100 text-amber-800'
+              : 'bg-neutral-100 text-neutral-600'
+        }`}>
+          {r.acknowledgementReceived || '—'}
+        </span>
+      );
+    }
+
+    if (col.key === 'responseReceivedFromLA') {
+      return (
+        <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+          r.responseReceivedFromLA === 'Yes'
+            ? 'bg-emerald-100 text-emerald-800'
+            : r.responseReceivedFromLA === 'Awaiting Allocation'
+              ? 'bg-amber-100 text-amber-800'
+              : 'bg-neutral-100 text-neutral-600'
+        }`}>
+          {r.responseReceivedFromLA || '—'}
+        </span>
+      );
+    }
+
+    if (col.key === 'notesActionTaken' || col.key === 'sgReview') {
+      return (
+        <span className="text-[11px] max-w-[280px] truncate block" title={val}>
+          {val || '—'}
+        </span>
+      );
+    }
+
+    if (col.badgeColors && col.badgeColors[val]) {
+      return (
+        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${col.badgeColors[val]}`}>
+          {val}
+        </span>
+      );
+    }
+
+    if (col.type === 'checkbox') {
+      return (
+        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${val ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-500'}`}>
+          {val ? 'Yes' : 'No'}
+        </span>
+      );
+    }
+
+    if (col.type === 'currency' && val !== undefined && val !== null && val !== '') {
+      return <span className="font-mono font-medium text-neutral-800">£{Number(val).toFixed(2)}</span>;
+    }
+
+    return <span className="text-neutral-700">{val !== undefined && val !== null && val !== '' ? String(val) : '—'}</span>;
+  };
+
   return (
     <div className="space-y-4">
       {/* View Header */}
@@ -360,7 +508,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
             {isArchive ? 'Archived SG Referrals' : 'SG Referrals'}
           </h2>
           <p className="text-xs text-[#605e5c] mt-0.5">
-            {isArchive 
+            {isArchive
               ? 'Safeguarding referrals that have concluded or been archived.'
               : 'Track multi-agency safeguarding referrals and local authority council outcomes.'}
           </p>
@@ -371,26 +519,33 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
           <div className="bg-[#edebe9] p-0.5 rounded-xs flex items-center text-xs">
             <button
               onClick={() => setActivePage('referrals')}
-              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${
-                !isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
-              }`}
+              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${!isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
             >
               Active Referrals
             </button>
             <button
               onClick={() => setActivePage('referralsArchive')}
-              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${
-                isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
-              }`}
+              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
             >
               Archive
             </button>
           </div>
 
-          {/* `canCreateRecord` was imported but never called: the button was gated
-              on `!isArchive` alone, so a role explicitly denied creation could
-              still create records (BUG-016). Delete and Edit were already gated,
-              which is what made this an omission rather than a design choice. */}
+          {/* Super Admin Table Customizer Button */}
+          {currentUserRole === 'Super Admin' && (
+            <button
+              id="btn-customize-referrals-table"
+              onClick={() => setIsSchemaEditorOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-neutral-300 rounded-xs shadow-xs transition-colors cursor-pointer"
+              title="Configure Table Headers & Form Fields (Super Admin Only)"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>Customize Table</span>
+            </button>
+          )}
+
           {!isArchive && canCreateRecord() && (
             <button
               id="btn-new-referral"
@@ -440,143 +595,41 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
           <table className="w-full text-left text-xs border-collapse min-w-[1700px]">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                {isArchive ? (
-                  <>
-                    <th onClick={() => handleSort('site')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Site Name">
-                      <div className="flex items-center gap-1">
-                        <span>Site Name</span>
-                        {sortField === 'site' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('referralCouncil')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Referral Council">
-                      <div className="flex items-center gap-1">
-                        <span>Referral Council</span>
-                        {sortField === 'referralCouncil' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('suName')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by SU Name">
-                      <div className="flex items-center gap-1">
-                        <span>SU Name</span>
-                        {sortField === 'suName' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('mosaicId')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Mosaic ID">
-                      <div className="flex items-center gap-1">
-                        <span>Mosaic</span>
-                        {sortField === 'mosaicId' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('portRef')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Port / NASS Ref">
-                      <div className="flex items-center gap-1">
-                        <span>Port / Nass Ref</span>
-                        {sortField === 'portRef' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('dob')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by DOB">
-                      <div className="flex items-center gap-1">
-                        <span>Date of Birth</span>
-                        {sortField === 'dob' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th className="p-2.5">Raised By (Officer Leading)</th>
-                    <th onClick={() => handleSort('referralType')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Referral Type">
-                      <div className="flex items-center gap-1">
-                        <span>Referral Type</span>
-                        {sortField === 'referralType' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('status')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Status">
-                      <div className="flex items-center gap-1">
-                        <span>Status</span>
-                        {sortField === 'status' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('dateReferred')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Date Referred">
-                      <div className="flex items-center gap-1">
-                        <span>Date Referred</span>
-                        {sortField === 'dateReferred' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th className="p-2.5">Method of Referral</th>
-                    <th className="p-2.5 text-center">Acknowledgement Received</th>
-                    <th className="p-2.5 text-center">Response Received from LA</th>
-                    <th className="p-2.5">LA Leading Officer</th>
-                    <th className="p-2.5 min-w-[200px] max-w-[280px]">Notes - Action(s) Taken</th>
-                    <th className="p-2.5 min-w-[200px] max-w-[280px]">SG Review</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="p-2.5 w-12 text-center">Sr. No.</th>
-                    <th onClick={() => handleSort('site')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Hotel / Site">
-                      <div className="flex items-center gap-1">
-                        <span>Hotel</span>
-                        {sortField === 'site' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('referralCouncil')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Referral Council">
-                      <div className="flex items-center gap-1">
-                        <span>Referral Council</span>
-                        {sortField === 'referralCouncil' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('suName')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by SU Name">
-                      <div className="flex items-center gap-1">
-                        <span>SU Name</span>
-                        {sortField === 'suName' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('mosaicId')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Mosaic ID">
-                      <div className="flex items-center gap-1">
-                        <span>Mosaic ID</span>
-                        {sortField === 'mosaicId' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('portRef')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Port / NASS Ref">
-                      <div className="flex items-center gap-1">
-                        <span>Port / Nass Ref</span>
-                        {sortField === 'portRef' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('dob')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by DOB">
-                      <div className="flex items-center gap-1">
-                        <span>Date of Birth</span>
-                        {sortField === 'dob' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th className="p-2.5">Raised By (Officer Leading)</th>
-                    <th onClick={() => handleSort('referralType')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Referral Type">
-                      <div className="flex items-center gap-1">
-                        <span>Referral Type</span>
-                        {sortField === 'referralType' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('status')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Status">
-                      <div className="flex items-center gap-1">
-                        <span>Status</span>
-                        {sortField === 'status' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th onClick={() => handleSort('dateReferred')} className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Date Referred">
-                      <div className="flex items-center gap-1">
-                        <span>Date Referred</span>
-                        {sortField === 'dateReferred' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                      </div>
-                    </th>
-                    <th className="p-2.5">Method of Referral</th>
-                    <th className="p-2.5 text-center">Acknowledgement Received</th>
-                    <th className="p-2.5 text-center">Response Received from LA</th>
-                    <th className="p-2.5">LA officer Leading</th>
-                    <th className="p-2.5 min-w-[200px] max-w-[280px]">Notes - Action(s) Taken</th>
-                    <th className="p-2.5 min-w-[200px] max-w-[280px]">SG Review</th>
-                  </>
+                {!isArchive && (
+                  <th className="p-2.5 w-12 text-center">Sr. No.</th>
                 )}
+                {visibleReferralsColumns.map(col => {
+                  const isSorted = sortField === col.key;
+                  return (
+                    <th
+                      key={String(col.key)}
+                      onClick={() => handleSort(String(col.key))}
+                      className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                      title={`Sort by ${col.label}`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>{col.label}</span>
+                        {col.isCustom && (
+                          <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
+                            Custom
+                          </span>
+                        )}
+                        {isSorted ? (
+                          sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
                 <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9]">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={isArchive ? 17 : 18} className="text-center py-12 text-[#605e5c]">
+                  <td colSpan={visibleReferralsColumns.length + (isArchive ? 1 : 2)} className="text-center py-12 text-[#605e5c]">
                     No referral records found matching current criteria.
                   </td>
                 </tr>
@@ -592,109 +645,11 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
                           {r.srNo || (currentPage - 1) * pageSize + idx + 1}
                         </td>
                       )}
-                      <td className="p-2.5 font-medium text-[#242424] whitespace-nowrap">
-                        {r.site}
-                      </td>
-                      <td className="p-2.5 text-neutral-600 whitespace-nowrap">
-                        {r.referralCouncil}
-                      </td>
-                      <td className="p-2.5 font-semibold text-[#0f766e] whitespace-nowrap">
-                        <button 
-                          onClick={() => setViewRecord(r)}
-                          className="hover:underline text-left"
-                        >
-                          {r.suName}
-                        </button>
-                      </td>
-                      <td className="p-2.5 text-neutral-500 font-mono text-[11px] whitespace-nowrap">
-                        {r.mosaicId || '—'}
-                      </td>
-                      <td className="p-2.5 text-neutral-600 font-mono text-[11px] whitespace-nowrap">
-                        {r.portRef || '—'}
-                      </td>
-                      <td className="p-2.5 text-neutral-600 whitespace-nowrap font-mono text-[11px]">
-                        {r.dob || '—'}
-                      </td>
-                      <td className="p-2.5 text-neutral-700 whitespace-nowrap">
-                        {r.raisedBy || r.officerLeadingHotel || '—'}
-                      </td>
-                      <td className="p-2.5 whitespace-nowrap">
-                        <span className="text-neutral-800">{r.referralType}</span>
-                      </td>
-                      <td className="p-2.5 whitespace-nowrap">
-                        {canEditRecord(r.site) && !isArchive ? (
-                          <select
-                            value={r.status}
-                            onChange={e => updateReferral(r.id, { status: e.target.value as StatusType })}
-                            className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
-                              r.status === 'Open' ? 'bg-[#f0fdfa] text-[#0f766e] border-[#99f6e4]' :
-                              r.status === 'In progress' ? 'bg-[#fff4ce] text-[#7f6000] border-[#ffe788]' :
-                              r.status === 'Completed' ? 'bg-[#e8f5e9] text-[#107c10] border-[#c8e6c9]' :
-                              r.status === 'Archived' ? 'bg-[#f0eafd] text-[#5c2d91] border-[#dcd0f9]' :
-                              'bg-neutral-100 text-neutral-700 border-neutral-300'
-                            }`}
-                            title="Click to update referral status"
-                          >
-                            {referralStatusOptions.map(opt => (
-                              <option key={opt.id} value={opt.value} className="bg-white text-neutral-900 font-normal">
-                                {opt.label}
-                              </option>
-                            ))}
-                            {!referralStatusOptions.some(o => o.value === r.status) && (
-                              <option value={r.status} className="bg-white text-neutral-900 font-normal">
-                                {r.status}
-                              </option>
-                            )}
-                          </select>
-                        ) : (
-                          <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded ${
-                            r.status === 'Open' ? 'bg-[#f0fdfa] text-[#0f766e]' :
-                            r.status === 'In progress' ? 'bg-[#fff4ce] text-[#7f6000]' :
-                            r.status === 'Completed' ? 'bg-[#e8f5e9] text-[#107c10]' :
-                            r.status === 'Archived' ? 'bg-[#f0eafd] text-[#5c2d91]' :
-                            'bg-neutral-100 text-neutral-700'
-                          }`}>
-                            {r.status}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-2.5 text-neutral-600 whitespace-nowrap font-mono text-[11px]">
-                        {r.dateReferred}
-                      </td>
-                      <td className="p-2.5 text-neutral-600 text-[11px] whitespace-nowrap">
-                        {r.methodOfReferral}
-                      </td>
-                      <td className="p-2.5 text-center whitespace-nowrap">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                          r.acknowledgementReceived === 'Yes' 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : r.acknowledgementReceived === 'Pending' 
-                            ? 'bg-amber-100 text-amber-800' 
-                            : 'bg-neutral-100 text-neutral-600'
-                        }`}>
-                          {r.acknowledgementReceived}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-center whitespace-nowrap">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                          r.responseReceivedFromLA === 'Yes' 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : r.responseReceivedFromLA === 'Awaiting Allocation' 
-                            ? 'bg-amber-100 text-amber-800' 
-                            : 'bg-neutral-100 text-neutral-600'
-                        }`}>
-                          {r.responseReceivedFromLA}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-neutral-700 whitespace-nowrap">
-                        {r.laOfficerLeading || 'Awaiting LA'}
-                      </td>
-                      <td className="p-2.5 text-neutral-600 text-[11px] max-w-[280px] truncate" title={r.notesActionTaken}>
-                        {r.notesActionTaken}
-                      </td>
-                      <td className="p-2.5 text-neutral-600 text-[11px] max-w-[280px] truncate" title={r.sgReview}>
-                        {r.sgReview || '—'}
-                      </td>
+                      {visibleReferralsColumns.map(col => (
+                        <td key={String(col.key)} className="p-2.5 whitespace-nowrap">
+                          {renderColumnCell(col, r)}
+                        </td>
+                      ))}
                       <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
                         <div className="flex items-center justify-end gap-1">
                           {/* View details */}
@@ -775,568 +730,82 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         />
       </div>
 
-      {/* CREATE RECORD MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-[#e1dfdd] flex items-center justify-between bg-[#f8f9fa]">
-              <h3 className="text-base font-semibold text-[#242424]">
-                New SG Referral Submission
-              </h3>
-              <button 
-                onClick={() => setIsCreateModalOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* DYNAMIC CREATE SG REFERRAL MODAL */}
+      <DynamicRecordFormModal<SGReferral>
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="New SG Referral Submission"
+        columns={referralsColumns}
+        initialValues={{
+          site: allowedSites[0] || 'Victoria House',
+          dateReferred: new Date().toISOString().slice(0, 10),
+          status: 'Open',
+          methodOfReferral: 'Encrypted Email',
+          referralType: 'Safeguarding Adult',
+          urgency: 'Medium'
+        }}
+        onSave={(data) => {
+          const currentOfficer = (data as any).raisedBy || (data as any).officerLeadingHotel || loggedInUserName;
+          addReferral({
+            site: data.site || allowedSites[0] || 'Victoria House',
+            referralCouncil: data.referralCouncil || '',
+            suName: data.suName || '',
+            portRef: data.portRef || '',
+            mosaicId: data.mosaicId || '',
+            dob: data.dob || '',
+            raisedBy: currentOfficer,
+            officerLeadingHotel: currentOfficer,
+            referralType: (data.referralType as any) || 'Safeguarding Adult',
+            urgency: (data.urgency as any) || 'Routine',
+            status: data.status || 'Open',
+            dateReferred: data.dateReferred || new Date().toISOString().slice(0, 10),
+            methodOfReferral: (data.methodOfReferral as any) || 'Encrypted Email',
+            acknowledgementReceived: data.acknowledgementReceived || 'Pending',
+            responseReceivedFromLA: data.responseReceivedFromLA || 'Pending',
+            laOfficerLeading: data.laOfficerLeading || '',
+            notesActionTaken: data.notesActionTaken || '',
+            sgReview: data.sgReview || '',
+            attachments: [],
+            ...data
+          });
+          setIsCreateModalOpen(false);
+        }}
+      />
 
-            <form onSubmit={handleSubmitNew} className="p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Hotel / Site *</label>
-                  <select
-                    value={formData.site}
-                    onChange={e => setFormData({ ...formData, site: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    required
-                  >
-                    {allowedSites.map((s, idx) => (
-                      <option key={`${s}-${idx}`} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+      {/* DYNAMIC EDIT SG REFERRAL MODAL */}
+      <DynamicRecordFormModal<SGReferral>
+        isOpen={Boolean(editingRecord)}
+        onClose={() => setEditingRecord(null)}
+        title={`Edit SG Referral Dossier: ${editingRecord?.suName || ''}`}
+        columns={referralsColumns}
+        initialValues={editingRecord || undefined}
+        isEdit={true}
+        onSave={(data) => {
+          if (!editingRecord) return;
+          const currentOfficer = (data as any).raisedBy || (data as any).officerLeadingHotel || loggedInUserName;
+          updateReferral(editingRecord.id, {
+            ...editingRecord,
+            ...data,
+            raisedBy: currentOfficer,
+            officerLeadingHotel: currentOfficer
+          });
+          setEditingRecord(null);
+        }}
+      />
 
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Referral Council *</label>
-                  <input
-                    type="text"
-                    list="referral-councils-list"
-                    value={formData.referralCouncil}
-                    onChange={e => setFormData({ ...formData, referralCouncil: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    placeholder="e.g. Westminster City Council"
-                    required
-                  />
-                  <datalist id="referral-councils-list">
-                    {councilOptions.map(c => (
-                      <option key={c.id} value={c.value} />
-                    ))}
-                  </datalist>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Service User (SU) Full Name *</label>
-                  <input
-                    type="text"
-                    value={formData.suName}
-                    onChange={e => setFormData({ ...formData, suName: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    placeholder="e.g. John Doe"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Date of Birth</label>
-                  <input
-                    type="date"
-                    value={formData.dob}
-                    onChange={e => setFormData({ ...formData, dob: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Port / NASS Reference</label>
-                  <input
-                    type="text"
-                    value={formData.portRef}
-                    onChange={e => setFormData({ ...formData, portRef: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    placeholder="e.g. PORT-12345"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Mosaic ID</label>
-                  <input
-                    type="text"
-                    value={formData.mosaicId}
-                    onChange={e => setFormData({ ...formData, mosaicId: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    placeholder="e.g. MOS-99881"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Referral Type</label>
-                  <select
-                    value={formData.referralType}
-                    onChange={e => setFormData({ ...formData, referralType: e.target.value as SGReferral['referralType'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {referralTypeOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!referralTypeOptions.some(o => o.value === formData.referralType) && formData.referralType && (
-                      <option value={formData.referralType}>{formData.referralType}</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Urgency Priority</label>
-                  <select
-                    value={formData.urgency}
-                    onChange={e => setFormData({ ...formData, urgency: e.target.value as RiskLevel })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {urgencyOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!urgencyOptions.some(o => o.value === formData.urgency) && formData.urgency && (
-                      <option value={formData.urgency}>{formData.urgency}</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] mb-1 flex items-center justify-between">
-                    <span>Raised By (Officer Leading)</span>
-                    <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-amber-600" /> Logged-in User (Locked)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.raisedBy || formData.officerLeadingHotel || loggedInUserName}
-                    readOnly
-                    className="w-full p-2 border border-neutral-300 rounded-xs bg-neutral-100 text-neutral-700 font-medium cursor-not-allowed select-none"
-                    placeholder="Officer name"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Method of Referral</label>
-                  <select
-                    value={formData.methodOfReferral}
-                    onChange={e => setFormData({ ...formData, methodOfReferral: e.target.value as SGReferral['methodOfReferral'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {referralMethodOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!referralMethodOptions.some(o => o.value === formData.methodOfReferral) && formData.methodOfReferral && (
-                      <option value={formData.methodOfReferral}>{formData.methodOfReferral}</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">LA Officer Leading</label>
-                  <input
-                    type="text"
-                    value={formData.laOfficerLeading}
-                    onChange={e => setFormData({ ...formData, laOfficerLeading: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    placeholder="e.g. Social Worker Name"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={e => setFormData({ ...formData, status: e.target.value as StatusType })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {referralStatusOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!referralStatusOptions.some(o => o.value === formData.status) && formData.status && (
-                      <option value={formData.status}>{formData.status}</option>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">Notes - Action(s) Taken *</label>
-                <textarea
-                  rows={3}
-                  value={formData.notesActionTaken}
-                  onChange={e => setFormData({ ...formData, notesActionTaken: e.target.value })}
-                  placeholder="Detail safeguarding concerns, incident background, initial accommodation adjustments..."
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">SG Team Review / Follow-up Notes</label>
-                <textarea
-                  rows={2}
-                  value={formData.sgReview}
-                  onChange={e => setFormData({ ...formData, sgReview: e.target.value })}
-                  placeholder="Review actions, multi-agency feedback, next steps..."
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                />
-              </div>
-
-              {/* Attach Proof Files / Docs */}
-              <div className="pt-2">
-                <AttachmentsSection
-                  attachments={formData.attachments || []}
-                  onChange={newFiles => setFormData({ ...formData, attachments: newFiles })}
-                  canManage={canManageFiles()}
-                  readOnly={!canManageFiles()}
-                  title="Supporting Proof Documents & Images"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-[#edebe9] flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs"
-                >
-                  Submit & Confirm
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT RECORD MODAL */}
-      {editingRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-[#e1dfdd] flex items-center justify-between bg-[#f8f9fa]">
-              <h3 className="text-base font-semibold text-[#242424]">
-                Edit Referral: {editingRecord.suName} ({editingRecord.portRef})
-              </h3>
-              <button 
-                onClick={() => setEditingRecord(null)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Status</label>
-                  <select
-                    value={editingRecord.status}
-                    onChange={e => setEditingRecord({ ...editingRecord, status: e.target.value as StatusType })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Open">Open</option>
-                    <option value="In progress">In progress</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Archived">Archived</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Urgency Priority</label>
-                  <select
-                    value={editingRecord.urgency}
-                    onChange={e => setEditingRecord({ ...editingRecord, urgency: e.target.value as RiskLevel })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {urgencyOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!urgencyOptions.some(o => o.value === editingRecord.urgency) && editingRecord.urgency && (
-                      <option value={editingRecord.urgency}>{editingRecord.urgency}</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Referral Type</label>
-                  <select
-                    value={editingRecord.referralType}
-                    onChange={e => setEditingRecord({ ...editingRecord, referralType: e.target.value as SGReferral['referralType'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {referralTypeOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!referralTypeOptions.some(o => o.value === editingRecord.referralType) && editingRecord.referralType && (
-                      <option value={editingRecord.referralType}>{editingRecord.referralType}</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Method of Referral</label>
-                  <select
-                    value={editingRecord.methodOfReferral}
-                    onChange={e => setEditingRecord({ ...editingRecord, methodOfReferral: e.target.value as SGReferral['methodOfReferral'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {referralMethodOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!referralMethodOptions.some(o => o.value === editingRecord.methodOfReferral) && editingRecord.methodOfReferral && (
-                      <option value={editingRecord.methodOfReferral}>{editingRecord.methodOfReferral}</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Acknowledgement Received</label>
-                  <select
-                    value={editingRecord.acknowledgementReceived}
-                    onChange={e => setEditingRecord({ ...editingRecord, acknowledgementReceived: e.target.value as SGReferral['acknowledgementReceived'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Response Received from LA</label>
-                  <select
-                    value={editingRecord.responseReceivedFromLA}
-                    onChange={e => setEditingRecord({ ...editingRecord, responseReceivedFromLA: e.target.value as SGReferral['responseReceivedFromLA'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                    <option value="Awaiting Allocation">Awaiting Allocation</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">LA Lead Officer</label>
-                  <input
-                    type="text"
-                    value={editingRecord.laOfficerLeading}
-                    onChange={e => setEditingRecord({ ...editingRecord, laOfficerLeading: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] mb-1 flex items-center justify-between">
-                    <span>Raised By (Officer Leading)</span>
-                    <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-amber-600" /> Locked
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editingRecord.raisedBy || editingRecord.officerLeadingHotel || loggedInUserName}
-                    readOnly
-                    className="w-full p-2 border border-neutral-300 rounded-xs bg-neutral-100 text-neutral-700 font-medium cursor-not-allowed select-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">Notes - Action(s) Taken</label>
-                <textarea
-                  rows={3}
-                  value={editingRecord.notesActionTaken}
-                  onChange={e => setEditingRecord({ ...editingRecord, notesActionTaken: e.target.value })}
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">SG Review Comments</label>
-                <textarea
-                  rows={3}
-                  value={editingRecord.sgReview}
-                  onChange={e => setEditingRecord({ ...editingRecord, sgReview: e.target.value })}
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                />
-              </div>
-
-              {/* Attach Proof Files / Docs */}
-              <div className="pt-2">
-                <AttachmentsSection
-                  attachments={editingRecord.attachments || []}
-                  onChange={newFiles => setEditingRecord({ ...editingRecord, attachments: newFiles })}
-                  canManage={canManageFiles()}
-                  readOnly={!canManageFiles()}
-                  title="Supporting Proof Documents & Images"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-[#edebe9] flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingRecord(null)}
-                  className="px-4 py-2 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW RECORD MODAL (Read-Only Detail Card) */}
-      {viewRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-[#e1dfdd] flex items-center justify-between bg-[#f3f8fd]">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[#0f766e]">
-                  SG Referral Dossier: {viewRecord.suName}
-                </h3>
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                  viewRecord.status === 'Open' ? 'bg-[#f0fdfa] text-[#0f766e]' :
-                  viewRecord.status === 'Completed' ? 'bg-[#e8f5e9] text-[#107c10]' :
-                  'bg-[#fff4ce] text-[#7f6000]'
-                }`}>
-                  {viewRecord.status}
-                </span>
-              </div>
-              <button 
-                onClick={() => setViewRecord(null)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 text-xs text-[#242424]">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[#faf9f8] p-3 rounded-xs border border-[#edebe9]">
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Sr. No.</div>
-                  <div className="font-semibold text-neutral-800">#{viewRecord.srNo}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Hotel / Property</div>
-                  <div className="font-semibold text-neutral-800">{viewRecord.site}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Referral Council</div>
-                  <div className="font-semibold text-neutral-800">{viewRecord.referralCouncil}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">SU Name</div>
-                  <div className="font-bold text-neutral-900">{viewRecord.suName}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Port / NASS Ref</div>
-                  <div className="font-mono text-neutral-800">{viewRecord.portRef || '—'}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Mosaic ID</div>
-                  <div className="font-mono text-neutral-800">{viewRecord.mosaicId || '—'}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Date of Birth</div>
-                  <div>{viewRecord.dob || '—'}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Date Referred</div>
-                  <div>{viewRecord.dateReferred}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Referral Type</div>
-                  <div>{viewRecord.referralType}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Method of Referral</div>
-                  <div>{viewRecord.methodOfReferral}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Urgency</div>
-                  <span className="font-bold text-amber-800">{viewRecord.urgency}</span>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Acknowledgement Received</div>
-                  <span className={`font-semibold ${viewRecord.acknowledgementReceived === 'Yes' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                    {viewRecord.acknowledgementReceived}
-                  </span>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Response Received from LA</div>
-                  <span className="font-semibold text-neutral-800">{viewRecord.responseReceivedFromLA}</span>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">Raised By (Officer Leading)</div>
-                  <div className="text-neutral-800 font-medium">{viewRecord.raisedBy || viewRecord.officerLeadingHotel || '—'}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-neutral-500 font-semibold">LA Officer Leading</div>
-                  <div className="text-neutral-800">{viewRecord.laOfficerLeading || '—'}</div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-neutral-700 mb-1">Notes - Action(s) Taken</h4>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed">
-                  {viewRecord.notesActionTaken}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-neutral-700 mb-1">SG Review</h4>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed">
-                  {viewRecord.sgReview || 'No review notes registered yet.'}
-                </div>
-              </div>
-
-              {/* Proof Documents & Images Section */}
-              <div className="pt-1">
-                <AttachmentsSection
-                  attachments={viewRecord.attachments || []}
-                  canManage={false}
-                  readOnly={true}
-                  title="Supporting Proof Documents & Images"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-[11px] text-neutral-500 border-t border-[#edebe9] pt-3">
-                <div>
-                  Last Updated: <strong className="text-neutral-700">{viewRecord.updatedAt.slice(0, 10)}</strong>
-                </div>
-                <div>
-                  By: <strong className="text-neutral-700">{viewRecord.lastUpdatedBy}</strong>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-[#edebe9] flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setViewRecord(null)}
-                  className="px-4 py-1.5 bg-white border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold"
-                >
-                  Close Dossier
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* DYNAMIC VIEW SG REFERRAL MODAL */}
+      <DynamicRecordViewModal<SGReferral>
+        isOpen={Boolean(viewRecord)}
+        onClose={() => setViewRecord(null)}
+        title={`Safeguarding Referral Dossier: ${viewRecord?.suName || ''}`}
+        columns={referralsColumns}
+        record={viewRecord}
+        onEdit={viewRecord && canEditRecord(viewRecord.site) && !isArchive ? () => {
+          const rec = viewRecord;
+          setViewRecord(null);
+          setEditingRecord(rec);
+        } : undefined}
+      />
 
       {/* Export Selection & Configuration Modal */}
       <ExportModal
@@ -1352,6 +821,17 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         availableColumns={referralExportColumns}
         getPreviewData={getExportPreviewData}
         onExport={handlePerformExport}
+      />
+
+      {/* SUPER ADMIN TABLE SCHEMA & HEADER CUSTOMIZER MODAL */}
+      <TableSchemaEditorModal<SGReferral>
+        isOpen={isSchemaEditorOpen}
+        onClose={() => setIsSchemaEditorOpen(false)}
+        moduleTitle="Safeguarding Referrals"
+        columns={referralsColumns}
+        onSaveColumns={handleSaveReferralsColumns}
+        onResetToDefault={handleResetReferralsColumns}
+        currentUserRole={currentUserRole}
       />
     </div>
   );

@@ -56,7 +56,7 @@ const MODULE_COLORS: Record<NotificationModule, { bg: string; text: string; bord
   'Governance': { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' }
 };
 
-const AVAILABLE_ROLES: RoleType[] = ['Super Admin', 'Admin', 'Regional Manager', 'Hotel Lead Officer', 'Staff'];
+const AVAILABLE_ROLES: RoleType[] = ['Super Admin', 'Admin', 'Regional Manager', 'Site Manager', 'Staff'];
 
 export const NotificationsManagementView: React.FC = () => {
   const { 

@@ -138,10 +138,22 @@ async function parseApiResponse<T = any>(res: Response): Promise<T> {
  * (BUG-001). Reads previously went out with no headers at all, which was fine
  * while the API was open and returns 401 now, so every call must carry the token.
  */
+function getActiveToken(): string | null {
+  if (activeAuditContext?.token) return activeAuditContext.token;
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('token');
+      if (stored) {
+        return stored.startsWith('"') ? JSON.parse(stored) : stored;
+      }
+    } catch {}
+  }
+  return null;
+}
+
 function authHeaders(): Record<string, string> {
-  return activeAuditContext?.token
-    ? { Authorization: `Bearer ${activeAuditContext.token}` }
-    : {};
+  const token = getActiveToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 function getAuditHeaders(actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'READ' = 'READ'): Record<string, string> {
@@ -155,7 +167,10 @@ function getAuditHeaders(actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'READ' = '
     if (activeAuditContext.userName) headers['x-user-name'] = activeAuditContext.userName;
     if (activeAuditContext.role) headers['x-user-role'] = activeAuditContext.role;
     if (activeAuditContext.site) headers['x-user-site'] = activeAuditContext.site;
-    if (activeAuditContext.token) headers['Authorization'] = `Bearer ${activeAuditContext.token}`;
+  }
+  const token = getActiveToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
   headers['x-action-type'] = actionType;
   return headers;
@@ -371,7 +386,7 @@ export const apiService = {
         headers: getAuditHeaders('DELETE')
       });
       const json = await parseApiResponse<any>(res);
-      if (json.success !== false) {
+      if (json.success !== false && !json.error) {
         diagnosticLogger.logAuditDispatch({
           action: 'DELETE',
           entity,
@@ -379,8 +394,9 @@ export const apiService = {
           userId: activeAuditContext?.userId,
           success: true
         });
+        return { success: true };
       }
-      return json;
+      return { success: false, error: json.error || 'Server reported failure on delete' };
     } catch (err: any) {
       diagnosticLogger.logAuditDispatch({
         action: 'DELETE',

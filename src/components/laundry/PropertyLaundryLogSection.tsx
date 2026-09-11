@@ -14,7 +14,9 @@ import {
   CalendarDays,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  SlidersHorizontal,
+  Eye
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PropertyLaundryLog } from '../../types';
@@ -25,6 +27,11 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { WeekSwitcher } from '../common/WeekSwitcher';
 import { validateLaundryLog } from '../../utils/validationSchemas';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { PROPERTY_LAUNDRY_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
+import { TableColumnConfig } from '../../types/tableSchema';
 
 const propertyLaundryExportColumns: ExportColumnOption[] = [
   { id: 'site', label: 'Property / Hotel' },
@@ -142,6 +149,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
     addPropertyLaundryLog,
     updatePropertyLaundryLog,
     deletePropertyLaundryLog,
+    canCreateRecord,
     canDeleteRecord,
     canEditRecord,
     canAccessAllSites,
@@ -178,7 +186,17 @@ export const PropertyLaundryLogSection: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(settings.pageSize || 10);
 
+  // Dynamic Table Schema & Columns Hook
+  const {
+    columns,
+    visibleColumns,
+    saveColumns,
+    resetToDefault
+  } = useTableSchema<PropertyLaundryLog>('propertyLaundry', PROPERTY_LAUNDRY_TABLE_COLUMNS);
+
   // Modal states
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+  const [viewRecord, setViewRecord] = useState<PropertyLaundryLog | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<PropertyLaundryLog | null>(null);
 
@@ -408,10 +426,10 @@ export const PropertyLaundryLogSection: React.FC = () => {
   }, [propertyLaundryLogs, siteFilter, periodTypeFilter, discrepancyFilter, activeWeekCursor, searchQuery]);
 
   // Sort State
-  const [sortField, setSortField] = useState<keyof PropertyLaundryLog>('startDate');
+  const [sortField, setSortField] = useState<string>('startDate');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
-  const handleSort = (field: keyof PropertyLaundryLog) => {
+  const handleSort = (field: string) => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
     } else {
@@ -423,8 +441,8 @@ export const PropertyLaundryLogSection: React.FC = () => {
   // Sort filtered data
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => {
-      let valA: any = a[sortField] ?? '';
-      let valB: any = b[sortField] ?? '';
+      let valA: any = (a as any)[sortField] ?? '';
+      let valB: any = (b as any)[sortField] ?? '';
       if (typeof valA === 'string') valA = valA.toLowerCase();
       if (typeof valB === 'string') valB = valB.toLowerCase();
       if (valA < valB) return sortAsc ? -1 : 1;
@@ -432,6 +450,118 @@ export const PropertyLaundryLogSection: React.FC = () => {
       return 0;
     });
   }, [filteredData, sortField, sortAsc]);
+
+  const renderColumnCell = (col: TableColumnConfig<PropertyLaundryLog>, log: PropertyLaundryLog) => {
+    if (col.renderCell) {
+      return col.renderCell((log as any)[col.key], log);
+    }
+
+    const value = (log as any)[col.key];
+
+    if (col.key === 'site') {
+      return (
+        <div className="flex items-center gap-1.5 font-semibold text-[#242424]">
+          <Building2 className="w-4 h-4 text-[#0d9488]" />
+          <span>{log.site}</span>
+        </div>
+      );
+    }
+
+    if (col.key === 'periodType') {
+      return (
+        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+          log.periodType === 'Weekly' ? 'bg-teal-100 text-teal-900' : 'bg-purple-100 text-purple-900'
+        }`}>
+          {log.periodType} Log
+        </span>
+      );
+    }
+
+    if (col.key === 'periodLabel') {
+      return (
+        <div>
+          <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold mr-1.5 ${
+            log.periodType === 'Weekly' ? 'bg-teal-100 text-teal-900' : 'bg-purple-100 text-purple-900'
+          }`}>
+            {log.periodType}
+          </span>
+          <span className="text-xs text-neutral-700 font-medium">{log.periodLabel}</span>
+        </div>
+      );
+    }
+
+    if (col.key === 'dirtyLaundrySent') {
+      return (
+        <span className="font-mono font-bold text-slate-800 text-sm">
+          {value ?? 0}
+        </span>
+      );
+    }
+
+    if (col.key === 'cleanLaundryReturned') {
+      return (
+        <span className="font-mono font-bold text-emerald-800 text-sm">
+          {value ?? 0}
+        </span>
+      );
+    }
+
+    if (col.key === 'discrepanciesCount' || col.key === 'hasDiscrepancy') {
+      const hasDiscrepancy = log.hasDiscrepancy || (log.discrepanciesCount || 0) > 0;
+      return hasDiscrepancy ? (
+        <div className="inline-flex flex-col items-center">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[10px] font-bold">
+            <AlertTriangle className="w-3 h-3 text-amber-700" />
+            Yes ({log.discrepanciesCount || 0} missing)
+          </span>
+        </div>
+      ) : (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-semibold">
+          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+          No (0)
+        </span>
+      );
+    }
+
+    if (col.badgeColors && value) {
+      const badgeClass = col.badgeColors[value] || 'bg-gray-100 text-gray-800';
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[11px] font-semibold ${badgeClass}`}>
+          {value}
+        </span>
+      );
+    }
+
+    if (col.key === 'discrepancyDetails') {
+      return log.discrepancyDetails ? (
+        <span className="leading-relaxed font-medium">{log.discrepancyDetails}</span>
+      ) : (
+        <span className="text-neutral-400 italic">—</span>
+      );
+    }
+
+    if (col.key === 'remarksActionsTaken') {
+      return log.remarksActionsTaken ? (
+        <span className="leading-relaxed">{log.remarksActionsTaken}</span>
+      ) : (
+        <span className="text-neutral-400 italic">No specific actions required</span>
+      );
+    }
+
+    if (col.key === 'loggedBy') {
+      return <span className="text-neutral-600 text-xs whitespace-nowrap">{value || '—'}</span>;
+    }
+
+    if (col.type === 'date') {
+      return <span className="font-mono text-[#323130]">{value || '—'}</span>;
+    }
+
+    if (value === null || value === undefined || value === '') {
+      return <span className="text-[#a19f9d]">—</span>;
+    }
+
+    return String(value);
+  };
 
   const totalPages = Math.ceil(sortedData.length / pageSize) || 1;
   const paginatedData = useMemo(() => {
@@ -608,6 +738,18 @@ export const PropertyLaundryLogSection: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {currentUserRole === 'Super Admin' && (
+            <button
+              type="button"
+              onClick={() => setIsSchemaModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
+              title="Super Admin: Customize table columns, headers, and fields"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+              <span>Customize Table</span>
+            </button>
+          )}
+
           {/* Custom Export Dropdown & Modal */}
           <ExportDropdown
             moduleName="Property Laundry Register"
@@ -751,113 +893,57 @@ export const PropertyLaundryLogSection: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap">
               <tr>
-                <th onClick={() => handleSort('site')} className="py-2.5 px-3 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Property">
-                  <div className="flex items-center gap-1">
-                    <span>Property / Hotel</span>
-                    {sortField === 'site' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('periodLabel')} className="py-2.5 px-3 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Log Period">
-                  <div className="flex items-center gap-1">
-                    <span>Log Period</span>
-                    {sortField === 'periodLabel' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('dirtyLaundrySent')} className="py-2.5 px-3 text-right cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Dirty Laundry Sent">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Dirty Laundry Sent</span>
-                    {sortField === 'dirtyLaundrySent' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('cleanLaundryReturned')} className="py-2.5 px-3 text-right cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Clean Laundry Returned">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Clean Laundry Returned</span>
-                    {sortField === 'cleanLaundryReturned' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('discrepanciesCount')} className="py-2.5 px-3 text-center cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Discrepancies">
-                  <div className="flex items-center justify-center gap-1">
-                    <span>Discrepancies?</span>
-                    {sortField === 'discrepanciesCount' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th className="py-2.5 px-3 min-w-[180px]">Discrepancy Details</th>
-                <th className="py-2.5 px-3 min-w-[200px]">Remarks / Actions Taken</th>
-                <th onClick={() => handleSort('loggedBy')} className="py-2.5 px-3 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Staff / Auditor">
-                  <div className="flex items-center gap-1">
-                    <span>Staff / Auditor</span>
-                    {sortField === 'loggedBy' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th className="py-2.5 px-3 text-center w-20">Actions</th>
+                {visibleColumns.map(col => {
+                  const isSorted = sortField === col.key;
+                  const isNumber = col.type === 'number';
+                  return (
+                    <th 
+                      key={String(col.key)} 
+                      onClick={() => handleSort(String(col.key))} 
+                      className={`py-2.5 px-3 cursor-pointer hover:bg-[#edebe9] transition-colors ${isNumber ? 'text-right' : 'text-left'}`}
+                      title={`Sort by ${col.label}`}
+                    >
+                      <div className={`flex items-center gap-1 ${isNumber ? 'justify-end' : 'justify-start'}`}>
+                        <span>{col.label}</span>
+                        {isSorted ? (
+                          sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
+                <th className="py-2.5 px-3 text-center w-24">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9]">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-[#605e5c]">
+                  <td colSpan={visibleColumns.length + 1} className="py-10 text-center text-[#605e5c]">
                     No property laundry logs found matching the selected filters.
                   </td>
                 </tr>
               ) : (
                 paginatedData.map(log => (
                   <tr key={log.id} className="hover:bg-[#faf9f8] transition-colors">
-                    <td className="py-3 px-3 font-semibold text-[#242424]">
-                      <div className="flex items-center gap-1.5">
-                        <Building2 className="w-4 h-4 text-[#0d9488]" />
-                        <span>{log.site}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                        log.periodType === 'Weekly' ? 'bg-teal-100 text-teal-900' : 'bg-purple-100 text-purple-900'
-                      }`}>
-                        {log.periodType} Log
-                      </span>
-                      <div className="text-xs text-neutral-700 font-medium mt-0.5">
-                        {log.periodLabel}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-slate-800 text-sm">
-                      {log.dirtyLaundrySent}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-emerald-800 text-sm">
-                      {log.cleanLaundryReturned}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      {log.hasDiscrepancy || (log.discrepanciesCount || 0) > 0 ? (
-                        <div className="inline-flex flex-col items-center">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[10px] font-bold">
-                            <AlertTriangle className="w-3 h-3 text-amber-700" />
-                            Yes ({log.discrepanciesCount || 0} missing)
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-semibold">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          No (0)
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-neutral-700 text-xs">
-                      {log.discrepancyDetails ? (
-                        <span className="leading-relaxed font-medium">{log.discrepancyDetails}</span>
-                      ) : (
-                        <span className="text-neutral-400 italic">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-neutral-700 text-xs">
-                      {log.remarksActionsTaken ? (
-                        <span className="leading-relaxed">{log.remarksActionsTaken}</span>
-                      ) : (
-                        <span className="text-neutral-400 italic">No specific actions required</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-neutral-600 text-xs whitespace-nowrap">
-                      {log.loggedBy}
-                    </td>
+                    {visibleColumns.map(col => (
+                      <td 
+                        key={String(col.key)} 
+                        className={`py-3 px-3 ${col.type === 'number' ? 'text-right' : 'text-left'}`}
+                      >
+                        {renderColumnCell(col, log)}
+                      </td>
+                    ))}
                     <td className="py-3 px-3 text-center">
                       <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => setViewRecord(log)}
+                          className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded"
+                          title="View Log Dossier"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
                         {canEditRecord(log.site) && (
                           <button
                             onClick={() => handleEditClick(log)}
@@ -867,7 +953,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
                         )}
-                        {canDeleteRecord(log.site) && (
+                        {canDeleteRecord() && (
                           <button
                             onClick={() => {
                               if (confirm('Are you sure you want to delete this laundry log?')) {
@@ -894,11 +980,10 @@ export const PropertyLaundryLogSection: React.FC = () => {
           <div className="p-3 border-t border-[#edebe9]">
             <Pagination
               currentPage={currentPage}
-              totalPages={totalPages}
+              totalItems={sortedData.length}
               onPageChange={setCurrentPage}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
-              totalItems={sortedData.length}
             />
           </div>
         )}
@@ -1101,6 +1186,34 @@ export const PropertyLaundryLogSection: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Dynamic View Dossier Modal */}
+      {viewRecord && (
+        <DynamicRecordViewModal<PropertyLaundryLog>
+          isOpen={Boolean(viewRecord)}
+          onClose={() => setViewRecord(null)}
+          title={`Property Laundry Log Dossier - ${viewRecord.site} (${viewRecord.periodLabel})`}
+          columns={columns}
+          record={viewRecord}
+          onEdit={() => {
+            const rec = viewRecord;
+            setViewRecord(null);
+            handleEditClick(rec);
+          }}
+          canEdit={canEditRecord(viewRecord.site)}
+        />
+      )}
+
+      {/* Super Admin Table Schema Customizer Modal */}
+      <TableSchemaEditorModal<PropertyLaundryLog>
+        isOpen={isSchemaModalOpen}
+        onClose={() => setIsSchemaModalOpen(false)}
+        moduleTitle="Property Laundry Register"
+        columns={columns}
+        onSaveColumns={saveColumns}
+        onResetToDefault={resetToDefault}
+        currentUserRole={currentUserRole}
+      />
     </div>
   );
 };

@@ -87,8 +87,7 @@ function AppLayout() {
       <>
         <AuthenticationBlockedView
           blockedInfo={authBlockedState}
-          onRetryLogin={() => clearAuthBlockedState()}
-          onOpenDiagnostics={() => setDiagnosticModalOpen(true)}
+          onReturnToLogin={() => clearAuthBlockedState()}
         />
         <DiagnosticInspectorModal
           isOpen={diagnosticModalOpen}

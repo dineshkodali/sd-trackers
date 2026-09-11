@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { 
   FileText, 
-  Plus, 
-  Trash2, 
-  Download, 
   Upload, 
+  Trash2, 
+  Eye, 
+  Edit3,
   Search, 
-  X,
-  Lock
+  SlidersHorizontal,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DocumentRecord } from '../../types';
@@ -16,6 +18,12 @@ import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { DOCUMENTS_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { TableColumnConfig } from '../../types/tableSchema';
 
 const documentsExportColumns: ExportColumnOption[] = [
   { id: 'documentTitle', label: 'Document Title' },
@@ -36,12 +44,24 @@ export const DocumentsView: React.FC = () => {
     documents,
     allowedSites,
     addDocument,
+    updateDocument,
     deleteDocument,
     canDeleteRecord,
+    canEditRecord,
+    canCreateRecord,
     canAccessAllSites,
     assignedSite,
-    settings
+    settings,
+    currentUserRole
   } = useApp();
+
+  // Table Schema Hook
+  const {
+    columns,
+    visibleColumns,
+    saveColumns,
+    resetToDefault
+  } = useTableSchema<DocumentRecord>('documents', DOCUMENTS_TABLE_COLUMNS);
 
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -49,24 +69,14 @@ export const DocumentsView: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(settings.pageSize || 10);
+  const [sortKey, setSortKey] = useState<string>('uploadDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Modals
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-
-  const initialFormData = {
-    documentTitle: '',
-    suName: '',
-    refNumber: '',
-    category: 'Risk Assessment' as DocumentRecord['category'],
-    site: allowedSites[0] || 'Hotel A',
-    fileFormat: 'PDF' as DocumentRecord['fileFormat'],
-    fileSizeKb: 1420,
-    confidentiality: 'Restricted' as DocumentRecord['confidentiality'],
-    uploadedBy: 'Regional SG Officer',
-    uploadDate: new Date().toISOString().slice(0, 10),
-    notes: ''
-  };
-
-  const [formData, setFormData] = useState(initialFormData);
+  const [editingRecord, setEditingRecord] = useState<DocumentRecord | null>(null);
+  const [viewingRecord, setViewingRecord] = useState<DocumentRecord | null>(null);
 
   const filteredData = useMemo(() => {
     return documents.filter(d => {
@@ -81,43 +91,70 @@ export const DocumentsView: React.FC = () => {
     });
   }, [documents, siteFilter, categoryFilter, searchQuery]);
 
+  const sortedData = useMemo(() => {
+    return [...filteredData].sort((a: any, b: any) => {
+      const valA = a[sortKey] ?? '';
+      const valB = b[sortKey] ?? '';
+      return sortOrder === 'asc' 
+        ? String(valA).localeCompare(String(valB)) 
+        : String(valB).localeCompare(String(valA));
+    });
+  }, [filteredData, sortKey, sortOrder]);
+
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredData.slice(start, start + pageSize);
-  }, [filteredData, currentPage, pageSize]);
+    return sortedData.slice(start, start + pageSize);
+  }, [sortedData, currentPage, pageSize]);
 
-  const handleSubmitNew = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.documentTitle) {
-      alert('Document Title is required.');
-      return;
+  const handleSort = (field: string) => {
+    if (sortKey === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(field);
+      setSortOrder('asc');
     }
-    addDocument(formData);
+  };
+
+  const handleCreateSubmit = (data: Partial<DocumentRecord>) => {
+    addDocument({
+      documentTitle: data.documentTitle || 'Untitled Document',
+      suName: data.suName || '',
+      refNumber: data.refNumber || '',
+      category: (data.category as any) || 'Risk Assessment',
+      site: data.site || allowedSites[0] || 'Hotel A',
+      fileFormat: (data.fileFormat as any) || 'PDF',
+      fileSizeKb: Number(data.fileSizeKb) || 1420,
+      confidentiality: (data.confidentiality as any) || 'Restricted',
+      uploadedBy: data.uploadedBy || 'Regional SG Officer',
+      uploadDate: data.uploadDate || new Date().toISOString().slice(0, 10),
+      notes: data.notes || '',
+      ...data
+    } as any);
     setIsUploadModalOpen(false);
-    setFormData(initialFormData);
+  };
+
+  const handleEditSubmit = (data: Partial<DocumentRecord>) => {
+    if (!editingRecord) return;
+    updateDocument(editingRecord.id, {
+      ...editingRecord,
+      ...data
+    });
+    setEditingRecord(null);
+  };
+
+  // Export handlers
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return documents.filter(d => (!startDate || d.uploadDate >= startDate) && (!endDate || d.uploadDate <= endDate)).length;
   };
 
   const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
-    if (scope === 'filtered') return filteredData;
-    if (scope === 'custom' && startDate && endDate) {
-      return documents.filter(d => d.uploadDate >= startDate && d.uploadDate <= endDate);
+    let sourceData = documents;
+    if (scope === 'filtered') sourceData = sortedData;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = documents.filter(d => d.uploadDate >= startDate && d.uploadDate <= endDate);
     }
-    return documents;
+    return sourceData;
   };
-
-  const getExportColumnMap = (): Record<string, { label: string; getValue: (d: DocumentRecord) => string | number }> => ({
-    documentTitle: { label: 'Title', getValue: d => d.documentTitle },
-    site: { label: 'Site', getValue: d => d.site },
-    suName: { label: 'Resident', getValue: d => d.suName },
-    refNumber: { label: 'Port Ref', getValue: d => d.refNumber },
-    category: { label: 'Category', getValue: d => d.category },
-    fileFormat: { label: 'Format', getValue: d => d.fileFormat },
-    fileSizeKb: { label: 'Size (KB)', getValue: d => d.fileSizeKb },
-    confidentiality: { label: 'Confidentiality', getValue: d => d.confidentiality },
-    uploadedBy: { label: 'Uploaded By', getValue: d => d.uploadedBy },
-    uploadDate: { label: 'Date', getValue: d => d.uploadDate },
-    notes: { label: 'Notes', getValue: d => d.notes || '—' }
-  });
 
   const getExportPreviewData = ({
     scope,
@@ -132,25 +169,22 @@ export const DocumentsView: React.FC = () => {
     orientation: ExportOrientation;
     isCompact: boolean;
   }) => {
-    const dataToExport = getExportDataForScope(scope, startDate, endDate);
-    const colMap = getExportColumnMap();
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
     const cols = selectedColumns && selectedColumns.length > 0
-      ? selectedColumns
-      : documentsExportColumns.map(c => c.id);
-    const activeCols = cols.filter(c => colMap[c]);
-    const headers = activeCols.map(c => colMap[c].label);
-    const rows = dataToExport.map(d => activeCols.map(c => colMap[c].getValue(d)));
+      ? documentsExportColumns.filter(c => selectedColumns.includes(c.id))
+      : documentsExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] || '')));
     return { headers, rows };
   };
 
   const handlePerformExport = ({
     format,
     scope,
-    orientation,
+    orientation = 'landscape',
     startDate,
     endDate,
-    selectedColumns,
-    isCompact
+    selectedColumns
   }: {
     format: ExportFormat;
     scope: ExportScope;
@@ -160,67 +194,72 @@ export const DocumentsView: React.FC = () => {
     selectedColumns?: string[];
     isCompact?: boolean;
   }) => {
-    const dataToExport = getExportDataForScope(scope, startDate, endDate);
-    const colMap = getExportColumnMap();
+    const raw = getExportDataForScope(scope, startDate, endDate);
     const cols = selectedColumns && selectedColumns.length > 0
-      ? selectedColumns
-      : documentsExportColumns.map(c => c.id);
-    const activeCols = cols.filter(c => colMap[c]);
-    const headers = activeCols.map(c => colMap[c].label);
-    const rows = dataToExport.map(d => activeCols.map(c => colMap[c].getValue(d)));
+      ? documentsExportColumns.filter(c => selectedColumns.includes(c.id))
+      : documentsExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] || '')));
 
     if (format === 'csv') {
-      exportTableToCsv({
-        filename: `Documents-Repository-${scope}-${new Date().toISOString().slice(0, 10)}.csv`,
-        headers,
-        rows
-      });
+      exportTableToCsv({ filename: 'Compliance_Documents.csv', headers, rows });
     } else {
       exportTableToPdf({
-        title: 'Compliance & Document Repository Register',
-        subtitle: 'Official register of risk assessments, safeguarding support plans, and certified resident document records.',
-        filename: `Documents-Repository-${scope}-${new Date().toISOString().slice(0, 10)}.pdf`,
+        filename: 'Compliance_Documents.pdf',
+        title: 'Compliance & Document Repository Report',
         headers,
         rows,
-        orientation,
-        isCompact,
-        metadata: [
-          { label: 'Site Filter', value: siteFilter === 'all' ? 'All Permitted Sites' : siteFilter },
-          { label: 'Category Filter', value: categoryFilter === 'all' ? 'All Categories' : categoryFilter },
-          { label: 'Export Scope', value: scope === 'all' ? 'All Documents' : scope === 'filtered' ? 'Current Filtered View' : `${startDate} to ${endDate}` },
-          { label: 'Page Layout', value: orientation },
-          { label: 'Total Files', value: dataToExport.length }
-        ]
+        orientation
       });
     }
   };
 
-  const calculateDateRangeCount = (start: string, end: string) => {
-    return documents.filter(d => d.uploadDate >= start && d.uploadDate <= end).length;
-  };
+  const renderColumnCell = (col: TableColumnConfig<DocumentRecord>, doc: DocumentRecord) => {
+    if (col.renderCell) {
+      return col.renderCell((doc as any)[col.key], doc);
+    }
 
-  const handleDownloadDoc = (doc: DocumentRecord) => {
-    const textContent = `SG Accommodation Support Tracker - Document Certificate
-Title: ${doc.documentTitle}
-Resident: ${doc.suName}
-Reference: ${doc.refNumber}
-Category: ${doc.category}
-Hotel/Site: ${doc.site}
-Format: ${doc.fileFormat} (${doc.fileSizeKb} KB)
-Confidentiality: ${doc.confidentiality}
-Uploaded By: ${doc.uploadedBy}
-Date: ${doc.uploadDate}
-Notes: ${doc.notes || 'None'}
+    const value = (doc as any)[col.key];
 
-This document record is certified under safeguarding accommodation compliance protocols.`;
-    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${(doc.documentTitle || 'document').toLowerCase().replace(/[^a-z0-9]/g, '-')}.txt`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (col.badgeColors && value) {
+      const badgeClass = col.badgeColors[value] || 'bg-gray-100 text-gray-800';
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[11px] font-semibold ${badgeClass}`}>
+          {value}
+        </span>
+      );
+    }
+
+    if (col.key === 'documentTitle') {
+      return (
+        <div className="flex items-center gap-2 font-semibold text-[#242424]">
+          <FileText className="w-3.5 h-3.5 text-[#0078d4] shrink-0" />
+          <span>{value}</span>
+        </div>
+      );
+    }
+
+    if (col.key === 'refNumber') {
+      return <span className="font-mono text-[#0f766e]">{value || '—'}</span>;
+    }
+
+    if (col.key === 'fileFormat') {
+      return (
+        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#edebe9] text-[#323130] font-semibold">
+          {value || 'PDF'}
+        </span>
+      );
+    }
+
+    if (col.type === 'date') {
+      return <span className="font-mono text-[#323130]">{value || '—'}</span>;
+    }
+
+    if (value === null || value === undefined || value === '') {
+      return <span className="text-[#a19f9d]">—</span>;
+    }
+
+    return String(value);
   };
 
   return (
@@ -229,7 +268,7 @@ This document record is certified under safeguarding accommodation compliance pr
       <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
         <div>
           <h2 className="text-2xl font-semibold text-[#242424] tracking-tight">
-            Compliance & Document Repository
+            Compliance &amp; Document Repository
           </h2>
           <p className="text-xs text-[#605e5c] mt-0.5">
             Store risk assessments, local authority MOUs, medical assessments, and safeguarding support plans.
@@ -237,6 +276,18 @@ This document record is certified under safeguarding accommodation compliance pr
         </div>
 
         <div className="flex items-center gap-2">
+          {currentUserRole === 'Super Admin' && (
+            <button
+              type="button"
+              onClick={() => setIsSchemaModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
+              title="Super Admin: Customize table columns, headers, and fields"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+              <span>Customize Table</span>
+            </button>
+          )}
+
           <ExportDropdown
             moduleName="Documents"
             totalRecordCount={documents.length}
@@ -249,16 +300,15 @@ This document record is certified under safeguarding accommodation compliance pr
             buttonVariant="toolbar"
           />
 
-          <button
-            onClick={() => {
-              setFormData({ ...initialFormData, site: allowedSites[0] || 'Hotel A' });
-              setIsUploadModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>+ Upload Document</span>
-          </button>
+          {canCreateRecord && canCreateRecord() && (
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>+ Upload Document</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -320,224 +370,164 @@ This document record is certified under safeguarding accommodation compliance pr
         </button>
       </div>
 
-      {/* Documents Table */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+      {/* Main Table Panel */}
+      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-left text-xs border-collapse min-w-[1050px]">
             <thead>
-              <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold">
-                <th className="p-2.5">Document Title</th>
-                <th className="p-2.5">Hotel / Site</th>
-                <th className="p-2.5">Resident & Ref</th>
-                <th className="p-2.5">Category</th>
-                <th className="p-2.5">Format & Size</th>
-                <th className="p-2.5">Confidentiality</th>
-                <th className="p-2.5">Uploaded By</th>
-                <th className="p-2.5">Date</th>
-                <th className="p-2.5 text-right whitespace-nowrap w-24 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
+              <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
+                {visibleColumns.map(col => {
+                  const isSorted = sortKey === col.key;
+                  return (
+                    <th 
+                      key={String(col.key)} 
+                      className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                      onClick={() => handleSort(String(col.key))}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>{col.label}</span>
+                        {isSorted ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#0078d4]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0078d4]" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-[#a19f9d]" />
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
+                <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#edebe9]">
+            <tbody className="divide-y divide-[#edebe9] text-[#323130]">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-10 text-[#605e5c]">
-                    No compliance documents found.
+                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
+                    <FileText className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
+                    <p className="font-semibold text-sm text-[#242424]">No documents found</p>
+                    <p className="text-xs text-[#605e5c] mt-0.5">Click 'Upload Document' to index a new compliance file.</p>
                   </td>
                 </tr>
               ) : (
-                paginatedData.map(doc => {
-                  const canDelete = canDeleteRecord();
-
-                  return (
-                    <tr key={doc.id} className="hover:bg-[#fafafa]">
-                      <td className="p-2.5 font-semibold text-[#0f766e]">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-[#0d9488]" />
-                          <span>{doc.documentTitle}</span>
-                        </div>
+                paginatedData.map(doc => (
+                  <tr key={doc.id} className="hover:bg-[#f3f8fd] transition-colors">
+                    {visibleColumns.map(col => (
+                      <td key={String(col.key)} className="p-2.5">
+                        {renderColumnCell(col, doc)}
                       </td>
-                      <td className="p-2.5 font-medium text-[#242424]">{doc.site}</td>
-                      <td className="p-2.5 text-neutral-800">
-                        <div>{doc.suName}</div>
-                        <div className="text-[10px] font-mono text-neutral-500">{doc.refNumber}</div>
-                      </td>
-                      <td className="p-2.5 text-neutral-700">{doc.category}</td>
-                      <td className="p-2.5 font-mono text-[11px] text-neutral-500">
-                        {doc.fileFormat} • {doc.fileSizeKb} KB
-                      </td>
-                      <td className="p-2.5">
-                        <span className={`px-2 py-0.5 text-[11px] font-semibold rounded ${
-                          doc.confidentiality === 'Restricted' ? 'bg-red-50 text-red-700' :
-                          doc.confidentiality === 'Confidential' ? 'bg-[#fff4ce] text-[#7f6000]' :
-                          'bg-[#e8f5e9] text-[#107c10]'
-                        }`}>
-                          {doc.confidentiality}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-neutral-600">{doc.uploadedBy}</td>
-                      <td className="p-2.5 text-neutral-500 whitespace-nowrap">{doc.uploadDate}</td>
-                      <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                        <div className="flex items-center justify-end gap-1">
+                    ))}
+                    <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setViewingRecord(doc)}
+                          className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
+                          title="View Document Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        {canEditRecord && canEditRecord(doc.site) && (
                           <button
-                            onClick={() => handleDownloadDoc(doc)}
-                            className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
-                            title="Download Certificate"
+                            onClick={() => setEditingRecord(doc)}
+                            className="p-1 hover:bg-[#f0fdfa] text-[#0d9488] rounded-xs transition-colors"
+                            title="Edit Document Info"
                           >
-                            <Download className="w-3.5 h-3.5" />
+                            <Edit3 className="w-3.5 h-3.5" />
                           </button>
-                          {canDelete && (
-                            <button
-                              onClick={() => deleteDocument(doc.id)}
-                              className="p-1 text-neutral-400 hover:text-[#a4262c] hover:bg-red-50 rounded"
-                              title="Delete Document"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        )}
+                        {canDeleteRecord() && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to delete "${doc.documentTitle}"?`)) {
+                                deleteDocument(doc.id);
+                              }
+                            }}
+                            className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
+                            title="Delete Document"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
 
+        {/* Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={filteredData.length}
           pageSize={pageSize}
+          totalItems={filteredData.length}
           onPageChange={setCurrentPage}
-          onPageSizeChange={size => {
-            setPageSize(size);
-            setCurrentPage(1);
-          }}
+          onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
         />
       </div>
 
-      {/* UPLOAD MODAL */}
-      {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-lg p-6 space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-[#edebe9] pb-3">
-              <h3 className="text-base font-semibold text-[#242424]">Upload Compliance Document</h3>
-              <button onClick={() => setIsUploadModalOpen(false)} className="text-neutral-400 hover:text-neutral-700">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Dynamic Create Modal */}
+      <DynamicRecordFormModal<DocumentRecord>
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        title="Upload & Index Document"
+        columns={columns}
+        initialValues={{
+          documentTitle: '',
+          suName: '',
+          refNumber: '',
+          category: 'Risk Assessment',
+          site: allowedSites[0] || 'Hotel A',
+          fileFormat: 'PDF',
+          fileSizeKb: 1420,
+          confidentiality: 'Restricted',
+          uploadedBy: 'Regional SG Officer',
+          uploadDate: new Date().toISOString().slice(0, 10),
+          notes: ''
+        }}
+        onSubmit={handleCreateSubmit}
+        submitLabel="Upload Document"
+      />
 
-            <form onSubmit={handleSubmitNew} className="space-y-3">
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">Document Title *</label>
-                <input
-                  type="text"
-                  value={formData.documentTitle}
-                  onChange={e => setFormData({ ...formData, documentTitle: e.target.value })}
-                  placeholder="e.g. Q3 Multi-Agency SG Review"
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Resident Full Name</label>
-                  <input
-                    type="text"
-                    value={formData.suName}
-                    onChange={e => setFormData({ ...formData, suName: e.target.value })}
-                    placeholder="e.g. Fatima Zohra"
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Reference Number</label>
-                  <input
-                    type="text"
-                    value={formData.refNumber}
-                    onChange={e => setFormData({ ...formData, refNumber: e.target.value })}
-                    placeholder="e.g. NASS-77192"
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Site</label>
-                  <select
-                    value={formData.site}
-                    onChange={e => setFormData({ ...formData, site: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Category</label>
-                  <select
-                    value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value as DocumentRecord['category'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Risk Assessment">Risk Assessment</option>
-                    <option value="Safeguarding Plan">Safeguarding Plan</option>
-                    <option value="Medical Assessment">Medical Assessment</option>
-                    <option value="Incident Report">Incident Report</option>
-                    <option value="Proof of Support">Proof of Support</option>
-                    <option value="Consent Form">Consent Form</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Confidentiality Level</label>
-                  <select
-                    value={formData.confidentiality}
-                    onChange={e => setFormData({ ...formData, confidentiality: e.target.value as DocumentRecord['confidentiality'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Restricted">Restricted (Safeguarding Only)</option>
-                    <option value="Confidential">Confidential</option>
-                    <option value="Official">Official</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">File Format</label>
-                  <select
-                    value={formData.fileFormat}
-                    onChange={e => setFormData({ ...formData, fileFormat: e.target.value as DocumentRecord['fileFormat'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="PDF">PDF Document</option>
-                    <option value="DOCX">Word DOCX</option>
-                    <option value="XLSX">Excel Spreadsheet</option>
-                    <option value="SCAN">Certified Scan</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[#edebe9] flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsUploadModalOpen(false)}
-                  className="px-4 py-2 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold"
-                >
-                  Confirm & Upload
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Dynamic Edit Modal */}
+      {editingRecord && (
+        <DynamicRecordFormModal<DocumentRecord>
+          isOpen={Boolean(editingRecord)}
+          onClose={() => setEditingRecord(null)}
+          title={`Edit Document - ${editingRecord.documentTitle}`}
+          columns={columns}
+          initialValues={editingRecord}
+          onSubmit={handleEditSubmit}
+          submitLabel="Save Changes"
+        />
       )}
+
+      {/* Dynamic View Dossier Modal */}
+      {viewingRecord && (
+        <DynamicRecordViewModal<DocumentRecord>
+          isOpen={Boolean(viewingRecord)}
+          onClose={() => setViewingRecord(null)}
+          title={`Document Dossier - ${viewingRecord.documentTitle}`}
+          columns={columns}
+          record={viewingRecord}
+          onEdit={() => {
+            const rec = viewingRecord;
+            setViewingRecord(null);
+            setEditingRecord(rec);
+          }}
+          canEdit={canEditRecord ? canEditRecord(viewingRecord.site) : true}
+        />
+      )}
+
+      {/* Super Admin Table Schema Customizer Modal */}
+      <TableSchemaEditorModal<DocumentRecord>
+        isOpen={isSchemaModalOpen}
+        onClose={() => setIsSchemaModalOpen(false)}
+        moduleTitle="Compliance & Document Repository"
+        columns={columns}
+        onSaveColumns={saveColumns}
+        onResetToDefault={resetToDefault}
+        currentUserRole={currentUserRole}
+      />
     </div>
   );
 };

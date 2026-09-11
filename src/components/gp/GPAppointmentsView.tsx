@@ -6,20 +6,22 @@ import {
   Download, 
   Edit3, 
   Trash2, 
-  Calendar, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
-  User, 
-  X, 
   Eye, 
-  Building2,
-  FileText
+  SlidersHorizontal,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { GPAppointmentRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { GP_APPOINTMENTS_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { TableColumnConfig } from '../../types/tableSchema';
 
 export const GPAppointmentsView: React.FC = () => {
   const {
@@ -30,34 +32,31 @@ export const GPAppointmentsView: React.FC = () => {
     allowedSites,
     canCreateRecord,
     canEditRecord,
-    canDeleteRecord
+    canDeleteRecord,
+    currentUserRole
   } = useApp();
+
+  // Table Schema Hook
+  const {
+    columns,
+    visibleColumns,
+    saveColumns,
+    resetToDefault
+  } = useTableSchema<GPAppointmentRecord>('gpAppointments', GP_APPOINTMENTS_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortKey, setSortKey] = useState<string>('appointmentDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Modals
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<GPAppointmentRecord | null>(null);
-  const [viewDetailRecord, setViewDetailRecord] = useState<GPAppointmentRecord | null>(null);
-
-  // Form State
-  const initialFormState = {
-    roomNo: '',
-    portReference: '',
-    referralSentOn: new Date().toISOString().slice(0, 10),
-    appointmentDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-    timeOfGp: '10:00',
-    comments: '',
-    status: 'Scheduled' as 'Scheduled' | 'Attended' | 'Did Not Attend (DNA)' | 'Cancelled' | 'Rescheduled',
-    siteName: allowedSites[0] || 'Brit Hotel',
-    suName: ''
-  };
-
-  const [formData, setFormData] = useState(initialFormState);
+  const [viewingRecord, setViewingRecord] = useState<GPAppointmentRecord | null>(null);
 
   const filteredRecords = useMemo(() => {
     return gpAppointmentRecords.filter(r => {
@@ -76,72 +75,109 @@ export const GPAppointmentsView: React.FC = () => {
     });
   }, [gpAppointmentRecords, searchQuery, statusFilter, siteFilter]);
 
+  const sortedRecords = useMemo(() => {
+    return [...filteredRecords].sort((a: any, b: any) => {
+      const valA = a[sortKey] ?? '';
+      const valB = b[sortKey] ?? '';
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+      return sortOrder === 'asc' 
+        ? String(valA).localeCompare(String(valB)) 
+        : String(valB).localeCompare(String(valA));
+    });
+  }, [filteredRecords, sortKey, sortOrder]);
+
   const paginatedRecords = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
-    return filteredRecords.slice(startIndex, startIndex + pageSize);
-  }, [filteredRecords, currentPage, pageSize]);
+    return sortedRecords.slice(startIndex, startIndex + pageSize);
+  }, [sortedRecords, currentPage, pageSize]);
 
-  const handleOpenCreate = () => {
-    setFormData(initialFormState);
-    setIsCreateModalOpen(true);
-  };
-
-  const handleOpenEdit = (rec: GPAppointmentRecord) => {
-    setEditingRecord(rec);
-    setFormData({
-      roomNo: rec.roomNo,
-      portReference: rec.portReference,
-      referralSentOn: rec.referralSentOn,
-      appointmentDate: rec.appointmentDate,
-      timeOfGp: rec.timeOfGp,
-      comments: rec.comments,
-      status: rec.status,
-      siteName: rec.siteName || allowedSites[0] || 'Brit Hotel',
-      suName: rec.suName || ''
-    });
-  };
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.roomNo.trim() || !formData.portReference.trim()) return;
-
-    if (editingRecord) {
-      updateGPAppointmentRecord(editingRecord.id, formData);
-      setEditingRecord(null);
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
-      addGPAppointmentRecord(formData);
-      setIsCreateModalOpen(false);
+      setSortKey(key);
+      setSortOrder('asc');
     }
+  };
+
+  const handleCreateSubmit = (data: Partial<GPAppointmentRecord>) => {
+    addGPAppointmentRecord({
+      roomNo: data.roomNo || '',
+      portReference: data.portReference || '',
+      referralSentOn: data.referralSentOn || new Date().toISOString().slice(0, 10),
+      appointmentDate: data.appointmentDate || new Date().toISOString().slice(0, 10),
+      timeOfGp: data.timeOfGp || '10:00',
+      comments: data.comments || '',
+      status: (data.status as any) || 'Scheduled',
+      siteName: data.siteName || allowedSites[0] || 'Brit Hotel',
+      suName: data.suName || '',
+      ...data
+    } as any);
+    setIsCreateModalOpen(false);
+  };
+
+  const handleEditSubmit = (data: Partial<GPAppointmentRecord>) => {
+    if (!editingRecord) return;
+    updateGPAppointmentRecord(editingRecord.id, {
+      ...editingRecord,
+      ...data
+    });
+    setEditingRecord(null);
   };
 
   const handleExportCsv = () => {
     exportTableToCsv({
       filename: 'GP_Appointments_Register.csv',
-      headers: [
-        'Room No',
-        'Port Reference',
-        'Service User Name',
-        'Hotel Site',
-        'Referral Sent On',
-        'Appointment Date',
-        'Time of GP',
-        'Comments',
-        'Status'
-      ],
-      rows: filteredRecords.map(r => [
-        r.roomNo,
-        r.portReference,
-        r.suName || '',
-        r.siteName || '',
-        r.referralSentOn,
-        r.appointmentDate,
-        r.timeOfGp,
-        r.comments,
-        r.status
-      ])
+      headers: visibleColumns.map(col => col.label),
+      rows: sortedRecords.map(r => 
+        visibleColumns.map(col => {
+          const val = (r as any)[col.key];
+          return val !== undefined && val !== null ? String(val) : '';
+        })
+      )
     });
   };
 
+  const renderColumnCell = (col: TableColumnConfig<GPAppointmentRecord>, record: GPAppointmentRecord) => {
+    if (col.renderCell) {
+      return col.renderCell((record as any)[col.key], record);
+    }
+
+    const value = (record as any)[col.key];
+
+    if (col.badgeColors && value) {
+      const badgeClass = col.badgeColors[value] || 'bg-gray-100 text-gray-800';
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[11px] font-semibold ${badgeClass}`}>
+          {value}
+        </span>
+      );
+    }
+
+    if (col.type === 'date') {
+      return <span className="font-mono text-[#323130]">{value || '—'}</span>;
+    }
+
+    if (col.type === 'currency' && typeof value === 'number') {
+      return <span className="font-semibold text-[#242424]">£{value.toFixed(2)}</span>;
+    }
+
+    if (col.key === 'roomNo') {
+      return <span className="font-semibold text-[#242424]">{value || '—'}</span>;
+    }
+
+    if (col.key === 'portReference') {
+      return <span className="font-mono text-[#0f766e]">{value || '—'}</span>;
+    }
+
+    if (value === null || value === undefined || value === '') {
+      return <span className="text-[#a19f9d]">—</span>;
+    }
+
+    return String(value);
+  };
 
   return (
     <div className="space-y-4">
@@ -163,6 +199,18 @@ export const GPAppointmentsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {currentUserRole === 'Super Admin' && (
+            <button
+              type="button"
+              onClick={() => setIsSchemaModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
+              title="Super Admin: Customize table columns, headers, and fields"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+              <span>Customize Table</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportCsv}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
@@ -173,7 +221,7 @@ export const GPAppointmentsView: React.FC = () => {
 
           {canCreateRecord() && (
             <button
-              onClick={handleOpenCreate}
+              onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -253,22 +301,32 @@ export const GPAppointmentsView: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse min-w-[1200px]">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                <th className="p-2.5">Room No</th>
-                <th className="p-2.5">Port Reference</th>
-                <th className="p-2.5">Resident Name</th>
-                <th className="p-2.5">Site / Hotel</th>
-                <th className="p-2.5">Referral sent on</th>
-                <th className="p-2.5">Appointment date</th>
-                <th className="p-2.5">Time of GP</th>
-                <th className="p-2.5 text-center">Status</th>
-                <th className="p-2.5">Comments</th>
+                {visibleColumns.map(col => {
+                  const isSorted = sortKey === col.key;
+                  return (
+                    <th 
+                      key={String(col.key)} 
+                      className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                      onClick={() => handleSort(String(col.key))}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>{col.label}</span>
+                        {isSorted ? (
+                          sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#0078d4]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0078d4]" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-[#a19f9d]" />
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
                 <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9] text-[#323130]">
               {paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-[#605e5c]">
+                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
                     <Stethoscope className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
                     <p className="font-semibold text-sm text-[#242424]">No GP appointments recorded</p>
                     <p className="text-xs text-[#605e5c] mt-0.5">Click 'Book GP Appointment' to schedule a consultation.</p>
@@ -277,64 +335,38 @@ export const GPAppointmentsView: React.FC = () => {
               ) : (
                 paginatedRecords.map(record => (
                   <tr key={record.id} className="hover:bg-[#f3f8fd] transition-colors">
-                    <td className="p-2.5 font-semibold text-[#242424]">
-                      {record.roomNo}
-                    </td>
-                    <td className="p-2.5 font-mono text-[#0f766e]">
-                      {record.portReference}
-                    </td>
-                    <td className="p-2.5 font-medium text-[#242424]">
-                      {record.suName || '—'}
-                    </td>
-                    <td className="p-2.5 text-[#605e5c]">
-                      {record.siteName || 'Brit Hotel'}
-                    </td>
-                    <td className="p-2.5 font-mono text-[#605e5c]">
-                      {record.referralSentOn || '—'}
-                    </td>
-                    <td className="p-2.5 font-medium text-[#242424]">
-                      {record.appointmentDate}
-                    </td>
-                    <td className="p-2.5 font-mono text-[#605e5c]">
-                      {record.timeOfGp}
-                    </td>
-                    <td className="p-2.5 text-center">
-                      <span className={`inline-flex px-2 py-0.5 rounded-xs text-[10px] font-bold ${
-                        record.status === 'Attended' ? 'bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0]' :
-                        record.status === 'Scheduled' ? 'bg-[#f3f8fd] text-[#0078d4] border border-[#71afe5]' :
-                        record.status === 'Did Not Attend (DNA)' ? 'bg-[#fffbeb] text-[#ca8a04] border border-[#fde68a]' :
-                        record.status === 'Cancelled' ? 'bg-[#fdf3f2] text-[#a4262c] border border-[#f5b8b5]' :
-                        'bg-neutral-100 text-neutral-700'
-                      }`}>
-                        {record.status}
-                      </span>
-                    </td>
-                    <td className="p-2.5 max-w-xs truncate text-[#605e5c]" title={record.comments}>
-                      {record.comments || '—'}
-                    </td>
-                    <td className="p-2.5 text-right sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                      <div className="flex items-center justify-end gap-1">
+                    {visibleColumns.map(col => (
+                      <td key={String(col.key)} className="p-2.5">
+                        {renderColumnCell(col, record)}
+                      </td>
+                    ))}
+                    <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => setViewDetailRecord(record)}
-                          title="View Details"
-                          className="p-1 text-[#605e5c] hover:text-[#242424] hover:bg-[#edebe9] rounded-xs"
+                          onClick={() => setViewingRecord(record)}
+                          className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
+                          title="View Details Dossier"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        {canEditRecord() && (
+                        {canEditRecord(record.siteName) && (
                           <button
-                            onClick={() => handleOpenEdit(record)}
-                            title="Edit Record"
-                            className="p-1 text-[#605e5c] hover:text-[#0d9488] hover:bg-[#f0fdfa] rounded-xs"
+                            onClick={() => setEditingRecord(record)}
+                            className="p-1 hover:bg-[#f0fdfa] text-[#0d9488] rounded-xs transition-colors"
+                            title="Edit Appointment"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {canDeleteRecord() && (
                           <button
-                            onClick={() => deleteGPAppointmentRecord(record.id)}
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to delete GP appointment for Room ${record.roomNo}?`)) {
+                                deleteGPAppointmentRecord(record.id);
+                              }
+                            }}
+                            className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
                             title="Delete Record"
-                            className="p-1 text-[#605e5c] hover:text-[#a4262c] hover:bg-[#fdf3f2] rounded-xs"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -348,237 +380,77 @@ export const GPAppointmentsView: React.FC = () => {
           </table>
         </div>
 
-        {filteredRecords.length > 0 && (
-          <div className="p-3 border-t border-[#edebe9] bg-[#faf9f8]">
-            <Pagination
-              currentPage={currentPage}
-              pageSize={pageSize}
-              totalItems={filteredRecords.length}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
-            />
-          </div>
-        )}
+        {/* Pagination Footer */}
+        <Pagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filteredRecords.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
+        />
       </div>
 
-      {/* Modal: Book / Edit Appointment */}
-      {(isCreateModalOpen || editingRecord) && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xs shadow-2xl w-full max-w-lg overflow-hidden border border-[#e1dfdd] animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#e1dfdd] bg-[#f3f8fd]">
-              <div className="flex items-center gap-2">
-                <Stethoscope className="w-4 h-4 text-[#0d9488]" />
-                <h2 className="text-sm font-semibold text-[#242424]">
-                  {editingRecord ? 'Edit GP Appointment' : 'Book GP Appointment'}
-                </h2>
-              </div>
-              <button
-                onClick={() => { setIsCreateModalOpen(false); setEditingRecord(null); }}
-                className="text-[#605e5c] hover:text-[#242424]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Dynamic Create Modal */}
+      <DynamicRecordFormModal<GPAppointmentRecord>
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Book GP Appointment"
+        columns={columns}
+        initialValues={{
+          roomNo: '',
+          portReference: '',
+          referralSentOn: new Date().toISOString().slice(0, 10),
+          appointmentDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          timeOfGp: '10:00',
+          comments: '',
+          status: 'Scheduled',
+          siteName: allowedSites[0] || 'Brit Hotel',
+          suName: ''
+        }}
+        onSubmit={handleCreateSubmit}
+        submitLabel="Schedule Consultation"
+      />
 
-            <form onSubmit={handleSave} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Room No *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.roomNo}
-                    onChange={e => setFormData({ ...formData, roomNo: e.target.value })}
-                    placeholder="e.g. 104"
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Port Reference *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.portReference}
-                    onChange={e => setFormData({ ...formData, portReference: e.target.value })}
-                    placeholder="e.g. CR0-918234"
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] font-mono bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Service User Name</label>
-                  <input
-                    type="text"
-                    value={formData.suName}
-                    onChange={e => setFormData({ ...formData, suName: e.target.value })}
-                    placeholder="Full name"
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Site / Hotel</label>
-                  <select
-                    value={formData.siteName}
-                    onChange={e => setFormData({ ...formData, siteName: e.target.value })}
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] bg-white text-[#323130]"
-                  >
-                    {allowedSites.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Referral Sent On</label>
-                  <input
-                    type="date"
-                    value={formData.referralSentOn}
-                    onChange={e => setFormData({ ...formData, referralSentOn: e.target.value })}
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] bg-white text-[#323130]"
-                  >
-                    <option value="Scheduled">Scheduled</option>
-                    <option value="Attended">Attended</option>
-                    <option value="Did Not Attend (DNA)">Did Not Attend (DNA)</option>
-                    <option value="Rescheduled">Rescheduled</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Appointment Date</label>
-                  <input
-                    type="date"
-                    value={formData.appointmentDate}
-                    onChange={e => setFormData({ ...formData, appointmentDate: e.target.value })}
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Time of GP</label>
-                  <input
-                    type="time"
-                    value={formData.timeOfGp}
-                    onChange={e => setFormData({ ...formData, timeOfGp: e.target.value })}
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-[#605e5c] mb-1">Comments &amp; Clinical Notes</label>
-                  <textarea
-                    rows={3}
-                    value={formData.comments}
-                    onChange={e => setFormData({ ...formData, comments: e.target.value })}
-                    placeholder="Medical history, symptoms, prescription refills, interpreter requirement, transportation arrangements..."
-                    className="w-full text-xs p-2 border border-[#8a8886] rounded-xs focus:outline-2 focus:outline-[#71afe5] bg-white text-[#323130]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#e1dfdd]">
-                <button
-                  type="button"
-                  onClick={() => { setIsCreateModalOpen(false); setEditingRecord(null); }}
-                  className="px-3 py-1.5 text-xs font-semibold text-[#323130] bg-white hover:bg-[#edebe9] border border-[#8a8886] rounded-xs transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 text-xs font-semibold text-white bg-[#0d9488] hover:bg-[#0f766e] rounded-xs shadow-xs transition-colors"
-                >
-                  {editingRecord ? 'Save Changes' : 'Confirm Appointment'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Dynamic Edit Modal */}
+      {editingRecord && (
+        <DynamicRecordFormModal<GPAppointmentRecord>
+          isOpen={Boolean(editingRecord)}
+          onClose={() => setEditingRecord(null)}
+          title={`Edit GP Appointment - Room ${editingRecord.roomNo}`}
+          columns={columns}
+          initialValues={editingRecord}
+          onSubmit={handleEditSubmit}
+          submitLabel="Save Changes"
+        />
       )}
 
-      {/* Modal: View Details */}
-      {viewDetailRecord && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xs shadow-2xl w-full max-w-md overflow-hidden border border-[#e1dfdd] animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#e1dfdd] bg-[#f3f8fd]">
-              <div className="flex items-center gap-2">
-                <Stethoscope className="w-4 h-4 text-[#0d9488]" />
-                <h3 className="text-sm font-semibold text-[#242424]">
-                  Room {viewDetailRecord.roomNo} - GP Appointment
-                </h3>
-              </div>
-              <button
-                onClick={() => setViewDetailRecord(null)}
-                className="text-[#605e5c] hover:text-[#242424]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-3 text-xs text-[#323130]">
-              <div className="grid grid-cols-2 gap-3 bg-[#faf9f8] p-3 rounded-xs border border-[#edebe9]">
-                <div>
-                  <span className="text-[#605e5c] font-semibold text-[11px]">Port Ref:</span>
-                  <p className="font-mono font-semibold text-[#0f766e] mt-0.5">{viewDetailRecord.portReference}</p>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold text-[11px]">Resident:</span>
-                  <p className="font-semibold text-[#242424] mt-0.5">{viewDetailRecord.suName || 'N/A'}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-[#605e5c] font-semibold text-[11px]">Referral Sent:</span>
-                  <p className="font-mono text-[#605e5c] mt-0.5">{viewDetailRecord.referralSentOn || '—'}</p>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold text-[11px]">Status:</span>
-                  <p className="font-semibold text-[#242424] mt-0.5">{viewDetailRecord.status}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-[#605e5c] font-semibold text-[11px]">Appointment Date:</span>
-                  <p className="font-medium text-[#242424] mt-0.5">{viewDetailRecord.appointmentDate}</p>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold text-[11px]">Time Slot:</span>
-                  <p className="font-mono font-medium text-[#242424] mt-0.5">{viewDetailRecord.timeOfGp}</p>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-[#605e5c] font-semibold text-[11px]">Comments &amp; Follow-up:</span>
-                <p className="bg-[#faf9f8] p-2.5 rounded-xs border border-[#edebe9] text-[#242424] mt-1">
-                  {viewDetailRecord.comments || 'No clinical comments documented.'}
-                </p>
-              </div>
-
-              <div className="flex justify-end pt-2 border-t border-[#e1dfdd]">
-                <button
-                  onClick={() => setViewDetailRecord(null)}
-                  className="px-3 py-1.5 bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs font-semibold text-xs transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Dynamic View Dossier Modal */}
+      {viewingRecord && (
+        <DynamicRecordViewModal<GPAppointmentRecord>
+          isOpen={Boolean(viewingRecord)}
+          onClose={() => setViewingRecord(null)}
+          title={`GP Consultation Dossier - Room ${viewingRecord.roomNo}`}
+          columns={columns}
+          record={viewingRecord}
+          onEdit={() => {
+            const rec = viewingRecord;
+            setViewingRecord(null);
+            setEditingRecord(rec);
+          }}
+          canEdit={canEditRecord(viewingRecord.siteName)}
+        />
       )}
+
+      {/* Super Admin Table Schema Customizer Modal */}
+      <TableSchemaEditorModal<GPAppointmentRecord>
+        isOpen={isSchemaModalOpen}
+        onClose={() => setIsSchemaModalOpen(false)}
+        moduleTitle="GP Appointments Register"
+        columns={columns}
+        onSaveColumns={saveColumns}
+        onResetToDefault={resetToDefault}
+        currentUserRole={currentUserRole}
+      />
     </div>
   );
 };

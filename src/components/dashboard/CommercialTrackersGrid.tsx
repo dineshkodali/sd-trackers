@@ -63,7 +63,7 @@ export const CommercialTrackersGrid: React.FC<CommercialTrackersGridProps> = ({
   const foodComplianceRate = foodRecordsCount > 0 ? Math.round((foodTempPassing / foodRecordsCount) * 100) : 100;
 
   const openMaintenanceCount = maintenanceRecords.filter(m => m.defectStatus !== 'Completed').length;
-  const urgentMaintenanceCount = maintenanceRecords.filter(m => m.severity === 'CAT 1 - Emergency' || m.severity === 'Urgent').length;
+  const urgentMaintenanceCount = maintenanceRecords.filter(m => m.priority === 'CAT 1' || (m as any).severity === 'Urgent').length;
 
   const activeSpcdCount = spcdRecords.filter(s => !s.isArchived).length;
   const propertiesCount = properties.length;

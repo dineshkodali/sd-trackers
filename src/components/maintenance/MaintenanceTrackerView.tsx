@@ -1,19 +1,19 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { 
-  Wrench, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Download, 
-  Search, 
-  Filter, 
-  X, 
-  ShieldAlert, 
-  Building2, 
-  BookOpen, 
+import {
+  Wrench,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Plus,
+  Trash2,
+  Edit3,
+  Download,
+  Search,
+  Filter,
+  X,
+  ShieldAlert,
+  Building2,
+  BookOpen,
   Info,
   ChevronDown,
   ChevronUp,
@@ -28,7 +28,8 @@ import {
   Eye,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';
@@ -39,6 +40,12 @@ import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { saveFormDraft, loadFormDraft, clearFormDraft, formatDraftTime } from '../../utils/autoSave';
+import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { maintenanceTableConfig } from '../../config/trackerTableConfigs';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { TableColumnConfig } from '../../types/tableSchema';
 
 const DRAFT_KEY_MAINTENANCE_CREATE = 'maintenance_tracker_create';
 const getDraftKeyMaintenanceEdit = (id: string) => `maintenance_tracker_edit_${id}`;
@@ -109,6 +116,16 @@ export const MaintenanceTrackerView: React.FC = () => {
       setGlobalSearchFilter('');
     }
   }, [globalSearchFilter, setGlobalSearchFilter]);
+
+  // Dynamic Table Schema & Columns (Local persistence with fallback to trackerTableConfigs)
+  const {
+    columns: maintenanceColumns,
+    tableColumns: visibleMaintenanceColumns,
+    saveColumns: handleSaveMaintenanceColumns,
+    resetToDefault: handleResetMaintenanceColumns
+  } = useTableSchema<MaintenanceRecord>('maintenance', maintenanceTableConfig);
+
+  const [isSchemaEditorOpen, setIsSchemaEditorOpen] = useState<boolean>(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -423,8 +440,8 @@ export const MaintenanceTrackerView: React.FC = () => {
     if (!editingRecord) return;
 
     const isCompleting = editingRecord.defectStatus === 'Completed' || editingRecord.action === 'Closed';
-    const actualClosedDate = isCompleting && !editingRecord.actualClosedDate 
-      ? new Date().toISOString().slice(0, 10) 
+    const actualClosedDate = isCompleting && !editingRecord.actualClosedDate
+      ? new Date().toISOString().slice(0, 10)
       : editingRecord.actualClosedDate;
 
     updateMaintenanceRecord(editingRecord.id, {
@@ -636,8 +653,177 @@ export const MaintenanceTrackerView: React.FC = () => {
 
   const filteredCriteria = useMemo(() => {
     if (selectedCriteriaSection === 'all') return MAINTENANCE_CRITERIA_LIST;
-    return MAINTENANCE_CRITERIA_LIST.filter(c => c.code.startsWith(selectedCriteriaSection) || c.section.includes(selectedCriteriaSection));
+    return MAINTENANCE_CRITERIA_LIST.filter(c => c.section === selectedCriteriaSection);
   }, [selectedCriteriaSection]);
+
+  const renderColumnCell = (col: TableColumnConfig<MaintenanceRecord>, item: MaintenanceRecord) => {
+    const val = (item as any)[col.key];
+
+    if (col.renderCell) {
+      return col.renderCell(val, item);
+    }
+
+    if (col.key === 'date') {
+      return <span className="font-mono text-[11px] text-neutral-700">{item.date}</span>;
+    }
+
+    if (col.key === 'priority') {
+      return getPriorityBadge(item.priority);
+    }
+
+    if (col.key === 'priorityTimeScale') {
+      return (
+        <span className="px-2 py-0.5 bg-neutral-100 rounded text-[11px] font-medium text-neutral-700">
+          {item.priorityTimeScale || '—'}
+        </span>
+      );
+    }
+
+    if (col.key === 'location') {
+      return (
+        <div>
+          <div className="font-semibold text-neutral-800">{item.location}</div>
+          <div className="text-[10px] text-neutral-500">{item.site}</div>
+        </div>
+      );
+    }
+
+    if (col.key === 'site') {
+      return <span className="font-medium text-neutral-800">{item.site}</span>;
+    }
+
+    if (col.key === 'room') {
+      return <span className="font-mono text-[11px] text-neutral-700">{item.room || '—'}</span>;
+    }
+
+    if (col.key === 'criteriaCode') {
+      return item.criteriaCode ? (
+        <span className="inline-block text-[10px] font-mono font-semibold bg-neutral-100 text-neutral-700 px-1.5 py-0.2 rounded">
+          Standard {item.criteriaCode}
+        </span>
+      ) : <span className="text-neutral-400 font-mono text-[11px]">—</span>;
+    }
+
+    if (col.key === 'description') {
+      return (
+        <div className="max-w-[260px]">
+          <div className="text-neutral-900 font-medium line-clamp-2" title={item.description}>
+            {item.description}
+          </div>
+        </div>
+      );
+    }
+
+    if (col.key === 'raisedBy') {
+      return <span className="text-neutral-700">{getRaisedBy(item)}</span>;
+    }
+
+    if (col.key === 'closeDueDate') {
+      const isCat1 = item.priority === 'CAT 1';
+      const isClosed = item.defectStatus === 'Completed' || item.action === 'Closed';
+      return (
+        <span className={`px-1.5 py-0.5 rounded font-mono text-[11px] ${isCat1 && !isClosed ? 'bg-red-100 text-red-800 font-bold' : 'text-neutral-700'}`}>
+          {item.closeDueDate || '—'}
+        </span>
+      );
+    }
+
+    if (col.key === 'defectStatus') {
+      return canEditRecord(item.site) ? (
+        <select
+          value={item.defectStatus}
+          onChange={e => {
+            const newStatus = e.target.value as DefectStatus;
+            updateMaintenanceRecord(item.id, {
+              defectStatus: newStatus,
+              action: newStatus === 'Completed' ? 'Closed' : item.action,
+              actualClosedDate: newStatus === 'Completed' ? (item.actualClosedDate || new Date().toISOString().slice(0, 10)) : item.actualClosedDate
+            });
+          }}
+          className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
+            item.defectStatus === 'Completed'
+              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+              : 'bg-sky-100 text-sky-800 border-sky-300'
+          }`}
+          title="Click to update defect status"
+        >
+          <option value="In Process" className="bg-white text-neutral-900 font-normal">In Process</option>
+          <option value="Completed" className="bg-white text-neutral-900 font-normal">Completed</option>
+        </select>
+      ) : (
+        getDefectStatusBadge(item.defectStatus)
+      );
+    }
+
+    if (col.key === 'action') {
+      return canEditRecord(item.site) ? (
+        <select
+          value={item.action}
+          onChange={e => {
+            const newAction = e.target.value as MaintenanceAction;
+            updateMaintenanceRecord(item.id, {
+              action: newAction,
+              defectStatus: newAction === 'Closed' ? 'Completed' : item.defectStatus,
+              actualClosedDate: newAction === 'Closed' ? (item.actualClosedDate || new Date().toISOString().slice(0, 10)) : item.actualClosedDate
+            });
+          }}
+          className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
+            item.action === 'Closed'
+              ? 'bg-neutral-100 text-neutral-700 border-neutral-300'
+              : 'bg-amber-100 text-amber-800 border-amber-300'
+          }`}
+          title="Click to update action status"
+        >
+          <option value="Open" className="bg-white text-neutral-900 font-normal">Open</option>
+          <option value="Closed" className="bg-white text-neutral-900 font-normal">Closed</option>
+        </select>
+      ) : (
+        getActionBadge(item.action)
+      );
+    }
+
+    if (col.key === 'progress') {
+      return (
+        <div className="text-[11px] text-neutral-800 font-medium">
+          {item.progress}
+        </div>
+      );
+    }
+
+    if (col.key === 'actualClosedDate') {
+      return (
+        <span className="font-mono text-[11px] text-neutral-600">
+          {item.actualClosedDate || <span className="text-neutral-400">—</span>}
+        </span>
+      );
+    }
+
+    if (col.key === 'notes') {
+      return (
+        <div className="text-[11px] text-neutral-600 max-w-[200px] truncate" title={item.notes}>
+          {item.notes || '—'}
+        </div>
+      );
+    }
+
+    if (col.badgeColors && col.badgeColors[val]) {
+      return (
+        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${col.badgeColors[val]}`}>
+          {val}
+        </span>
+      );
+    }
+
+    if (col.type === 'checkbox') {
+      return (
+        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${val ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-500'}`}>
+          {val ? 'Yes' : 'No'}
+        </span>
+      );
+    }
+
+    return <span className="text-neutral-700 text-xs">{val !== undefined && val !== null && val !== '' ? String(val) : '—'}</span>;
+  };
 
   return (
     <div className="space-y-4">
@@ -659,6 +845,19 @@ export const MaintenanceTrackerView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Super Admin Table Customizer Button */}
+          {currentUserRole === 'Super Admin' && (
+            <button
+              id="btn-customize-maintenance-table"
+              onClick={() => setIsSchemaEditorOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+              title="Configure Table Headers & Form Fields (Super Admin Only)"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>Customize Table</span>
+            </button>
+          )}
+
           <button
             id="btn-open-criteria-guide"
             onClick={() => setIsCriteriaGuideOpen(true)}
@@ -849,79 +1048,38 @@ export const MaintenanceTrackerView: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                <th onClick={() => handleSort('date')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Date">
-                  <div className="flex items-center gap-1">
-                    <span>Date</span>
-                    {sortField === 'date' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('priority')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Priority">
-                  <div className="flex items-center gap-1">
-                    <span>Priority</span>
-                    {sortField === 'priority' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('priorityTimeScale')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Priority TimeScale">
-                  <div className="flex items-center gap-1">
-                    <span>Priority TimeScale</span>
-                    {sortField === 'priorityTimeScale' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('location')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Location">
-                  <div className="flex items-center gap-1">
-                    <span>Location</span>
-                    {sortField === 'location' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('description')} className="py-2.5 px-3 min-w-[220px] cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Description">
-                  <div className="flex items-center gap-1">
-                    <span>Description</span>
-                    {sortField === 'description' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('raisedBy')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Raised By">
-                  <div className="flex items-center gap-1">
-                    <span>Raised BY</span>
-                    {sortField === 'raisedBy' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('closeDueDate')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Close Due Date">
-                  <div className="flex items-center gap-1">
-                    <span>Close Due Date</span>
-                    {sortField === 'closeDueDate' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('defectStatus')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Defect Status">
-                  <div className="flex items-center gap-1">
-                    <span>Defect status</span>
-                    {sortField === 'defectStatus' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('action')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Action">
-                  <div className="flex items-center gap-1">
-                    <span>Action</span>
-                    {sortField === 'action' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('progress')} className="py-2.5 px-3 min-w-[160px] cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Progress">
-                  <div className="flex items-center gap-1">
-                    <span>Progress</span>
-                    {sortField === 'progress' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('actualClosedDate')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Actual Closed Date">
-                  <div className="flex items-center gap-1">
-                    <span>Actual Closed Date</span>
-                    {sortField === 'actualClosedDate' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
+                {visibleMaintenanceColumns.map(col => {
+                  const isSorted = sortField === col.key;
+                  return (
+                    <th
+                      key={String(col.key)}
+                      onClick={() => handleSort(col.key as any)}
+                      className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors"
+                      title={`Sort by ${col.label}`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>{col.label}</span>
+                        {col.isCustom && (
+                          <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
+                            Custom
+                          </span>
+                        )}
+                        {isSorted ? (
+                          sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
                 <th className="py-2.5 px-3 text-right whitespace-nowrap w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9] text-[#242424]">
               {paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-8 text-center text-[#605e5c]">
+                  <td colSpan={visibleMaintenanceColumns.length + 1} className="py-8 text-center text-[#605e5c]">
                     <Wrench className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
                     <p className="font-semibold">No maintenance tickets found matching current filters.</p>
                     <p className="text-[11px] text-neutral-400 mt-0.5">Try resetting search filters or click "Log Maintenance Defect" to report an issue.</p>
@@ -933,138 +1091,20 @@ export const MaintenanceTrackerView: React.FC = () => {
                   const isClosed = item.defectStatus === 'Completed' || item.action === 'Closed';
 
                   return (
-                    <tr 
-                      key={item.id} 
-                      className={`hover:bg-[#f3f2f1]/60 transition-colors ${
-                        isCat1 && !isClosed ? 'bg-red-50/20' : ''
-                      }`}
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-[#f3f2f1]/60 transition-colors ${isCat1 && !isClosed ? 'bg-red-50/20' : ''}`}
                     >
-                      {/* Date */}
-                      <td className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap text-neutral-700">
-                        {item.date}
-                      </td>
-
-                      {/* Priority */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        {getPriorityBadge(item.priority)}
-                      </td>
-
-                      {/* Priority TimeScale */}
-                      <td className="py-2.5 px-3 font-medium text-neutral-700 whitespace-nowrap">
-                        <span className="px-2 py-0.5 bg-neutral-100 rounded text-[11px]">
-                          {item.priorityTimeScale}
-                        </span>
-                      </td>
-
-                      {/* Location */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="font-semibold text-neutral-800">{item.location}</div>
-                        <div className="text-[10px] text-neutral-500">{item.site}</div>
-                      </td>
-
-                      {/* Description */}
-                      <td className="py-2.5 px-3">
-                        <div className="text-neutral-900 font-medium line-clamp-2">
-                          {item.description}
-                        </div>
-                        {item.criteriaCode && (
-                          <span className="inline-block mt-0.5 text-[10px] font-mono font-semibold bg-neutral-100 text-neutral-700 px-1.5 py-0.2 rounded">
-                            Standard {item.criteriaCode}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Raised By */}
-                      <td className="py-2.5 px-3 whitespace-nowrap text-neutral-700">
-                        {getRaisedBy(item)}
-                      </td>
-
-                      {/* Close Due Date */}
-                      <td className="py-2.5 px-3 whitespace-nowrap font-mono text-[11px]">
-                        <span className={`px-1.5 py-0.5 rounded ${
-                          isCat1 && !isClosed ? 'bg-red-100 text-red-800 font-bold' : 'text-neutral-700'
-                        }`}>
-                          {item.closeDueDate}
-                        </span>
-                      </td>
-
-                      {/* Defect status */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        {canEditRecord(item.site) ? (
-                          <select
-                            value={item.defectStatus}
-                            onChange={e => {
-                              const newStatus = e.target.value as DefectStatus;
-                              updateMaintenanceRecord(item.id, {
-                                defectStatus: newStatus,
-                                action: newStatus === 'Completed' ? 'Closed' : item.action,
-                                actualClosedDate: newStatus === 'Completed' ? (item.actualClosedDate || new Date().toISOString().slice(0, 10)) : item.actualClosedDate
-                              });
-                            }}
-                            className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
-                              item.defectStatus === 'Completed'
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : 'bg-sky-100 text-sky-800 border-sky-300'
-                            }`}
-                            title="Click to update defect status"
-                          >
-                            <option value="In Process" className="bg-white text-neutral-900 font-normal">In Process</option>
-                            <option value="Completed" className="bg-white text-neutral-900 font-normal">Completed</option>
-                          </select>
-                        ) : (
-                          getDefectStatusBadge(item.defectStatus)
-                        )}
-                      </td>
-
-                      {/* Action */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        {canEditRecord(item.site) ? (
-                          <select
-                            value={item.action}
-                            onChange={e => {
-                              const newAction = e.target.value as MaintenanceAction;
-                              updateMaintenanceRecord(item.id, {
-                                action: newAction,
-                                defectStatus: newAction === 'Closed' ? 'Completed' : item.defectStatus,
-                                actualClosedDate: newAction === 'Closed' ? (item.actualClosedDate || new Date().toISOString().slice(0, 10)) : item.actualClosedDate
-                              });
-                            }}
-                            className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
-                              item.action === 'Closed'
-                                ? 'bg-neutral-100 text-neutral-700 border-neutral-300'
-                                : 'bg-amber-100 text-amber-800 border-amber-300'
-                            }`}
-                            title="Click to update action status"
-                          >
-                            <option value="Open" className="bg-white text-neutral-900 font-normal">Open</option>
-                            <option value="Closed" className="bg-white text-neutral-900 font-normal">Closed</option>
-                          </select>
-                        ) : (
-                          getActionBadge(item.action)
-                        )}
-                      </td>
-
-                      {/* Progress */}
-                      <td className="py-2.5 px-3">
-                        <div className="text-[11px] text-neutral-800 font-medium">
-                          {item.progress}
-                        </div>
-                        {item.notes && (
-                          <div className="text-[10px] text-neutral-500 line-clamp-1 italic mt-0.5">
-                            Note: {item.notes}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Actual Closed Date */}
-                      <td className="py-2.5 px-3 whitespace-nowrap font-mono text-[11px] text-neutral-600">
-                        {item.actualClosedDate || <span className="text-neutral-400">—</span>}
-                      </td>
+                      {visibleMaintenanceColumns.map(col => (
+                        <td key={String(col.key)} className="py-2.5 px-3 whitespace-nowrap">
+                          {renderColumnCell(col, item)}
+                        </td>
+                      ))}
 
                       {/* Row Actions */}
                       <td className="py-2.5 px-3 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
                         <div className="flex items-center justify-end gap-1">
-                          {!isClosed && canEditRecord() && (
+                          {!isClosed && canEditRecord(item.site) && (
                             <button
                               onClick={() => handleQuickClose(item)}
                               title="Mark Completed & Closed"
@@ -1073,26 +1113,26 @@ export const MaintenanceTrackerView: React.FC = () => {
                               <CheckCircle2 className="w-4 h-4" />
                             </button>
                           )}
-                        <button
-                          onClick={() => setViewRecord(item)}
-                          title="View Full Defect Details"
-                          className="p-1 text-neutral-600 hover:text-neutral-900 hover:bg-[#edebe9] rounded"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-
-                        {canEditRecord() && (
                           <button
-                            onClick={() => setEditingRecord({
-                              ...item,
-                              raisedBy: getRaisedBy(item)
-                            })}
-                            title="Update Progress & Defect"
-                            className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded"
+                            onClick={() => setViewRecord(item)}
+                            title="View Full Defect Details"
+                            className="p-1 text-neutral-600 hover:text-neutral-900 hover:bg-[#edebe9] rounded"
                           >
-                            <Edit3 className="w-4 h-4" />
+                            <Eye className="w-4 h-4" />
                           </button>
-                        )}
+
+                          {canEditRecord(item.site) && (
+                            <button
+                              onClick={() => setEditingRecord({
+                                ...item,
+                                raisedBy: getRaisedBy(item)
+                              })}
+                              title="Update Progress & Defect"
+                              className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          )}
                           {canDeleteRecord() && (
                             <button
                               onClick={() => deleteMaintenanceRecord(item.id)}
@@ -1129,673 +1169,77 @@ export const MaintenanceTrackerView: React.FC = () => {
         )}
       </div>
 
-      {/* CREATE NEW MAINTENANCE TICKET MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border border-[#8a8886] rounded-xs shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="px-5 py-4 border-b border-[#edebe9] flex items-center justify-between bg-[#faf9f8]">
-              <div className="flex items-center gap-2">
-                <Wrench className="w-5 h-5 text-[#0d9488]" />
-                <h3 className="text-base font-bold text-[#242424]">
-                  Log New Property Maintenance Defect
-                </h3>
-              </div>
-              <button 
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 hover:bg-[#edebe9] rounded text-neutral-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* DYNAMIC CREATE NEW MAINTENANCE TICKET MODAL */}
+      <DynamicRecordFormModal<MaintenanceRecord>
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Log New Property Maintenance Defect"
+        columns={maintenanceColumns}
+        initialValues={{
+          date: new Date().toISOString().slice(0, 10),
+          priority: 'CAT 2',
+          priorityTimeScale: '5 Working Days',
+          defectStatus: 'In Process',
+          action: 'Open',
+          site: allowedSites[0] || 'Victoria House',
+          raisedBy: loggedInUserName
+        }}
+        onSave={(data) => {
+          const today = data.date || new Date().toISOString().slice(0, 10);
+          const fullLocation = data.room ? `${data.site || ''} - ${data.room}` : `${data.site || ''} - ${data.location || 'General Premises'}`;
+          addMaintenanceRecord({
+            ...data,
+            date: today,
+            location: fullLocation,
+            raisedBy: data.raisedBy || loggedInUserName,
+            site: data.site || 'Victoria House',
+            priority: data.priority || 'CAT 2',
+            defectStatus: data.defectStatus || 'Pending',
+            action: data.action || 'Pending',
+            description: data.description || ''
+          } as any);
+          clearFormDraft(DRAFT_KEY_MAINTENANCE_CREATE);
+          setIsCreateModalOpen(false);
+        }}
+      />
 
-            <form onSubmit={handleSubmitCreate} className="p-5 overflow-y-auto space-y-4 text-xs">
-              {/* Draft Restored Banner */}
-              {createDraftRestoredAt && (
-                <div className="p-2.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-xs flex items-center justify-between gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <RotateCcw className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>
-                      <strong>Unsaved ticket draft restored</strong> (auto-saved {formatDraftTime(createDraftRestoredAt)})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleDiscardCreateDraft}
-                    className="px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:text-red-700 hover:bg-amber-100 rounded border border-amber-400 transition-colors"
-                  >
-                    Discard Draft
-                  </button>
-                </div>
-              )}
+      {/* DYNAMIC EDIT MAINTENANCE RECORD MODAL */}
+      <DynamicRecordFormModal<MaintenanceRecord>
+        isOpen={Boolean(editingRecord)}
+        onClose={() => setEditingRecord(null)}
+        title={`Update Maintenance Ticket #${editingRecord?.id || ''}`}
+        columns={maintenanceColumns}
+        initialValues={editingRecord || undefined}
+        isEdit={true}
+        onSave={(data) => {
+          if (!editingRecord) return;
+          const isCompleting = data.defectStatus === 'Completed' || data.action === 'Closed';
+          const actualClosedDate = isCompleting && !data.actualClosedDate
+            ? new Date().toISOString().slice(0, 10)
+            : data.actualClosedDate;
+          updateMaintenanceRecord(editingRecord.id, {
+            ...editingRecord,
+            ...data,
+            actualClosedDate
+          });
+          clearFormDraft(getDraftKeyMaintenanceEdit(editingRecord.id));
+          setEditingRecord(null);
+        }}
+      />
 
-              {/* Quick Standards Selector */}
-              <div className="bg-[#f3f8fd] border border-[#5eead4] p-3 rounded-xs">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-[#0f766e]">Quick Auto-fill from Home Office Standards:</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsCriteriaGuideOpen(true)}
-                    className="text-[#0d9488] hover:underline font-semibold text-[11px]"
-                  >
-                    View All 71 Standards
-                  </button>
-                </div>
-                <select
-                  value={formData.criteriaCode}
-                  onChange={e => {
-                    const found = MAINTENANCE_CRITERIA_LIST.find(c => c.code === e.target.value);
-                    if (found) handleSelectCriteria(found);
-                  }}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                >
-                  <option value="">-- Choose Standard Criteria (Optional) --</option>
-                  <optgroup label="B.2 Safe Accommodation (CAT 1 - 4 Hours Emergency)">
-                    {MAINTENANCE_CRITERIA_LIST.filter(c => c.code.startsWith('B.2')).map(c => (
-                      <option key={c.code} value={c.code}>{c.code} {c.title}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="B.3 Habitable Accommodation (CAT 1 - 4 Hours Emergency)">
-                    {MAINTENANCE_CRITERIA_LIST.filter(c => c.code.startsWith('B.3')).map(c => (
-                      <option key={c.code} value={c.code}>{c.code} {c.title}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="B.4 Fit for Purpose (CAT 2 - 5 Working Days, Interim 24h)">
-                    {MAINTENANCE_CRITERIA_LIST.filter(c => c.code.startsWith('B.4.1')).map(c => (
-                      <option key={c.code} value={c.code}>{c.code} {c.title}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="B.4.2 & B.6 Decorative & Public Areas (CAT 3 - 21 Working Days)">
-                    {MAINTENANCE_CRITERIA_LIST.filter(c => c.category === 'CAT 3').slice(0, 10).map(c => (
-                      <option key={c.code} value={c.code}>{c.code} {c.title}</option>
-                    ))}
-                  </optgroup>
-                </select>
-              </div>
-
-              {/* Priority & Timescale Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Priority Category *
-                  </label>
-                  <select
-                    value={formData.priority}
-                    onChange={e => handlePriorityChange(e.target.value as MaintenancePriority)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-semibold focus:outline-none focus:border-[#0d9488]"
-                    required
-                  >
-                    {priorityOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!priorityOptions.some(o => o.value === formData.priority) && formData.priority && (
-                      <option value={formData.priority}>{formData.priority}</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Priority TimeScale *
-                  </label>
-                  <input
-                    type="text"
-                    list="maint-create-timescales"
-                    value={formData.priorityTimeScale}
-                    onChange={e => setFormData({ ...formData, priorityTimeScale: e.target.value })}
-                    required
-                    className="w-full px-2.5 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs font-mono text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                  <datalist id="maint-create-timescales">
-                    {timeScaleOptions.map(opt => (
-                      <option key={opt.id} value={opt.value} />
-                    ))}
-                  </datalist>
-                </div>
-              </div>
-
-              {/* Site and Room */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Property Site *
-                  </label>
-                  <select
-                    value={formData.site}
-                    onChange={e => setFormData({ ...formData, site: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                    required
-                  >
-                    {allowedSites.map((s, idx) => (
-                      <option key={`${s}-${idx}`} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Room / Specific Area
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Room 204, Boiler Plant Room, Kitchen B"
-                    value={formData.room}
-                    onChange={e => setFormData({ ...formData, room: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Defect Description *
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Detailed description of defect, cause, safety impact..."
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              {/* Raised By & Close Due Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-neutral-700 mb-1 flex items-center justify-between">
-                    <span>Raised By *</span>
-                    <span className="text-[10px] text-neutral-500 font-normal flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-neutral-400" /> Logged-in User (Locked)
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      readOnly
-                      value={formData.raisedBy || loggedInUserName}
-                      className="w-full px-2.5 py-1.5 pr-8 bg-[#f8fafc] border border-[#d2d0ce] rounded-xs text-[#323130] font-medium cursor-not-allowed"
-                      title="Raised By is locked to the authenticated user."
-                    />
-                    <Lock className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Close Due Date & Time *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.closeDueDate}
-                    onChange={e => setFormData({ ...formData, closeDueDate: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              {/* Defect Status, Action & Progress */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Defect Status
-                  </label>
-                  <select
-                    value={formData.defectStatus}
-                    onChange={e => setFormData({ ...formData, defectStatus: e.target.value as DefectStatus })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    <option value="In Process">In Process</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Action
-                  </label>
-                  <select
-                    value={formData.action}
-                    onChange={e => setFormData({ ...formData, action: e.target.value as MaintenanceAction })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    <option value="Open">Open</option>
-                    <option value="Closed">Closed</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Progress Note
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.progress}
-                    onChange={e => setFormData({ ...formData, progress: e.target.value })}
-                    placeholder="e.g. Contractor Dispatched"
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              {/* Additional Notes */}
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Additional Inspection / Follow-Up Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Temporary electric heater supplied to resident"
-                  value={formData.notes}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-[#edebe9] flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-[11px] text-neutral-500">
-                  <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-medium">
-                    <Save className="w-3 h-3 text-emerald-600" />
-                    {createLastSavedTime ? `Auto-saved at ${createLastSavedTime}` : 'Auto-save active'}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsCreateModalOpen(false)}
-                    className="px-3 py-2 bg-white hover:bg-[#edebe9] border border-[#8a8886] rounded-xs font-semibold text-neutral-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs"
-                  >
-                    Save & Log Ticket
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT MAINTENANCE RECORD MODAL */}
-      {editingRecord && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border border-[#8a8886] rounded-xs shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="px-5 py-4 border-b border-[#edebe9] flex items-center justify-between bg-[#faf9f8]">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-[#0d9488]" />
-                <h3 className="text-base font-bold text-[#242424]">
-                  Update Maintenance Defect Status
-                </h3>
-              </div>
-              <button 
-                onClick={() => setEditingRecord(null)}
-                className="p-1 hover:bg-[#edebe9] rounded text-neutral-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateRecord} className="p-5 overflow-y-auto space-y-4 text-xs">
-              {/* Draft Edits Restored Banner */}
-              {editDraftRestoredAt && (
-                <div className="p-2.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-xs flex items-center justify-between gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <RotateCcw className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>
-                      <strong>Unsaved edit draft restored</strong> (auto-saved {formatDraftTime(editDraftRestoredAt)})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRevertEditDraft}
-                    className="px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:text-red-700 hover:bg-amber-100 rounded border border-amber-400 transition-colors"
-                  >
-                    Revert to Saved
-                  </button>
-                </div>
-              )}
-
-              {/* Full Editable Defect Properties matching Create Form */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">Site / Hotel *</label>
-                  <select
-                    value={editingRecord.site}
-                    onChange={e => setEditingRecord({ ...editingRecord, site: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    {allowedSites.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">Room / Unit *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingRecord.room}
-                    onChange={e => setEditingRecord({ ...editingRecord, room: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">Specific Location *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingRecord.location}
-                    onChange={e => setEditingRecord({ ...editingRecord, location: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">Priority Category *</label>
-                  <select
-                    value={editingRecord.priority}
-                    onChange={e => setEditingRecord({ ...editingRecord, priority: e.target.value as MaintenancePriority })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-semibold text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    {priorityOptions.map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">Timescale *</label>
-                  <select
-                    value={editingRecord.priorityTimeScale}
-                    onChange={e => setEditingRecord({ ...editingRecord, priorityTimeScale: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    {timeScaleOptions.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-neutral-700 mb-1 flex items-center justify-between">
-                    <span>Raised By *</span>
-                    <span className="text-[10px] text-neutral-500 font-normal flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-neutral-400" /> Locked
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      readOnly
-                      value={getRaisedBy(editingRecord)}
-                      className="w-full px-2.5 py-1.5 pr-8 bg-[#f8fafc] border border-[#d2d0ce] rounded-xs text-[#323130] font-medium cursor-not-allowed"
-                    />
-                    <Lock className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">Defect Description *</label>
-                <textarea
-                  rows={2}
-                  required
-                  value={editingRecord.description}
-                  onChange={e => setEditingRecord({ ...editingRecord, description: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              {/* Status and Action */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Defect Status *
-                  </label>
-                  <select
-                    value={editingRecord.defectStatus}
-                    onChange={e => {
-                      const newStatus = e.target.value as DefectStatus;
-                      setEditingRecord({
-                        ...editingRecord,
-                        defectStatus: newStatus,
-                        action: newStatus === 'Completed' ? 'Closed' : editingRecord.action,
-                        actualClosedDate: newStatus === 'Completed' ? (editingRecord.actualClosedDate || new Date().toISOString().slice(0, 10)) : editingRecord.actualClosedDate
-                      });
-                    }}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-semibold text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    <option value="In Process">In Process</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Action *
-                  </label>
-                  <select
-                    value={editingRecord.action}
-                    onChange={e => {
-                      const newAction = e.target.value as MaintenanceAction;
-                      setEditingRecord({
-                        ...editingRecord,
-                        action: newAction,
-                        actualClosedDate: newAction === 'Closed' ? (editingRecord.actualClosedDate || new Date().toISOString().slice(0, 10)) : editingRecord.actualClosedDate
-                      });
-                    }}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-semibold text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    <option value="Open">Open</option>
-                    <option value="Closed">Closed</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Progress Update *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editingRecord.progress}
-                  onChange={e => setEditingRecord({ ...editingRecord, progress: e.target.value })}
-                  placeholder="e.g. Contractor Dispatched / Parts Installed / Verified"
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              {/* Actual Closed Date */}
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Actual Closed Date (YYYY-MM-DD)
-                </label>
-                <input
-                  type="date"
-                  value={editingRecord.actualClosedDate || ''}
-                  onChange={e => setEditingRecord({ ...editingRecord, actualClosedDate: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              {/* Follow-up notes */}
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Follow-up Notes / Contractor Reference
-                </label>
-                <textarea
-                  rows={2}
-                  value={editingRecord.notes || ''}
-                  onChange={e => setEditingRecord({ ...editingRecord, notes: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-[#edebe9] flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-[11px] text-neutral-500">
-                  <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-medium">
-                    <Save className="w-3 h-3 text-emerald-600" />
-                    {editLastSavedTime ? `Auto-saved at ${editLastSavedTime}` : 'Auto-save active'}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingRecord(null)}
-                    className="px-3 py-2 bg-white hover:bg-[#edebe9] border border-[#8a8886] rounded-xs font-semibold text-neutral-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs"
-                  >
-                    Update Ticket
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW MAINTENANCE DEFECT MODAL */}
-      {viewRecord && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border border-[#8a8886] rounded-xs shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 text-xs">
-            <div className="px-5 py-4 border-b border-[#edebe9] flex items-center justify-between bg-[#faf9f8]">
-              <div className="flex items-center gap-2">
-                <Wrench className="w-5 h-5 text-[#0d9488]" />
-                <h3 className="text-base font-bold text-[#242424]">
-                  Maintenance Defect #{viewRecord.id}: {viewRecord.location}
-                </h3>
-              </div>
-              <button 
-                onClick={() => setViewRecord(null)}
-                className="p-1 hover:bg-[#edebe9] rounded text-neutral-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 overflow-y-auto space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#faf9f8] p-3.5 rounded-xs border border-[#edebe9]">
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Report Date</span>
-                  <strong className="text-[#242424]">{viewRecord.date}</strong>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Site / Hotel</span>
-                  <strong className="text-[#242424]">{viewRecord.site}</strong>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Room / Area</span>
-                  <strong className="font-mono text-[#242424]">{viewRecord.room}</strong>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Raised By</span>
-                  <span className="text-[#242424] font-medium">{getRaisedBy(viewRecord)}</span>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Priority</span>
-                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                    viewRecord.priority === 'CAT 1' ? 'bg-red-100 text-red-800' :
-                    viewRecord.priority === 'CAT 2' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {viewRecord.priority} ({viewRecord.priorityTimeScale})
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">HO Criteria Code</span>
-                  <span className="font-mono font-semibold text-[#0d9488]">{viewRecord.criteriaCode || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Status</span>
-                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                    viewRecord.defectStatus === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {viewRecord.defectStatus} ({viewRecord.action})
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Close Due Date</span>
-                  <span className="font-mono text-neutral-700">{viewRecord.closeDueDate}</span>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-[#605e5c] font-semibold block mb-1">Defect Description:</span>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed text-[#242424] whitespace-pre-wrap">
-                  {viewRecord.description}
-                </div>
-              </div>
-
-              <div>
-                <span className="text-[#605e5c] font-semibold block mb-1">Progress Update:</span>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed text-[#242424] whitespace-pre-wrap">
-                  {viewRecord.progress || '—'}
-                </div>
-              </div>
-
-              {viewRecord.actualClosedDate && (
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-1">Actual Closed Date:</span>
-                  <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xs font-mono">
-                    {viewRecord.actualClosedDate}
-                  </div>
-                </div>
-              )}
-
-              {viewRecord.notes && (
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-1">Follow-up Notes / Contractor:</span>
-                  <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed text-[#242424] whitespace-pre-wrap">
-                    {viewRecord.notes}
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-3 border-t border-[#edebe9] flex justify-end gap-2">
-                {canEditRecord(viewRecord.site) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const rec = viewRecord;
-                      setViewRecord(null);
-                      setEditingRecord({ ...rec, raisedBy: getRaisedBy(rec) });
-                    }}
-                    className="px-4 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold rounded-xs shadow-xs"
-                  >
-                    Edit Ticket
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setViewRecord(null)}
-                  className="px-4 py-1.5 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] font-semibold"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* DYNAMIC VIEW MAINTENANCE DEFECT RECORD MODAL */}
+      <DynamicRecordViewModal<MaintenanceRecord>
+        isOpen={Boolean(viewRecord)}
+        onClose={() => setViewRecord(null)}
+        title={`Maintenance Defect #${viewRecord?.id || ''}: ${viewRecord?.location || ''}`}
+        columns={maintenanceColumns}
+        record={viewRecord}
+        onEdit={viewRecord && canEditRecord(viewRecord.site) ? () => {
+          const rec = viewRecord;
+          setViewRecord(null);
+          setEditingRecord(rec);
+        } : undefined}
+      />
 
       {/* CRITERIA STANDARDS GUIDE MODAL */}
       {isCriteriaGuideOpen && (
@@ -1813,7 +1257,7 @@ export const MaintenanceTrackerView: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setIsCriteriaGuideOpen(false)}
                 className="p-1 hover:bg-[#edebe9] rounded text-neutral-500"
               >
@@ -1827,11 +1271,10 @@ export const MaintenanceTrackerView: React.FC = () => {
                 <button
                   key={sec.id}
                   onClick={() => setSelectedCriteriaSection(sec.id)}
-                  className={`px-2.5 py-1 rounded-xs font-semibold transition-colors ${
-                    selectedCriteriaSection === sec.id
+                  className={`px-2.5 py-1 rounded-xs font-semibold transition-colors ${selectedCriteriaSection === sec.id
                       ? 'bg-[#0d9488] text-white'
                       : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100'
-                  }`}
+                    }`}
                 >
                   {sec.label}
                 </button>
@@ -1867,11 +1310,10 @@ export const MaintenanceTrackerView: React.FC = () => {
                           )}
                         </td>
                         <td className="py-2 px-3">
-                          <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${
-                            c.category === 'CAT 1' ? 'bg-red-100 text-red-800' :
-                            c.category === 'CAT 2' ? 'bg-amber-100 text-amber-800' :
-                            'bg-teal-100 text-blue-800'
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${c.category === 'CAT 1' ? 'bg-red-100 text-red-800' :
+                              c.category === 'CAT 2' ? 'bg-amber-100 text-amber-800' :
+                                'bg-teal-100 text-blue-800'
+                            }`}>
                             {c.category}
                           </span>
                         </td>
@@ -1909,6 +1351,17 @@ export const MaintenanceTrackerView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* SUPER ADMIN TABLE SCHEMA & HEADER CUSTOMIZER MODAL */}
+      <TableSchemaEditorModal<MaintenanceRecord>
+        isOpen={isSchemaEditorOpen}
+        onClose={() => setIsSchemaEditorOpen(false)}
+        moduleTitle="Maintenance & Defects"
+        columns={maintenanceColumns}
+        onSaveColumns={handleSaveMaintenanceColumns}
+        onResetToDefault={handleResetMaintenanceColumns}
+        currentUserRole={currentUserRole}
+      />
     </div>
   );
 };

@@ -1006,7 +1006,7 @@ export const UsersView: React.FC = () => {
                           />
                           <span className="font-medium text-[#242424]">{p.name}</span>
                         </div>
-                        <span className="text-[10px] text-neutral-500">{p.city} ({p.totalRooms || 0} rooms)</span>
+                        <span className="text-[10px] text-neutral-500">{p.city} ({p.capacity || 0} rooms)</span>
                       </label>
                     );
                   })}

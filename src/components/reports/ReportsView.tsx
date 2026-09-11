@@ -210,105 +210,105 @@ export const ReportsView: React.FC = () => {
         }));
 
       case 'risk_register':
-        const vulns = vulnerableSUs.map(v => ({
+        const vulns = vulnerableSUs.map((v: any) => ({
           id: v.id,
           reference: v.portOrNassRef || v.id,
           name: v.suName,
           site: v.site,
           type: 'Vulnerable SU - ' + (v.group || 'General'),
           status: v.status,
-          date: v.reviewDate,
+          date: v.reviewDate || v.createdAt,
           urgency: v.riskLevel,
           officer: v.allocatedWorker || '—',
           council: 'Local Authority',
           notes: v.vulnerability
         }));
-        const challengings = challengingSUs.map(c => ({
+        const challengings = challengingSUs.map((c: any) => ({
           id: c.id,
-          reference: c.portOrNassRef || c.id,
-          name: c.suName,
+          reference: c.portRef || c.portOrNassRef || c.id,
+          name: c.name || c.suName,
           site: c.site,
-          type: 'Challenging Behavior - ' + (c.warningFlags?.join(', ') || 'Incident'),
+          type: 'Challenging Behavior - ' + (c.typeOfIssue || 'Incident'),
           status: c.status,
-          date: c.reviewDate,
-          urgency: c.riskLevel,
-          officer: c.allocatedWorker || '—',
+          date: c.date || c.dateOfIncident || c.createdAt,
+          urgency: c.riskFactor || c.riskLevel || 'Medium',
+          officer: c.raisedBy || c.loggedBy || '—',
           council: 'Council Ops',
-          notes: c.incidentDetails
+          notes: c.incidentDescription || c.incidentDetails
         }));
         return [...vulns, ...challengings];
 
       case 'maintenance':
-        return maintenanceRecords.map(m => ({
+        return maintenanceRecords.map((m: any) => ({
           id: m.id,
           reference: `WO-${m.id.slice(0, 6).toUpperCase()}`,
-          name: `Room ${m.roomNumber} - ${m.category}`,
+          name: `Room ${m.room || m.roomNo || m.roomNumber || 'N/A'} - ${m.typeOfDefect || m.category || 'General'}`,
           site: m.site,
-          type: m.category,
-          status: m.defectStatus,
-          date: m.dateReported,
-          urgency: m.priority,
-          officer: m.reportedByStaffName,
+          type: m.typeOfDefect || m.category || 'Maintenance',
+          status: m.defectStatus || m.status,
+          date: m.dateReported || m.reportedDate || m.createdAt,
+          urgency: m.priority || m.priorityTimeScale || 'Medium',
+          officer: m.raisedBy || m.reportedByStaffName || 'Staff',
           council: m.contractorAssigned || 'Internal Estates',
           notes: m.description
         }));
 
       case 'spcd':
-        return spcdRecords.map(s => ({
+        return spcdRecords.map((s: any) => ({
           id: s.id,
           reference: `SPCD-${s.id.slice(0, 6).toUpperCase()}`,
-          name: s.title,
-          site: s.property,
-          type: s.category,
-          status: s.status,
-          date: s.directiveDate,
-          urgency: s.complianceLevel,
-          officer: s.leadInspector,
-          council: s.issuingAuthority,
-          notes: s.notes
+          name: s.suName || s.title || 'SPCD Record',
+          site: s.siteName || s.site || s.property,
+          type: s.category || 'Compliance',
+          status: s.status || (s.isArchived ? 'Archived' : 'Active'),
+          date: s.date || s.directiveDate || s.createdAt,
+          urgency: s.complianceLevel || 'Standard',
+          officer: s.staffReporting || s.leadInspector || 'Lead Officer',
+          council: s.issuingAuthority || 'Home Office',
+          notes: s.briefDescriptionActionTaken || s.notes
         }));
 
       case 'welfare':
-        const foods = foodRecords.map(f => ({
+        const foods = foodRecords.map((f: any) => ({
           id: f.id,
           reference: `MEAL-${f.id.slice(0, 6).toUpperCase()}`,
-          name: `Room ${f.roomNumber} (${f.headcount} SUs)`,
+          name: `Room ${f.roomNo || f.roomNumber || 'N/A'} (${f.headcount || 1} SUs)`,
           site: f.site,
-          type: `${f.mealType} - ${f.dietaryOption}`,
-          status: f.collectionStatus,
-          date: f.date,
-          urgency: f.dietaryOption !== 'Standard' ? 'High' : 'Low',
-          officer: f.dutyStaff,
+          type: `${f.mealType || 'Meal'} - ${f.dietaryOption || 'Standard'}`,
+          status: f.collectionStatus || f.status || 'Delivered',
+          date: f.date || f.createdAt,
+          urgency: f.dietaryOption && f.dietaryOption !== 'Standard' ? 'High' : 'Low',
+          officer: f.dutyStaff || f.staffInitials || 'Staff',
           council: f.vendor || 'Catering Partner',
           notes: f.specialNotes || 'Delivered'
         }));
-        const laundries = laundryRecords.map(l => ({
+        const laundries = laundryRecords.map((l: any) => ({
           id: l.id,
           reference: `LND-${l.id.slice(0, 6).toUpperCase()}`,
-          name: `Room ${l.roomNumber} (${l.bagCount} Bags)`,
+          name: `Room ${l.roomNo || l.roomNumber || 'N/A'} (${l.bagCount || 0} Bags)`,
           site: l.site,
           type: 'Laundry Service',
           status: l.status,
-          date: l.dateReceived,
+          date: l.date || l.dateReceived || l.createdAt,
           urgency: l.isUrgent ? 'High' : 'Low',
-          officer: l.staffMember,
+          officer: l.staffMember || l.staffInitials || 'Staff',
           council: 'Facility Laundry Team',
           notes: l.notes || 'Normal cycle'
         }));
         return [...foods, ...laundries];
 
       case 'escalations':
-        return escalations.map(e => ({
+        return escalations.map((e: any) => ({
           id: e.id,
           reference: `ESC-${e.id.slice(0, 6).toUpperCase()}`,
-          name: e.title,
+          name: e.title || e.category || 'Escalation',
           site: e.site,
-          type: e.escalationLevel,
+          type: e.escalationLevel || e.category || 'Escalation',
           status: e.status,
-          date: e.dateReported,
-          urgency: e.priority,
-          officer: e.reportedBy,
-          council: e.assignedTo,
+          date: e.dateReported || e.createdAt,
+          urgency: e.priority || 'Medium',
+          officer: e.reportedBy || 'Staff',
+          council: e.assignedTo || 'Council',
           notes: e.description
         }));
 
@@ -517,7 +517,7 @@ export const ReportsView: React.FC = () => {
 
   const totalActiveCases = referrals.filter(r => r.status !== 'Archived').length;
   const criticalCount = vulnerableSUs.filter(v => v.riskLevel === 'Critical' && v.status !== 'Archived').length +
-                        challengingSUs.filter(c => c.riskLevel === 'Critical' && c.status !== 'Archived').length;
+                        challengingSUs.filter(c => ((c as any).riskFactor === 'Critical' || (c as any).riskLevel === 'Critical') && c.status !== 'Archived').length;
   const openMaintenanceCount = maintenanceRecords.filter(m => m.defectStatus !== 'Completed').length;
 
   const currentReportTitle = REPORT_TYPES.find(r => r.id === selectedReportType)?.title || 'Safeguarding Report';
@@ -918,7 +918,6 @@ export const ReportsView: React.FC = () => {
             setPageSize(size);
             setCurrentPage(1);
           }}
-          pageSizeOptions={[10, 20, 50]}
         />
       </div>
 
@@ -966,7 +965,7 @@ export const ReportsView: React.FC = () => {
                 </div>
                 <div className="text-right text-[11px] text-[#605e5c]">
                   <div>Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                  <div>Generated By: {users[0]?.fullName || 'Duty Officer'}</div>
+                  <div>Generated By: {users[0]?.name || (users[0] as any)?.fullName || 'Duty Officer'}</div>
                   <div>Security Classification: <strong>OFFICIAL-SENSITIVE</strong></div>
                 </div>
               </div>

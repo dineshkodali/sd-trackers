@@ -36,7 +36,7 @@ export const CommercialWelfareBreakdown: React.FC<CommercialWelfareBreakdownProp
   const totalBags = laundryRecords.reduce((sum, l) => sum + (l.bagCount || 1), 0);
   const washingCount = laundryRecords.filter(l => l.status === 'Washing').length;
   const dryingCount = laundryRecords.filter(l => l.status === 'Drying').length;
-  const readyCount = laundryRecords.filter(l => l.status === 'Ready' || l.status === 'Completed').length;
+  const readyCount = laundryRecords.filter(l => l.status === 'Ready for Collection' || l.status === 'Collected').length;
   const queuedCount = laundryRecords.filter(l => l.status === 'Queued').length;
   const totalTokens = laundryRecords.reduce((sum, l) => sum + (l.tokensIssued || 0), 0);
 

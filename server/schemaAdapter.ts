@@ -106,6 +106,12 @@ function numberOrNull(value: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function toNum(value: any, fallback = 0): number {
+  if (value === null || value === undefined || value === '') return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function isValidUuid(val: any): boolean {
   return typeof val === 'string' && UUID_REGEX.test(val.trim());
@@ -157,8 +163,30 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.assigned_to = record.assignedTo || record.allocatedWorker || '';
       dbRow.follow_up_date = record.followUpDate || record.expectedCheckOutDate || null;
 
-      // Pack extra fields into notes JSON
+      // Pack extra & custom fields into notes JSON
+      const knownReferralKeys = new Set([
+        'id', 'site', 'assignedSite', 'siteName', 'serviceUserName', 'suName', 'name',
+        'suPortReference', 'portRef', 'ref', 'roomNumber', 'roomNo', 'room',
+        'dateReferred', 'checkInDate', 'date', 'referralType', 'type', 'reason',
+        'status', 'priority', 'riskLevel', 'actionsTaken', 'assignedTo', 'allocatedWorker',
+        'followUpDate', 'expectedCheckOutDate', 'notes', 'createdAt', 'updatedAt',
+        'createdBy', 'created_at', 'updated_at', 'created_by', 'srNo', 'gender', 'dob',
+        'ethnicity', 'countryOfOrigin', 'primaryLanguage', 'interpreterRequired',
+        'medicalConditions', 'dietaryRequirements', 'mobilityRequirements', 'urgency',
+        'actualCheckOutDate', 'acknowledgementReceived', 'mosaicId', 'raisedBy',
+        'officerLeadingHotel', 'reportedBy', 'referralCouncil', 'methodOfReferral',
+        'responseReceivedFromLA', 'laOfficerLeading', 'notesActionTaken', 'sgReview',
+        'userNotes', 'attachments'
+      ]);
+      const customReferralFields: Record<string, any> = {};
+      for (const [k, v] of Object.entries(record)) {
+        if (!knownReferralKeys.has(k) && v !== undefined && typeof v !== 'function') {
+          customReferralFields[k] = v;
+        }
+      }
+
       const extraFields = {
+        ...customReferralFields,
         gender: record.gender,
         dob: record.dob,
         ethnicity: record.ethnicity,
@@ -198,11 +226,36 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.description = record.description || record.carePlanSummary || record.notesActionTaken || (typeof record.notes === 'string' ? record.notes : '') || '';
       dbRow.care_plan = record.carePlan || record.carePlanSummary || record.sgTeamUpdate || '';
       dbRow.emergency_contact = record.emergencyContact || '';
-      dbRow.medical_notes = record.medicalNotes || '';
       dbRow.status = record.status || 'Active';
       dbRow.last_review_date = record.lastReviewDate || record.lastAssessmentDate || null;
       dbRow.next_review_date = record.nextReviewDate || record.reviewDate || null;
       dbRow.flagged_by = record.raisedBy || record.flaggedBy || record.allocatedWorker || record.allocatedStaff || '';
+
+      const knownVulnKeys = new Set([
+        'id', 'site', 'assignedSite', 'siteName', 'serviceUserName', 'suName', 'name',
+        'suPortReference', 'portOrNassRef', 'portRef', 'ref', 'roomNumber', 'roomNo',
+        'roomOrFlatNo', 'vulnerabilityCategory', 'vulnerability', 'category', 'riskLevel',
+        'description', 'carePlanSummary', 'notesActionTaken', 'carePlan', 'sgTeamUpdate',
+        'emergencyContact', 'medicalNotes', 'status', 'lastReviewDate', 'lastAssessmentDate',
+        'nextReviewDate', 'reviewDate', 'flaggedBy', 'allocatedWorker', 'allocatedStaff',
+        'raisedBy', 'notes', 'createdAt', 'updatedAt', 'createdBy', 'created_at', 'updated_at',
+        'created_by', 'srNo', 'group', 'gender', 'attachments'
+      ]);
+      const customVulnFields: Record<string, any> = {};
+      for (const [k, v] of Object.entries(record)) {
+        if (!knownVulnKeys.has(k) && v !== undefined && typeof v !== 'function') {
+          customVulnFields[k] = v;
+        }
+      }
+
+      if (Object.keys(customVulnFields).length > 0 || (record.medicalNotes && typeof record.medicalNotes !== 'string')) {
+        dbRow.medical_notes = JSON.stringify({
+          _text: typeof record.medicalNotes === 'string' ? record.medicalNotes : '',
+          ...customVulnFields
+        });
+      } else {
+        dbRow.medical_notes = record.medicalNotes || '';
+      }
       break;
     }
 
@@ -219,29 +272,82 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.police_cad_number = record.policeCadNumber || '';
       dbRow.warning_issued = record.warningIssued === true || record.warningIssued === 'Yes' ? 'Yes' : 'No';
       dbRow.warning_level = record.warningLevel || record.warningFlag || '';
-      dbRow.actions_taken = record.actionTaken || record.actionsTaken || record.deEscalationProtocol || '';
       dbRow.status = record.status || 'Open';
       dbRow.logged_by = record.raisedBy || record.loggedBy || record.reportedBy || record.staffName || '';
+
+      const knownChallengingKeys = new Set([
+        'id', 'site', 'assignedSite', 'siteName', 'serviceUserName', 'name', 'suName',
+        'suPortReference', 'portRef', 'ref', 'roomNumber', 'roomNo', 'roomOrFlatNo',
+        'dateOfIncident', 'incidentDate', 'date', 'typeOfIssue', 'incidentType', 'category',
+        'severity', 'riskToOthers', 'riskFactor', 'riskLevel', 'description', 'incidentDescription',
+        'triggerFactors', 'policeInvolved', 'policeCalled', 'policeCadNumber', 'warningIssued',
+        'warningLevel', 'warningFlag', 'actionTaken', 'actionsTaken', 'deEscalationProtocol',
+        'status', 'loggedBy', 'raisedBy', 'reportedBy', 'staffName', 'notes', 'createdAt',
+        'updatedAt', 'createdBy', 'created_at', 'updated_at', 'created_by', 'srNo',
+        'group', 'gender', 'followUpRequired', 'adviceGivenBySGTeam', 'followUpNotes',
+        'comments', 'reviewBySGTeam', 'attachments'
+      ]);
+      const customChallengingFields: Record<string, any> = {};
+      for (const [k, v] of Object.entries(record)) {
+        if (!knownChallengingKeys.has(k) && v !== undefined && typeof v !== 'function') {
+          customChallengingFields[k] = v;
+        }
+      }
+
+      const rawActionTaken = record.actionTaken || record.actionsTaken || record.deEscalationProtocol || '';
+      if (Object.keys(customChallengingFields).length > 0) {
+        dbRow.actions_taken = JSON.stringify({
+          _text: rawActionTaken,
+          ...customChallengingFields
+        });
+      } else {
+        dbRow.actions_taken = rawActionTaken;
+      }
       break;
     }
 
     case 'maintenance_records': {
       dbRow.site = record.site || record.assignedSite || record.siteName || 'All Sites';
-      dbRow.room_or_area = String(record.roomNumber || record.roomOrArea || record.roomNo || 'General Area');
-      dbRow.defect_status = record.status || record.defectStatus || 'Reported';
+      dbRow.room_or_area = String(record.room || record.roomNumber || record.location || record.roomOrArea || record.roomNo || 'General Area');
+      dbRow.defect_status = record.defectStatus || record.status || 'Reported';
       dbRow.description = record.description || record.notes || '';
       dbRow.contractor = record.allocatedContractor || record.contractor || '';
-      dbRow.contractor_quote = record.costEstimate !== undefined ? String(record.costEstimate) : (record.contractorQuote || '');
+      dbRow.contractor_quote = toNum(record.costEstimate ?? record.contractorQuote, 0);
       dbRow.priority = record.priority || 'Normal';
-      dbRow.reported_date = record.reportedDate || record.createdAt?.split('T')[0] || nowIso.split('T')[0];
-      dbRow.completion_date = record.completionDate || record.completedDate || record.targetCompletionDate || null;
-      dbRow.sign_off_status = record.signOffStatus || (record.status === 'Completed' ? 'Signed Off' : 'Pending');
-      dbRow.category = record.issueCategory || record.category || 'General';
-      dbRow.reported_by = record.reportedBy || record.loggedBy || '';
+      dbRow.reported_date = record.date || record.reportedDate || record.createdAt?.split('T')[0] || nowIso.split('T')[0];
+      dbRow.completion_date = record.actualClosedDate || record.completionDate || record.completedDate || record.targetCompletionDate || null;
+      dbRow.sign_off_status = record.signOffStatus || (record.defectStatus === 'Completed' || record.action === 'Closed' ? 'Signed Off' : 'Pending');
+      dbRow.category = record.criteriaCode || record.issueCategory || record.category || 'General';
+      dbRow.reported_by = record.raisedBy || record.reportedBy || record.loggedBy || '';
       
+      const knownMaintKeys = new Set([
+        'id', 'site', 'assignedSite', 'siteName', 'room', 'roomNumber', 'location',
+        'roomOrArea', 'roomNo', 'defectStatus', 'status', 'description', 'allocatedContractor',
+        'contractor', 'costEstimate', 'contractorQuote', 'priority', 'date', 'reportedDate',
+        'createdAt', 'completionDate', 'actualClosedDate', 'completedDate', 'targetCompletionDate',
+        'signOffStatus', 'action', 'criteriaCode', 'issueCategory', 'category', 'raisedBy',
+        'reportedBy', 'loggedBy', 'notes', 'userNotes', 'progress', 'priorityTimeScale',
+        'closeDueDate', 'actualCost', 'updatedAt', 'createdBy', 'created_at', 'updated_at',
+        'created_by', 'srNo', 'attachments'
+      ]);
+      const customMaintFields: Record<string, any> = {};
+      for (const [k, v] of Object.entries(record)) {
+        if (!knownMaintKeys.has(k) && v !== undefined && typeof v !== 'function') {
+          customMaintFields[k] = v;
+        }
+      }
+
       const extraMaint = {
-        actualCost: record.actualCost,
-        targetCompletionDate: record.targetCompletionDate,
+        ...customMaintFields,
+        location: record.location || dbRow.room_or_area,
+        room: record.room || '',
+        action: record.action || (record.defectStatus === 'Completed' ? 'Closed' : 'Open'),
+        progress: record.progress || '',
+        priorityTimeScale: record.priorityTimeScale || '',
+        closeDueDate: record.closeDueDate || '',
+        actualClosedDate: record.actualClosedDate || '',
+        criteriaCode: record.criteriaCode || '',
+        actualCost: record.actualCost || 0,
         userNotes: typeof record.notes === 'string' ? record.notes : ''
       };
       dbRow.notes = JSON.stringify(extraMaint);
@@ -264,7 +370,24 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       const dateLeft = record.dateLeft || record.expiresDate || null;
       const reasonForLeaving = record.reasonForLeaving || null;
 
+      const knownSpcdKeys = new Set([
+        'id', 'date', 'checkDate', 'declarationDate', 'siteName', 'site', 'roomNumber',
+        'room', 'room_no', 'staffReporting', 'raisedBy', 'officerName', 'staffName',
+        'suName', 'serviceUserName', 'name', 'suPortReference', 'portRef', 'ref', 'suDob',
+        'dob', 'briefDescriptionActionTaken', 'description', 'observations', 'comments',
+        'followUpNotes', 'notes', 'updates', 'sgReview', 'status', 'isArchived', 'dateLeft',
+        'expiresDate', 'reasonForLeaving', 'createdAt', 'updatedAt', 'createdBy', 'created_at',
+        'updated_at', 'created_by', 'srNo', 'attachments'
+      ]);
+      const customSpcdFields: Record<string, any> = {};
+      for (const [k, v] of Object.entries(record)) {
+        if (!knownSpcdKeys.has(k) && v !== undefined && typeof v !== 'function') {
+          customSpcdFields[k] = v;
+        }
+      }
+
       const fullPayload = {
+        ...customSpcdFields,
         id: record.id,
         date,
         siteName,
@@ -301,7 +424,6 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
     case 'sites': {
       dbRow.name = record.name || '';
       dbRow.pid = record.pid || record.code || `SITE-${record.id || Math.floor(Math.random()*1000)}`;
-      dbRow.address = record.address || record.addressLine1 || '';
       dbRow.city = record.city || 'London';
       dbRow.total_rooms = Number(record.totalRooms || record.capacity || 20);
       dbRow.active_residents = Number(record.activeResidents || record.occupiedRooms || 0);
@@ -309,6 +431,29 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.manager_name = record.leadOfficer || record.managerName || '';
       dbRow.manager_email = record.contactEmail || record.managerEmail || '';
       dbRow.manager_phone = record.contactNumber || record.managerPhone || '';
+
+      const knownSiteKeys = new Set([
+        'id', 'name', 'pid', 'code', 'address', 'addressLine1', 'city', 'totalRooms',
+        'capacity', 'activeResidents', 'occupiedRooms', 'status', 'managerName', 'leadOfficer',
+        'managerEmail', 'contactEmail', 'managerPhone', 'contactNumber', 'createdAt', 'updatedAt',
+        'createdBy', 'created_at', 'updated_at', 'created_by', 'srNo', 'attachments'
+      ]);
+      const customSiteFields: Record<string, any> = {};
+      for (const [k, v] of Object.entries(record)) {
+        if (!knownSiteKeys.has(k) && v !== undefined && typeof v !== 'function') {
+          customSiteFields[k] = v;
+        }
+      }
+
+      const rawAddress = record.address || record.addressLine1 || '';
+      if (Object.keys(customSiteFields).length > 0) {
+        dbRow.address = JSON.stringify({
+          _text: rawAddress,
+          ...customSiteFields
+        });
+      } else {
+        dbRow.address = rawAddress;
+      }
       break;
     }
 
@@ -317,40 +462,64 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.room_no = String(record.roomNumber || record.roomNo || 'N/A');
       dbRow.resident_name = record.serviceUserName || record.residentName || record.suName || '';
       dbRow.ref = record.suPortReference || record.ref || '';
-      dbRow.date = record.date || record.dropOffDate || nowIso.split('T')[0];
-      // Counted quantities are attested figures — store what was supplied, or
-      // NULL. Defaulting an absent count to 1 invented laundry movements that
-      // nobody recorded (BUG-012).
+      dbRow.date = record.date || record.dropOffDate || record.startDate || nowIso.split('T')[0];
+      // Counted quantities are attested figures — store what was supplied, or NULL.
       dbRow.tokens_issued = numberOrNull(record.tokensIssued ?? record.bagCount);
       dbRow.bag_count = numberOrNull(record.bagCount);
       dbRow.dirty_laundry_sent = numberOrNull(record.dirtyLaundrySent ?? record.bagCount);
       dbRow.clean_laundry_returned = numberOrNull(record.cleanLaundryReturned);
-      dbRow.discrepancies = record.discrepancies || 'None';
-      dbRow.discrepancy_count = Number(record.discrepancyCount || 0);
+      dbRow.discrepancies = record.discrepancies || (record.hasDiscrepancy ? 'Discrepancy Reported' : 'None');
+      dbRow.discrepancy_count = Number(record.discrepanciesCount ?? record.discrepancyCount ?? 0);
       dbRow.remarks_actions_taken = record.remarksActionsTaken || record.remarks || '';
       dbRow.status = record.status || 'Pending';
-      dbRow.staff_initials = record.staffInitials || record.staffName || 'Staff';
-      dbRow.notes = typeof record.notes === 'string' ? record.notes : '';
+      dbRow.staff_initials = record.staffInitials || record.staffName || record.loggedBy || 'Staff';
+
+      const isPropertyLog = record.periodType || record.periodLabel || String(record.id || '').startsWith('prop-lau');
+      if (isPropertyLog) {
+        dbRow.notes = JSON.stringify({
+          _type: 'property_laundry_log',
+          periodType: record.periodType || 'Weekly',
+          periodLabel: record.periodLabel || '',
+          startDate: record.startDate || record.date || '',
+          endDate: record.endDate || record.date || '',
+          hasDiscrepancy: !!record.hasDiscrepancy,
+          discrepancyDetails: record.discrepancyDetails || '',
+          loggedBy: record.loggedBy || record.staffInitials || 'Staff',
+          rawNotes: record.notes || ''
+        });
+      } else {
+        dbRow.notes = typeof record.notes === 'string' ? record.notes : '';
+      }
       break;
     }
 
     case 'hot_food_logs': {
       dbRow.site = record.site || record.assignedSite || 'All Sites';
-      dbRow.date = record.date || record.mealDate || nowIso.split('T')[0];
+      dbRow.date = record.date || record.mealDate || record.startDate || nowIso.split('T')[0];
       dbRow.meal_type = record.mealType || 'Dinner';
-      // Attested food-safety values are never invented. Previously an absent
-      // temperature was stored as 65.0 and the quality check stamped 'Passed',
-      // which fabricated safety evidence nobody recorded (BUG-012). Missing
-      // measurements are now persisted as NULL so an unrecorded check is
-      // visibly unrecorded rather than silently passing.
-      dbRow.vendor_name = record.vendorName || record.supplierName || null;
-      dbRow.supplier_name = record.supplierName || record.vendorName || null;
+      dbRow.vendor_name = record.vendorName || record.vendor || record.supplierName || null;
+      dbRow.supplier_name = record.supplierName || record.vendorName || record.vendor || null;
       dbRow.meals_delivered = numberOrNull(record.mealsDelivered ?? record.mealsOrdered);
       dbRow.temperature_c = numberOrNull(record.temperatureC ?? record.temperatureReadingC);
       dbRow.quality_check = record.qualityCheck || null;
-      dbRow.staff_name = record.staffName || null;
+      dbRow.staff_name = record.staffName || record.updatedBy || null;
       dbRow.staff_signoff = record.staffSignoff || record.staffName || null;
-      dbRow.notes = typeof record.notes === 'string' ? record.notes : '';
+
+      const isVendorBuffet = record.dailyCounts || record.weekRange || String(record.id || '').startsWith('vendor-bf');
+      if (isVendorBuffet) {
+        dbRow.notes = JSON.stringify({
+          _type: 'vendor_buffet_log',
+          vendor: record.vendor || record.vendorName || 'A&M',
+          weekRange: record.weekRange || '',
+          startDate: record.startDate || record.date || '',
+          endDate: record.endDate || record.date || '',
+          dailyCounts: record.dailyCounts || {},
+          updatedBy: record.updatedBy || record.staffName || '',
+          rawNotes: record.notes || ''
+        });
+      } else {
+        dbRow.notes = typeof record.notes === 'string' ? record.notes : '';
+      }
       break;
     }
 
@@ -368,7 +537,24 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       const status = record.status || 'Active';
       const attachments = Array.isArray(record.attachments) ? record.attachments : [];
 
+      const knownEscalationKeys = new Set([
+        'id', 'site', 'siteName', 'assignedSite', 'title', 'incidentTitle', 'category', 'severity',
+        'urgency', 'status', 'description', 'reportedBy', 'reported_by', 'assignedTo', 'assigned_to',
+        'resolutionNotes', 'resolution_notes', 'createdAt', 'updatedAt', 'createdBy', 'suName',
+        'name', 'residentName', 'suPortNassRef', 'refNumber', 'portRef', 'dateOfIncident',
+        'dateTime', 'incidentDate', 'personReporting', 'submittedBy', 'staffName', 'incidentType',
+        'wlIssued', 'reportedAuthorities', 'escalatedTo', 'incidentNotes', 'incidentSummary',
+        'actionTaken', 'immediateAction', 'attachments'
+      ]);
+      const customEscalationFields: Record<string, any> = {};
+      for (const [k, v] of Object.entries(record)) {
+        if (!knownEscalationKeys.has(k) && v !== undefined && typeof v !== 'function') {
+          customEscalationFields[k] = v;
+        }
+      }
+
       const fullPayload = {
+        ...customEscalationFields,
         suName,
         suPortNassRef,
         dateOfIncident,
@@ -501,6 +687,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         try { extra = JSON.parse(row.notes); } catch {}
       }
       return {
+        ...extra,
         id: row.id,
         site: row.site,
         serviceUserName: row.su_name,
@@ -548,7 +735,12 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     }
 
     case 'vulnerable_residents': {
+      let extra: any = {};
+      if (row.medical_notes && typeof row.medical_notes === 'string' && row.medical_notes.trim().startsWith('{')) {
+        try { extra = JSON.parse(row.medical_notes); } catch {}
+      }
       return {
+        ...extra,
         id: row.id,
         site: row.site,
         serviceUserName: row.su_name,
@@ -566,7 +758,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         notesActionTaken: row.description || '',
         sgTeamUpdate: row.care_plan || '',
         emergencyContact: row.emergency_contact,
-        medicalNotes: row.medical_notes,
+        medicalNotes: extra._text !== undefined ? extra._text : (row.medical_notes && !row.medical_notes.startsWith('{') ? row.medical_notes : ''),
         status: row.status,
         lastReviewDate: row.last_review_date,
         nextReviewDate: row.next_review_date,
@@ -583,7 +775,12 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     }
 
     case 'challenging_behavior': {
+      let extra: any = {};
+      if (row.actions_taken && typeof row.actions_taken === 'string' && row.actions_taken.trim().startsWith('{')) {
+        try { extra = JSON.parse(row.actions_taken); } catch {}
+      }
       return {
+        ...extra,
         id: row.id,
         date: row.date_of_incident || '',
         site: row.site,
@@ -606,8 +803,8 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         policeCadNumber: row.police_cad_number,
         warningIssued: row.warning_issued === 'Yes',
         warningLevel: row.warning_level,
-        actionTaken: row.actions_taken,
-        actionsTaken: row.actions_taken,
+        actionTaken: extra._text !== undefined ? extra._text : (row.actions_taken && !row.actions_taken.startsWith('{') ? row.actions_taken : ''),
+        actionsTaken: extra._text !== undefined ? extra._text : (row.actions_taken && !row.actions_taken.startsWith('{') ? row.actions_taken : ''),
         status: row.status,
         loggedBy: row.logged_by,
         raisedBy: row.logged_by || '',
@@ -630,25 +827,36 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         try { extra = JSON.parse(row.notes); } catch {}
       }
       return {
+        ...extra,
         id: row.id,
+        date: row.reported_date || row.created_at?.split('T')[0] || '',
+        reportedDate: row.reported_date,
         site: row.site,
+        location: extra.location || row.room_or_area || '',
+        room: extra.room || row.room_or_area || '',
         roomNumber: row.room_or_area,
         roomOrArea: row.room_or_area,
         status: row.defect_status,
         defectStatus: row.defect_status,
-        description: row.description,
-        allocatedContractor: row.contractor,
-        contractor: row.contractor,
+        action: extra.action || (row.defect_status === 'Completed' ? 'Closed' : 'Open'),
+        progress: extra.progress || '',
+        priority: row.priority || 'Normal',
+        priorityTimeScale: extra.priorityTimeScale || '',
+        closeDueDate: extra.closeDueDate || '',
+        actualClosedDate: extra.actualClosedDate || row.completion_date || '',
+        criteriaCode: extra.criteriaCode || row.category || '',
+        description: row.description || '',
+        allocatedContractor: row.contractor || '',
+        contractor: row.contractor || '',
         costEstimate: extra.costEstimate !== undefined ? extra.costEstimate : (row.contractor_quote ? Number(row.contractor_quote) || 0 : 0),
         actualCost: extra.actualCost || 0,
-        priority: row.priority,
-        reportedDate: row.reported_date,
-        targetCompletionDate: extra.targetCompletionDate || row.completion_date,
         completionDate: row.completion_date,
+        targetCompletionDate: extra.targetCompletionDate || row.completion_date,
         signOffStatus: row.sign_off_status,
         issueCategory: row.category,
         category: row.category,
-        reportedBy: row.reported_by,
+        raisedBy: row.reported_by || '',
+        reportedBy: row.reported_by || '',
         notes: extra.userNotes !== undefined ? extra.userNotes : (row.notes && !row.notes.startsWith('{') ? row.notes : ''),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -678,6 +886,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
       const reasonForLeaving = extra.reasonForLeaving || undefined;
 
       return {
+        ...extra,
         id: row.id,
         date,
         site: siteName,
@@ -710,13 +919,18 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     }
 
     case 'sites': {
+      let extra: any = {};
+      if (row.address && typeof row.address === 'string' && row.address.trim().startsWith('{')) {
+        try { extra = JSON.parse(row.address); } catch {}
+      }
       return {
+        ...extra,
         id: row.id,
         name: row.name,
         pid: row.pid,
         code: row.pid,
-        address: row.address,
-        addressLine1: row.address,
+        address: extra._text !== undefined ? extra._text : row.address,
+        addressLine1: extra._text !== undefined ? extra._text : row.address,
         city: row.city,
         totalRooms: Number(row.total_rooms || 20),
         capacity: Number(row.total_rooms || 20),
@@ -732,6 +946,33 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     }
 
     case 'laundry_logs': {
+      let propMeta: any = null;
+      if (typeof row.notes === 'string' && row.notes.startsWith('{') && row.notes.includes('property_laundry_log')) {
+        try { propMeta = JSON.parse(row.notes); } catch {}
+      }
+      const isPropLog = propMeta?._type === 'property_laundry_log' || String(row.id || '').startsWith('prop-lau');
+
+      if (isPropLog) {
+        return {
+          id: row.id,
+          site: row.site,
+          periodType: propMeta?.periodType || 'Weekly',
+          periodLabel: propMeta?.periodLabel || (row.date ? `Period ending ${row.date}` : 'Weekly Log'),
+          startDate: propMeta?.startDate || row.date,
+          endDate: propMeta?.endDate || row.date,
+          dirtyLaundrySent: Number(row.dirty_laundry_sent || 0),
+          cleanLaundryReturned: Number(row.clean_laundry_returned || 0),
+          discrepanciesCount: Number(row.discrepancy_count || 0),
+          hasDiscrepancy: propMeta?.hasDiscrepancy ?? (Number(row.discrepancy_count || 0) > 0),
+          discrepancyDetails: propMeta?.discrepancyDetails || row.discrepancies || '',
+          remarksActionsTaken: row.remarks_actions_taken || '',
+          loggedBy: propMeta?.loggedBy || row.staff_initials || 'Staff',
+          notes: propMeta?.rawNotes || '',
+          createdAt: row.created_at,
+          updatedAt: row.updated_at
+        };
+      }
+
       return {
         id: row.id,
         site: row.site,
@@ -743,8 +984,6 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         ref: row.ref,
         date: row.date,
         dropOffDate: row.date,
-        // `Number(x || 1)` both invented a count for unrecorded rows AND turned a
-        // genuine stored 0 into 1. Preserve what was recorded; null means unrecorded.
         tokensIssued: numberOrNull(row.tokens_issued),
         bagCount: numberOrNull(row.bag_count),
         dirtyLaundrySent: numberOrNull(row.dirty_laundry_sent),
@@ -761,6 +1000,27 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     }
 
     case 'hot_food_logs': {
+      let buffetMeta: any = null;
+      if (typeof row.notes === 'string' && row.notes.startsWith('{') && row.notes.includes('vendor_buffet_log')) {
+        try { buffetMeta = JSON.parse(row.notes); } catch {}
+      }
+      const isBuffetLog = buffetMeta?._type === 'vendor_buffet_log' || String(row.id || '').startsWith('vendor-bf');
+
+      if (isBuffetLog) {
+        return {
+          id: row.id,
+          vendor: buffetMeta?.vendor || row.vendor_name || 'A&M',
+          site: row.site,
+          weekRange: buffetMeta?.weekRange || (row.date ? `Week of ${row.date}` : 'Weekly Matrix'),
+          startDate: buffetMeta?.startDate || row.date,
+          endDate: buffetMeta?.endDate || row.date,
+          dailyCounts: buffetMeta?.dailyCounts || {},
+          notes: buffetMeta?.rawNotes || '',
+          updatedAt: row.updated_at,
+          updatedBy: buffetMeta?.updatedBy || row.staff_name || 'Staff'
+        };
+      }
+
       return {
         id: row.id,
         site: row.site,
@@ -771,9 +1031,6 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         supplierName: row.supplier_name,
         mealsDelivered: numberOrNull(row.meals_delivered),
         mealsOrdered: numberOrNull(row.meals_delivered),
-        // Previously `Number(row.temperature_c || 65.0)`: an unrecorded reading —
-        // or a genuine 0 °C — was reported as a compliant 65 °C, which also
-        // inflated the dashboard's food-temperature compliance figure.
         temperatureC: numberOrNull(row.temperature_c),
         qualityCheck: row.quality_check,
         temperatureCheckPassed: row.quality_check === 'Passed',
@@ -805,6 +1062,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
       const attachments = Array.isArray(extra.attachments) ? extra.attachments : [];
 
       return {
+        ...extra,
         id: row.id,
         site: row.site,
         siteName: row.site,
@@ -849,6 +1107,19 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         assignedSites: [row.assigned_site || 'All Sites'],
         status: row.status || 'Active',
         lastActive: row.updated_at ? 'Recently' : 'Just now'
+      };
+    }
+
+    case 'user_groups': {
+      return {
+        id: row.id,
+        name: row.name || '',
+        description: row.description || '',
+        assignedProperty: row.assigned_property || (Array.isArray(row.assigned_properties) ? row.assigned_properties[0] : ''),
+        assignedProperties: Array.isArray(row.assigned_properties) ? row.assigned_properties : (row.assigned_property ? [row.assigned_property] : []),
+        userIds: Array.isArray(row.user_ids) ? row.user_ids : [],
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
       };
     }
 

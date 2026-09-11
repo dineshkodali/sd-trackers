@@ -431,7 +431,19 @@ router.get('/:entity', async (req: Request, res: Response) => {
       return res.status(500).json({ error: error.message });
     }
 
-    const resultData = (data || []).map((row: any) => fromDatabaseRow(tableName, row));
+    let resultData = (data || []).map((row: any) => fromDatabaseRow(tableName, row));
+
+    // Entity-specific discriminators for shared canonical tables
+    if (entity === 'property_laundry_logs') {
+      resultData = resultData.filter((r: any) => r.periodType || String(r.id || '').startsWith('prop-lau'));
+    } else if (entity === 'laundry' || entity === 'laundry_logs') {
+      resultData = resultData.filter((r: any) => !r.periodType && !String(r.id || '').startsWith('prop-lau'));
+    } else if (entity === 'food_vendor_buffet_logs') {
+      resultData = resultData.filter((r: any) => r.dailyCounts || String(r.id || '').startsWith('vendor-bf'));
+    } else if (entity === 'food' || entity === 'hot_food_logs') {
+      resultData = resultData.filter((r: any) => !r.dailyCounts && !String(r.id || '').startsWith('vendor-bf'));
+    }
+
     // `total` and `truncated` are additive: existing clients read `data` as before,
     // but a caller can now tell a complete result from a capped one.
     res.json({ success: true, data: resultData, total: resultData.length, truncated });
@@ -518,7 +530,15 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
       .single();
 
     if (readError || !existingRow) {
-      return res.status(404).json({ error: `${entity} record ${id} not found` });
+      // If record was previously created in client state/localStorage, persist it now
+      const dbRow = toDatabaseRow(tableName, { ...req.body, id }, caller.validUuid);
+      const { data, error: upsertErr } = await client.from(tableName).upsert(dbRow).select().single();
+      if (upsertErr) {
+        console.error(`[DB PUT /api/db/${entity}/${id}] Upsert fallback error:`, upsertErr.message);
+        return res.status(500).json({ error: upsertErr.message, details: upsertErr.details, hint: upsertErr.hint });
+      }
+      const record = fromDatabaseRow(tableName, data || dbRow);
+      return res.json({ success: true, record });
     }
 
     const merged = { ...fromDatabaseRow(tableName, existingRow), ...req.body };

@@ -31,15 +31,15 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
 
   // Aggregate stats per property
   const propertyLoads = properties.map(prop => {
-    const siteReferrals = referrals.filter(r => (r.site === prop.name || r.site === prop.propertyName) && r.status !== 'Archived').length;
-    const siteVulnerable = vulnerableSUs.filter(v => (v.site === prop.name || v.site === prop.propertyName) && v.status !== 'Archived');
+    const siteReferrals = referrals.filter(r => r.site === prop.name && r.status !== 'Archived').length;
+    const siteVulnerable = vulnerableSUs.filter(v => v.site === prop.name && v.status !== 'Archived');
     const highRiskVulnerable = siteVulnerable.filter(v => v.riskLevel === 'High' || v.riskLevel === 'Critical').length;
     
-    const siteChallenging = challengingSUs.filter(c => (c.site === prop.name || c.site === prop.propertyName) && c.status !== 'Archived').length;
-    const siteEscalations = escalations.filter(e => (e.site === prop.name || e.siteName === prop.name || e.site === prop.propertyName) && e.status !== 'Resolved').length;
+    const siteChallenging = challengingSUs.filter(c => c.site === prop.name && c.status !== 'Archived').length;
+    const siteEscalations = escalations.filter(e => (e.site === prop.name || (e as any).siteName === prop.name) && e.status !== 'Resolved').length;
     
-    const siteMaintenance = maintenanceRecords.filter(m => (m.site === prop.name || m.site === prop.propertyName) && m.defectStatus !== 'Completed').length;
-    const cat1Maintenance = maintenanceRecords.filter(m => (m.site === prop.name || m.site === prop.propertyName) && m.severity === 'CAT 1 - Emergency' && m.defectStatus !== 'Completed').length;
+    const siteMaintenance = maintenanceRecords.filter(m => m.site === prop.name && m.defectStatus !== 'Completed').length;
+    const cat1Maintenance = maintenanceRecords.filter(m => m.site === prop.name && (m.priority === 'CAT 1' || (m as any).severity === 'CAT 1 - Emergency') && m.defectStatus !== 'Completed').length;
 
     const totalLoadScore = (siteReferrals * 2) + (highRiskVulnerable * 3) + (siteEscalations * 4) + (cat1Maintenance * 2);
 
@@ -56,10 +56,10 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
 
     return {
       id: prop.id,
-      name: prop.name || prop.propertyName,
-      address: prop.address || prop.city || 'London',
-      capacity: prop.capacity || prop.totalRooms || 45,
-      manager: prop.siteManager || prop.leadOfficer || 'Assigned Lead',
+      name: prop.name,
+      address: prop.city || 'London',
+      capacity: prop.capacity || 45,
+      manager: prop.leadOfficer || 'Assigned Lead',
       siteReferrals,
       siteVulnerableCount: siteVulnerable.length,
       highRiskVulnerable,

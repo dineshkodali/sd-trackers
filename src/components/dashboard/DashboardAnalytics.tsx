@@ -907,7 +907,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
 
       {/* Monthly Incident Types Cross-Tabular Breakdown Matrix */}
       <MonthlyIncidentsTable 
-        monthlyData={monthlyIncidentsData}
+        monthlyData={monthlyIncidentsData as any}
         onNavigate={onNavigate}
       />
 

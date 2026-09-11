@@ -1,20 +1,20 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  ClipboardList, 
-  UserCheck, 
-  Archive, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Download, 
-  Search, 
-  Filter, 
-  X, 
-  Building2, 
-  Calendar, 
-  Clock, 
-  CheckCircle2, 
-  LogOut, 
+import {
+  ClipboardList,
+  UserCheck,
+  Archive,
+  Plus,
+  Trash2,
+  Edit3,
+  Download,
+  Search,
+  Filter,
+  X,
+  Building2,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  LogOut,
   RotateCcw,
   ShieldCheck,
   FileText,
@@ -23,7 +23,8 @@ import {
   Eye,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SPCDRecord } from '../../types';
@@ -32,6 +33,12 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { TableColumnConfig } from '../../types/tableSchema';
+import { spcdTableConfig } from '../../config/trackerTableConfigs';
 
 const spcdExportColumns: ExportColumnOption[] = [
   { id: 'date', label: 'Case Date' },
@@ -98,6 +105,15 @@ export const SPCDTrackerView: React.FC = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
+
+  // Dynamic Table Schema & Custom Fields Hook
+  const {
+    columns: spcdColumns,
+    tableColumns: visibleSpcdColumns,
+    saveColumns: handleSaveSpcdColumns,
+    resetToDefault: handleResetSpcdColumns
+  } = useTableSchema<SPCDRecord>('spcd', spcdTableConfig);
+  const [isSchemaEditorOpen, setIsSchemaEditorOpen] = useState<boolean>(false);
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -375,6 +391,138 @@ export const SPCDTrackerView: React.FC = () => {
     return list.filter(r => r.date >= start && r.date <= end).length;
   };
 
+  const renderColumnCell = (col: TableColumnConfig<SPCDRecord>, item: SPCDRecord) => {
+    const val = (item as any)[col.key];
+
+    if (col.renderCell) {
+      return col.renderCell(val, item);
+    }
+
+    if (col.key === 'date') {
+      return <span className="font-mono text-[11px] whitespace-nowrap text-neutral-700">{item.date || '—'}</span>;
+    }
+
+    if (col.key === 'siteName') {
+      return <span className="whitespace-nowrap font-medium text-neutral-800">{item.siteName}</span>;
+    }
+
+    if (col.key === 'roomNumber') {
+      return (
+        <span className="px-1.5 py-0.5 bg-neutral-100 rounded font-mono text-[11px] text-neutral-700">
+          {item.roomNumber || '—'}
+        </span>
+      );
+    }
+
+    if (col.key === 'staffReporting') {
+      return <span className="whitespace-nowrap text-neutral-700">{getRaisedBy(item)}</span>;
+    }
+
+    if (col.key === 'suName') {
+      return (
+        <button
+          onClick={() => setViewDetailRecord(item)}
+          className="hover:underline text-left whitespace-nowrap font-semibold text-neutral-900 cursor-pointer"
+        >
+          {item.suName}
+        </button>
+      );
+    }
+
+    if (col.key === 'suPortReference') {
+      return (
+        <span className="whitespace-nowrap font-mono text-[11px] font-bold text-[#0d9488]">
+          {item.suPortReference || '—'}
+        </span>
+      );
+    }
+
+    if (col.key === 'suDob') {
+      return <span className="whitespace-nowrap font-mono text-[11px] text-neutral-600">{item.suDob || '—'}</span>;
+    }
+
+    if (col.key === 'briefDescriptionActionTaken') {
+      return (
+        <div className="text-neutral-800 font-normal line-clamp-2 max-w-[280px]" title={item.briefDescriptionActionTaken}>
+          {item.briefDescriptionActionTaken || '—'}
+        </div>
+      );
+    }
+
+    if (col.key === 'followUpNotes') {
+      return (
+        <div className="text-neutral-700 text-[11px] line-clamp-2 max-w-[240px]" title={item.followUpNotes}>
+          {item.followUpNotes || <span className="text-neutral-400 italic">No notes</span>}
+        </div>
+      );
+    }
+
+    if (col.key === 'updates') {
+      return (
+        <div className="text-neutral-700 text-[11px] line-clamp-2 max-w-[200px]" title={item.updates}>
+          {item.updates || <span className="text-neutral-400 italic">—</span>}
+        </div>
+      );
+    }
+
+    if (col.key === 'sgReview') {
+      return canEditRecord(item.siteName) && !item.isArchived ? (
+        <select
+          value={item.sgReview}
+          onChange={e => updateSPCDRecord(item.id, { sgReview: e.target.value })}
+          className="px-2 py-0.5 text-[11px] font-medium rounded border border-[#99f6e4] bg-[#f0fdfa] text-[#0f766e] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4]"
+          title="Click to update Safeguarding review status"
+        >
+          <option value="Pending Safeguarding Lead Review" className="bg-white text-neutral-900 font-normal">Pending Review</option>
+          <option value="Reviewed & Cleared" className="bg-white text-neutral-900 font-normal">Reviewed & Cleared</option>
+          <option value="Reviewed & Approved" className="bg-white text-neutral-900 font-normal">Reviewed & Approved</option>
+          <option value="Under Ongoing Review" className="bg-white text-neutral-900 font-normal">Under Ongoing Review</option>
+          <option value="Escalated to Multi-Agency" className="bg-white text-neutral-900 font-normal">Escalated to Multi-Agency</option>
+          <option value="Closed / Resolved" className="bg-white text-neutral-900 font-normal">Closed / Resolved</option>
+          {!['Pending Safeguarding Lead Review', 'Reviewed & Cleared', 'Reviewed & Approved', 'Under Ongoing Review', 'Escalated to Multi-Agency', 'Closed / Resolved'].includes(item.sgReview) && (
+            <option value={item.sgReview} className="bg-white text-neutral-900 font-normal">{item.sgReview}</option>
+          )}
+        </select>
+      ) : (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e]">
+          <ShieldCheck className="w-3 h-3 text-[#0d9488]" />
+          {item.sgReview}
+        </span>
+      );
+    }
+
+    if (col.key === 'dateLeft') {
+      return <span className="whitespace-nowrap font-mono text-[11px] text-neutral-700">{item.dateLeft || '—'}</span>;
+    }
+
+    if (col.key === 'reasonForLeaving') {
+      return (
+        <span className="inline-block px-1.5 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded text-[11px] font-medium">
+          {item.reasonForLeaving || 'Departed'}
+        </span>
+      );
+    }
+
+    // Custom or fallback column rendering
+    if (typeof val === 'boolean') {
+      return (
+        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${val ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-600'}`}>
+          {val ? 'Yes' : 'No'}
+        </span>
+      );
+    }
+
+    if (col.badgeColors && val && col.badgeColors[String(val)]) {
+      return (
+        <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded border ${col.badgeColors[String(val)]}`}>
+          {String(val)}
+        </span>
+      );
+    }
+
+    return <span className="text-[#242424] text-[11px]">{val !== undefined && val !== null && val !== '' ? String(val) : '—'}</span>;
+  };
+
   return (
     <div className="space-y-4">
       {/* Header & Controls */}
@@ -395,6 +543,18 @@ export const SPCDTrackerView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {currentUserRole === 'Super Admin' && (
+            <button
+              id="btn-customize-spcd-table"
+              onClick={() => setIsSchemaEditorOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-neutral-300 rounded-xs shadow-xs transition-colors cursor-pointer"
+              title="Configure Table Headers & Form Fields (Super Admin Only)"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>Customize Table</span>
+            </button>
+          )}
+
           <ExportDropdown
             moduleName={`SPCD (${activeTab === 'current' ? 'Current SUs' : 'Archived SUs'})`}
             totalRecordCount={(activeTab === 'current' ? currentSUs : archivedSUs).length}
@@ -428,11 +588,10 @@ export const SPCDTrackerView: React.FC = () => {
             setActiveTab('current');
             setCurrentPage(1);
           }}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-            activeTab === 'current'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${activeTab === 'current'
               ? 'border-[#0d9488] text-[#0f766e] bg-white'
               : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-          }`}
+            }`}
         >
           <UserCheck className="w-4 h-4 text-[#0d9488]" />
           <span>Current SUs</span>
@@ -447,11 +606,10 @@ export const SPCDTrackerView: React.FC = () => {
             setActiveTab('archived');
             setCurrentPage(1);
           }}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-            activeTab === 'archived'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${activeTab === 'archived'
               ? 'border-[#0d9488] text-[#0f766e] bg-white'
               : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-          }`}
+            }`}
         >
           <Archive className="w-4 h-4 text-neutral-500" />
           <span>Archived SUs (Departed / Left)</span>
@@ -513,72 +671,28 @@ export const SPCDTrackerView: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none">
-                <th onClick={() => handleSort('date')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Date">
-                  <div className="flex items-center gap-1">
-                    <span>Date</span>
-                    {sortField === 'date' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('siteName')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Site Name">
-                  <div className="flex items-center gap-1">
-                    <span>Site Name</span>
-                    {sortField === 'siteName' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('roomNumber')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Room">
-                  <div className="flex items-center gap-1">
-                    <span>Room</span>
-                    {sortField === 'roomNumber' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('staffReporting')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Raised By">
-                  <div className="flex items-center gap-1">
-                    <span>Raised By</span>
-                    {sortField === 'staffReporting' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('suName')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Service User Name">
-                  <div className="flex items-center gap-1">
-                    <span>SU's Name</span>
-                    {sortField === 'suName' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('suPortReference')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Port Reference">
-                  <div className="flex items-center gap-1">
-                    <span>SU's Port Reference</span>
-                    {sortField === 'suPortReference' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('suDob')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by DOB">
-                  <div className="flex items-center gap-1">
-                    <span>SU's DOB</span>
-                    {sortField === 'suDob' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('briefDescriptionActionTaken')} className="py-2.5 px-3 min-w-[200px] cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Description / Action">
-                  <div className="flex items-center gap-1">
-                    <span>Brief Description / Action Taken</span>
-                    {sortField === 'briefDescriptionActionTaken' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('followUpNotes')} className="py-2.5 px-3 min-w-[180px] cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Follow Up Notes">
-                  <div className="flex items-center gap-1">
-                    <span>Follow Up Notes</span>
-                    {sortField === 'followUpNotes' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('updates')} className="py-2.5 px-3 min-w-[150px] cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Updates">
-                  <div className="flex items-center gap-1">
-                    <span>UPDATES</span>
-                    {sortField === 'updates' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('sgReview')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by SG Review">
-                  <div className="flex items-center gap-1">
-                    <span>SG Review</span>
-                    {sortField === 'sgReview' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
+                {visibleSpcdColumns.map(col => (
+                  <th
+                    key={String(col.key)}
+                    onClick={() => handleSort(col.key as any)}
+                    className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors"
+                    title={`Sort by ${col.label}`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>{col.label}</span>
+                      {col.isCustom && (
+                        <span className="px-1 text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded">
+                          custom
+                        </span>
+                      )}
+                      {sortField === col.key ? (
+                        sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                      )}
+                    </div>
+                  </th>
+                ))}
                 {activeTab === 'archived' && (
                   <>
                     <th onClick={() => handleSort('dateLeft')} className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Date Left">
@@ -601,7 +715,7 @@ export const SPCDTrackerView: React.FC = () => {
             <tbody className="divide-y divide-[#edebe9] text-[#242424]">
               {paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={activeTab === 'archived' ? 14 : 12} className="py-8 text-center text-[#605e5c]">
+                  <td colSpan={visibleSpcdColumns.length + (activeTab === 'archived' ? 3 : 1)} className="py-8 text-center text-[#605e5c]">
                     <ClipboardList className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
                     <p className="font-semibold">No {activeTab === 'current' ? 'active' : 'archived'} SPCD records found.</p>
                     <p className="text-[11px] text-neutral-400 mt-0.5">Click "Add SPCD Case Entry" to register new service user case updates.</p>
@@ -610,90 +724,11 @@ export const SPCDTrackerView: React.FC = () => {
               ) : (
                 paginatedRecords.map(item => (
                   <tr key={item.id} className="hover:bg-[#f3f2f1]/60 transition-colors">
-                    {/* Date */}
-                    <td className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap text-neutral-700">
-                      {item.date}
-                    </td>
-
-                    {/* Site Name */}
-                    <td className="py-2.5 px-3 whitespace-nowrap font-medium text-neutral-800">
-                      {item.siteName}
-                    </td>
-
-                    {/* Room */}
-                    <td className="py-2.5 px-3 whitespace-nowrap font-mono text-[11px] text-neutral-700">
-                      <span className="px-1.5 py-0.5 bg-neutral-100 rounded">
-                        {item.roomNumber || '—'}
-                      </span>
-                    </td>
-
-                    {/* Raised By */}
-                    <td className="py-2.5 px-3 whitespace-nowrap text-neutral-700">
-                      {getRaisedBy(item)}
-                    </td>
-
-                    {/* SU's Name */}
-                    <td className="py-2.5 px-3 whitespace-nowrap font-semibold text-neutral-900">
-                      {item.suName}
-                    </td>
-
-                    {/* SU's Port Reference */}
-                    <td className="py-2.5 px-3 whitespace-nowrap font-mono text-[11px] font-bold text-[#0d9488]">
-                      {item.suPortReference}
-                    </td>
-
-                    {/* SU's DOB */}
-                    <td className="py-2.5 px-3 whitespace-nowrap font-mono text-[11px] text-neutral-600">
-                      {item.suDob || '—'}
-                    </td>
-
-                    {/* Brief Description / Action Taken */}
-                    <td className="py-2.5 px-3">
-                      <div className="text-neutral-800 font-normal line-clamp-2">
-                        {item.briefDescriptionActionTaken}
-                      </div>
-                    </td>
-
-                    {/* Follow Up Notes */}
-                    <td className="py-2.5 px-3">
-                      <div className="text-neutral-700 text-[11px] line-clamp-2">
-                        {item.followUpNotes || <span className="text-neutral-400 italic">No notes</span>}
-                      </div>
-                    </td>
-
-                    {/* UPDATES */}
-                    <td className="py-2.5 px-3">
-                      <div className="text-neutral-700 text-[11px] line-clamp-2">
-                        {item.updates || <span className="text-neutral-400 italic">—</span>}
-                      </div>
-                    </td>
-
-                    {/* SG Review */}
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      {canEditRecord(item.siteName) && !item.isArchived ? (
-                        <select
-                          value={item.sgReview}
-                          onChange={e => updateSPCDRecord(item.id, { sgReview: e.target.value })}
-                          className="px-2 py-0.5 text-[11px] font-medium rounded border border-[#99f6e4] bg-[#f0fdfa] text-[#0f766e] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4]"
-                          title="Click to update Safeguarding review status"
-                        >
-                          <option value="Pending Safeguarding Lead Review" className="bg-white text-neutral-900 font-normal">Pending Review</option>
-                          <option value="Reviewed & Cleared" className="bg-white text-neutral-900 font-normal">Reviewed & Cleared</option>
-                          <option value="Reviewed & Approved" className="bg-white text-neutral-900 font-normal">Reviewed & Approved</option>
-                          <option value="Under Ongoing Review" className="bg-white text-neutral-900 font-normal">Under Ongoing Review</option>
-                          <option value="Escalated to Multi-Agency" className="bg-white text-neutral-900 font-normal">Escalated to Multi-Agency</option>
-                          <option value="Closed / Resolved" className="bg-white text-neutral-900 font-normal">Closed / Resolved</option>
-                          {!['Pending Safeguarding Lead Review', 'Reviewed & Cleared', 'Reviewed & Approved', 'Under Ongoing Review', 'Escalated to Multi-Agency', 'Closed / Resolved'].includes(item.sgReview) && (
-                            <option value={item.sgReview} className="bg-white text-neutral-900 font-normal">{item.sgReview}</option>
-                          )}
-                        </select>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#f0fdfa] text-[#0f766e]">
-                          <ShieldCheck className="w-3 h-3 text-[#0d9488]" />
-                          {item.sgReview}
-                        </span>
-                      )}
-                    </td>
+                    {visibleSpcdColumns.map(col => (
+                      <td key={String(col.key)} className="py-2.5 px-3">
+                        {renderColumnCell(col, item)}
+                      </td>
+                    ))}
 
                     {/* Archived Specific Columns */}
                     {activeTab === 'archived' && (
@@ -792,438 +827,63 @@ export const SPCDTrackerView: React.FC = () => {
         )}
       </div>
 
-      {/* CREATE NEW SPCD RECORD MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border border-[#8a8886] rounded-xs shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="px-5 py-4 border-b border-[#edebe9] flex items-center justify-between bg-[#faf9f8]">
-              <div className="flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-[#0d9488]" />
-                <h3 className="text-base font-bold text-[#242424]">
-                  Add SPCD Case Entry
-                </h3>
-              </div>
-              <button 
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 hover:bg-[#edebe9] rounded text-neutral-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* DYNAMIC CREATE SPCD RECORD MODAL */}
+      <DynamicRecordFormModal<SPCDRecord>
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Add SPCD Case Entry"
+        columns={spcdColumns}
+        initialValues={{
+          date: new Date().toISOString().slice(0, 10),
+          siteName: allowedSites[0] || 'Victoria House',
+          staffReporting: loggedInUserName,
+          suDob: '1990-01-01',
+          sgReview: 'Pending Safeguarding Lead Review'
+        }}
+        onSave={(data) => {
+          const reporter = data.staffReporting || loggedInUserName;
+          addSPCDRecord({
+            ...data,
+            date: data.date || new Date().toISOString().slice(0, 10),
+            siteName: data.siteName || allowedSites[0] || 'Victoria House',
+            site: data.siteName || allowedSites[0] || 'Victoria House',
+            roomNumber: data.roomNumber || '',
+            staffReporting: reporter,
+            raisedBy: reporter,
+            suName: data.suName || '',
+            suPortReference: data.suPortReference || '',
+            suDob: data.suDob || '1990-01-01',
+            briefDescriptionActionTaken: data.briefDescriptionActionTaken || '',
+            followUpNotes: data.followUpNotes || '',
+            updates: data.updates || '',
+            sgReview: data.sgReview || 'Pending Safeguarding Lead Review',
+            isArchived: false
+          } as any);
+          setIsCreateModalOpen(false);
+        }}
+      />
 
-            <form onSubmit={handleCreateSubmit} className="p-5 overflow-y-auto space-y-4 text-xs">
-              {/* Row: Date, Site, Room */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.date}
-                    onChange={e => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Site Name (Atlantic BW) *
-                  </label>
-                  <select
-                    value={formData.siteName}
-                    onChange={e => setFormData({ ...formData, siteName: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    {allowedSites.map((s, idx) => (
-                      <option key={`${s}-${idx}`} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Room Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Room 102"
-                    value={formData.roomNumber}
-                    onChange={e => setFormData({ ...formData, roomNumber: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              {/* Raised By & SU details */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="font-semibold text-neutral-700 mb-1 flex items-center justify-between">
-                    <span>Raised By *</span>
-                    <span className="text-[10px] text-neutral-500 font-normal flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-neutral-400" /> Logged-in User (Locked)
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      readOnly
-                      value={formData.staffReporting || loggedInUserName}
-                      className="w-full px-2.5 py-1.5 pr-8 bg-[#f8fafc] border border-[#d2d0ce] rounded-xs text-[#323130] font-medium cursor-not-allowed"
-                      title="Raised By is locked to the authenticated user for operational accountability."
-                    />
-                    <Lock className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    SU's Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Full name of service user"
-                    value={formData.suName}
-                    onChange={e => setFormData({ ...formData, suName: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    SU's Port Reference *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. PORT-88210"
-                    value={formData.suPortReference}
-                    onChange={e => setFormData({ ...formData, suPortReference: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono font-semibold text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              {/* DOB & SG Review */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    SU's Date of Birth (DOB)
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.suDob}
-                    onChange={e => setFormData({ ...formData, suDob: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Safeguarding (SG) Review Status
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.sgReview}
-                    onChange={e => setFormData({ ...formData, sgReview: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              {/* Brief Description / Action Taken */}
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Brief Description / Action Taken *
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Detail incident, medical need, local authority liaison, or support action taken..."
-                  value={formData.briefDescriptionActionTaken}
-                  onChange={e => setFormData({ ...formData, briefDescriptionActionTaken: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              {/* Follow up notes */}
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Follow Up Notes
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Key worker follow-up actions, GP appointments, legal aid contacts..."
-                  value={formData.followUpNotes}
-                  onChange={e => setFormData({ ...formData, followUpNotes: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              {/* UPDATES */}
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  UPDATES
-                </label>
-                <input
-                  type="text"
-                  placeholder="Latest case progression update..."
-                  value={formData.updates}
-                  onChange={e => setFormData({ ...formData, updates: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-[#edebe9] flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-3 py-2 bg-white hover:bg-[#edebe9] border border-[#8a8886] rounded-xs font-semibold text-neutral-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs"
-                >
-                  Save Entry
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT SPCD RECORD MODAL */}
-      {editingRecord && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border border-[#8a8886] rounded-xs shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="px-5 py-4 border-b border-[#edebe9] flex items-center justify-between bg-[#faf9f8]">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-[#0d9488]" />
-                <h3 className="text-base font-bold text-[#242424]">
-                  Edit SPCD Case Log: {editingRecord.suName}
-                </h3>
-              </div>
-              <button 
-                onClick={() => setEditingRecord(null)}
-                className="p-1 hover:bg-[#edebe9] rounded text-neutral-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateSubmit} className="p-5 overflow-y-auto space-y-4 text-xs">
-              {/* Date, Site & Room */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={editingRecord.date || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, date: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Site Name (Atlantic BW) *
-                  </label>
-                  <select
-                    value={editingRecord.siteName || editingRecord.site || allowedSites[0] || 'Brit Hotel'}
-                    onChange={e => setEditingRecord({ ...editingRecord, siteName: e.target.value, site: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  >
-                    {allowedSites.map((s, idx) => (
-                      <option key={`${s}-${idx}`} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Room Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Room 102"
-                    value={editingRecord.roomNumber}
-                    onChange={e => setEditingRecord({ ...editingRecord, roomNumber: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              {/* Raised By, SU Name & Port Reference */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="font-semibold text-neutral-700 mb-1 flex items-center justify-between">
-                    <span>Raised By *</span>
-                    <span className="text-[10px] text-neutral-500 font-normal flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-neutral-400" /> Original (Locked)
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      readOnly
-                      value={editingRecord.staffReporting || (editingRecord as any).raisedBy || loggedInUserName}
-                      className="w-full px-2.5 py-1.5 pr-8 bg-[#f8fafc] border border-[#d2d0ce] rounded-xs text-[#323130] font-medium cursor-not-allowed"
-                      title="Raised By is locked to maintain audit trail."
-                    />
-                    <Lock className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    SU's Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Full name of service user"
-                    value={editingRecord.suName}
-                    onChange={e => setEditingRecord({ ...editingRecord, suName: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    SU's Port Reference *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. PORT-88210"
-                    value={editingRecord.suPortReference}
-                    onChange={e => setEditingRecord({ ...editingRecord, suPortReference: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono font-semibold text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              {/* DOB & SG Review */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    SU's Date of Birth (DOB)
-                  </label>
-                  <input
-                    type="date"
-                    value={editingRecord.suDob || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, suDob: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-neutral-700 mb-1">
-                    Safeguarding (SG) Review Status
-                  </label>
-                  <input
-                    type="text"
-                    value={editingRecord.sgReview || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, sgReview: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Brief Description / Action Taken *
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  value={editingRecord.briefDescriptionActionTaken}
-                  onChange={e => setEditingRecord({ ...editingRecord, briefDescriptionActionTaken: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Follow Up Notes
-                </label>
-                <textarea
-                  rows={2}
-                  value={editingRecord.followUpNotes}
-                  onChange={e => setEditingRecord({ ...editingRecord, followUpNotes: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  UPDATES
-                </label>
-                <textarea
-                  rows={2}
-                  value={editingRecord.updates}
-                  onChange={e => setEditingRecord({ ...editingRecord, updates: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-                />
-              </div>
-
-              {editingRecord.isArchived && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-amber-50 rounded-xs border border-amber-200">
-                  <div>
-                    <label className="block font-semibold text-amber-900 mb-1">
-                      Date Left
-                    </label>
-                    <input
-                      type="date"
-                      value={editingRecord.dateLeft || ''}
-                      onChange={e => setEditingRecord({ ...editingRecord, dateLeft: e.target.value })}
-                      className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-xs font-mono text-neutral-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-amber-900 mb-1">
-                      Reason for Leaving
-                    </label>
-                    <input
-                      type="text"
-                      value={editingRecord.reasonForLeaving || ''}
-                      onChange={e => setEditingRecord({ ...editingRecord, reasonForLeaving: e.target.value })}
-                      className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-xs text-neutral-800"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-3 border-t border-[#edebe9] flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingRecord(null)}
-                  className="px-3 py-2 bg-white hover:bg-[#edebe9] border border-[#8a8886] rounded-xs font-semibold text-neutral-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* DYNAMIC EDIT SPCD RECORD MODAL */}
+      <DynamicRecordFormModal<SPCDRecord>
+        isOpen={Boolean(editingRecord)}
+        onClose={() => setEditingRecord(null)}
+        title={`Edit SPCD Case Record: ${editingRecord?.suName || ''}`}
+        columns={spcdColumns}
+        initialValues={editingRecord || undefined}
+        isEdit={true}
+        onSave={(data) => {
+          if (!editingRecord) return;
+          const reporter = data.staffReporting || (editingRecord as any).raisedBy || getRaisedBy(editingRecord) || loggedInUserName;
+          updateSPCDRecord(editingRecord.id, {
+            ...editingRecord,
+            ...data,
+            site: data.siteName || editingRecord.siteName,
+            staffReporting: reporter,
+            raisedBy: reporter
+          });
+          setEditingRecord(null);
+        }}
+      />
 
       {/* DEPART / ARCHIVE SU MODAL */}
       {departingRecord && (
@@ -1236,7 +896,7 @@ export const SPCDTrackerView: React.FC = () => {
                   Mark SU as Departed (Archive)
                 </h3>
               </div>
-              <button 
+              <button
                 onClick={() => setDepartingRecord(null)}
                 className="p-1 hover:bg-amber-100 rounded text-neutral-500"
               >
@@ -1309,124 +969,31 @@ export const SPCDTrackerView: React.FC = () => {
         </div>
       )}
 
-      {/* VIEW SPCD RECORD MODAL */}
-      {viewDetailRecord && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white border border-[#8a8886] rounded-xs shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 text-xs">
-            <div className="px-5 py-4 border-b border-[#edebe9] flex items-center justify-between bg-[#faf9f8]">
-              <div className="flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-[#0d9488]" />
-                <h3 className="text-base font-bold text-[#242424]">
-                  SPCD Case Details: {viewDetailRecord.suName}
-                </h3>
-              </div>
-              <button 
-                onClick={() => setViewDetailRecord(null)}
-                className="p-1 hover:bg-[#edebe9] rounded text-neutral-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* DYNAMIC VIEW SPCD RECORD MODAL */}
+      <DynamicRecordViewModal<SPCDRecord>
+        isOpen={Boolean(viewDetailRecord)}
+        onClose={() => setViewDetailRecord(null)}
+        title={`SPCD Case Details: ${viewDetailRecord?.suName || ''}`}
+        columns={spcdColumns}
+        record={viewDetailRecord}
+        onEdit={viewDetailRecord && canEditRecord(viewDetailRecord.siteName) ? () => {
+          const rec = viewDetailRecord;
+          setViewDetailRecord(null);
+          setEditingRecord({ ...rec, staffReporting: getRaisedBy(rec), raisedBy: getRaisedBy(rec) });
+        } : undefined}
+      />
 
-            <div className="p-5 overflow-y-auto space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#faf9f8] p-3.5 rounded-xs border border-[#edebe9]">
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Date</span>
-                  <strong className="text-[#242424]">{viewDetailRecord.date}</strong>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Site / Hotel</span>
-                  <strong className="text-[#242424]">{viewDetailRecord.siteName}</strong>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Room Number</span>
-                  <strong className="font-mono text-[#242424]">{viewDetailRecord.roomNumber || '—'}</strong>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Raised By</span>
-                  <span className="text-[#242424] font-medium">{getRaisedBy(viewDetailRecord)}</span>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">SU Full Name</span>
-                  <strong className="text-[#242424]">{viewDetailRecord.suName}</strong>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">PORT / NASS Ref</span>
-                  <strong className="font-mono text-[#0d9488]">{viewDetailRecord.suPortReference || '—'}</strong>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">Date of Birth (DOB)</span>
-                  <span className="font-mono text-neutral-700">{viewDetailRecord.suDob || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-[#605e5c] font-semibold block mb-0.5">SG Review Status</span>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#f0fdfa] text-[#0f766e]">
-                    <ShieldCheck className="w-3 h-3 text-[#0d9488]" />
-                    {viewDetailRecord.sgReview || 'Pending'}
-                  </span>
-                </div>
-              </div>
+      {/* Table Schema / Header Customizer Modal (Super Admin Only) */}
+      <TableSchemaEditorModal<SPCDRecord>
+        isOpen={isSchemaEditorOpen}
+        onClose={() => setIsSchemaEditorOpen(false)}
+        moduleTitle="SPCD Case Tracker"
+        columns={spcdColumns}
+        onSaveColumns={handleSaveSpcdColumns}
+        onResetToDefault={handleResetSpcdColumns}
+        currentUserRole={currentUserRole}
+      />
 
-              <div>
-                <span className="text-[#605e5c] font-semibold block mb-1">Brief Description / Action Taken:</span>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed text-[#242424] whitespace-pre-wrap">
-                  {viewDetailRecord.briefDescriptionActionTaken || '—'}
-                </div>
-              </div>
-
-              <div>
-                <span className="text-[#605e5c] font-semibold block mb-1">Follow Up Notes:</span>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed text-[#242424] whitespace-pre-wrap">
-                  {viewDetailRecord.followUpNotes || '—'}
-                </div>
-              </div>
-
-              <div>
-                <span className="text-[#605e5c] font-semibold block mb-1">UPDATES:</span>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed text-[#242424] whitespace-pre-wrap">
-                  {viewDetailRecord.updates || '—'}
-                </div>
-              </div>
-
-              {viewDetailRecord.isArchived && (
-                <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50 rounded-xs border border-amber-200">
-                  <div>
-                    <span className="text-amber-900 font-semibold block mb-0.5">Date Left</span>
-                    <span className="font-mono text-neutral-800">{viewDetailRecord.dateLeft || '—'}</span>
-                  </div>
-                  <div>
-                    <span className="text-amber-900 font-semibold block mb-0.5">Reason for Leaving</span>
-                    <span className="text-neutral-800">{viewDetailRecord.reasonForLeaving || '—'}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-3 border-t border-[#edebe9] flex justify-end gap-2">
-                {canEditRecord(viewDetailRecord.siteName) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const rec = viewDetailRecord;
-                      setViewDetailRecord(null);
-                      setEditingRecord({ ...rec, staffReporting: getRaisedBy(rec), raisedBy: getRaisedBy(rec) });
-                    }}
-                    className="px-4 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold rounded-xs shadow-xs"
-                  >
-                    Edit Record
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setViewDetailRecord(null)}
-                  className="px-4 py-1.5 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] font-semibold"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

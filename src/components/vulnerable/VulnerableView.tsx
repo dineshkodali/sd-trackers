@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Plus, 
-  Eye, 
-  Edit3, 
-  Archive, 
-  RotateCcw, 
-  Trash2, 
-  X, 
+import {
+  Plus,
+  Eye,
+  Edit3,
+  Archive,
+  RotateCcw,
+  Trash2,
+  X,
   Download,
   AlertTriangle,
   UserCheck,
@@ -14,7 +14,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Lock
+  Lock,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { VulnerableSU, RiskLevel, StatusType, RecordAttachment } from '../../types';
@@ -25,6 +26,12 @@ import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrien
 import { ExportDropdown } from '../common/ExportDropdown';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { vulnerableTableConfig } from '../../config/trackerTableConfigs';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { TableColumnConfig } from '../../types/tableSchema';
 
 const vulnerableExportColumns: ExportColumnOption[] = [
   { id: 'site', label: 'Hotel / Site' },
@@ -90,6 +97,16 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
       setGlobalSearchFilter('');
     }
   }, [globalSearchFilter, setGlobalSearchFilter]);
+
+  // Dynamic Table Schema & Columns (Local persistence with fallback to trackerTableConfigs)
+  const {
+    columns: vulnerableColumns,
+    tableColumns: visibleVulnerableColumns,
+    saveColumns: handleSaveVulnerableColumns,
+    resetToDefault: handleResetVulnerableColumns
+  } = useTableSchema<VulnerableSU>('vulnerable', vulnerableTableConfig);
+
+  const [isSchemaEditorOpen, setIsSchemaEditorOpen] = useState<boolean>(false);
 
   // Sorting
   const [sortField, setSortField] = useState<keyof VulnerableSU>('suName');
@@ -238,8 +255,8 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
   }) => {
     const dataToExport = getExportDataForScope(scope, startDate, endDate);
     const colMap = getExportColumnMap();
-    const cols = selectedColumns && selectedColumns.length > 0 
-      ? selectedColumns 
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? selectedColumns
       : vulnerableExportColumns.map(c => c.id);
     const activeCols = cols.filter(c => colMap[c]);
     const headers = activeCols.map(c => colMap[c].label);
@@ -265,8 +282,8 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
     const dataToExport = getExportDataForScope(scope, startDate, endDate);
     const title = isArchive ? 'Archived Vulnerable Service Users' : 'Vulnerable Service Users Register';
 
-    const cols = selectedColumns && selectedColumns.length > 0 
-      ? selectedColumns 
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? selectedColumns
       : vulnerableExportColumns.map(c => c.id);
 
     const colMap = getExportColumnMap();
@@ -325,6 +342,132 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
     setEditingRecord(null);
   };
 
+  const renderColumnCell = (col: TableColumnConfig<VulnerableSU>, v: VulnerableSU) => {
+    const val = (v as any)[col.key];
+
+    if (col.renderCell) {
+      return col.renderCell(val, v);
+    }
+
+    if (col.key === 'site') {
+      return <span className="font-medium text-[#242424] whitespace-nowrap">{v.site}</span>;
+    }
+
+    if (col.key === 'roomOrFlatNo') {
+      return <span className="font-mono text-[11px] text-neutral-700 whitespace-nowrap">{v.roomOrFlatNo || '—'}</span>;
+    }
+
+    if (col.key === 'suName') {
+      return (
+        <button onClick={() => setViewRecord(v)} className="hover:underline text-left font-semibold text-[#0f766e] whitespace-nowrap cursor-pointer">
+          {v.suName || '—'}
+        </button>
+      );
+    }
+
+    if (col.key === 'dob') {
+      return <span className="text-neutral-600 whitespace-nowrap font-mono text-[11px]">{v.dob || '—'}</span>;
+    }
+
+    if (col.key === 'group') {
+      return <span className="text-neutral-700 whitespace-nowrap">{v.group || '—'}</span>;
+    }
+
+    if (col.key === 'gender') {
+      return <span className="text-neutral-600 whitespace-nowrap">{v.gender || '—'}</span>;
+    }
+
+    if (col.key === 'portOrNassRef') {
+      return <span className="font-mono text-[11px] text-neutral-600 whitespace-nowrap">{v.portOrNassRef || '—'}</span>;
+    }
+
+    if (col.key === 'status') {
+      return canEditRecord(v.site) && !isArchive ? (
+        <select
+          value={v.status || 'Active'}
+          onChange={e => updateVulnerableSU(v.id, { status: e.target.value as any })}
+          className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${(v.status as string) === 'Active' || (v.status as string) === 'Open' ? 'bg-[#e8f5e9] text-[#107c10] border-[#c8e6c9]' :
+              (v.status as string) === 'Under Review' || (v.status as string) === 'In Progress' ? 'bg-[#fff4ce] text-[#7f6000] border-[#ffe788]' :
+                (v.status as string) === 'High Risk' || (v.status as string) === 'Critical' ? 'bg-[#fde7e9] text-[#a80000] border-[#f8bcc1]' :
+                  (v.status as string) === 'Archived' || (v.status as string) === 'Closed' ? 'bg-[#f0eafd] text-[#5c2d91] border-[#dcd0f9]' :
+                    'bg-neutral-100 text-neutral-700 border-neutral-300'
+            }`}
+          title="Click to update status"
+        >
+          {vulnerableStatusOptions.map(opt => (
+            <option key={opt.id} value={opt.value} className="bg-white text-neutral-900 font-normal">
+              {opt.label}
+            </option>
+          ))}
+          {!vulnerableStatusOptions.some(o => o.value === (v.status || 'Active')) && (
+            <option value={v.status || 'Active'} className="bg-white text-neutral-900 font-normal">
+              {v.status || 'Active'}
+            </option>
+          )}
+        </select>
+      ) : (
+        <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded ${(v.status as string) === 'Active' || (v.status as string) === 'Open' ? 'bg-[#e8f5e9] text-[#107c10]' :
+            (v.status as string) === 'Under Review' || (v.status as string) === 'In Progress' ? 'bg-[#fff4ce] text-[#7f6000]' :
+              (v.status as string) === 'High Risk' || (v.status as string) === 'Critical' ? 'bg-[#fde7e9] text-[#a80000]' :
+                (v.status as string) === 'Archived' || (v.status as string) === 'Closed' ? 'bg-[#f0eafd] text-[#5c2d91]' :
+                  'bg-neutral-100 text-neutral-700'
+          }`}>
+          {v.status || 'Active'}
+        </span>
+      );
+    }
+
+    if (col.key === 'raisedBy' || col.key === 'allocatedWorker') {
+      return <span className="text-neutral-700 whitespace-nowrap">{v.raisedBy || v.allocatedWorker || '—'}</span>;
+    }
+
+    if (col.key === 'reviewDate') {
+      return <span className="font-mono text-[11px] text-neutral-600 whitespace-nowrap">{v.reviewDate || '—'}</span>;
+    }
+
+    if (col.key === 'vulnerability') {
+      return (
+        <span className="text-[#323130] text-[11px] max-w-[280px] truncate block" title={v.vulnerability}>
+          {v.vulnerability || '—'}
+        </span>
+      );
+    }
+
+    if (col.key === 'notesActionTaken') {
+      return (
+        <span className="text-[#605e5c] text-[11px] max-w-[300px] truncate block" title={v.notesActionTaken}>
+          {v.notesActionTaken || '—'}
+        </span>
+      );
+    }
+
+    if (col.key === 'sgTeamUpdate') {
+      return (
+        <span className="text-[#0f766e] font-medium text-[11px] max-w-[300px] truncate block" title={v.sgTeamUpdate}>
+          {v.sgTeamUpdate || '—'}
+        </span>
+      );
+    }
+
+    if (col.badgeColors && col.badgeColors[val]) {
+      return (
+        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${col.badgeColors[val]}`}>
+          {val}
+        </span>
+      );
+    }
+
+    if (col.type === 'checkbox') {
+      return (
+        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${val ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-neutral-100 text-neutral-500'}`}>
+          {val ? 'Yes' : 'No'}
+        </span>
+      );
+    }
+
+    return <span className="text-neutral-700 text-xs">{val !== undefined && val !== null && val !== '' ? String(val) : '—'}</span>;
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -344,21 +487,32 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
           <div className="bg-[#edebe9] p-0.5 rounded-xs flex items-center text-xs">
             <button
               onClick={() => setActivePage('vulnerable')}
-              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${
-                !isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
-              }`}
+              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${!isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
             >
               Active Register
             </button>
             <button
               onClick={() => setActivePage('vulnerableArchive')}
-              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${
-                isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
-              }`}
+              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
             >
               Archive
             </button>
           </div>
+
+          {/* Super Admin Table Customizer Button */}
+          {currentUserRole === 'Super Admin' && (
+            <button
+              id="btn-customize-vulnerable-table"
+              onClick={() => setIsSchemaEditorOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-neutral-300 rounded-xs shadow-xs transition-colors cursor-pointer"
+              title="Configure Table Headers & Form Fields (Super Admin Only)"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>Customize Table</span>
+            </button>
+          )}
 
           {!isArchive && canCreateRecord() && (
             <button
@@ -408,97 +562,38 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
           <table className="w-full text-left text-xs border-collapse min-w-[1300px]">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                <th 
-                  onClick={() => handleSort('site')}
-                  className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Site"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>{isArchive ? 'Ibis Styles - Seven Kings' : 'Site Name'}</span>
-                    {sortField === 'site' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('roomOrFlatNo')}
-                  className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Room/Flat"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Room or Flat No</span>
-                    {sortField === 'roomOrFlatNo' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('suName')}
-                  className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by SU Name"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>{isArchive ? 'Name' : 'SU Name'}</span>
-                    {sortField === 'suName' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('dob')}
-                  className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by DOB"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>DOB</span>
-                    {sortField === 'dob' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('group')}
-                  className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Group"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Group</span>
-                    {sortField === 'group' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('gender')}
-                  className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Gender"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Gender</span>
-                    {sortField === 'gender' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('portOrNassRef')}
-                  className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Port / NASS Ref"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Port or Nass Ref</span>
-                    {sortField === 'portOrNassRef' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('status')}
-                  className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Status"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Status</span>
-                    {sortField === 'status' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th className="p-2.5 whitespace-nowrap">Raised By</th>
-                <th className="p-2.5 min-w-[200px] max-w-[300px]">Vulnerability</th>
-                <th className="p-2.5 min-w-[200px] max-w-[320px]">{isArchive ? 'Action Taken' : 'Notes/Action Taken'}</th>
-                {!isArchive && <th className="p-2.5 min-w-[200px] max-w-[320px]">SG TEAM UPDATE</th>}
+                {visibleVulnerableColumns.map(col => {
+                  const isSorted = sortField === col.key;
+                  return (
+                    <th
+                      key={String(col.key)}
+                      onClick={() => handleSort(col.key as any)}
+                      className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                      title={`Sort by ${col.label}`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>{col.label}</span>
+                        {col.isCustom && (
+                          <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
+                            Custom
+                          </span>
+                        )}
+                        {isSorted ? (
+                          sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
                 <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9]">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={isArchive ? 12 : 13} className="text-center py-12 text-[#605e5c]">
+                  <td colSpan={visibleVulnerableColumns.length + 1} className="text-center py-12 text-[#605e5c]">
                     No vulnerable resident records found.
                   </td>
                 </tr>
@@ -509,68 +604,11 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
 
                   return (
                     <tr key={v.id} className="hover:bg-[#fafafa] transition-colors">
-                      <td className="p-2.5 font-medium text-[#242424] whitespace-nowrap">{v.site}</td>
-                      <td className="p-2.5 font-mono text-[11px] text-neutral-700 whitespace-nowrap">{v.roomOrFlatNo || '—'}</td>
-                      <td className="p-2.5 font-semibold text-[#0f766e] whitespace-nowrap">
-                        <button onClick={() => setViewRecord(v)} className="hover:underline text-left">
-                          {v.suName}
-                        </button>
-                      </td>
-                      <td className="p-2.5 text-neutral-600 whitespace-nowrap font-mono text-[11px]">{v.dob || '—'}</td>
-                      <td className="p-2.5 text-neutral-700 whitespace-nowrap">{v.group}</td>
-                      <td className="p-2.5 text-neutral-600 whitespace-nowrap">{v.gender}</td>
-                      <td className="p-2.5 font-mono text-[11px] text-neutral-600 whitespace-nowrap">{v.portOrNassRef || '—'}</td>
-                      <td className="p-2.5 whitespace-nowrap">
-                        {canEdit && !isArchive ? (
-                          <select
-                            value={v.status || 'Active'}
-                            onChange={e => updateVulnerableSU(v.id, { status: e.target.value as any })}
-                            className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
-                              v.status === 'Active' ? 'bg-[#e8f5e9] text-[#107c10] border-[#c8e6c9]' :
-                              v.status === 'Under Review' ? 'bg-[#fff4ce] text-[#7f6000] border-[#ffe788]' :
-                              v.status === 'High Risk' ? 'bg-[#fde7e9] text-[#a80000] border-[#f8bcc1]' :
-                              v.status === 'Archived' ? 'bg-[#f0eafd] text-[#5c2d91] border-[#dcd0f9]' :
-                              'bg-neutral-100 text-neutral-700 border-neutral-300'
-                            }`}
-                            title="Click to update status"
-                          >
-                            {vulnerableStatusOptions.map(opt => (
-                              <option key={opt.id} value={opt.value} className="bg-white text-neutral-900 font-normal">
-                                {opt.label}
-                              </option>
-                            ))}
-                            {!vulnerableStatusOptions.some(o => o.value === (v.status || 'Active')) && (
-                              <option value={v.status || 'Active'} className="bg-white text-neutral-900 font-normal">
-                                {v.status || 'Active'}
-                              </option>
-                            )}
-                          </select>
-                        ) : (
-                          <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded ${
-                            v.status === 'Active' ? 'bg-[#e8f5e9] text-[#107c10]' :
-                            v.status === 'Under Review' ? 'bg-[#fff4ce] text-[#7f6000]' :
-                            v.status === 'High Risk' ? 'bg-[#fde7e9] text-[#a80000]' :
-                            v.status === 'Archived' ? 'bg-[#f0eafd] text-[#5c2d91]' :
-                            'bg-neutral-100 text-neutral-700'
-                          }`}>
-                            {v.status || 'Active'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-2.5 text-neutral-700 whitespace-nowrap">
-                        {v.raisedBy || v.allocatedWorker || '—'}
-                      </td>
-                      <td className="p-2.5 text-[#323130] text-[11px] max-w-[300px] truncate" title={v.vulnerability}>
-                        {v.vulnerability}
-                      </td>
-                      <td className="p-2.5 text-[#605e5c] text-[11px] max-w-[320px] truncate" title={v.notesActionTaken}>
-                        {v.notesActionTaken || '—'}
-                      </td>
-                      {!isArchive && (
-                        <td className="p-2.5 text-[#0f766e] font-medium text-[11px] max-w-[320px] truncate" title={v.sgTeamUpdate}>
-                          {v.sgTeamUpdate || '—'}
+                      {visibleVulnerableColumns.map(col => (
+                        <td key={String(col.key)} className="p-2.5 whitespace-nowrap">
+                          {renderColumnCell(col, v)}
                         </td>
-                      )}
+                      ))}
                       <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
                         <div className="flex items-center justify-end gap-1">
                           <button
@@ -639,571 +677,78 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
             setPageSize(size);
             setCurrentPage(1);
           }}
-          pageSizeOptions={[10, 20, 50]}
         />
       </div>
 
-      {/* CREATE MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-[#e1dfdd] flex items-center justify-between bg-[#f8f9fa]">
-              <h3 className="text-base font-semibold text-[#242424]">
-                Log Vulnerable / Safeguarding Service User
-              </h3>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-neutral-400 hover:text-neutral-700 p-1">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* DYNAMIC CREATE VULNERABLE SU MODAL */}
+      <DynamicRecordFormModal<VulnerableSU>
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Log Vulnerable / Safeguarding Service User"
+        columns={vulnerableColumns}
+        initialValues={{
+          site: allowedSites[0] || 'Victoria House',
+          riskLevel: 'Low',
+          status: 'Open',
+          group: 'Single Adult',
+          gender: 'Male',
+          raisedBy: loggedInUserName
+        }}
+        onSave={(data) => {
+          addVulnerableSU({
+            site: data.site || allowedSites[0] || 'Victoria House',
+            roomOrFlatNo: data.roomOrFlatNo || '',
+            suName: data.suName || '',
+            dob: data.dob || '',
+            group: data.group || 'Single Adult',
+            gender: data.gender || 'Male',
+            portOrNassRef: data.portOrNassRef || '',
+            riskLevel: data.riskLevel || 'Low',
+            vulnerability: data.vulnerability || '',
+            notesActionTaken: data.notesActionTaken || '',
+            sgTeamUpdate: data.sgTeamUpdate || '',
+            reviewDate: data.reviewDate || '',
+            raisedBy: data.raisedBy || loggedInUserName,
+            allocatedWorker: data.allocatedWorker || '',
+            status: data.status || 'Open',
+            attachments: []
+          });
+          setIsCreateModalOpen(false);
+        }}
+      />
 
-            <form onSubmit={handleSubmitNew} className="p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Hotel / Site *</label>
-                  <select
-                    value={formData.site}
-                    onChange={e => setFormData({ ...formData, site: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    required
-                  >
-                    {allowedSites.map((s, idx) => (
-                      <option key={`${s}-${idx}`} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+      {/* DYNAMIC EDIT VULNERABLE SU MODAL */}
+      <DynamicRecordFormModal<VulnerableSU>
+        isOpen={Boolean(editingRecord)}
+        onClose={() => setEditingRecord(null)}
+        title={`Edit Vulnerable SU: ${editingRecord?.suName || ''}`}
+        columns={vulnerableColumns}
+        initialValues={editingRecord || undefined}
+        isEdit={true}
+        onSave={(data) => {
+          if (!editingRecord) return;
+          updateVulnerableSU(editingRecord.id, {
+            ...editingRecord,
+            ...data,
+            raisedBy: editingRecord.raisedBy || loggedInUserName
+          });
+          setEditingRecord(null);
+        }}
+      />
 
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Room or Flat No *</label>
-                  <input
-                    type="text"
-                    value={formData.roomOrFlatNo}
-                    onChange={e => setFormData({ ...formData, roomOrFlatNo: e.target.value })}
-                    placeholder="e.g. Room 204"
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">SU Full Name *</label>
-                  <input
-                    type="text"
-                    value={formData.suName}
-                    onChange={e => setFormData({ ...formData, suName: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Date of Birth</label>
-                  <input
-                    type="date"
-                    value={formData.dob}
-                    onChange={e => setFormData({ ...formData, dob: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Demographic Group</label>
-                  <select
-                    value={formData.group}
-                    onChange={e => setFormData({ ...formData, group: e.target.value as VulnerableSU['group'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Single Adult">Single Adult</option>
-                    <option value="Family">Family</option>
-                    <option value="Pregnant Woman">Pregnant Woman</option>
-                    <option value="Elderly">Elderly</option>
-                    <option value="Young Adult (18-21)">Young Adult (18-21)</option>
-                    <option value="Medical Need">Medical Need</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Gender</label>
-                  <select
-                    value={formData.gender}
-                    onChange={e => setFormData({ ...formData, gender: e.target.value as VulnerableSU['gender'] })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Female">Female</option>
-                    <option value="Male">Male</option>
-                    <option value="Other">Other</option>
-                    <option value="Prefer not to say">Prefer not to say</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Port or NASS Ref</label>
-                  <input
-                    type="text"
-                    value={formData.portOrNassRef}
-                    onChange={e => setFormData({ ...formData, portOrNassRef: e.target.value })}
-                    placeholder="e.g. NASS-77192"
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Risk Level</label>
-                  <select
-                    value={formData.riskLevel}
-                    onChange={e => setFormData({ ...formData, riskLevel: e.target.value as RiskLevel })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Critical">Critical</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Next Review Date</label>
-                  <input
-                    type="date"
-                    value={formData.reviewDate}
-                    onChange={e => setFormData({ ...formData, reviewDate: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] mb-1 flex items-center justify-between">
-                    <span>Raised By</span>
-                    <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-amber-600" /> Logged-in User (Locked)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.raisedBy || loggedInUserName}
-                    readOnly
-                    className="w-full p-2 border border-neutral-300 rounded-xs bg-neutral-100 text-neutral-700 font-medium cursor-not-allowed select-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Allocated Worker</label>
-                  <input
-                    type="text"
-                    value={formData.allocatedWorker}
-                    onChange={e => setFormData({ ...formData, allocatedWorker: e.target.value })}
-                    placeholder="e.g. Sarah Jenkins"
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Status</label>
-                  <select
-                    value={formData.status || 'Active'}
-                    onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {vulnerableStatusOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!vulnerableStatusOptions.some(o => o.value === (formData.status || 'Active')) && (
-                      <option value={formData.status || 'Active'}>{formData.status || 'Active'}</option>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="font-semibold text-[#605e5c]">Vulnerability Details *</label>
-                  <span className="text-[11px] text-[#605e5c]">Click preset to insert:</span>
-                </div>
-                {vulnerabilityOptions.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {vulnerabilityOptions.map(opt => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => {
-                          const current = formData.vulnerability ? formData.vulnerability.trim() : '';
-                          if (!current) {
-                            setFormData({ ...formData, vulnerability: opt.value });
-                          } else if (!current.includes(opt.value)) {
-                            setFormData({ ...formData, vulnerability: `${current}; ${opt.value}` });
-                          }
-                        }}
-                        className="text-[11px] px-2 py-0.5 rounded-full border border-[#8a8886]/30 bg-[#f3f2f1] hover:bg-[#edebe9] text-[#323130] transition-colors"
-                      >
-                        + {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <textarea
-                  rows={2}
-                  value={formData.vulnerability}
-                  onChange={e => setFormData({ ...formData, vulnerability: e.target.value })}
-                  placeholder="Primary vulnerability, health conditions, mobility challenges..."
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">Notes / Action Taken *</label>
-                <textarea
-                  rows={2}
-                  value={formData.notesActionTaken}
-                  onChange={e => setFormData({ ...formData, notesActionTaken: e.target.value })}
-                  placeholder="Actions taken by accommodation staff (ground floor room, medical aids, etc)..."
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">SG TEAM UPDATE</label>
-                <textarea
-                  rows={2}
-                  value={formData.sgTeamUpdate}
-                  onChange={e => setFormData({ ...formData, sgTeamUpdate: e.target.value })}
-                  placeholder="Safeguarding team assessment notes, multi-agency feedback..."
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                />
-              </div>
-
-              {/* Supporting Proof Files / Documents */}
-              <div className="pt-2">
-                <AttachmentsSection
-                  attachments={formData.attachments || []}
-                  onChange={newFiles => setFormData({ ...formData, attachments: newFiles })}
-                  canManage={canManageFiles()}
-                  readOnly={!canManageFiles()}
-                  title="Supporting Proof Documents & Images"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-[#edebe9] flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs"
-                >
-                  Confirm & Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT MODAL */}
-      {editingRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-[#e1dfdd] flex items-center justify-between bg-[#f8f9fa]">
-              <h3 className="text-base font-semibold text-[#242424]">
-                Edit Vulnerable SU: {editingRecord.suName}
-              </h3>
-              <button onClick={() => setEditingRecord(null)} className="text-neutral-400 hover:text-neutral-700 p-1">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-semibold text-[#605e5c] mb-1 flex items-center justify-between">
-                    <span>Raised By</span>
-                    <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-amber-600" /> Locked
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editingRecord.raisedBy || editingRecord.allocatedWorker || loggedInUserName}
-                    readOnly
-                    className="w-full p-2 border border-neutral-300 rounded-xs bg-neutral-100 text-neutral-700 font-medium cursor-not-allowed select-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Allocated Worker</label>
-                  <input
-                    type="text"
-                    value={editingRecord.allocatedWorker || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, allocatedWorker: e.target.value })}
-                    placeholder="e.g. Sarah Jenkins"
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Room or Flat No</label>
-                  <input
-                    type="text"
-                    value={editingRecord.roomOrFlatNo}
-                    onChange={e => setEditingRecord({ ...editingRecord, roomOrFlatNo: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Port or NASS Ref</label>
-                  <input
-                    type="text"
-                    value={editingRecord.portOrNassRef || ''}
-                    onChange={e => setEditingRecord({ ...editingRecord, portOrNassRef: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Risk Level</label>
-                  <select
-                    value={editingRecord.riskLevel}
-                    onChange={e => setEditingRecord({ ...editingRecord, riskLevel: e.target.value as RiskLevel })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Critical">Critical</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Status</label>
-                  <select
-                    value={editingRecord.status || 'Active'}
-                    onChange={e => setEditingRecord({ ...editingRecord, status: e.target.value as any })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  >
-                    {vulnerableStatusOptions.map(opt => (
-                      <option key={opt.id} value={opt.value}>{opt.label}</option>
-                    ))}
-                    {!vulnerableStatusOptions.some(o => o.value === (editingRecord.status || 'Active')) && (
-                      <option value={editingRecord.status || 'Active'}>{editingRecord.status || 'Active'}</option>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Review Date</label>
-                  <input
-                    type="date"
-                    value={editingRecord.reviewDate}
-                    onChange={e => setEditingRecord({ ...editingRecord, reviewDate: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="font-semibold text-[#605e5c]">Vulnerability</label>
-                  <span className="text-[11px] text-[#605e5c]">Click preset to insert:</span>
-                </div>
-                {vulnerabilityOptions.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {vulnerabilityOptions.map(opt => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => {
-                          const current = editingRecord.vulnerability ? editingRecord.vulnerability.trim() : '';
-                          if (!current) {
-                            setEditingRecord({ ...editingRecord, vulnerability: opt.value });
-                          } else if (!current.includes(opt.value)) {
-                            setEditingRecord({ ...editingRecord, vulnerability: `${current}; ${opt.value}` });
-                          }
-                        }}
-                        className="text-[11px] px-2 py-0.5 rounded-full border border-[#8a8886]/30 bg-[#f3f2f1] hover:bg-[#edebe9] text-[#323130] transition-colors"
-                      >
-                        + {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <textarea
-                  rows={2}
-                  value={editingRecord.vulnerability}
-                  onChange={e => setEditingRecord({ ...editingRecord, vulnerability: e.target.value })}
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">Notes / Action Taken</label>
-                <textarea
-                  rows={2}
-                  value={editingRecord.notesActionTaken}
-                  onChange={e => setEditingRecord({ ...editingRecord, notesActionTaken: e.target.value })}
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">SG TEAM UPDATE</label>
-                <textarea
-                  rows={2}
-                  value={editingRecord.sgTeamUpdate}
-                  onChange={e => setEditingRecord({ ...editingRecord, sgTeamUpdate: e.target.value })}
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                />
-              </div>
-
-              {/* Supporting Proof Files / Documents */}
-              <div className="pt-2">
-                <AttachmentsSection
-                  attachments={editingRecord.attachments || []}
-                  onChange={newFiles => setEditingRecord({ ...editingRecord, attachments: newFiles })}
-                  canManage={canManageFiles()}
-                  readOnly={!canManageFiles()}
-                  title="Supporting Proof Documents & Images"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-[#edebe9] flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingRecord(null)}
-                  className="px-4 py-2 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW MODAL */}
-      {viewRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-[#e1dfdd] flex items-center justify-between bg-[#f3f8fd]">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[#0f766e]">
-                  Vulnerability Dossier: {viewRecord.suName}
-                </h3>
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                  viewRecord.riskLevel === 'High' || viewRecord.riskLevel === 'Critical'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {viewRecord.riskLevel} Risk
-                </span>
-              </div>
-              <button onClick={() => setViewRecord(null)} className="text-neutral-400 hover:text-neutral-700 p-1">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[#faf9f8] p-3 rounded-xs border border-[#edebe9]">
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Site Name:</span>
-                  <strong className="text-neutral-800">{viewRecord.site}</strong>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Room or Flat No:</span>
-                  <strong className="text-neutral-800">{viewRecord.roomOrFlatNo || '—'}</strong>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">SU Name:</span>
-                  <strong className="text-neutral-900">{viewRecord.suName}</strong>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">DOB:</span>
-                  <span>{viewRecord.dob || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Group:</span>
-                  <span>{viewRecord.group}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Gender:</span>
-                  <span>{viewRecord.gender}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Port or Nass Ref:</span>
-                  <span className="font-mono text-neutral-800">{viewRecord.portOrNassRef || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Status:</span>
-                  <span className="font-semibold text-[#0f766e]">{viewRecord.status}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Review Date:</span>
-                  <strong className="text-[#0d9488]">{viewRecord.reviewDate}</strong>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Raised By:</span>
-                  <strong className="text-neutral-800">{viewRecord.raisedBy || viewRecord.allocatedWorker || '—'}</strong>
-                </div>
-                <div>
-                  <span className="text-neutral-500 font-semibold block">Allocated Worker:</span>
-                  <span className="text-neutral-800">{viewRecord.allocatedWorker || '—'}</span>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-neutral-700 mb-1">Vulnerability</h4>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed">
-                  {viewRecord.vulnerability}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-neutral-700 mb-1">Notes/Action Taken</h4>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed">
-                  {viewRecord.notesActionTaken}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-neutral-700 mb-1">SG TEAM UPDATE</h4>
-                <div className="p-3 bg-[#f7f8fa] border border-[#edebe9] rounded-xs leading-relaxed">
-                  {viewRecord.sgTeamUpdate || 'Awaiting formal review update.'}
-                </div>
-              </div>
-
-              {/* Supporting Proof Documents & Images */}
-              <div className="pt-1">
-                <AttachmentsSection
-                  attachments={viewRecord.attachments || []}
-                  canManage={false}
-                  readOnly={true}
-                  title="Supporting Proof Documents & Images"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-[#edebe9] flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setViewRecord(null)}
-                  className="px-4 py-1.5 bg-white border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold"
-                >
-                  Close Dossier
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* DYNAMIC VIEW VULNERABLE SU MODAL */}
+      <DynamicRecordViewModal<VulnerableSU>
+        isOpen={Boolean(viewRecord)}
+        onClose={() => setViewRecord(null)}
+        title={`Vulnerable Service User Dossier: ${viewRecord?.suName || ''}`}
+        columns={vulnerableColumns}
+        record={viewRecord}
+        onEdit={viewRecord && canEditRecord(viewRecord.site) && !isArchive ? () => {
+          const rec = viewRecord;
+          setViewRecord(null);
+          setEditingRecord(rec);
+        } : undefined}
+      />
 
       {/* Export Selection & Configuration Modal */}
       <ExportModal
@@ -1219,6 +764,17 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
         availableColumns={vulnerableExportColumns}
         getPreviewData={getExportPreviewData}
         onExport={handlePerformExport}
+      />
+
+      {/* SUPER ADMIN TABLE SCHEMA & HEADER CUSTOMIZER MODAL */}
+      <TableSchemaEditorModal<VulnerableSU>
+        isOpen={isSchemaEditorOpen}
+        onClose={() => setIsSchemaEditorOpen(false)}
+        moduleTitle="Vulnerable Service Users"
+        columns={vulnerableColumns}
+        onSaveColumns={handleSaveVulnerableColumns}
+        onResetToDefault={handleResetVulnerableColumns}
+        currentUserRole={currentUserRole}
       />
     </div>
   );

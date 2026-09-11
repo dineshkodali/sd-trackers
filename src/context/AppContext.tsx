@@ -1,21 +1,21 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { 
-  RoleType, 
-  SiteInfo, 
+import {
+  RoleType,
+  SiteInfo,
   PropertyInfo,
   RolePermissions,
-  SGReferral, 
-  VulnerableSU, 
-  ChallengingSU, 
-  LaundryRecord, 
+  SGReferral,
+  VulnerableSU,
+  ChallengingSU,
+  LaundryRecord,
   PropertyLaundryLog,
   PropertyFoodVendorBuffetLog,
   FoodVendorName,
-  FoodRecord, 
-  EscalationRecord, 
-  DocumentRecord, 
-  AuditLog, 
-  UserAccount, 
+  FoodRecord,
+  EscalationRecord,
+  DocumentRecord,
+  AuditLog,
+  UserAccount,
   UserGroup,
   AppSettings,
   MaintenanceRecord,
@@ -35,17 +35,17 @@ import {
   NotificationRule,
   EmailNotificationLog
 } from '../types';
-import { 
-  INITIAL_SITES, 
-  INITIAL_REFERRALS, 
-  INITIAL_VULNERABLE, 
-  INITIAL_CHALLENGING, 
-  INITIAL_LAUNDRY, 
-  INITIAL_FOOD, 
-  INITIAL_ESCALATIONS, 
-  INITIAL_DOCUMENTS, 
-  INITIAL_USERS, 
-  INITIAL_AUDIT, 
+import {
+  INITIAL_SITES,
+  INITIAL_REFERRALS,
+  INITIAL_VULNERABLE,
+  INITIAL_CHALLENGING,
+  INITIAL_LAUNDRY,
+  INITIAL_FOOD,
+  INITIAL_ESCALATIONS,
+  INITIAL_DOCUMENTS,
+  INITIAL_USERS,
+  INITIAL_AUDIT,
   INITIAL_SETTINGS,
   INITIAL_ROLE_PERMISSIONS,
   INITIAL_MAINTENANCE_RECORDS,
@@ -60,10 +60,10 @@ import {
   INITIAL_BOOKLET_RECORDS,
   INITIAL_VCS_AGENCIES
 } from '../data/initialData';
-import { 
-  INITIAL_PROPERTY_LAUNDRY_LOGS, 
-  INITIAL_FOOD_VENDOR_BUFFET_LOGS, 
-  FOOD_VENDORS 
+import {
+  INITIAL_PROPERTY_LAUNDRY_LOGS,
+  INITIAL_FOOD_VENDOR_BUFFET_LOGS,
+  FOOD_VENDORS
 } from '../data/commercialCateringLaundryData';
 import { DEFAULT_FIELD_OPTIONS } from '../data/defaultFieldOptions';
 import { DEFAULT_NOTIFICATION_RULES } from '../data/defaultNotificationRules';
@@ -139,7 +139,7 @@ interface AppContextType {
   currentUserName: string;
   assignedSite: string; // for Site Manager and Staff
   setAssignedSite: (site: string) => void;
-  
+
   // Selected Filter Site
   selectedSite: string;
   setSelectedSite: (site: string) => void;
@@ -253,6 +253,7 @@ interface AppContextType {
 
   // CRUD for Documents
   addDocument: (doc: Omit<DocumentRecord, 'id'>) => void;
+  updateDocument: (id: string, updates: Partial<DocumentRecord>) => void;
   deleteDocument: (id: string) => void;
 
   // CRUD for Maintenance Tracker
@@ -472,12 +473,12 @@ function migrateLegacySites(): SiteInfo[] {
   const hasLegacyName = stored.some(s => s && (s.name === 'Hotel A' || s.name === 'Hotel B' || s.name === 'Hotel C' || s.name === 'Hotel D'));
   const hasBritHotel = stored.some(s => s && s.name === 'Brit Hotel');
   const hasMissingPids = stored.some(s => s && (!s.pid || s.pid === '') && s.name !== 'Burrows Court');
-  
+
   if (hasLegacyName || !hasBritHotel || hasMissingPids || stored.length < 16) {
     // Merge custom properties while ensuring all 16 official hotels are present
-    const customSites = stored.filter(s => 
+    const customSites = stored.filter(s =>
       s && s.name &&
-      !s.name.startsWith('Hotel ') && 
+      !s.name.startsWith('Hotel ') &&
       !INITIAL_SITES.some(init => init && init.name && init.name.toLowerCase() === s.name.toLowerCase())
     );
     const updated = deduplicateSites([...INITIAL_SITES, ...customSites]);
@@ -571,47 +572,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [vulnerableSUs, setVulnerableSUs] = useState<VulnerableSU[]>(() => migrateEntitySites('vulnerable', INITIAL_VULNERABLE));
   const [challengingSUs, setChallengingSUs] = useState<ChallengingSU[]>(() => migrateEntitySites('challenging', INITIAL_CHALLENGING));
   const [laundryRecords, setLaundryRecords] = useState<LaundryRecord[]>(() => migrateEntitySites('laundry', INITIAL_LAUNDRY));
-  const [propertyLaundryLogs, setPropertyLaundryLogs] = useState<PropertyLaundryLog[]>(() => 
+  const [propertyLaundryLogs, setPropertyLaundryLogs] = useState<PropertyLaundryLog[]>(() =>
     migrateEntitySites('property_laundry_logs', INITIAL_PROPERTY_LAUNDRY_LOGS)
   );
   const [foodRecords, setFoodRecords] = useState<FoodRecord[]>(() => migrateEntitySites('food', INITIAL_FOOD));
-  const [foodVendorBuffetLogs, setFoodVendorBuffetLogs] = useState<PropertyFoodVendorBuffetLog[]>(() => 
+  const [foodVendorBuffetLogs, setFoodVendorBuffetLogs] = useState<PropertyFoodVendorBuffetLog[]>(() =>
     migrateEntitySites('food_vendor_buffet_logs', INITIAL_FOOD_VENDOR_BUFFET_LOGS)
   );
   const foodVendorsList = FOOD_VENDORS;
   const [escalations, setEscalations] = useState<EscalationRecord[]>(() => migrateEntitySites('escalations', INITIAL_ESCALATIONS));
   const [documents, setDocuments] = useState<DocumentRecord[]>(() => migrateEntitySites('documents', INITIAL_DOCUMENTS));
-  const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>(() => 
+  const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>(() =>
     migrateEntitySites('maintenance', INITIAL_MAINTENANCE_RECORDS)
   );
-  const [spcdRecords, setSpcdRecords] = useState<SPCDRecord[]>(() => 
+  const [spcdRecords, setSpcdRecords] = useState<SPCDRecord[]>(() =>
     migrateEntitySites('spcd', INITIAL_SPCD_RECORDS)
   );
-  const [publicTransportRecords, setPublicTransportRecords] = useState<PublicTransportRecord[]>(() => 
+  const [publicTransportRecords, setPublicTransportRecords] = useState<PublicTransportRecord[]>(() =>
     loadStorage('public_transport_records', INITIAL_PUBLIC_TRANSPORT_RECORDS)
   );
-  const [complianceRecords, setComplianceRecords] = useState<SDComplianceRecord[]>(() => 
+  const [complianceRecords, setComplianceRecords] = useState<SDComplianceRecord[]>(() =>
     loadStorage('compliance_records', INITIAL_COMPLIANCE_RECORDS)
   );
-  const [gpAppointmentRecords, setGpAppointmentRecords] = useState<GPAppointmentRecord[]>(() => 
+  const [gpAppointmentRecords, setGpAppointmentRecords] = useState<GPAppointmentRecord[]>(() =>
     loadStorage('gp_appointment_records', INITIAL_GP_APPOINTMENT_RECORDS)
   );
-  const [rfaWelfareRecords, setRfaWelfareRecords] = useState<RFAWelfareCheckRecord[]>(() => 
+  const [rfaWelfareRecords, setRfaWelfareRecords] = useState<RFAWelfareCheckRecord[]>(() =>
     loadStorage('rfa_welfare_records', INITIAL_RFA_WELFARE_RECORDS)
   );
-  const [dispersalRecords, setDispersalRecords] = useState<DispersalRecord[]>(() => 
+  const [dispersalRecords, setDispersalRecords] = useState<DispersalRecord[]>(() =>
     loadStorage('dispersal_records', INITIAL_DISPERSAL_RECORDS)
   );
-  const [bookletRecords, setBookletRecords] = useState<BookletCollectionRecord[]>(() => 
+  const [bookletRecords, setBookletRecords] = useState<BookletCollectionRecord[]>(() =>
     loadStorage('booklet_records', INITIAL_BOOKLET_RECORDS)
   );
-  const [vcsAgencies, setVcsAgencies] = useState<SDVCSAgency[]>(() => 
+  const [vcsAgencies, setVcsAgencies] = useState<SDVCSAgency[]>(() =>
     loadStorage('vcs_agencies', INITIAL_VCS_AGENCIES)
   );
-  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => 
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() =>
     loadStorage('notification_rules', DEFAULT_NOTIFICATION_RULES)
   );
-  const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>(() => 
+  const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>(() =>
     loadStorage('email_notification_logs', [])
   );
   const [users, setUsers] = useState<UserAccount[]>(() => {
@@ -621,15 +622,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return migrateEntitySites('users', INITIAL_USERS);
   });
-  const [userGroups, setUserGroups] = useState<UserGroup[]>(() => 
+  const [userGroups, setUserGroups] = useState<UserGroup[]>(() =>
     loadStorage('user_groups', INITIAL_USER_GROUPS)
   );
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => migrateEntitySites('audit', INITIAL_AUDIT));
-  const [dataChangeRequests, setDataChangeRequests] = useState<DataChangeRequest[]>(() => 
+  const [dataChangeRequests, setDataChangeRequests] = useState<DataChangeRequest[]>(() =>
     loadStorage('data_change_requests', INITIAL_CHANGE_REQUESTS)
   );
 
-  const [rolePermissions, setRolePermissions] = useState<Record<RoleType, RolePermissions>>(() => 
+  const [rolePermissions, setRolePermissions] = useState<Record<RoleType, RolePermissions>>(() =>
     loadStorage('role_permissions', INITIAL_ROLE_PERMISSIONS)
   );
 
@@ -675,10 +676,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Logger helper: dispatches to client state and centralized audit_trails database table
   const addAuditEntry = useCallback((
-    action: AuditLog['action'], 
-    module: AuditLog['module'], 
-    targetItem: string, 
-    site: string, 
+    action: AuditLog['action'],
+    module: AuditLog['module'],
+    targetItem: string,
+    site: string,
     details: string,
     performedByOverride?: string
   ) => {
@@ -757,7 +758,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.success && res.delivered) {
         console.log(`[Production Email Dispatched] Event: ${eventCode}, Recipients:`, res.recipients);
       } else if (!res.success) {
-        console.warn(`[Production Email Failed] Event: ${eventCode}:`, res.error || res.message);
+        console.warn(`[Production Email Failed] Event: ${eventCode}:`, res.error || (res as any).message);
       }
       const updatedLogs = await emailNotificationService.getLogs();
       if (updatedLogs && updatedLogs.length > 0) {
@@ -1090,7 +1091,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setDataChangeRequests(prev => [newReq, ...prev]);
     addAuditEntry('CREATE', 'Settings', `Change Request: ${newReq.recordTitle}`, newReq.site, `Submitted data change request (${newReq.requestType}) for review.`);
-    
+
     // Automated configurable email notification dispatch
     triggerEmailNotification('change_request.created', newReq, {
       site: newReq.site,
@@ -1202,9 +1203,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { saveStorage('maintenance', maintenanceRecords); }, [maintenanceRecords]);
   useEffect(() => { saveStorage('spcd', spcdRecords); }, [spcdRecords]);
   useEffect(() => { saveStorage('data_change_requests', dataChangeRequests); }, [dataChangeRequests]);
-  
-  useEffect(() => { 
-    saveStorage('sites', sites); 
+
+  useEffect(() => {
+    saveStorage('sites', sites);
     const meta = smartCache.getPropertiesInstant().metadata;
     smartCache.savePropertiesCache({
       data: sites,
@@ -1217,8 +1218,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [sites]);
 
-  useEffect(() => { 
-    saveStorage('users', users); 
+  useEffect(() => {
+    saveStorage('users', users);
     const meta = smartCache.getUsersInstant().metadata;
     smartCache.saveUsersCache({
       data: users,
@@ -1252,8 +1253,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncFromDatabase = useCallback(async () => {
     try {
       const [
-        refRes, vulRes, chalRes, maintRes, spcdRes, siteRes, 
-        lauRes, propLauRes, foodRes, vendorFoodRes, escRes, docRes, usrRes, supaUsersRes
+        refRes, vulRes, chalRes, maintRes, spcdRes, siteRes,
+        lauRes, propLauRes, foodRes, vendorFoodRes, escRes, docRes, usrRes, supaUsersRes, usrGrpRes
       ] = await Promise.all([
         apiService.fetchEntityRecords<SGReferral>('referrals'),
         apiService.fetchEntityRecords<VulnerableSU>('vulnerable'),
@@ -1268,21 +1269,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         apiService.fetchEntityRecords<EscalationRecord>('escalations'),
         apiService.fetchEntityRecords<DocumentRecord>('documents'),
         apiService.fetchEntityRecords<UserAccount>('users'),
-        apiService.fetchSupabaseUsers()
+        apiService.fetchSupabaseUsers(),
+        apiService.fetchEntityRecords<UserGroup>('userGroups')
       ]);
 
-      if (refRes.success && Array.isArray(refRes.data) && refRes.data.length > 0) setReferrals(refRes.data);
-      if (vulRes.success && Array.isArray(vulRes.data) && vulRes.data.length > 0) setVulnerableSUs(vulRes.data);
-      if (chalRes.success && Array.isArray(chalRes.data) && chalRes.data.length > 0) setChallengingSUs(chalRes.data);
-      if (maintRes.success && Array.isArray(maintRes.data) && maintRes.data.length > 0) setMaintenanceRecords(maintRes.data);
-      if (spcdRes.success && Array.isArray(spcdRes.data) && spcdRes.data.length > 0) setSpcdRecords(spcdRes.data);
-      if (siteRes.success && Array.isArray(siteRes.data) && siteRes.data.length > 0) setSites(deduplicateSites(siteRes.data));
-      if (lauRes.success && Array.isArray(lauRes.data) && lauRes.data.length > 0) setLaundryRecords(lauRes.data);
-      if (propLauRes.success && Array.isArray(propLauRes.data) && propLauRes.data.length > 0) setPropertyLaundryLogs(propLauRes.data);
-      if (foodRes.success && Array.isArray(foodRes.data) && foodRes.data.length > 0) setFoodRecords(foodRes.data);
-      if (vendorFoodRes.success && Array.isArray(vendorFoodRes.data) && vendorFoodRes.data.length > 0) setFoodVendorBuffetLogs(vendorFoodRes.data);
-      if (escRes.success && Array.isArray(escRes.data) && escRes.data.length > 0) setEscalations(escRes.data);
-      if (docRes.success && Array.isArray(docRes.data) && docRes.data.length > 0) setDocuments(docRes.data);
+      if (refRes.success && Array.isArray(refRes.data)) setReferrals(refRes.data);
+      if (vulRes.success && Array.isArray(vulRes.data)) setVulnerableSUs(vulRes.data);
+      if (chalRes.success && Array.isArray(chalRes.data)) setChallengingSUs(chalRes.data);
+      if (maintRes.success && Array.isArray(maintRes.data)) setMaintenanceRecords(maintRes.data);
+      if (spcdRes.success && Array.isArray(spcdRes.data)) setSpcdRecords(spcdRes.data);
+      if (siteRes.success && Array.isArray(siteRes.data)) setSites(deduplicateSites(siteRes.data));
+      if (lauRes.success && Array.isArray(lauRes.data)) setLaundryRecords(lauRes.data);
+      if (propLauRes.success && Array.isArray(propLauRes.data)) setPropertyLaundryLogs(propLauRes.data);
+      if (foodRes.success && Array.isArray(foodRes.data)) setFoodRecords(foodRes.data);
+      if (vendorFoodRes.success && Array.isArray(vendorFoodRes.data)) setFoodVendorBuffetLogs(vendorFoodRes.data);
+      if (escRes.success && Array.isArray(escRes.data)) setEscalations(escRes.data);
+      if (docRes.success && Array.isArray(docRes.data)) setDocuments(docRes.data);
+      if (usrGrpRes?.success && Array.isArray(usrGrpRes.data)) setUserGroups(usrGrpRes.data);
 
       const supaUsers = (supaUsersRes?.success && Array.isArray(supaUsersRes.users) && supaUsersRes.users.length > 0)
         ? supaUsersRes.users
@@ -1311,19 +1314,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const triggerBackgroundDeltaSync = useCallback(async () => {
     try {
       await syncFromDatabase();
-      const propResult = await smartCache.syncPropertiesDelta(sites, INITIAL_SITES);
-      if (propResult.deltaCount > 0) {
-        setSites(deduplicateSites(propResult.updatedData));
-      }
-
-      const userResult = await smartCache.syncUsersDelta(users, INITIAL_USERS);
-      if (userResult.deltaCount > 0) {
-        setUsers(userResult.updatedData);
-      }
     } catch (err) {
       console.warn('SmartCache background sync notice:', err);
     }
-  }, [syncFromDatabase, sites, users]);
+  }, [syncFromDatabase]);
 
   /**
    * Latest sync function, held in a ref so the scheduling effect below can call
@@ -1529,7 +1523,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setReferrals(prev => [newRef, ...prev]);
       apiService.saveEntityRecord('referrals', newRef).catch(err => console.error('Referral DB save error:', err));
       addAuditEntry('CREATE', 'Referrals', `${newRef.suName} (${newRef.portRef})`, newRef.site, `Created SG referral for ${newRef.referralCouncil}.`);
-      
+
       // Automated configurable email notification dispatch
       triggerEmailNotification('referral.created', newRef, {
         site: newRef.site,
@@ -1663,10 +1657,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `CRITICAL ACTION: Are you sure you want to permanently delete the referral record for "${current.suName}" (${current.portRef})? This action cannot be undone and is recorded in the immutable audit log.`,
       confirmLabel: 'Permanently Delete',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setReferrals(prev => prev.filter(r => r.id !== id));
-        apiService.deleteEntityRecord('referrals', id).catch(err => console.error('Referral DB delete error:', err));
-        addAuditEntry('DELETE', 'Referrals', `${current.suName} (${current.portRef})`, current.site, 'Permanent deletion of referral record.');
+        try {
+          const res = await apiService.deleteEntityRecord('referrals', id);
+          if (res.success === false) {
+            console.error('Referral DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Referrals', `${current.suName} (${current.portRef})`, current.site, 'Permanent deletion of referral record.');
+          }
+        } catch (err) {
+          console.error('Referral DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -1799,10 +1801,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Are you certain you want to permanently delete safeguarding file for "${current.suName}"? This record cannot be recovered.`,
       confirmLabel: 'Permanently Delete',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setVulnerableSUs(prev => prev.filter(s => s.id !== id));
-        apiService.deleteEntityRecord('vulnerable', id).catch(err => console.error('Vulnerable SU DB delete error:', err));
-        addAuditEntry('DELETE', 'Vulnerable SUs', `${current.suName}`, current.site, 'Permanently deleted vulnerable SU record.');
+        try {
+          const res = await apiService.deleteEntityRecord('vulnerable', id);
+          if (res.success === false) {
+            console.error('Vulnerable SU DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Vulnerable SUs', `${current.suName}`, current.site, 'Permanently deleted vulnerable SU record.');
+          }
+        } catch (err) {
+          console.error('Vulnerable SU DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -1937,10 +1947,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Permanently delete incident file for "${current.name}"?`,
       confirmLabel: 'Permanently Delete',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setChallengingSUs(prev => prev.filter(c => c.id !== id));
-        apiService.deleteEntityRecord('challenging', id).catch(err => console.error('Challenging SU DB delete error:', err));
-        addAuditEntry('DELETE', 'Challenging SUs', `${current.name}`, current.site, 'Permanently deleted challenging SU record.');
+        try {
+          const res = await apiService.deleteEntityRecord('challenging', id);
+          if (res.success === false) {
+            console.error('Challenging SU DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Challenging SUs', `${current.name}`, current.site, 'Permanently deleted challenging SU record.');
+          }
+        } catch (err) {
+          console.error('Challenging SU DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -1987,10 +2005,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Remove laundry record for ${current.residentName} (${current.roomNo})?`,
       confirmLabel: 'Delete Entry',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setLaundryRecords(prev => prev.filter(l => l.id !== id));
-        apiService.deleteEntityRecord('laundry', id).catch(err => console.error('Laundry DB delete error:', err));
-        addAuditEntry('DELETE', 'Laundry', `Laundry #${id}`, current.site, 'Deleted laundry intake record.');
+        try {
+          const res = await apiService.deleteEntityRecord('laundry', id);
+          if (res.success === false) {
+            console.error('Laundry DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Laundry', `Laundry #${id}`, current.site, 'Deleted laundry intake record.');
+          }
+        } catch (err) {
+          console.error('Laundry DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2008,10 +2034,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveStorage('property_laundry_logs', [rec, ...propertyLaundryLogs]);
     apiService.saveEntityRecord('property_laundry_logs', rec).catch(err => console.error('Property laundry log DB save error:', err));
     addAuditEntry(
-      'CREATE', 
-      'Laundry', 
-      `${data.periodType} Log (${data.periodLabel})`, 
-      data.site, 
+      'CREATE',
+      'Laundry',
+      `${data.periodType} Log (${data.periodLabel})`,
+      data.site,
       `Logged ${data.dirtyLaundrySent} sent / ${data.cleanLaundryReturned} returned. Audited by: ${data.loggedBy}.`,
       data.loggedBy
     );
@@ -2041,10 +2067,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apiService.updateEntityRecord('property_laundry_logs', id, updatedObj).catch(err => console.error('Property laundry log DB update error:', err));
     }
     addAuditEntry(
-      'UPDATE', 
-      'Laundry', 
-      `Property Log: ${periodInfo || `#${id}`}`, 
-      siteName || 'Site', 
+      'UPDATE',
+      'Laundry',
+      `Property Log: ${periodInfo || `#${id}`}`,
+      siteName || 'Site',
       `Updated property laundry counts and remarks. Audited by ${updater || 'User'}.`,
       updater
     );
@@ -2059,14 +2085,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Permanently remove ${current.periodType} laundry log for "${current.site}" (${current.periodLabel})?`,
       confirmLabel: 'Delete Log',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setPropertyLaundryLogs(prev => {
           const next = prev.filter(p => p.id !== id);
           saveStorage('property_laundry_logs', next);
           return next;
         });
-        apiService.deleteEntityRecord('property_laundry_logs', id).catch(err => console.error('Property laundry log DB delete error:', err));
-        addAuditEntry('DELETE', 'Laundry', `Log #${id}`, current.site, 'Deleted property laundry log record.');
+        try {
+          const res = await apiService.deleteEntityRecord('property_laundry_logs', id);
+          if (res.success === false) {
+            console.error('Property laundry log DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Laundry', `Log #${id}`, current.site, 'Deleted property laundry log record.');
+          }
+        } catch (err) {
+          console.error('Property laundry log DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2113,10 +2147,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Delete hot food record for ${current.residentName}?`,
       confirmLabel: 'Delete Entry',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setFoodRecords(prev => prev.filter(f => f.id !== id));
-        apiService.deleteEntityRecord('food', id).catch(err => console.error('Food DB delete error:', err));
-        addAuditEntry('DELETE', 'Hot Food', `Food #${id}`, current.site, 'Deleted food distribution record.');
+        try {
+          const res = await apiService.deleteEntityRecord('food', id);
+          if (res.success === false) {
+            console.error('Food DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Hot Food', `Food #${id}`, current.site, 'Deleted food distribution record.');
+          }
+        } catch (err) {
+          console.error('Food DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2133,10 +2175,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveStorage('food_vendor_buffet_logs', [rec, ...foodVendorBuffetLogs]);
     apiService.saveEntityRecord('food_vendor_buffet_logs', rec).catch(err => console.error('Food vendor buffet log DB save error:', err));
     addAuditEntry(
-      'CREATE', 
-      'Hot Food', 
-      `Vendor: ${data.vendor} (${data.weekRange})`, 
-      data.site, 
+      'CREATE',
+      'Hot Food',
+      `Vendor: ${data.vendor} (${data.weekRange})`,
+      data.site,
       `Created weekly buffet catering schedule. Audited by: ${data.lastUpdatedBy}.`,
       data.lastUpdatedBy
     );
@@ -2166,10 +2208,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apiService.updateEntityRecord('food_vendor_buffet_logs', id, updatedObj).catch(err => console.error('Food vendor buffet log DB update error:', err));
     }
     addAuditEntry(
-      'UPDATE', 
-      'Hot Food', 
-      `Vendor: ${updatedVendor || 'Buffet Matrix'} (#${id})`, 
-      updatedSite || 'Site', 
+      'UPDATE',
+      'Hot Food',
+      `Vendor: ${updatedVendor || 'Buffet Matrix'} (#${id})`,
+      updatedSite || 'Site',
       `Updated weekly buffet counts for ${updatedVendor} (${updates.weekRange || 'Week Matrix'}). Audited by ${updater || 'User'}.`,
       updater
     );
@@ -2184,14 +2226,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Permanently remove buffet log for "${current.vendor}" at "${current.site}" (${current.weekRange})?`,
       confirmLabel: 'Delete Schedule',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setFoodVendorBuffetLogs(prev => {
           const next = prev.filter(v => v.id !== id);
           saveStorage('food_vendor_buffet_logs', next);
           return next;
         });
-        apiService.deleteEntityRecord('food_vendor_buffet_logs', id).catch(err => console.error('Food vendor buffet log DB delete error:', err));
-        addAuditEntry('DELETE', 'Hot Food', `Vendor Log #${id}`, current.site, 'Deleted food vendor buffet log.');
+        try {
+          const res = await apiService.deleteEntityRecord('food_vendor_buffet_logs', id);
+          if (res.success === false) {
+            console.error('Food vendor buffet log DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Hot Food', `Vendor Log #${id}`, current.site, 'Deleted food vendor buffet log.');
+          }
+        } catch (err) {
+          console.error('Food vendor buffet log DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2290,10 +2340,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Delete escalation case "${current.incidentTitle}"?`,
       confirmLabel: 'Delete Case',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setEscalations(prev => prev.filter(e => e.id !== id));
-        apiService.deleteEntityRecord('escalations', id).catch(err => console.error('Escalation DB delete error:', err));
-        addAuditEntry('DELETE', 'Escalations', `Escalation #${id}`, current.site, 'Deleted escalation case.');
+        try {
+          const res = await apiService.deleteEntityRecord('escalations', id);
+          if (res.success === false) {
+            console.error('Escalation DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Escalations', `Escalation #${id}`, current.site, 'Deleted escalation case.');
+          }
+        } catch (err) {
+          console.error('Escalation DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2320,6 +2378,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [addAuditEntry, requestConfirmation, closeConfirmation]);
 
+  const updateDocument = useCallback((id: string, updates: Partial<DocumentRecord>) => {
+    setDocuments(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
+    const current = documents.find(d => d.id === id);
+    if (current) {
+      const merged = { ...current, ...updates };
+      apiService.saveEntityRecord('documents', merged).catch(err => console.error('Document DB update error:', err));
+      addAuditEntry('UPDATE', 'Documents', `${merged.documentTitle}`, merged.site, 'Updated compliance document details.');
+    }
+  }, [documents, addAuditEntry]);
+
   const deleteDocument = useCallback((id: string) => {
     const current = documents.find(d => d.id === id);
     if (!current) return;
@@ -2329,10 +2397,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Permanently remove compliance document "${current.documentTitle}"?`,
       confirmLabel: 'Delete Document',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setDocuments(prev => prev.filter(d => d.id !== id));
-        apiService.deleteEntityRecord('documents', id).catch(err => console.error('Document DB delete error:', err));
-        addAuditEntry('DELETE', 'Documents', `${current.documentTitle}`, current.site, 'Deleted document from system.');
+        try {
+          const res = await apiService.deleteEntityRecord('documents', id);
+          if (res.success === false) {
+            console.error('Document DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Documents', `${current.documentTitle}`, current.site, 'Deleted document from system.');
+          }
+        } catch (err) {
+          console.error('Document DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2348,7 +2424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMaintenanceRecords(prev => [newRecord, ...prev]);
     apiService.saveEntityRecord('maintenance', newRecord).catch(err => console.error('Maintenance DB save error:', err));
     addAuditEntry('CREATE', 'Settings', `${newRecord.priority}: ${newRecord.description.substring(0, 30)}`, newRecord.site, `Logged maintenance defect (${newRecord.priorityTimeScale}).`);
-    
+
     // Automated configurable email notification dispatch
     triggerEmailNotification('maintenance.created', newRecord, {
       site: newRecord.site,
@@ -2379,10 +2455,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Are you sure you want to delete maintenance defect "${current.description}" at ${current.location}?`,
       confirmLabel: 'Delete Ticket',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setMaintenanceRecords(prev => prev.filter(m => m.id !== id));
-        apiService.deleteEntityRecord('maintenance', id).catch(err => console.error('Maintenance DB delete error:', err));
-        addAuditEntry('DELETE', 'Settings', `Maintenance #${id}`, current.site, 'Deleted maintenance record.');
+        try {
+          const res = await apiService.deleteEntityRecord('maintenance', id);
+          if (res.success === false) {
+            console.error('Maintenance DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Settings', `Maintenance #${id}`, current.site, 'Deleted maintenance record.');
+          }
+        } catch (err) {
+          console.error('Maintenance DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2461,10 +2545,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Permanently delete SPCD case log for ${current.suName} (${current.suPortReference})?`,
       confirmLabel: 'Delete Case',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setSpcdRecords(prev => prev.filter(s => s.id !== id));
-        apiService.deleteEntityRecord('spcd', id).catch(err => console.error('SPCD DB delete error:', err));
-        addAuditEntry('DELETE', 'Vulnerable SUs', `SPCD: ${current.suName}`, current.siteName, 'Deleted SPCD entry.');
+        try {
+          const res = await apiService.deleteEntityRecord('spcd', id);
+          if (res.success === false) {
+            console.error('SPCD DB delete error:', res.error);
+          } else {
+            addAuditEntry('DELETE', 'Vulnerable SUs', `SPCD: ${current.suName}`, current.siteName, 'Deleted SPCD entry.');
+          }
+        } catch (err) {
+          console.error('SPCD DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2481,16 +2573,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setPublicTransportRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Settings', `Transport: ${newRecord.approvalUrn}`, 'Site', `Created transport approval ${newRecord.approvalUrn} for ${newRecord.suNames}.`);
-    
+
     // Automated configurable email notification dispatch
     triggerEmailNotification('transport.created', newRecord, {
-      site: newRecord.siteName || newRecord.accommodationAddress,
+      site: (newRecord as any).siteName || newRecord.accommodationAddress,
       severity: 'Low',
       entityId: newRecord.approvalUrn
     });
     if (newRecord.exceptionalCircumstances && newRecord.exceptionalCircumstances.trim() !== '') {
       triggerEmailNotification('transport.exceptional_circumstance', newRecord, {
-        site: newRecord.siteName || newRecord.accommodationAddress,
+        site: (newRecord as any).siteName || newRecord.accommodationAddress,
         severity: 'High',
         entityId: newRecord.approvalUrn
       });
@@ -2530,7 +2622,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setComplianceRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Settings', `Compliance: ${newRecord.complianceType}`, newRecord.siteName || 'All Sites', `Logged compliance asset ${newRecord.complianceType} by ${newRecord.contractorName}.`);
-    
+
     // Automated configurable email notification dispatch
     triggerEmailNotification('compliance.created', newRecord, {
       site: newRecord.siteName || 'All Sites',
@@ -2572,7 +2664,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setGpAppointmentRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Referrals', `GP: ${newRecord.portReference}`, newRecord.siteName || 'Site', `Booked GP appointment for Room ${newRecord.roomNo} (${newRecord.portReference}).`);
-    
+
     // Automated configurable email notification dispatch
     triggerEmailNotification('gp.created', newRecord, {
       site: newRecord.siteName || 'All Sites',
@@ -2585,7 +2677,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     setGpAppointmentRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates, updatedAt: now } : rec));
     addAuditEntry('UPDATE', 'Referrals', `GP #${id}`, 'Site', 'Updated GP appointment record.');
-    
+
     if (updates.status === 'Cancelled') {
       triggerEmailNotification('gp.dna_missed', { id, ...updates }, {
         severity: 'Medium',
@@ -2621,7 +2713,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setRfaWelfareRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Vulnerable SUs', `RFA Welfare: ${newRecord.name}`, newRecord.siteName, `Conducted RFA welfare check for ${newRecord.name} (Room ${newRecord.roomOrFlatNo}).`);
-    
+
     // Automated configurable email notification dispatch
     triggerEmailNotification('welfare.created', newRecord, {
       site: newRecord.siteName,
@@ -2670,7 +2762,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setDispersalRecords(prev => [newRecord, ...prev]);
     addAuditEntry('CREATE', 'Referrals', `Dispersal: ${newRecord.suPortNassRef}`, newRecord.siteName, `Recorded dispersal entry for SU ${newRecord.suPortNassRef} (Flat ${newRecord.flatRoomNumber}).`);
-    
+
     // Automated configurable email notification dispatch
     triggerEmailNotification('dispersal.created', newRecord, {
       site: newRecord.siteName,
@@ -2780,10 +2872,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSites(prev => [...prev, newSite]);
     apiService.saveEntityRecord('sites', newSite).catch(err => console.error('Site DB save error:', err));
     addAuditEntry(
-      'CREATE', 
-      'Properties', 
-      `Property: ${newSite.name}${newSite.pid ? ` (${newSite.pid})` : ''}`, 
-      newSite.name, 
+      'CREATE',
+      'Properties',
+      `Property: ${newSite.name}${newSite.pid ? ` (${newSite.pid})` : ''}`,
+      newSite.name,
       `Created accommodation property record: ${newSite.name} in ${newSite.city} (Capacity: ${newSite.capacity} residents, Status: ${newSite.status}${newSite.leadOfficer ? `, Lead Officer: ${newSite.leadOfficer}` : ''}${newSite.contactNumber ? `, Contact: ${newSite.contactNumber}` : ''}).`
     );
   }, [addAuditEntry]);
@@ -2821,10 +2913,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const desc = changes.length > 0 ? changes.join('; ') : 'Updated property operational parameters';
 
     addAuditEntry(
-      'UPDATE', 
-      'Properties', 
-      `Property: ${propName}${updates.pid || current?.pid ? ` (${updates.pid || current?.pid})` : ''}`, 
-      propName, 
+      'UPDATE',
+      'Properties',
+      `Property: ${propName}${updates.pid || current?.pid ? ` (${updates.pid || current?.pid})` : ''}`,
+      propName,
       `Updated property record for ${propName}: ${desc}.`
     );
   }, [sites, addAuditEntry]);
@@ -2838,16 +2930,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Are you sure you want to delete ${current.name}? All associate records must be transferred.`,
       confirmLabel: 'Decommission Site',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setSites(prev => prev.filter(s => s.id !== id));
-        apiService.deleteEntityRecord('sites', id).catch(err => console.error('Site DB delete error:', err));
-        addAuditEntry(
-          'DELETE', 
-          'Properties', 
-          `Property: ${current.name}${current.pid ? ` (${current.pid})` : ''}`, 
-          current.name, 
-          `Decommissioned/deleted accommodation property: ${current.name} in ${current.city} (Capacity: ${current.capacity}, Lead: ${current.leadOfficer || 'Unassigned'}).`
-        );
+        try {
+          const res = await apiService.deleteEntityRecord('sites', id);
+          if (res.success === false) {
+            console.error('Site DB delete error:', res.error);
+          } else {
+            addAuditEntry(
+              'DELETE',
+              'Properties',
+              `Property: ${current.name}${current.pid ? ` (${current.pid})` : ''}`,
+              current.name,
+              `Decommissioned/deleted accommodation property: ${current.name} in ${current.city} (Capacity: ${current.capacity}, Lead: ${current.leadOfficer || 'Unassigned'}).`
+            );
+          }
+        } catch (err) {
+          console.error('Site DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2893,10 +2993,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const desc = changes.length > 0 ? changes.join('; ') : 'Updated account profile & permissions';
 
     addAuditEntry(
-      'UPDATE', 
-      'Users', 
-      `User: ${userName}${userEmail ? ` (${userEmail})` : ''}`, 
-      (updates.assignedSites && updates.assignedSites[0]) || (current?.assignedSites && current.assignedSites[0]) || (current as any)?.assignedSite || 'All', 
+      'UPDATE',
+      'Users',
+      `User: ${userName}${userEmail ? ` (${userEmail})` : ''}`,
+      (updates.assignedSites && updates.assignedSites[0]) || (current?.assignedSites && current.assignedSites[0]) || (current as any)?.assignedSite || 'All',
       `Updated user record for ${userName}: ${desc}.`
     );
   }, [users, addAuditEntry, triggerEmailNotification]);
@@ -2914,7 +3014,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setUsers(prev => [...prev, newUser]);
     apiService.saveEntityRecord('users', newUser).catch(err => console.error('User DB save error:', err));
-    
+
     // Automated configurable email notification dispatch
     triggerEmailNotification('user.created', newUser, {
       site: safeAssignedSites[0] || 'All Sites',
@@ -2924,10 +3024,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const assigned = safeAssignedSites.join(', ') || 'All Sites';
     addAuditEntry(
-      'CREATE', 
-      'Users', 
-      `User: ${newUser.name} (${newUser.email})`, 
-      safeAssignedSites[0] || 'All', 
+      'CREATE',
+      'Users',
+      `User: ${newUser.name} (${newUser.email})`,
+      safeAssignedSites[0] || 'All',
       `Created user account for ${newUser.name} (Role: ${newUser.role}, Status: ${newUser.status}, Assigned: ${assigned}).`
     );
   }, [addAuditEntry, triggerEmailNotification]);
@@ -2941,17 +3041,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Permanently delete user account for ${current.name} (${current.role})?`,
       confirmLabel: 'Delete User',
       isDanger: true,
-      onConfirm: () => {
+      onConfirm: async () => {
         setUsers(prev => prev.filter(u => u.id !== id));
-        apiService.deleteEntityRecord('users', id).catch(err => console.error('User DB delete error:', err));
-        const currentSite = (current.assignedSites && current.assignedSites[0]) || (current as any).assignedSite || 'All';
-        addAuditEntry(
-          'DELETE', 
-          'Users', 
-          `User: ${current.name} (${current.email})`, 
-          currentSite, 
-          `Permanently deleted user account for ${current.name} (Role: ${current.role}, Email: ${current.email}).`
-        );
+        try {
+          const res = await apiService.deleteEntityRecord('users', id);
+          if (res.success === false) {
+            console.error('User DB delete error:', res.error);
+          } else {
+            const currentSite = (current.assignedSites && current.assignedSites[0]) || (current as any).assignedSite || 'All';
+            addAuditEntry(
+              'DELETE',
+              'Users',
+              `User: ${current.name} (${current.email})`,
+              currentSite,
+              `Permanently deleted user account for ${current.name} (Role: ${current.role}, Email: ${current.email}).`
+            );
+          }
+        } catch (err) {
+          console.error('User DB delete error:', err);
+        }
         closeConfirmation();
       }
     });
@@ -2967,6 +3075,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       saveStorage('user_groups', updated);
       return updated;
     });
+    apiService.saveEntityRecord('userGroups', newGroup).catch(err => console.error('User group DB save error:', err));
     addAuditEntry('CREATE', 'Users', newGroup.name, 'Group Creation', `Created user group "${newGroup.name}" with ${newGroup.userIds.length} users and ${newGroup.assignedProperties.length} properties.`);
   }, [addAuditEntry]);
 
@@ -2976,6 +3085,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       saveStorage('user_groups', updated);
       return updated;
     });
+    apiService.updateEntityRecord('userGroups', id, updates).catch(err => console.error('User group DB update error:', err));
     addAuditEntry('UPDATE', 'Users', id, 'Group Update', `Updated user group ${id}`);
   }, [addAuditEntry]);
 
@@ -2985,6 +3095,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       saveStorage('user_groups', updated);
       return updated;
     });
+    apiService.deleteEntityRecord('userGroups', id).catch(err => console.error('User group DB delete error:', err));
     addAuditEntry('DELETE', 'Users', id, 'Group Deletion', `Deleted user group ${id}`);
   }, [addAuditEntry]);
 
@@ -3758,6 +3869,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateEscalation,
       deleteEscalation,
       addDocument,
+      updateDocument,
       deleteDocument,
       syncSharePointNow,
       resetAllData,

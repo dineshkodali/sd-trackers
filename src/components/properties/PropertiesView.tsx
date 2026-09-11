@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Building2, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Users, 
-  MapPin, 
-  Phone, 
-  UserCheck, 
-  X, 
-  Check, 
+import {
+  Building2,
+  Plus,
+  Search,
+  Edit3,
+  Trash2,
+  Users,
+  MapPin,
+  Phone,
+  UserCheck,
+  X,
+  Check,
   AlertCircle,
   ShieldAlert,
   RotateCcw,
@@ -20,7 +20,9 @@ import {
   History,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Eye,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PropertyInfo } from '../../types';
@@ -30,6 +32,12 @@ import { ExportDropdown } from '../common/ExportDropdown';
 import { SearchInput } from '../common/SearchInput';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { TableColumnConfig } from '../../types/tableSchema';
+import { sitesTableConfig } from '../../config/trackerTableConfigs';
 
 const propertyExportColumns: ExportColumnOption[] = [
   { id: 'pid', label: 'PID (Hotel Code)' },
@@ -42,15 +50,15 @@ const propertyExportColumns: ExportColumnOption[] = [
 ];
 
 export const PropertiesView: React.FC = () => {
-  const { 
-    properties, 
+  const {
+    properties,
     users,
     userGroups,
     updateUserGroup,
-    addProperty, 
+    addProperty,
     updateProperty,
     updateUser,
-    deleteProperty, 
+    deleteProperty,
     canManageProperties,
     currentUserRole,
     setCurrentUserRole,
@@ -62,7 +70,7 @@ export const PropertiesView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Under Maintenance'>('All');
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
-  
+
   // Sorting
   const [sortField, setSortField] = useState<keyof PropertyInfo>('name');
   const [sortAsc, setSortAsc] = useState<boolean>(true);
@@ -71,6 +79,15 @@ export const PropertiesView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
+  // Dynamic Table Schema & Custom Fields Hook
+  const {
+    columns: sitesColumns,
+    tableColumns: visibleSitesColumns,
+    saveColumns: handleSaveSitesColumns,
+    resetToDefault: handleResetSitesColumns
+  } = useTableSchema<PropertyInfo>('sites', sitesTableConfig as any);
+  const [isSchemaEditorOpen, setIsSchemaEditorOpen] = useState<boolean>(false);
+
   // Export Modal state
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportModalFormat, setExportModalFormat] = useState<ExportFormat>('pdf');
@@ -78,17 +95,7 @@ export const PropertiesView: React.FC = () => {
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<PropertyInfo | null>(null);
-
-  // Form states
-  const [formData, setFormData] = useState<Omit<PropertyInfo, 'id'>>({
-    pid: '',
-    name: '',
-    city: '',
-    capacity: 100,
-    status: 'Active',
-    leadOfficer: '',
-    contactNumber: ''
-  });
+  const [viewingProperty, setViewingProperty] = useState<PropertyInfo | null>(null);
 
   const hasAdminAuthority = canManageProperties();
   const isAdminRole = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
@@ -133,7 +140,7 @@ export const PropertiesView: React.FC = () => {
         (prop.city || '').toLowerCase().includes(q) ||
         (prop.leadOfficer && prop.leadOfficer.toLowerCase().includes(q))
       );
-      
+
       const matchesStatus = statusFilter === 'All' || prop.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -203,8 +210,8 @@ export const PropertiesView: React.FC = () => {
   }) => {
     const dataToExport = getExportDataForScope(scope);
     const colMap = getExportColumnMap();
-    const cols = selectedColumns && selectedColumns.length > 0 
-      ? selectedColumns 
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? selectedColumns
       : propertyExportColumns.map(c => c.id);
     const activeCols = cols.filter(c => colMap[c]);
     const headers = activeCols.map(c => colMap[c].label);
@@ -228,8 +235,8 @@ export const PropertiesView: React.FC = () => {
     const dataToExport = getExportDataForScope(scope);
     const title = 'Contracted Accommodation & Properties Directory';
 
-    const cols = selectedColumns && selectedColumns.length > 0 
-      ? selectedColumns 
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? selectedColumns
       : propertyExportColumns.map(c => c.id);
 
     const colMap = getExportColumnMap();
@@ -262,60 +269,158 @@ export const PropertiesView: React.FC = () => {
   };
 
   const handleOpenAdd = () => {
-    setFormData({
-      pid: '',
-      name: '',
-      city: '',
-      capacity: 100,
-      status: 'Active',
-      leadOfficer: '',
-      contactNumber: ''
-    });
     setIsAddModalOpen(true);
   };
 
   const handleOpenEdit = (prop: PropertyInfo) => {
     setEditingProperty(prop);
-    setFormData({
-      pid: prop.pid || '',
-      name: prop.name,
-      city: prop.city,
-      capacity: prop.capacity,
-      status: prop.status,
-      leadOfficer: prop.leadOfficer || '',
-      contactNumber: prop.contactNumber || ''
-    });
-    const assignedGroup = userGroups.find(g => g.assignedProperty === prop.name || g.assignedProperties?.includes(prop.name));
-    setSelectedGroupId(assignedGroup ? assignedGroup.id : '');
   };
 
-  const handleSaveAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim() || !formData.city.trim()) return;
-    addProperty(formData);
+  const handleSaveAdd = async (data: Partial<PropertyInfo>) => {
+    if (!data.name?.trim() || !data.city?.trim()) return;
+    addProperty({
+      ...data,
+      pid: data.pid?.trim() || '',
+      name: data.name.trim(),
+      city: data.city.trim(),
+      capacity: Number(data.capacity) || 100,
+      status: (data.status as any) || 'Active',
+      leadOfficer: data.leadOfficer?.trim() || '',
+      contactNumber: data.contactNumber?.trim() || ''
+    } as any);
     setIsAddModalOpen(false);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProperty || !formData.name.trim() || !formData.city.trim()) return;
+  const handleSaveEdit = async (data: Partial<PropertyInfo>) => {
+    if (!editingProperty || !data.name?.trim() || !data.city?.trim()) return;
     const oldName = editingProperty.name;
-    const newName = formData.name.trim();
-    updateProperty(editingProperty.id, { ...formData, name: newName });
-
-    userGroups.forEach(g => {
-      if (g.assignedProperty === oldName || g.assignedProperty === newName || g.assignedProperties?.includes(oldName) || g.assignedProperties?.includes(newName)) {
-        if (g.id !== selectedGroupId) {
-          updateUserGroup(g.id, { assignedProperty: '', assignedProperties: [] });
-        }
-      }
+    const newName = data.name.trim();
+    updateProperty(editingProperty.id, {
+      ...editingProperty,
+      ...data,
+      name: newName,
+      capacity: Number(data.capacity) || 100,
+      status: (data.status as any) || 'Active'
     });
 
-    if (selectedGroupId) {
-      updateUserGroup(selectedGroupId, { assignedProperty: newName, assignedProperties: [newName] });
+    setEditingProperty(null);
+  };
+
+  const renderColumnCell = (col: TableColumnConfig<PropertyInfo>, prop: PropertyInfo) => {
+    const val = (prop as any)[col.key];
+
+    if (col.renderCell) {
+      return col.renderCell(val, prop);
     }
 
-    setEditingProperty(null);
+    if (col.key === 'pid') {
+      return prop.pid ? (
+        <span className="font-mono font-bold text-xs bg-[#f0fdfa] text-[#0f766e] px-2 py-0.5 rounded border border-[#99f6e4]">
+          {prop.pid}
+        </span>
+      ) : (
+        <span className="text-neutral-400 font-mono text-xs">—</span>
+      );
+    }
+
+    if (col.key === 'name') {
+      return (
+        <div className="flex items-center gap-2">
+          <Building2 className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
+          <button
+            onClick={() => setViewingProperty(prop)}
+            className="font-semibold text-[#242424] hover:text-[#0d9488] hover:underline text-left cursor-pointer"
+          >
+            {prop.name}
+          </button>
+          {prop.name === 'Burrows Court' && (
+            <span className="text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded">
+              Super Admin / Admin Only
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    if (col.key === 'city') {
+      return (
+        <div className="flex items-center gap-1.5 text-[#605e5c]">
+          <MapPin className="w-3 h-3 text-neutral-400 shrink-0" />
+          <span>{prop.city || '—'}</span>
+        </div>
+      );
+    }
+
+    if (col.key === 'capacity') {
+      return (
+        <div className="flex items-center gap-1.5 text-[#242424]">
+          <Users className="w-3 h-3 text-neutral-400 shrink-0" />
+          <span>{prop.capacity ? `${prop.capacity} residents` : '—'}</span>
+        </div>
+      );
+    }
+
+    if (col.key === 'leadOfficer') {
+      return (
+        <div className="flex items-center gap-1.5 text-[#242424]">
+          <UserCheck className="w-3 h-3 text-neutral-400 shrink-0" />
+          <span>{prop.leadOfficer || 'Unassigned'}</span>
+        </div>
+      );
+    }
+
+    if (col.key === 'contactNumber') {
+      return (
+        <div className="flex items-center gap-1.5 text-[#605e5c]">
+          <Phone className="w-3 h-3 text-neutral-400 shrink-0" />
+          <span>{prop.contactNumber || '—'}</span>
+        </div>
+      );
+    }
+
+    if (col.key === 'status') {
+      return hasAdminAuthority ? (
+        <select
+          value={prop.status}
+          onChange={e => updateProperty(prop.id, { status: e.target.value as 'Active' | 'Under Maintenance' })}
+          className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${prop.status === 'Active'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+              : 'bg-amber-50 text-amber-700 border-amber-300'
+            }`}
+          title="Click to update operational status"
+        >
+          <option value="Active" className="bg-white text-neutral-900 font-normal">Active</option>
+          <option value="Under Maintenance" className="bg-white text-neutral-900 font-normal">Under Maintenance</option>
+        </select>
+      ) : (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${prop.status === 'Active'
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : 'bg-amber-50 text-amber-700 border border-amber-200'
+          }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${prop.status === 'Active' ? 'bg-emerald-600' : 'bg-amber-600'}`} />
+          {prop.status}
+        </span>
+      );
+    }
+
+    // Custom or fallback column rendering
+    if (typeof val === 'boolean') {
+      return (
+        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${val ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-100 text-neutral-600'}`}>
+          {val ? 'Yes' : 'No'}
+        </span>
+      );
+    }
+
+    if (col.badgeColors && val && col.badgeColors[String(val)]) {
+      return (
+        <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded border ${col.badgeColors[String(val)]}`}>
+          {String(val)}
+        </span>
+      );
+    }
+
+    return <span className="text-[#242424] text-[11px]">{val !== undefined && val !== null && val !== '' ? String(val) : '—'}</span>;
   };
 
   return (
@@ -336,6 +441,19 @@ export const PropertiesView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Super Admin Table Customizer */}
+          {currentUserRole === 'Super Admin' && (
+            <button
+              id="btn-customize-sites-table"
+              onClick={() => setIsSchemaEditorOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#edebe9] border border-[#8a8886] text-[#323130] rounded-xs text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              title="Configure Table Headers & Form Fields (Super Admin Only)"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>Customize Table</span>
+            </button>
+          )}
+
           {/* Audit Trail Button */}
           <button
             id="btn-view-property-audit"
@@ -414,11 +532,10 @@ export const PropertiesView: React.FC = () => {
                 setStatusFilter(st);
                 setCurrentPage(1);
               }}
-              className={`px-3 py-1 text-xs font-medium rounded-xs transition-colors ${
-                statusFilter === st 
-                  ? 'bg-[#0d9488] text-white font-semibold' 
+              className={`px-3 py-1 text-xs font-medium rounded-xs transition-colors ${statusFilter === st
+                  ? 'bg-[#0d9488] text-white font-semibold'
                   : 'bg-[#faf9f8] text-[#323130] hover:bg-[#edebe9] border border-[#edebe9]'
-              }`}
+                }`}
             >
               {st}
             </button>
@@ -432,125 +549,47 @@ export const PropertiesView: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-[#f8f9fa] border-b border-[#e1dfdd] text-[#605e5c] font-semibold select-none">
-                <th 
-                  onClick={() => handleSort('pid')} 
-                  className="p-3 w-28 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by PID"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>PID</span>
-                    {sortField === 'pid' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('name')} 
-                  className="p-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Property Name"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Site / Property Name</span>
-                    {sortField === 'name' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('city')} 
-                  className="p-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by City"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>City / Area</span>
-                    {sortField === 'city' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('capacity')} 
-                  className="p-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Capacity"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Capacity</span>
-                    {sortField === 'capacity' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th 
-                  onClick={() => handleSort('leadOfficer')} 
-                  className="p-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Lead Contact"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Lead Contact</span>
-                    {sortField === 'leadOfficer' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
-                <th className="p-3">Phone</th>
+                {visibleSitesColumns.map(col => (
+                  <th
+                    key={String(col.key)}
+                    onClick={() => handleSort(col.key as any)}
+                    className="p-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                    title={`Sort by ${col.label}`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>{col.label}</span>
+                      {col.isCustom && (
+                        <span className="px-1 text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded">
+                          custom
+                        </span>
+                      )}
+                      {sortField === col.key ? (
+                        sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                      )}
+                    </div>
+                  </th>
+                ))}
                 <th className="p-3">Assigned Staff & Managers</th>
-                <th 
-                  onClick={() => handleSort('status')} 
-                  className="p-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                  title="Sort by Status"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Status</span>
-                    {sortField === 'status' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                  </div>
-                </th>
                 {hasAdminAuthority && <th className="p-3 text-right w-24 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9]">
               {paginatedProperties.length === 0 ? (
                 <tr>
-                  <td colSpan={hasAdminAuthority ? 9 : 8} className="p-12 text-center text-[#605e5c]">
+                  <td colSpan={visibleSitesColumns.length + (hasAdminAuthority ? 2 : 1)} className="p-12 text-center text-[#605e5c]">
                     No properties match your filter criteria.
                   </td>
                 </tr>
               ) : (
                 paginatedProperties.map(prop => (
                   <tr key={prop.id} className="hover:bg-[#f3f8fd] transition-colors">
-                    <td className="p-3">
-                      {prop.pid ? (
-                        <span className="font-mono font-bold text-xs bg-[#f0fdfa] text-[#0f766e] px-2 py-0.5 rounded border border-[#99f6e4]">
-                          {prop.pid}
-                        </span>
-                      ) : (
-                        <span className="text-neutral-400 font-mono text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="p-3 font-semibold text-[#242424]">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
-                        <span>{prop.name}</span>
-                        {prop.name === 'Burrows Court' && (
-                          <span className="text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 px-1.5 py-0.2 rounded">
-                            Super Admin / Admin Only
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3 text-[#605e5c]">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 text-neutral-400" />
-                        <span>{prop.city}</span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-[#242424]">
-                      <div className="flex items-center gap-1.5">
-                        <Users className="w-3 h-3 text-neutral-400" />
-                        <span>{prop.capacity} residents</span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-[#242424]">
-                      <div className="flex items-center gap-1.5">
-                        <UserCheck className="w-3 h-3 text-neutral-400" />
-                        <span>{prop.leadOfficer || 'Unassigned'}</span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-[#605e5c]">
-                      <div className="flex items-center gap-1.5">
-                        <Phone className="w-3 h-3 text-neutral-400" />
-                        <span>{prop.contactNumber || '—'}</span>
-                      </div>
-                    </td>
+                    {visibleSitesColumns.map(col => (
+                      <td key={String(col.key)} className="p-3">
+                        {renderColumnCell(col, prop)}
+                      </td>
+                    ))}
                     <td className="p-3 text-[#323130]">
                       {(() => {
                         const assigned = users.filter(u => u.assignedSites?.includes(prop.name) || u.assignedSites?.includes('All'));
@@ -567,35 +606,16 @@ export const PropertiesView: React.FC = () => {
                         );
                       })()}
                     </td>
-                    <td className="p-3 whitespace-nowrap">
-                      {hasAdminAuthority ? (
-                        <select
-                          value={prop.status}
-                          onChange={e => updateProperty(prop.id, { status: e.target.value as 'Active' | 'Under Maintenance' })}
-                          className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
-                            prop.status === 'Active'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                              : 'bg-amber-50 text-amber-700 border-amber-300'
-                          }`}
-                          title="Click to update operational status"
-                        >
-                          <option value="Active" className="bg-white text-neutral-900 font-normal">Active</option>
-                          <option value="Under Maintenance" className="bg-white text-neutral-900 font-normal">Under Maintenance</option>
-                        </select>
-                      ) : (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          prop.status === 'Active' 
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${prop.status === 'Active' ? 'bg-emerald-600' : 'bg-amber-600'}`} />
-                          {prop.status}
-                        </span>
-                      )}
-                    </td>
                     {hasAdminAuthority && (
                       <td className="p-3 text-right sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setViewingProperty(prop)}
+                            className="p-1.5 text-neutral-600 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
+                            title="View Property Record"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             onClick={() => handleOpenEdit(prop)}
                             className="p-1.5 text-[#0d9488] hover:bg-[#edebe9] rounded"
@@ -630,260 +650,59 @@ export const PropertiesView: React.FC = () => {
             setPageSize(size);
             setCurrentPage(1);
           }}
-          pageSizeOptions={[10, 20, 50]}
         />
       </div>
 
       {/* ADD PROPERTY MODAL */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="px-5 py-3.5 bg-[#f8f9fa] border-b border-[#e1dfdd] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#0d9488]" />
-                <h3 className="text-sm font-semibold text-[#242424]">Add New Property</h3>
-              </div>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-neutral-400 hover:text-neutral-700">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveAdd} className="p-5 space-y-3.5 text-xs">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1">
-                  <label className="block font-semibold text-[#323130] mb-1">PID (Hotel Code)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., 519"
-                    value={formData.pid || ''}
-                    onChange={e => setFormData({ ...formData, pid: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block font-semibold text-[#323130] mb-1">Property Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., Brit Hotel"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-[#323130] mb-1">City / Borough *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., London (Redbridge)"
-                    value={formData.city}
-                    onChange={e => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-[#323130] mb-1">Capacity (Rooms/Residents)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formData.capacity}
-                    onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-[#323130] mb-1">Lead Contact Officer</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Sarah Jenkins"
-                    value={formData.leadOfficer}
-                    onChange={e => setFormData({ ...formData, leadOfficer: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-[#323130] mb-1">Contact Phone</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., +44 20 8599 0100"
-                    value={formData.contactNumber}
-                    onChange={e => setFormData({ ...formData, contactNumber: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#323130] mb-1">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs bg-white focus:outline-hidden focus:border-[#0d9488]"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Under Maintenance">Under Maintenance</option>
-                </select>
-              </div>
-
-              <div className="pt-3 border-t border-[#edebe9] flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-3.5 py-1.5 bg-[#edebe9] hover:bg-[#e1dfdd] text-[#323130] font-semibold rounded-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold rounded-xs shadow-xs"
-                >
-                  Add Property
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <DynamicRecordFormModal<PropertyInfo>
+        isOpen={isAddModalOpen}
+        title="Add New Property / Site"
+        columns={sitesColumns as any}
+        initialValues={{
+          status: 'Active',
+          capacity: 100
+        }}
+        onClose={() => setIsAddModalOpen(false)}
+        onSave={handleSaveAdd}
+      />
 
       {/* EDIT PROPERTY MODAL */}
-      {editingProperty && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="px-5 py-3.5 bg-[#f8f9fa] border-b border-[#e1dfdd] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-[#0d9488]" />
-                <h3 className="text-sm font-semibold text-[#242424]">Edit Property: {editingProperty.name}</h3>
-              </div>
-              <button onClick={() => setEditingProperty(null)} className="text-neutral-400 hover:text-neutral-700">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <DynamicRecordFormModal<PropertyInfo>
+        isOpen={Boolean(editingProperty)}
+        title={editingProperty ? `Edit Property: ${editingProperty.name}` : 'Edit Property'}
+        columns={sitesColumns as any}
+        initialValues={editingProperty}
+        isEdit={true}
+        onClose={() => setEditingProperty(null)}
+        onSave={handleSaveEdit}
+      />
 
-            <form onSubmit={handleSaveEdit} className="p-5 space-y-3.5 text-xs">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1">
-                  <label className="block font-semibold text-[#323130] mb-1">PID (Hotel Code)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., 519"
-                    value={formData.pid || ''}
-                    onChange={e => setFormData({ ...formData, pid: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block font-semibold text-[#323130] mb-1">Property Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
+      {/* VIEW PROPERTY DOSSIER MODAL */}
+      <DynamicRecordViewModal<PropertyInfo>
+        isOpen={Boolean(viewingProperty)}
+        title={viewingProperty ? `Property Record: ${viewingProperty.name}` : 'Property Details'}
+        columns={sitesColumns as any}
+        record={viewingProperty}
+        onClose={() => setViewingProperty(null)}
+        canEdit={hasAdminAuthority}
+        onEdit={() => {
+          if (viewingProperty) {
+            setEditingProperty(viewingProperty);
+            setViewingProperty(null);
+          }
+        }}
+      />
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-[#323130] mb-1">City / Borough *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.city}
-                    onChange={e => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-[#323130] mb-1">Capacity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formData.capacity}
-                    onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-[#323130] mb-1">Lead Contact Officer</label>
-                  <input
-                    type="text"
-                    value={formData.leadOfficer}
-                    onChange={e => setFormData({ ...formData, leadOfficer: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-[#323130] mb-1">Contact Phone</label>
-                  <input
-                    type="text"
-                    value={formData.contactNumber}
-                    onChange={e => setFormData({ ...formData, contactNumber: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#323130] mb-1">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs bg-white focus:outline-hidden focus:border-[#0d9488]"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Under Maintenance">Under Maintenance</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[#323130] mb-1">Assigned Staff Group (One group per property)</label>
-                <select
-                  value={selectedGroupId}
-                  onChange={e => setSelectedGroupId(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs bg-white focus:outline-hidden focus:border-[#0d9488]"
-                >
-                  <option value="">-- No Staff Group Assigned --</option>
-                  {userGroups.map(g => {
-                    const isAssignedToOther = g.assignedProperty && g.assignedProperty !== editingProperty?.name && !g.assignedProperties?.includes(editingProperty?.name || '');
-                    return (
-                      <option key={g.id} value={g.id}>
-                        {g.name} {isAssignedToOther ? `(Currently assigned to: ${g.assignedProperty})` : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              <div className="pt-3 border-t border-[#edebe9] flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingProperty(null)}
-                  className="px-3.5 py-1.5 bg-[#edebe9] hover:bg-[#e1dfdd] text-[#323130] font-semibold rounded-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold rounded-xs shadow-xs"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Table Schema / Header Customizer Modal (Super Admin Only) */}
+      <TableSchemaEditorModal<PropertyInfo>
+        isOpen={isSchemaEditorOpen}
+        onClose={() => setIsSchemaEditorOpen(false)}
+        moduleTitle="Properties & Sites Directory"
+        columns={sitesColumns}
+        onSaveColumns={handleSaveSitesColumns}
+        onResetToDefault={handleResetSitesColumns}
+        currentUserRole={currentUserRole}
+      />
 
       {/* Export Selection & Configuration Modal */}
       <ExportModal

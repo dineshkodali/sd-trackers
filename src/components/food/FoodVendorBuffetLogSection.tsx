@@ -15,16 +15,26 @@ import {
   UserCheck,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  SlidersHorizontal,
+  Eye,
+  LayoutGrid,
+  Table as TableIcon
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PropertyFoodVendorBuffetLog, FoodVendorName, FoodBuffetItemBreakdown, DayOfWeek } from '../../types';
+import { Pagination } from '../common/Pagination';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { WeekSwitcher } from '../common/WeekSwitcher';
 import { validateFoodLog } from '../../utils/validationSchemas';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { FOOD_VENDOR_BUFFET_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
+import { TableColumnConfig } from '../../types/tableSchema';
 
 const DAYS_OF_WEEK = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
 type DayKey = typeof DAYS_OF_WEEK[number];
@@ -168,6 +178,24 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     }
     return getWeekBounds(activeWeekCursor || todayStr);
   }, [activeWeekCursor, todayBounds, todayStr]);
+
+  // Dynamic Table Schema Hook
+  const {
+    columns,
+    visibleColumns,
+    saveColumns,
+    resetToDefault
+  } = useTableSchema<PropertyFoodVendorBuffetLog>('foodBuffet', FOOD_VENDOR_BUFFET_TABLE_COLUMNS);
+
+  const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+  const [viewRecord, setViewRecord] = useState<PropertyFoodVendorBuffetLog | null>(null);
+  const [displayMode, setDisplayMode] = useState<'matrix' | 'table'>('matrix');
+
+  // Table sorting & pagination
+  const [tableSortField, setTableSortField] = useState<string>('startDate');
+  const [tableSortAsc, setTableSortAsc] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<PropertyFoodVendorBuffetLog | null>(null);
@@ -322,7 +350,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     return foodVendorBuffetLogs.filter(log => {
       const normVendor = log.vendor === '9 cusines' ? '9 Cuisines' : log.vendor === 'sands' ? 'Sands' : log.vendor;
       if (siteFilter !== 'all' && log.site !== siteFilter) return false;
-      if (vendorFilter !== 'all' && normVendor !== vendorFilter && log.vendor !== vendorFilter) return false;
+      if ((vendorFilter as string) !== 'all' && normVendor !== vendorFilter && log.vendor !== vendorFilter) return false;
 
       // Week filter
       if (activeWeekCursor !== 'all') {
@@ -359,6 +387,98 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
       setMatrixSortCol(col);
       setMatrixSortAsc(true);
     }
+  };
+
+  const handleTableSort = (field: string) => {
+    if (tableSortField === field) {
+      setTableSortAsc(!tableSortAsc);
+    } else {
+      setTableSortField(field);
+      setTableSortAsc(true);
+    }
+  };
+
+  const sortedTableLogs = useMemo(() => {
+    return [...filteredLogs].sort((a, b) => {
+      let valA: any = (a as any)[tableSortField] ?? '';
+      let valB: any = (b as any)[tableSortField] ?? '';
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA < valB) return tableSortAsc ? -1 : 1;
+      if (valA > valB) return tableSortAsc ? 1 : -1;
+      return 0;
+    });
+  }, [filteredLogs, tableSortField, tableSortAsc]);
+
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedTableLogs.slice(start, start + pageSize);
+  }, [sortedTableLogs, currentPage, pageSize]);
+
+  const renderColumnCell = (col: TableColumnConfig<PropertyFoodVendorBuffetLog>, log: PropertyFoodVendorBuffetLog) => {
+    if (col.renderCell) {
+      return col.renderCell((log as any)[col.key], log);
+    }
+
+    const value = (log as any)[col.key];
+
+    if (col.key === 'vendor') {
+      const normVendor = log.vendor === '9 cusines' ? '9 Cuisines' : log.vendor === 'sands' ? 'Sands' : log.vendor;
+      return (
+        <span className="px-2 py-0.5 bg-orange-100 text-orange-900 border border-orange-200 font-bold text-xs rounded-xs">
+          {normVendor}
+        </span>
+      );
+    }
+
+    if (col.key === 'site') {
+      return (
+        <div className="flex items-center gap-1.5 font-semibold text-[#242424]">
+          <Building2 className="w-4 h-4 text-[#0d9488]" />
+          <span>{log.site}</span>
+        </div>
+      );
+    }
+
+    if (col.key === 'weekRange') {
+      return (
+        <div className="flex items-center gap-1 text-xs text-[#0f766e] font-semibold">
+          <Calendar className="w-3.5 h-3.5 text-[#0d9488]" />
+          <span>{log.weekRange}</span>
+        </div>
+      );
+    }
+
+    if (col.badgeColors && value) {
+      const badgeClass = col.badgeColors[value] || 'bg-gray-100 text-gray-800';
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[11px] font-semibold ${badgeClass}`}>
+          {value}
+        </span>
+      );
+    }
+
+    if (col.key === 'notes') {
+      return log.notes ? (
+        <span className="leading-relaxed text-neutral-700">{log.notes}</span>
+      ) : (
+        <span className="text-neutral-400 italic">—</span>
+      );
+    }
+
+    if (col.key === 'lastUpdatedBy') {
+      return <span className="text-neutral-600 text-xs whitespace-nowrap">{value || '—'}</span>;
+    }
+
+    if (col.type === 'date') {
+      return <span className="font-mono text-[#323130]">{value || '—'}</span>;
+    }
+
+    if (value === null || value === undefined || value === '') {
+      return <span className="text-[#a19f9d]">—</span>;
+    }
+
+    return String(value);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -545,7 +665,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
         orientation: orientation || 'landscape',
         isCompact: isCompact !== false,
         metadata: [
-          { label: 'Vendor Scope', value: vendorFilter === 'all' ? 'All 4 Vendors' : vendorFilter },
+          { label: 'Vendor Scope', value: (vendorFilter as string) === 'all' ? 'All 4 Vendors' : vendorFilter },
           { label: 'Site Scope', value: siteFilter === 'all' ? 'All Properties' : siteFilter },
           { label: 'Week Filter', value: activeWeekCursor === 'all' ? 'All Weeks' : activeWeekInfo?.weekRange || activeWeekCursor },
           { label: 'Total Matrix Entries', value: rows.length }
@@ -574,6 +694,44 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {currentUserRole === 'Super Admin' && (
+            <button
+              type="button"
+              onClick={() => setIsSchemaModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
+              title="Super Admin: Customize table columns, headers, and fields"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+              <span>Customize Table</span>
+            </button>
+          )}
+
+          {/* View Toggle */}
+          <div className="inline-flex rounded-xs border border-[#8a8886] bg-white p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setDisplayMode('matrix')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-xs font-semibold transition-colors ${
+                displayMode === 'matrix' ? 'bg-[#0d9488] text-white' : 'text-[#323130] hover:bg-[#f3f2f1]'
+              }`}
+              title="Matrix View (7-Day Daily Breakdown)"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Matrix</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisplayMode('table')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-xs font-semibold transition-colors ${
+                displayMode === 'table' ? 'bg-[#0d9488] text-white' : 'text-[#323130] hover:bg-[#f3f2f1]'
+              }`}
+              title="Register Table View (Customizable Columns)"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span>Register Table</span>
+            </button>
+          </div>
+
           <ExportDropdown
             moduleName="4-Vendor Hot Food Buffet Matrix"
             totalRecordCount={foodVendorBuffetLogs.length}
@@ -680,220 +838,328 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Vendor Schedule Matrices */}
-      {filteredLogs.length === 0 ? (
-        <div className="bg-white border border-[#e1dfdd] p-8 text-center rounded-xs text-[#605e5c] space-y-3">
-          <UtensilsCrossed className="w-8 h-8 text-neutral-400 mx-auto" />
-          <div>
-            <p className="font-semibold text-neutral-800 text-sm">
-              No buffet log records found for <span className="text-[#d83b01] font-bold">{vendorFilter}</span> ({activeWeekBounds.label})
-            </p>
-            <p className="text-xs text-neutral-500 mt-1">
-              Use the side arrows above to move forward or backward through weeks, or record a new log.
-            </p>
+
+      {/* Vendor Schedule Matrices or Register Table */}
+      {displayMode === 'matrix' ? (
+        filteredLogs.length === 0 ? (
+          <div className="bg-white border border-[#e1dfdd] p-8 text-center rounded-xs text-[#605e5c] space-y-3">
+            <UtensilsCrossed className="w-8 h-8 text-neutral-400 mx-auto" />
+            <div>
+              <p className="font-semibold text-neutral-800 text-sm">
+                No buffet log records found for <span className="text-[#d83b01] font-bold">{vendorFilter}</span> ({(activeWeekBounds as any)?.label || ''})
+              </p>
+              <p className="text-xs text-neutral-500 mt-1">
+                Use the side arrows above to move forward or backward through weeks, or record a new log.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingLog(null);
+                setFormData({
+                  site: siteFilter !== 'all' ? siteFilter : (allowedSites[0] || 'Brit Hotel'),
+                  vendor: vendorFilter,
+                  weekRange: (activeWeekBounds as any)?.label || '',
+                  startDate: activeWeekBounds.start,
+                  endDate: activeWeekBounds.end,
+                  dailyCounts: defaultDailyCounts(),
+                  notes: 'Hot holding temperature logged on arrival at >68°C. Halal certified supply.',
+                  lastUpdatedBy: loggedInUserName
+                });
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold text-xs rounded-xs shadow-xs transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Record Buffet Log for this Week</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setEditingLog(null);
-              setFormData({
-                site: siteFilter !== 'all' ? siteFilter : (allowedSites[0] || 'Brit Hotel'),
-                vendor: vendorFilter,
-                weekRange: activeWeekBounds.label,
-                startDate: activeWeekBounds.start,
-                endDate: activeWeekBounds.end,
-                dailyCounts: defaultDailyCounts(),
-                notes: 'Hot holding temperature logged on arrival at >68°C. Halal certified supply.',
-                lastUpdatedBy: loggedInUserName
+        ) : (
+          <div className="space-y-4">
+            {filteredLogs.map(log => {
+              // Row totals calculation
+              const rowTotals = BUFFET_ROWS.map(r => {
+                let sum = 0;
+                DAYS_OF_WEEK.forEach(d => {
+                  const count = log.dailyCounts?.[d]?.[r.key] || 0;
+                  sum += count;
+                });
+                return { key: r.key, label: r.label, sum };
               });
-              setIsModalOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold text-xs rounded-xs shadow-xs transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Record Buffet Log for this Week</span>
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredLogs.map(log => {
-            // Row totals calculation
-            const rowTotals = BUFFET_ROWS.map(r => {
-              let sum = 0;
-              DAYS_OF_WEEK.forEach(d => {
-                const count = log.dailyCounts?.[d]?.[r.key] || 0;
-                sum += count;
+
+              const weekGrandTotal = rowTotals.reduce((a, b) => a + b.sum, 0);
+
+              const getRowTotal = (rowKey: string) => {
+                return DAYS_OF_WEEK.reduce((acc, d) => acc + (log.dailyCounts?.[d]?.[rowKey] || 0), 0);
+              };
+
+              const sortedBuffetRows = [...BUFFET_ROWS].sort((a, b) => {
+                if (matrixSortCol === 'category') {
+                  return matrixSortAsc ? a.label.localeCompare(b.label) : b.label.localeCompare(a.label);
+                }
+                if (matrixSortCol === 'total') {
+                  const sumA = getRowTotal(a.key);
+                  const sumB = getRowTotal(b.key);
+                  return matrixSortAsc ? sumA - sumB : sumB - sumA;
+                }
+                if (DAYS_OF_WEEK.includes(matrixSortCol as any)) {
+                  const countA = log.dailyCounts?.[matrixSortCol as DayKey]?.[a.key] || 0;
+                  const countB = log.dailyCounts?.[matrixSortCol as DayKey]?.[b.key] || 0;
+                  return matrixSortAsc ? countA - countB : countB - countA;
+                }
+                return 0;
               });
-              return { key: r.key, label: r.label, sum };
-            });
 
-            const weekGrandTotal = rowTotals.reduce((a, b) => a + b.sum, 0);
-
-            const getRowTotal = (rowKey: string) => {
-              return DAYS_OF_WEEK.reduce((acc, d) => acc + (log.dailyCounts?.[d]?.[rowKey] || 0), 0);
-            };
-
-            const sortedBuffetRows = [...BUFFET_ROWS].sort((a, b) => {
-              if (matrixSortCol === 'category') {
-                return matrixSortAsc ? a.label.localeCompare(b.label) : b.label.localeCompare(a.label);
-              }
-              if (matrixSortCol === 'total') {
-                const sumA = getRowTotal(a.key);
-                const sumB = getRowTotal(b.key);
-                return matrixSortAsc ? sumA - sumB : sumB - sumA;
-              }
-              if (DAYS_OF_WEEK.includes(matrixSortCol as any)) {
-                const countA = log.dailyCounts?.[matrixSortCol as DayKey]?.[a.key] || 0;
-                const countB = log.dailyCounts?.[matrixSortCol as DayKey]?.[b.key] || 0;
-                return matrixSortAsc ? countA - countB : countB - countA;
-              }
-              return 0;
-            });
-
-            return (
-              <div 
-                key={log.id} 
-                className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden transition-all hover:border-[#0d9488]"
-              >
-                {/* Header Bar */}
-                <div className="bg-[#f3f8fd] px-4 py-2 border-b border-[#5eead4] flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="px-2.5 py-0.5 bg-orange-600 text-white font-bold text-xs rounded">
-                      Vendor: {log.vendor === '9 cusines' ? '9 Cuisines' : log.vendor === 'sands' ? 'Sands' : log.vendor}
-                    </span>
-                    <div className="flex items-center gap-1.5 font-bold text-sm text-[#242424]">
-                      <Building2 className="w-4 h-4 text-[#0d9488]" />
-                      <span>{log.site}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-xs text-[#0f766e] font-semibold bg-white px-2.5 py-1 rounded border border-[#5eead4]">
-                      <Calendar className="w-3.5 h-3.5 text-[#0d9488]" />
-                      <span>{log.weekRange}</span>
+              return (
+                <div 
+                  key={log.id} 
+                  className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden transition-all hover:border-[#0d9488]"
+                >
+                  {/* Header Bar */}
+                  <div className="bg-[#f3f8fd] px-4 py-2 border-b border-[#5eead4] flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="px-2.5 py-0.5 bg-orange-600 text-white font-bold text-xs rounded">
+                        Vendor: {log.vendor === '9 cusines' ? '9 Cuisines' : log.vendor === 'sands' ? 'Sands' : log.vendor}
+                      </span>
+                      <div className="flex items-center gap-1.5 font-bold text-sm text-[#242424]">
+                        <Building2 className="w-4 h-4 text-[#0d9488]" />
+                        <span>{log.site}</span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      {canEditRecord(log.site) && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1 text-xs text-[#0f766e] font-semibold bg-white px-2.5 py-1 rounded border border-[#5eead4]">
+                        <Calendar className="w-3.5 h-3.5 text-[#0d9488]" />
+                        <span>{log.weekRange}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => handleEditClick(log)}
-                          className="p-1 hover:bg-white text-[#0d9488] rounded border border-transparent hover:border-[#5eead4]"
-                          title="Edit Matrix"
+                          onClick={() => setViewRecord(log)}
+                          className="p-1 hover:bg-white text-[#605e5c] hover:text-[#242424] rounded border border-transparent hover:border-[#5eead4]"
+                          title="View Log Dossier"
                         >
-                          <Edit3 className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5" />
                         </button>
-                      )}
-                      {canDeleteRecord(log.site) && (
-                        <button
-                          onClick={() => {
-                            if (confirm(`Delete buffet log for ${log.vendor} at ${log.site}?`)) {
-                              deleteFoodVendorBuffetLog(log.id);
-                            }
-                          }}
-                          className="p-1 hover:bg-red-50 text-[#a4262c] rounded"
-                          title="Delete Matrix"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Matrix Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead className="bg-[#faf9f8] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap">
-                      <tr>
-                        <th 
-                          onClick={() => handleMatrixSort('category')} 
-                          className="py-2.5 px-3 min-w-[180px] bg-[#f3f2f1] cursor-pointer hover:bg-[#edebe9] transition-colors"
-                          title="Sort by Category"
-                        >
-                          <div className="flex items-center gap-1">
-                            <span>Category</span>
-                            {matrixSortCol === 'category' ? (matrixSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                          </div>
-                        </th>
-                        {DAYS_OF_WEEK.map(d => (
-                          <th 
-                            key={d} 
-                            onClick={() => handleMatrixSort(d)}
-                            className="py-2.5 px-2 text-center w-16 border-r border-[#edebe9] cursor-pointer hover:bg-[#edebe9] transition-colors"
-                            title={`Sort by ${d}`}
+                        {canEditRecord(log.site) && (
+                          <button
+                            onClick={() => handleEditClick(log)}
+                            className="p-1 hover:bg-white text-[#0d9488] rounded border border-transparent hover:border-[#5eead4]"
+                            title="Edit Matrix"
                           >
-                            <div className="flex items-center justify-center gap-0.5">
-                              <span>{d}</span>
-                              {matrixSortCol === d ? (matrixSortAsc ? <ArrowUp className="w-2.5 h-2.5 text-[#0d9488]" /> : <ArrowDown className="w-2.5 h-2.5 text-[#0d9488]" />) : <ArrowUpDown className="w-2.5 h-2.5 text-neutral-400 opacity-40" />}
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canDeleteRecord() && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete buffet log for ${log.vendor} at ${log.site}?`)) {
+                                deleteFoodVendorBuffetLog(log.id);
+                              }
+                            }}
+                            className="p-1 hover:bg-red-50 text-[#a4262c] rounded"
+                            title="Delete Matrix"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Matrix Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="bg-[#faf9f8] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap">
+                        <tr>
+                          <th 
+                            onClick={() => handleMatrixSort('category')} 
+                            className="py-2.5 px-3 min-w-[180px] bg-[#f3f2f1] cursor-pointer hover:bg-[#edebe9] transition-colors"
+                            title="Sort by Category"
+                          >
+                            <div className="flex items-center gap-1">
+                              <span>Category</span>
+                              {matrixSortCol === 'category' ? (matrixSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
                             </div>
                           </th>
-                        ))}
-                        <th 
-                          onClick={() => handleMatrixSort('total')}
-                          className="py-2.5 px-3 text-right bg-teal-50/60 text-[#0f766e] w-24 cursor-pointer hover:bg-teal-100/60 transition-colors"
-                          title="Sort by Weekly Total"
-                        >
-                          <div className="flex items-center justify-end gap-1">
-                            <span>Weekly Total</span>
-                            {matrixSortCol === 'total' ? (matrixSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
-                          </div>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#edebe9]">
-                      {sortedBuffetRows.map(row => {
-                        let rowSum = 0;
-                        return (
-                          <tr key={row.key} className="hover:bg-[#faf9f8] transition-colors">
-                            <td className="py-2 px-3 font-semibold text-[#242424] bg-neutral-50/50">
-                              {row.label}
-                            </td>
-                            {DAYS_OF_WEEK.map(d => {
-                              const count = log.dailyCounts?.[d]?.[row.key] || 0;
-                              rowSum += count;
-                              return (
-                                <td key={d} className="py-2 px-2 text-center font-mono text-[#323130] border-r border-[#edebe9]">
-                                  {count > 0 ? (
-                                    <span className="font-semibold text-neutral-800">{count}</span>
-                                  ) : (
-                                    <span className="text-neutral-400">0</span>
-                                  )}
-                                </td>
-                              );
-                            })}
-                            <td className="py-2 px-3 text-right font-mono font-bold text-[#0f766e] bg-teal-50/30">
-                              {rowSum}
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {/* Daily Totals Row */}
-                      <tr className="bg-[#edebe9] font-bold text-[#242424] border-t-2 border-[#8a8886]">
-                        <td className="py-2.5 px-3">Daily Buffet Total</td>
-                        {DAYS_OF_WEEK.map(d => {
-                          let daySum = 0;
-                          BUFFET_ROWS.forEach(r => {
-                            daySum += log.dailyCounts?.[d]?.[r.key] || 0;
-                          });
+                          {DAYS_OF_WEEK.map(d => (
+                            <th 
+                              key={d} 
+                              onClick={() => handleMatrixSort(d)}
+                              className="py-2.5 px-2 text-center w-16 border-r border-[#edebe9] cursor-pointer hover:bg-[#edebe9] transition-colors"
+                              title={`Sort by ${d}`}
+                            >
+                              <div className="flex items-center justify-center gap-0.5">
+                                <span>{d}</span>
+                                {matrixSortCol === d ? (matrixSortAsc ? <ArrowUp className="w-2.5 h-2.5 text-[#0d9488]" /> : <ArrowDown className="w-2.5 h-2.5 text-[#0d9488]" />) : <ArrowUpDown className="w-2.5 h-2.5 text-neutral-400 opacity-40" />}
+                              </div>
+                            </th>
+                          ))}
+                          <th 
+                            onClick={() => handleMatrixSort('total')}
+                            className="py-2.5 px-3 text-right bg-teal-50/60 text-[#0f766e] w-24 cursor-pointer hover:bg-teal-100/60 transition-colors"
+                            title="Sort by Weekly Total"
+                          >
+                            <div className="flex items-center justify-end gap-1">
+                              <span>Weekly Total</span>
+                              {matrixSortCol === 'total' ? (matrixSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#edebe9]">
+                        {sortedBuffetRows.map(row => {
+                          let rowSum = 0;
                           return (
-                            <td key={d} className="py-2.5 px-2 text-center font-mono text-[#0f766e] border-r border-[#d2d0ce]">
-                              {daySum}
-                            </td>
+                            <tr key={row.key} className="hover:bg-[#faf9f8] transition-colors">
+                              <td className="py-2 px-3 font-semibold text-[#242424] bg-neutral-50/50">
+                                {row.label}
+                              </td>
+                              {DAYS_OF_WEEK.map(d => {
+                                const count = log.dailyCounts?.[d]?.[row.key] || 0;
+                                rowSum += count;
+                                return (
+                                  <td key={d} className="py-2 px-2 text-center font-mono text-[#323130] border-r border-[#edebe9]">
+                                    {count > 0 ? (
+                                      <span className="font-semibold text-neutral-800">{count}</span>
+                                    ) : (
+                                      <span className="text-neutral-400">0</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                              <td className="py-2 px-3 text-right font-mono font-bold text-[#0f766e] bg-teal-50/30">
+                                {rowSum}
+                              </td>
+                            </tr>
                           );
                         })}
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-800 bg-emerald-100/80 text-sm">
-                          {weekGrandTotal}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+
+                        {/* Daily Totals Row */}
+                        <tr className="bg-[#edebe9] font-bold text-[#242424] border-t-2 border-[#8a8886]">
+                          <td className="py-2.5 px-3">Daily Buffet Total</td>
+                          {DAYS_OF_WEEK.map(d => {
+                            let daySum = 0;
+                            BUFFET_ROWS.forEach(r => {
+                              daySum += log.dailyCounts?.[d]?.[r.key] || 0;
+                            });
+                            return (
+                              <td key={d} className="py-2.5 px-2 text-center font-mono text-[#0f766e] border-r border-[#d2d0ce]">
+                                {daySum}
+                              </td>
+                            );
+                          })}
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-800 bg-emerald-100/80 text-sm">
+                            {weekGrandTotal}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        )
+      ) : (
+        /* Register Table View */
+        <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap">
+                <tr>
+                  {visibleColumns.map(col => {
+                    const isSorted = tableSortField === col.key;
+                    return (
+                      <th
+                        key={String(col.key)}
+                        onClick={() => handleTableSort(String(col.key))}
+                        className="py-2.5 px-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                        title={`Sort by ${col.label}`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{col.label}</span>
+                          {isSorted ? (
+                            tableSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
+                  <th className="py-2.5 px-3 text-center w-28 sticky right-0 bg-[#f3f2f1] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#edebe9]">
+                {paginatedLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={visibleColumns.length + 1} className="py-10 text-center text-[#605e5c]">
+                      No buffet log records found matching the selected filters.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedLogs.map(log => (
+                    <tr key={log.id} className="hover:bg-[#faf9f8] transition-colors">
+                      {visibleColumns.map(col => (
+                        <td key={String(col.key)} className="py-3 px-3">
+                          {renderColumnCell(col, log)}
+                        </td>
+                      ))}
+                      <td className="py-3 px-3 text-center sticky right-0 bg-white/95 shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setViewRecord(log)}
+                            className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded"
+                            title="View Log Dossier"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          {canEditRecord(log.site) && (
+                            <button
+                              onClick={() => handleEditClick(log)}
+                              className="p-1 hover:bg-[#edebe9] text-[#0d9488] rounded"
+                              title="Edit Matrix"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canDeleteRecord() && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete buffet log for ${log.vendor} at ${log.site}?`)) {
+                                  deleteFoodVendorBuffetLog(log.id);
+                                }
+                              }}
+                              className="p-1 hover:bg-red-50 text-[#a4262c] rounded"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination for table view */}
+          {sortedTableLogs.length > 0 && (
+            <div className="p-3 border-t border-[#edebe9]">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={sortedTableLogs.length}
+                onPageChange={setCurrentPage}
+                pageSize={pageSize}
+                onPageSizeChange={setPageSize}
+              />
+            </div>
+          )}
         </div>
       )}
+
 
       {/* Add / Edit Modal */}
       {isModalOpen && (
@@ -1068,6 +1334,31 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+      {/* Dynamic Record View Modal */}
+      {viewRecord && (
+        <DynamicRecordViewModal
+          record={viewRecord}
+          columns={columns}
+          title="Hot Food Buffet Log Dossier"
+          onClose={() => setViewRecord(null)}
+        />
+      )}
+
+      {/* Table Schema Editor Modal (Super Admin only) */}
+      {isSchemaModalOpen && (
+        <TableSchemaEditorModal
+          columns={columns}
+          onSave={(updated) => {
+            saveColumns(updated);
+            setIsSchemaModalOpen(false);
+          }}
+          onReset={() => {
+            resetToDefault();
+            setIsSchemaModalOpen(false);
+          }}
+          onClose={() => setIsSchemaModalOpen(false)}
+        />
       )}
     </div>
   );
