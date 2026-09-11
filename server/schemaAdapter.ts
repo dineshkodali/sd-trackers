@@ -1,74 +1,231 @@
 /**
- * Schema Adapter for SD Commercial Supabase Database
- * Converts between frontend application models and exact Supabase PostgreSQL table schemas.
- * Ensures zero data loss, exact column matching, and bidirectional mapping.
- * 
- * CANONICAL TABLES ONLY (no duplicates):
- * - laundry_logs (not laundry_records)
- * - hot_food_logs (not food_records)
- * - audit_trails (not audit_logs)
+ * Schema Adapter for the SD Operations Supabase database.
+ *
+ * Converts between frontend application records and database rows.
+ *
+ * Every data table carries two representations of a record:
+ *   - typed columns (su_name, site, status ...) for reporting, indexing and SQL;
+ *   - a `data` JSONB column holding the complete application record.
+ *
+ * Reads prefer `data`, so every field a page submits - including fields added
+ * later and administrator-defined custom columns - survives a round trip
+ * (BUG-023). Rows written before the `data` column existed have it NULL and
+ * are read back through the typed-column mapping instead.
+ *
+ * CANONICAL TABLES ONLY: laundry_logs (not laundry_records), hot_food_logs
+ * (not food_records), audit_trails (not audit_logs).
  */
 
-// Known valid columns for each Supabase table according to schema
+type ColType = 'text' | 'int' | 'num' | 'bool' | 'json';
+
+/**
+ * Typed-column mapping for tables whose records map field-for-field onto
+ * columns: [frontend field, column, type].
+ */
+export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
+  public_transport_records: [
+    ['approvalUrn', 'approval_urn', 'text'],
+    ['suNames', 'su_names', 'text'],
+    ['portRefs', 'port_refs', 'text'],
+    ['accommodationAddress', 'accommodation_address', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['appointmentDate', 'appointment_date', 'text'],
+    ['appointmentTime', 'appointment_time', 'text'],
+    ['appointmentLocation', 'appointment_location', 'text'],
+    ['distanceMiles', 'distance_miles', 'num'],
+    ['modeOfTransport', 'mode_of_transport', 'text'],
+    ['exceptionalCircumstances', 'exceptional_circumstances', 'text'],
+    ['status', 'status', 'text'],
+  ],
+  compliance_records: [
+    ['srNo', 'sr_no', 'int'],
+    ['complianceType', 'compliance_type', 'text'],
+    ['contractorName', 'contractor_name', 'text'],
+    ['contractorKeyContact', 'contractor_key_contact', 'text'],
+    ['contractorEmail', 'contractor_email', 'text'],
+    ['issuedDate', 'issued_date', 'text'],
+    ['expiryDate', 'expiry_date', 'text'],
+    ['status', 'status', 'text'],
+    ['actionTaken', 'action_taken', 'text'],
+    ['previousContractor', 'previous_contractor', 'text'],
+    ['siteName', 'site_name', 'text'],
+  ],
+  gp_appointments: [
+    ['roomNo', 'room_no', 'text'],
+    ['portReference', 'port_reference', 'text'],
+    ['referralSentOn', 'referral_sent_on', 'text'],
+    ['appointmentDate', 'appointment_date', 'text'],
+    ['timeOfGp', 'time_of_gp', 'text'],
+    ['comments', 'comments', 'text'],
+    ['status', 'status', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['suName', 'su_name', 'text'],
+  ],
+  rfa_welfare_checks: [
+    ['date', 'date', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['roomOrFlatNo', 'room_or_flat_no', 'text'],
+    ['name', 'name', 'text'],
+    ['dob', 'dob', 'text'],
+    ['group', 'group_name', 'text'],
+    ['gender', 'gender', 'text'],
+    ['portOrNassRef', 'port_or_nass_ref', 'text'],
+    ['vulnerability', 'vulnerability', 'text'],
+    ['actionTaken', 'action_taken', 'text'],
+    ['mhTicket', 'mh_ticket', 'text'],
+  ],
+  dispersal_records: [
+    ['sno', 'sno', 'int'],
+    ['siteName', 'site_name', 'text'],
+    ['dateReceived', 'date_received', 'text'],
+    ['suPortNassRef', 'su_port_nass_ref', 'text'],
+    ['reasonForDeparture', 'reason_for_departure', 'text'],
+    ['flatRoomNumber', 'flat_room_number', 'text'],
+    ['dispersalDate', 'dispersal_date', 'text'],
+    ['dateLetterHandedToSu', 'date_letter_handed_to_su', 'text'],
+    ['iaExitBriefingCompleted', 'ia_exit_briefing_completed', 'text'],
+    ['hoDispersalLetterReceived', 'ho_dispersal_letter_received', 'text'],
+    ['travelled', 'travelled', 'text'],
+    ['dateLeftProperty', 'date_left_property', 'text'],
+    ['incidentWarningCompleted', 'incident_warning_completed', 'text'],
+    ['reasonFailedToTravel', 'reason_failed_to_travel', 'text'],
+    ['secondDispersalDate', 'second_dispersal_date', 'text'],
+    ['dateSecondLetterHanded', 'date_second_letter_handed', 'text'],
+    ['secondIaExitBriefingCompleted', 'second_ia_exit_briefing_completed', 'text'],
+    ['secondDispersalTravelled', 'second_dispersal_travelled', 'text'],
+    ['secondDateLeftProperty', 'second_date_left_property', 'text'],
+    ['secondIncidentWarningCompleted', 'second_incident_warning_completed', 'text'],
+    ['reasonFailedToTravelSecond', 'reason_failed_to_travel_second', 'text'],
+  ],
+  booklet_collections: [
+    ['hotelName', 'hotel_name', 'text'],
+    ['agentName', 'agent_name', 'text'],
+    ['bookletType', 'booklet_type', 'text'],
+    ['language', 'language', 'text'],
+    ['numberForCollection', 'number_for_collection', 'int'],
+    ['collectedBooklets', 'collected_booklets', 'int'],
+    ['bookletsReceived', 'booklets_received', 'int'],
+    ['status', 'status', 'text'],
+    ['notes', 'notes', 'text'],
+    ['lastUpdated', 'last_updated', 'text'],
+  ],
+  vcs_agencies: [
+    ['hotelName', 'hotel_name', 'text'],
+    ['agencyName', 'agency_name', 'text'],
+    ['category', 'category', 'text'],
+    ['servicesProvided', 'services_provided', 'text'],
+    ['contactPerson', 'contact_person', 'text'],
+    ['contactNumber', 'contact_number', 'text'],
+    ['email', 'email', 'text'],
+    ['address', 'address', 'text'],
+    ['notes', 'notes', 'text'],
+    ['isVerified', 'is_verified', 'bool'],
+  ],
+  field_options: [
+    ['category', 'category', 'text'],
+    ['label', 'label', 'text'],
+    ['value', 'value', 'text'],
+    ['color', 'color', 'text'],
+    ['description', 'description', 'text'],
+    ['isActive', 'is_active', 'bool'],
+    ['isSystem', 'is_system', 'bool'],
+    ['order', 'sort_order', 'int'],
+  ],
+  role_permissions: [
+    ['role', 'role', 'text'],
+    ['canViewAllProperties', 'can_view_all_properties', 'bool'],
+    ['canCreateRecords', 'can_create_records', 'bool'],
+    ['canEditRecords', 'can_edit_records', 'bool'],
+    ['canDeleteRecords', 'can_delete_records', 'bool'],
+    ['canArchiveRestore', 'can_archive_restore', 'bool'],
+    ['canExportData', 'can_export_data', 'bool'],
+    ['canManageProperties', 'can_manage_properties', 'bool'],
+    ['canManageFiles', 'can_manage_files', 'bool'],
+    ['canManageUsers', 'can_manage_users', 'bool'],
+    ['canManageSettings', 'can_manage_settings', 'bool'],
+  ],
+  app_settings: [
+    ['value', 'value', 'json'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  table_schemas: [
+    ['moduleKey', 'module_key', 'text'],
+    ['columns', 'columns', 'json'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+};
+
+/** NOT NULL typed columns on FIELD_SPECS tables, with the fallback used when a record omits them. */
+const REQUIRED_SPEC_COLUMNS: Record<string, Record<string, (record: any) => any>> = {
+  field_options: { category: () => 'general' },
+  role_permissions: { role: (r) => r.id },
+  table_schemas: { module_key: (r) => r.id },
+};
+
+const AUDIT_COLS = ['created_by', 'created_at', 'updated_at'];
+const specColumns = (table: string) => ['id', ...FIELD_SPECS[table].map(([, col]) => col), 'data', ...AUDIT_COLS];
+
+/** Columns each table is expected to have once db/schema.sql has been applied. */
 export const TABLE_COLUMNS: Record<string, Set<string>> = {
   referrals: new Set([
     'id', 'site', 'su_name', 'su_port_reference', 'port_ref', 'room_number',
     'date_referred', 'referral_type', 'reason', 'status', 'priority',
-    'actions_taken', 'assigned_to', 'notes', 'follow_up_date',
+    'actions_taken', 'assigned_to', 'notes', 'follow_up_date', 'data',
     'created_by', 'created_at', 'updated_at'
   ]),
   vulnerable_residents: new Set([
     'id', 'site', 'su_name', 'su_port_reference', 'room_or_flat_no',
     'vulnerability_category', 'risk_level', 'description', 'care_plan',
     'emergency_contact', 'medical_notes', 'status', 'last_review_date',
-    'next_review_date', 'flagged_by', 'created_by', 'created_at', 'updated_at'
+    'next_review_date', 'flagged_by', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   challenging_behavior: new Set([
     'id', 'site', 'name', 'port_ref', 'room_or_flat_no',
     'date_of_incident', 'type_of_issue', 'risk_to_others', 'description',
     'police_involved', 'police_cad_number', 'warning_issued', 'warning_level',
-    'actions_taken', 'status', 'logged_by', 'created_by', 'created_at', 'updated_at'
+    'actions_taken', 'status', 'logged_by', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   maintenance_records: new Set([
     'id', 'site', 'room_or_area', 'defect_status', 'description',
     'contractor', 'contractor_quote', 'priority', 'reported_date',
     'completion_date', 'sign_off_status', 'notes', 'category', 'reported_by',
-    'created_by', 'created_at', 'updated_at'
+    'data', 'created_by', 'created_at', 'updated_at'
   ]),
   spcd_records: new Set([
     'id', 'site_name', 'su_name', 'su_port_reference', 'check_type',
     'status', 'declaration_date', 'officer_name', 'verified', 'comments',
-    'expires_date', 'created_by', 'created_at', 'updated_at'
+    'expires_date', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   sites: new Set([
     'id', 'name', 'pid', 'address', 'city', 'total_rooms', 'active_residents',
-    'status', 'manager_name', 'manager_email', 'manager_phone',
+    'status', 'manager_name', 'manager_email', 'manager_phone', 'data',
     'created_by', 'created_at', 'updated_at'
   ]),
   laundry_logs: new Set([
     'id', 'site_id', 'site', 'room_no', 'resident_name', 'ref', 'date', 'tokens_issued',
     'bag_count', 'dirty_laundry_sent', 'clean_laundry_returned', 'discrepancies',
     'discrepancy_count', 'remarks_actions_taken', 'status', 'staff_initials',
-    'notes', 'created_by', 'created_at', 'updated_at'
+    'notes', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   hot_food_logs: new Set([
     'id', 'site_id', 'site', 'date', 'meal_type', 'vendor_name', 'supplier_name',
     'meals_delivered', 'temperature_c', 'quality_check', 'staff_name',
-    'staff_signoff', 'notes', 'created_by', 'created_at', 'updated_at'
+    'staff_signoff', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   escalations: new Set([
     'id', 'site', 'title', 'category', 'severity', 'status', 'description',
-    'reported_by', 'assigned_to', 'resolution_notes',
+    'reported_by', 'assigned_to', 'resolution_notes', 'data',
     'created_by', 'created_at', 'updated_at'
   ]),
   documents: new Set([
     'id', 'title', 'category', 'site', 'file_url', 'file_size',
-    'uploaded_by', 'uploaded_date', 'version',
+    'uploaded_by', 'uploaded_date', 'version', 'data',
     'created_by', 'created_at', 'updated_at'
   ]),
   audit_trails: new Set([
     'id', 'timestamp', 'user', 'user_id', 'role', 'action', 'details',
-    'site', 'entity_type', 'entity_id', 'created_by', 'created_at', 'updated_at'
+    'site', 'entity_type', 'entity_id', 'module', 'target_label',
+    'created_by', 'created_at', 'updated_at'
   ]),
   profiles: new Set([
     'id', 'email', 'name', 'role', 'assigned_site', 'status',
@@ -76,22 +233,38 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   ]),
   user_groups: new Set([
     'id', 'name', 'description', 'assigned_property', 'assigned_properties',
-    'user_ids', 'created_by', 'created_at', 'updated_at'
+    'user_ids', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   data_change_requests: new Set([
     'id', 'module', 'action_type', 'requested_by', 'site', 'status',
-    'payload', 'reason', 'created_by', 'created_at', 'updated_at'
+    'payload', 'reason', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   property_user_assignments: new Set([
     'id', 'user_id', 'user_email', 'user_name', 'group_id', 'group_name',
-    'property_id', 'property_name', 'role', 'assigned_properties',
+    'property_id', 'property_name', 'role', 'assigned_properties', 'data',
     'created_by', 'created_at', 'updated_at'
   ]),
   password_audit_logs: new Set([
     'id', 'timestamp', 'admin_email', 'target_email', 'target_user_id',
     'action', 'status', 'error', 'created_by', 'created_at', 'updated_at'
-  ])
+  ]),
+  ...Object.fromEntries(Object.keys(FIELD_SPECS).map(t => [t, new Set(specColumns(t))])),
 };
+
+/** Audit-view module label for an API entity, for rows that do not name one. */
+export const ENTITY_MODULE_LABELS: Record<string, string> = {
+  referrals: 'Referrals', vulnerable: 'Vulnerable SUs', challenging: 'Challenging SUs', spcd: 'Vulnerable SUs',
+  rfaWelfare: 'Vulnerable SUs', laundry: 'Laundry', laundry_logs: 'Laundry', property_laundry_logs: 'Laundry',
+  food: 'Hot Food', hot_food_logs: 'Hot Food', food_vendor_buffet_logs: 'Hot Food', escalations: 'Escalations',
+  documents: 'Documents', sites: 'Properties', users: 'Users', profiles: 'Users', userGroups: 'Users',
+  property_user_assignments: 'Users', rolePermissions: 'Roles', gpAppointments: 'Referrals', dispersal: 'Referrals'
+};
+export const moduleLabelFor = (entity?: string | null) => (entity && ENTITY_MODULE_LABELS[entity]) || entity || 'Settings';
+
+/** Tables that store the full application record in `data`. */
+export const DATA_TABLES = new Set(
+  Object.entries(TABLE_COLUMNS).filter(([, cols]) => cols.has('data')).map(([t]) => t)
+);
 
 /**
  * Coerce to a number, or null when nothing was supplied.
@@ -112,17 +285,64 @@ function toNum(value: any, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function boolOrNull(value: any): boolean | null {
+  if (value === true || value === 'true' || value === 'Yes' || value === 'yes' || value === 1) return true;
+  if (value === false || value === 'false' || value === 'No' || value === 'no' || value === 0) return false;
+  return null;
+}
+
+function coerce(value: any, type: ColType): any {
+  if (value === undefined) return undefined;
+  switch (type) {
+    case 'int': {
+      const n = numberOrNull(value);
+      return n === null ? null : Math.trunc(n);
+    }
+    case 'num':
+      return numberOrNull(value);
+    case 'bool':
+      return boolOrNull(value);
+    case 'json':
+      return value ?? null;
+    case 'text':
+    default:
+      if (value === null) return null;
+      return typeof value === 'object' ? JSON.stringify(value) : String(value);
+  }
+}
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function isValidUuid(val: any): boolean {
   return typeof val === 'string' && UUID_REGEX.test(val.trim());
 }
 
-/**
- * Maps a frontend record into the exact schema-compliant row for the Supabase table.
- */
-export function toDatabaseRow(tableName: string, record: any, callerUserId?: string | null): Record<string, any> {
+/** Transport-only keys that must never be persisted as part of a record. */
+const TRANSIENT_KEYS = new Set(['auditDetails', '_audit']);
+
+/** A JSON-safe copy of the record: no functions, no undefined, no transport keys. */
+export function sanitizeRecord(record: any): Record<string, any> {
   if (!record || typeof record !== 'object') return {};
-  const validCols = TABLE_COLUMNS[tableName];
+  const clean = JSON.parse(JSON.stringify(record));
+  for (const key of TRANSIENT_KEYS) delete clean[key];
+  return clean;
+}
+
+/**
+ * Maps a frontend record into a schema-compliant row.
+ *
+ * `allowedColumns` is the live column set for the table when known. It lets
+ * writes succeed against a database that has not yet received the latest
+ * migration (for example, before the `data` column exists) instead of failing
+ * with an unknown-column error.
+ */
+export function toDatabaseRow(
+  tableName: string,
+  record: any,
+  callerUserId?: string | null,
+  allowedColumns?: Set<string> | null
+): Record<string, any> {
+  if (!record || typeof record !== 'object') return {};
+  const validCols = allowedColumns || TABLE_COLUMNS[tableName];
   const nowIso = new Date().toISOString();
   const dbRow: Record<string, any> = {};
 
@@ -130,11 +350,9 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
   if (record.id) {
     const rawId = String(record.id).trim();
     if (tableName === 'profiles') {
-      // Only accept valid UUIDs for profiles — these must come from auth.users
       if (isValidUuid(rawId)) {
         dbRow.id = rawId;
       }
-      // If not a valid UUID, skip — the caller must provide a proper auth UUID
     } else {
       dbRow.id = rawId;
     }
@@ -145,6 +363,18 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
     dbRow.created_by = callerUserId;
   } else if (isValidUuid(record.createdBy || record.created_by)) {
     dbRow.created_by = record.createdBy || record.created_by;
+  }
+
+  if (FIELD_SPECS[tableName]) {
+    for (const [field, column, type] of FIELD_SPECS[tableName]) {
+      const value = coerce(record[field], type);
+      if (value !== undefined) dbRow[column] = value;
+    }
+    for (const [column, fallback] of Object.entries(REQUIRED_SPEC_COLUMNS[tableName] || {})) {
+      if (dbRow[column] === undefined || dbRow[column] === null || dbRow[column] === '') {
+        dbRow[column] = fallback(record);
+      }
+    }
   }
 
   switch (tableName) {
@@ -158,60 +388,27 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.referral_type = record.referralType || record.type || 'Single Adult';
       dbRow.reason = record.reason || '';
       dbRow.status = record.status || 'Active';
-      dbRow.priority = record.priority || record.riskLevel || 'Normal';
-      dbRow.actions_taken = record.actionsTaken || '';
-      dbRow.assigned_to = record.assignedTo || record.allocatedWorker || '';
+      dbRow.priority = record.priority || record.urgency || record.riskLevel || 'Normal';
+      dbRow.actions_taken = record.actionsTaken || record.notesActionTaken || '';
+      dbRow.assigned_to = record.assignedTo || record.allocatedWorker || record.laOfficerLeading || '';
       dbRow.follow_up_date = record.followUpDate || record.expectedCheckOutDate || null;
 
-      // Pack extra & custom fields into notes JSON
+      // Pack extra & custom fields into notes JSON (read back when `data` is absent)
       const knownReferralKeys = new Set([
         'id', 'site', 'assignedSite', 'siteName', 'serviceUserName', 'suName', 'name',
         'suPortReference', 'portRef', 'ref', 'roomNumber', 'roomNo', 'room',
         'dateReferred', 'checkInDate', 'date', 'referralType', 'type', 'reason',
-        'status', 'priority', 'riskLevel', 'actionsTaken', 'assignedTo', 'allocatedWorker',
-        'followUpDate', 'expectedCheckOutDate', 'notes', 'createdAt', 'updatedAt',
-        'createdBy', 'created_at', 'updated_at', 'created_by', 'srNo', 'gender', 'dob',
-        'ethnicity', 'countryOfOrigin', 'primaryLanguage', 'interpreterRequired',
-        'medicalConditions', 'dietaryRequirements', 'mobilityRequirements', 'urgency',
-        'actualCheckOutDate', 'acknowledgementReceived', 'mosaicId', 'raisedBy',
-        'officerLeadingHotel', 'reportedBy', 'referralCouncil', 'methodOfReferral',
-        'responseReceivedFromLA', 'laOfficerLeading', 'notesActionTaken', 'sgReview',
-        'userNotes', 'attachments'
+        'status', 'priority', 'actionsTaken', 'assignedTo', 'allocatedWorker',
+        'followUpDate', 'notes', 'createdAt', 'updatedAt',
+        'createdBy', 'created_at', 'updated_at', 'created_by'
       ]);
-      const customReferralFields: Record<string, any> = {};
+      const extraFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
-        if (!knownReferralKeys.has(k) && v !== undefined && typeof v !== 'function') {
-          customReferralFields[k] = v;
+        if (!knownReferralKeys.has(k) && v !== undefined && typeof v !== 'function' && !TRANSIENT_KEYS.has(k)) {
+          extraFields[k] = v;
         }
       }
-
-      const extraFields = {
-        ...customReferralFields,
-        gender: record.gender,
-        dob: record.dob,
-        ethnicity: record.ethnicity,
-        countryOfOrigin: record.countryOfOrigin,
-        primaryLanguage: record.primaryLanguage,
-        interpreterRequired: record.interpreterRequired,
-        medicalConditions: record.medicalConditions,
-        dietaryRequirements: record.dietaryRequirements,
-        mobilityRequirements: record.mobilityRequirements,
-        riskLevel: record.riskLevel || record.urgency,
-        urgency: record.urgency || record.riskLevel,
-        expectedCheckOutDate: record.expectedCheckOutDate,
-        actualCheckOutDate: record.actualCheckOutDate,
-        acknowledgementReceived: record.acknowledgementReceived,
-        mosaicId: record.mosaicId,
-        raisedBy: record.raisedBy || record.officerLeadingHotel || record.reportedBy || '',
-        officerLeadingHotel: record.officerLeadingHotel || record.raisedBy || '',
-        referralCouncil: record.referralCouncil || '',
-        methodOfReferral: record.methodOfReferral || '',
-        responseReceivedFromLA: record.responseReceivedFromLA || '',
-        laOfficerLeading: record.laOfficerLeading || '',
-        notesActionTaken: record.notesActionTaken || record.actionsTaken || '',
-        sgReview: record.sgReview || '',
-        userNotes: typeof record.notes === 'string' ? record.notes : ''
-      };
+      extraFields.userNotes = typeof record.notes === 'string' ? record.notes : '';
       dbRow.notes = JSON.stringify(extraFields);
       break;
     }
@@ -239,11 +436,11 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
         'emergencyContact', 'medicalNotes', 'status', 'lastReviewDate', 'lastAssessmentDate',
         'nextReviewDate', 'reviewDate', 'flaggedBy', 'allocatedWorker', 'allocatedStaff',
         'raisedBy', 'notes', 'createdAt', 'updatedAt', 'createdBy', 'created_at', 'updated_at',
-        'created_by', 'srNo', 'group', 'gender', 'attachments'
+        'created_by'
       ]);
       const customVulnFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
-        if (!knownVulnKeys.has(k) && v !== undefined && typeof v !== 'function') {
+        if (!knownVulnKeys.has(k) && v !== undefined && typeof v !== 'function' && !TRANSIENT_KEYS.has(k)) {
           customVulnFields[k] = v;
         }
       }
@@ -268,9 +465,10 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.type_of_issue = record.incidentType || record.typeOfIssue || record.category || 'Incident';
       dbRow.risk_to_others = record.severity || record.riskToOthers || record.riskFactor || record.riskLevel || 'Low';
       dbRow.description = record.description || record.incidentDescription || record.triggerFactors || (typeof record.notes === 'string' ? record.notes : '') || '';
-      dbRow.police_involved = record.policeInvolved === true || record.policeInvolved === 'Yes' || record.policeCalled === true ? 'Yes' : 'No';
+      // BOOLEAN columns: write real booleans.
+      dbRow.police_involved = record.policeInvolved === true || record.policeInvolved === 'Yes' || record.policeCalled === true;
       dbRow.police_cad_number = record.policeCadNumber || '';
-      dbRow.warning_issued = record.warningIssued === true || record.warningIssued === 'Yes' ? 'Yes' : 'No';
+      dbRow.warning_issued = record.warningIssued === true || record.warningIssued === 'Yes';
       dbRow.warning_level = record.warningLevel || record.warningFlag || '';
       dbRow.status = record.status || 'Open';
       dbRow.logged_by = record.raisedBy || record.loggedBy || record.reportedBy || record.staffName || '';
@@ -278,18 +476,16 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       const knownChallengingKeys = new Set([
         'id', 'site', 'assignedSite', 'siteName', 'serviceUserName', 'name', 'suName',
         'suPortReference', 'portRef', 'ref', 'roomNumber', 'roomNo', 'roomOrFlatNo',
-        'dateOfIncident', 'incidentDate', 'date', 'typeOfIssue', 'incidentType', 'category',
-        'severity', 'riskToOthers', 'riskFactor', 'riskLevel', 'description', 'incidentDescription',
+        'dateOfIncident', 'incidentDate', 'typeOfIssue', 'incidentType', 'category',
+        'severity', 'riskToOthers', 'riskLevel', 'description', 'incidentDescription',
         'triggerFactors', 'policeInvolved', 'policeCalled', 'policeCadNumber', 'warningIssued',
         'warningLevel', 'warningFlag', 'actionTaken', 'actionsTaken', 'deEscalationProtocol',
-        'status', 'loggedBy', 'raisedBy', 'reportedBy', 'staffName', 'notes', 'createdAt',
-        'updatedAt', 'createdBy', 'created_at', 'updated_at', 'created_by', 'srNo',
-        'group', 'gender', 'followUpRequired', 'adviceGivenBySGTeam', 'followUpNotes',
-        'comments', 'reviewBySGTeam', 'attachments'
+        'status', 'loggedBy', 'reportedBy', 'staffName', 'notes', 'createdAt',
+        'updatedAt', 'createdBy', 'created_at', 'updated_at', 'created_by'
       ]);
       const customChallengingFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
-        if (!knownChallengingKeys.has(k) && v !== undefined && typeof v !== 'function') {
+        if (!knownChallengingKeys.has(k) && v !== undefined && typeof v !== 'function' && !TRANSIENT_KEYS.has(k)) {
           customChallengingFields[k] = v;
         }
       }
@@ -319,7 +515,7 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.sign_off_status = record.signOffStatus || (record.defectStatus === 'Completed' || record.action === 'Closed' ? 'Signed Off' : 'Pending');
       dbRow.category = record.criteriaCode || record.issueCategory || record.category || 'General';
       dbRow.reported_by = record.raisedBy || record.reportedBy || record.loggedBy || '';
-      
+
       const knownMaintKeys = new Set([
         'id', 'site', 'assignedSite', 'siteName', 'room', 'roomNumber', 'location',
         'roomOrArea', 'roomNo', 'defectStatus', 'status', 'description', 'allocatedContractor',
@@ -328,11 +524,11 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
         'signOffStatus', 'action', 'criteriaCode', 'issueCategory', 'category', 'raisedBy',
         'reportedBy', 'loggedBy', 'notes', 'userNotes', 'progress', 'priorityTimeScale',
         'closeDueDate', 'actualCost', 'updatedAt', 'createdBy', 'created_at', 'updated_at',
-        'created_by', 'srNo', 'attachments'
+        'created_by'
       ]);
       const customMaintFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
-        if (!knownMaintKeys.has(k) && v !== undefined && typeof v !== 'function') {
+        if (!knownMaintKeys.has(k) && v !== undefined && typeof v !== 'function' && !TRANSIENT_KEYS.has(k)) {
           customMaintFields[k] = v;
         }
       }
@@ -359,53 +555,30 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       const suName = record.suName || record.serviceUserName || record.name || '';
       const suPortReference = record.suPortReference || record.portRef || record.ref || '';
       const date = record.date || record.checkDate || record.declarationDate || (record.createdAt ? record.createdAt.slice(0, 10) : nowIso.split('T')[0]);
-      const roomNumber = record.roomNumber || record.room || record.room_no || '';
       const staffReporting = record.staffReporting || record.raisedBy || record.officerName || record.staffName || '';
-      const suDob = record.suDob || record.dob || '';
-      const briefDescriptionActionTaken = record.briefDescriptionActionTaken || record.description || record.observations || record.comments || '';
-      const followUpNotes = record.followUpNotes || record.notes || '';
-      const updates = record.updates || '';
       const sgReview = record.sgReview || record.status || 'Pending Safeguarding Lead Review';
       const isArchived = record.isArchived === true || record.isArchived === 'true';
       const dateLeft = record.dateLeft || record.expiresDate || null;
-      const reasonForLeaving = record.reasonForLeaving || null;
-
-      const knownSpcdKeys = new Set([
-        'id', 'date', 'checkDate', 'declarationDate', 'siteName', 'site', 'roomNumber',
-        'room', 'room_no', 'staffReporting', 'raisedBy', 'officerName', 'staffName',
-        'suName', 'serviceUserName', 'name', 'suPortReference', 'portRef', 'ref', 'suDob',
-        'dob', 'briefDescriptionActionTaken', 'description', 'observations', 'comments',
-        'followUpNotes', 'notes', 'updates', 'sgReview', 'status', 'isArchived', 'dateLeft',
-        'expiresDate', 'reasonForLeaving', 'createdAt', 'updatedAt', 'createdBy', 'created_at',
-        'updated_at', 'created_by', 'srNo', 'attachments'
-      ]);
-      const customSpcdFields: Record<string, any> = {};
-      for (const [k, v] of Object.entries(record)) {
-        if (!knownSpcdKeys.has(k) && v !== undefined && typeof v !== 'function') {
-          customSpcdFields[k] = v;
-        }
-      }
 
       const fullPayload = {
-        ...customSpcdFields,
-        id: record.id,
+        ...sanitizeRecord(record),
         date,
         siteName,
         site: siteName,
-        roomNumber,
+        roomNumber: record.roomNumber || record.room || record.room_no || '',
         staffReporting,
         raisedBy: staffReporting,
         suName,
         serviceUserName: suName,
         suPortReference,
-        suDob,
-        briefDescriptionActionTaken,
-        followUpNotes,
-        updates,
+        suDob: record.suDob || record.dob || '',
+        briefDescriptionActionTaken: record.briefDescriptionActionTaken || record.description || record.observations || record.comments || '',
+        followUpNotes: record.followUpNotes || record.notes || '',
+        updates: record.updates || '',
         sgReview,
         isArchived,
         dateLeft,
-        reasonForLeaving
+        reasonForLeaving: record.reasonForLeaving || null
       };
 
       dbRow.site_name = siteName;
@@ -423,10 +596,10 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
 
     case 'sites': {
       dbRow.name = record.name || '';
-      dbRow.pid = record.pid || record.code || `SITE-${record.id || Math.floor(Math.random()*1000)}`;
+      dbRow.pid = record.pid || record.code || `SITE-${record.id || Math.floor(Math.random() * 1000)}`;
       dbRow.city = record.city || 'London';
-      dbRow.total_rooms = Number(record.totalRooms || record.capacity || 20);
-      dbRow.active_residents = Number(record.activeResidents || record.occupiedRooms || 0);
+      dbRow.total_rooms = Math.trunc(toNum(record.totalRooms ?? record.capacity, 20));
+      dbRow.active_residents = Math.trunc(toNum(record.activeResidents ?? record.occupiedRooms, 0));
       dbRow.status = record.status || 'Active';
       dbRow.manager_name = record.leadOfficer || record.managerName || '';
       dbRow.manager_email = record.contactEmail || record.managerEmail || '';
@@ -436,11 +609,11 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
         'id', 'name', 'pid', 'code', 'address', 'addressLine1', 'city', 'totalRooms',
         'capacity', 'activeResidents', 'occupiedRooms', 'status', 'managerName', 'leadOfficer',
         'managerEmail', 'contactEmail', 'managerPhone', 'contactNumber', 'createdAt', 'updatedAt',
-        'createdBy', 'created_at', 'updated_at', 'created_by', 'srNo', 'attachments'
+        'createdBy', 'created_at', 'updated_at', 'created_by'
       ]);
       const customSiteFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
-        if (!knownSiteKeys.has(k) && v !== undefined && typeof v !== 'function') {
+        if (!knownSiteKeys.has(k) && v !== undefined && typeof v !== 'function' && !TRANSIENT_KEYS.has(k)) {
           customSiteFields[k] = v;
         }
       }
@@ -468,8 +641,10 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
       dbRow.bag_count = numberOrNull(record.bagCount);
       dbRow.dirty_laundry_sent = numberOrNull(record.dirtyLaundrySent ?? record.bagCount);
       dbRow.clean_laundry_returned = numberOrNull(record.cleanLaundryReturned);
-      dbRow.discrepancies = record.discrepancies || (record.hasDiscrepancy ? 'Discrepancy Reported' : 'None');
-      dbRow.discrepancy_count = Number(record.discrepanciesCount ?? record.discrepancyCount ?? 0);
+      dbRow.discrepancies = typeof record.discrepancies === 'string'
+        ? record.discrepancies
+        : (record.hasDiscrepancy || record.discrepancies === true ? 'Discrepancy Reported' : 'None');
+      dbRow.discrepancy_count = Math.trunc(toNum(record.discrepanciesCount ?? record.discrepancyCount, 0));
       dbRow.remarks_actions_taken = record.remarksActionsTaken || record.remarks || '';
       dbRow.status = record.status || 'Pending';
       dbRow.staff_initials = record.staffInitials || record.staffName || record.loggedBy || 'Staff';
@@ -495,15 +670,15 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
 
     case 'hot_food_logs': {
       dbRow.site = record.site || record.assignedSite || 'All Sites';
-      dbRow.date = record.date || record.mealDate || record.startDate || nowIso.split('T')[0];
-      dbRow.meal_type = record.mealType || 'Dinner';
+      dbRow.date = record.date || record.mealDate || record.startDate || (record.createdAt ? String(record.createdAt).slice(0, 10) : nowIso.split('T')[0]);
+      dbRow.meal_type = record.mealType || (record.dailyCounts ? 'Buffet' : 'Dinner');
       dbRow.vendor_name = record.vendorName || record.vendor || record.supplierName || null;
       dbRow.supplier_name = record.supplierName || record.vendorName || record.vendor || null;
-      dbRow.meals_delivered = numberOrNull(record.mealsDelivered ?? record.mealsOrdered);
-      dbRow.temperature_c = numberOrNull(record.temperatureC ?? record.temperatureReadingC);
-      dbRow.quality_check = record.qualityCheck || null;
-      dbRow.staff_name = record.staffName || record.updatedBy || null;
-      dbRow.staff_signoff = record.staffSignoff || record.staffName || null;
+      dbRow.meals_delivered = numberOrNull(record.mealsDelivered ?? record.servings ?? record.mealsOrdered);
+      dbRow.temperature_c = numberOrNull(record.temperatureC ?? record.tempCheckedCelsius ?? record.temperatureReadingC);
+      dbRow.quality_check = record.qualityCheck || record.status || null;
+      dbRow.staff_name = record.staffName || record.deliveredBy || record.lastUpdatedBy || record.updatedBy || null;
+      dbRow.staff_signoff = record.staffSignoff || record.staffName || record.deliveredBy || null;
 
       const isVendorBuffet = record.dailyCounts || record.weekRange || String(record.id || '').startsWith('vendor-bf');
       if (isVendorBuffet) {
@@ -514,7 +689,7 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
           startDate: record.startDate || record.date || '',
           endDate: record.endDate || record.date || '',
           dailyCounts: record.dailyCounts || {},
-          updatedBy: record.updatedBy || record.staffName || '',
+          updatedBy: record.lastUpdatedBy || record.updatedBy || record.staffName || '',
           rawNotes: record.notes || ''
         });
       } else {
@@ -525,48 +700,27 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
 
     case 'escalations': {
       const suName = record.suName || record.name || (record.residentName || '');
-      const suPortNassRef = record.suPortNassRef || record.refNumber || record.portRef || '';
-      const dateOfIncident = record.dateOfIncident || (record.dateTime ? record.dateTime.slice(0, 10) : '') || record.incidentDate || (record.createdAt ? record.createdAt.slice(0, 10) : nowIso.split('T')[0]);
-      const personReporting = record.personReporting || record.reportedBy || record.submittedBy || record.staffName || '';
       const incidentType = record.incidentType || record.incidentTitle || record.title || 'Safeguarding Incident';
-      const wlIssued = record.wlIssued || 'No';
-      const reportedAuthorities = record.reportedAuthorities || record.assignedTo || record.escalatedTo || '';
-      const incidentNotes = record.incidentNotes || record.incidentSummary || record.description || record.notes || '';
-      const actionTaken = record.actionTaken || record.resolutionNotes || record.immediateAction || '';
       const urgency = record.urgency || record.severity || 'High';
       const status = record.status || 'Active';
-      const attachments = Array.isArray(record.attachments) ? record.attachments : [];
-
-      const knownEscalationKeys = new Set([
-        'id', 'site', 'siteName', 'assignedSite', 'title', 'incidentTitle', 'category', 'severity',
-        'urgency', 'status', 'description', 'reportedBy', 'reported_by', 'assignedTo', 'assigned_to',
-        'resolutionNotes', 'resolution_notes', 'createdAt', 'updatedAt', 'createdBy', 'suName',
-        'name', 'residentName', 'suPortNassRef', 'refNumber', 'portRef', 'dateOfIncident',
-        'dateTime', 'incidentDate', 'personReporting', 'submittedBy', 'staffName', 'incidentType',
-        'wlIssued', 'reportedAuthorities', 'escalatedTo', 'incidentNotes', 'incidentSummary',
-        'actionTaken', 'immediateAction', 'attachments'
-      ]);
-      const customEscalationFields: Record<string, any> = {};
-      for (const [k, v] of Object.entries(record)) {
-        if (!knownEscalationKeys.has(k) && v !== undefined && typeof v !== 'function') {
-          customEscalationFields[k] = v;
-        }
-      }
+      const personReporting = record.personReporting || record.reportedBy || record.submittedBy || record.staffName || '';
+      const reportedAuthorities = record.reportedAuthorities || record.assignedTo || record.escalatedTo || '';
+      const actionTaken = record.actionTaken || record.resolutionNotes || record.immediateAction || '';
 
       const fullPayload = {
-        ...customEscalationFields,
+        ...sanitizeRecord(record),
         suName,
-        suPortNassRef,
-        dateOfIncident,
+        suPortNassRef: record.suPortNassRef || record.refNumber || record.portRef || '',
+        dateOfIncident: record.dateOfIncident || (record.dateTime ? String(record.dateTime).slice(0, 10) : '') || record.incidentDate || (record.createdAt ? String(record.createdAt).slice(0, 10) : nowIso.split('T')[0]),
         personReporting,
         incidentType,
-        wlIssued,
+        wlIssued: record.wlIssued || 'No',
         reportedAuthorities,
-        incidentNotes,
+        incidentNotes: record.incidentNotes || record.incidentSummary || record.description || record.notes || '',
         actionTaken,
         urgency,
         status,
-        attachments
+        attachments: Array.isArray(record.attachments) ? record.attachments : []
       };
 
       dbRow.site = record.site || record.assignedSite || record.siteName || 'All Sites';
@@ -582,13 +736,15 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
     }
 
     case 'documents': {
-      dbRow.title = record.title || 'Document';
+      dbRow.title = record.documentTitle || record.title || 'Document';
       dbRow.category = record.category || 'General';
       dbRow.site = record.site || 'All Sites';
       dbRow.file_url = record.fileUrl || record.storagePath || '';
-      dbRow.file_size = typeof record.fileSize === 'string' ? record.fileSize : `${Math.round((record.fileSizeBytes || 1024) / 1024)} KB`;
+      dbRow.file_size = typeof record.fileSize === 'string'
+        ? record.fileSize
+        : `${Math.round(toNum(record.fileSizeKb, toNum(record.fileSizeBytes, 1024) / 1024))} KB`;
       dbRow.uploaded_by = record.uploadedBy || 'Staff';
-      dbRow.uploaded_date = record.uploadedDate || record.createdAt?.split('T')[0] || nowIso.split('T')[0];
+      dbRow.uploaded_date = record.uploadDate || record.uploadedDate || record.createdAt?.split('T')[0] || nowIso.split('T')[0];
       dbRow.version = record.version || '1.0';
       break;
     }
@@ -614,27 +770,40 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
 
     case 'data_change_requests': {
       dbRow.module = record.module || record.tableName || 'General';
-      dbRow.action_type = record.actionType || record.requestType || 'UPDATE';
+      dbRow.action_type = record.requestType || record.actionType || 'UPDATE';
       dbRow.requested_by = record.requestedBy || 'Staff';
       dbRow.site = record.site || 'All Sites';
       dbRow.status = record.status || 'Pending';
-      dbRow.payload = typeof record.payload === 'object' ? record.payload : (record.requestedChanges ? { changes: record.requestedChanges } : {});
       dbRow.reason = record.reason || '';
+      dbRow.payload = typeof record.payload === 'object' && record.payload !== null
+        ? record.payload
+        : {
+            recordId: record.recordId ?? null,
+            recordTitle: record.recordTitle ?? null,
+            proposedChanges: record.proposedChanges ?? record.requestedChanges ?? null,
+            requestedByRole: record.requestedByRole ?? null,
+            reviewedBy: record.reviewedBy ?? null,
+            reviewedAt: record.reviewedAt ?? null,
+            reviewNotes: record.reviewNotes ?? null
+          };
       break;
     }
 
     case 'audit_trails': {
       dbRow.timestamp = record.timestamp || nowIso;
-      dbRow.user = record.user || record.userName || 'Staff';
+      dbRow.user = record.user || record.performedByUser || record.userName || 'Staff';
       if (isValidUuid(record.userId || record.user_id)) {
         dbRow.user_id = record.userId || record.user_id;
       }
-      dbRow.role = record.role || 'Staff';
+      dbRow.role = record.role || record.performedByRole || 'Staff';
       dbRow.action = record.action || 'UPDATE';
       dbRow.details = record.details || '';
       dbRow.site = record.site || 'All Sites';
-      dbRow.entity_type = record.entityType || record.entity_type || 'General';
-      dbRow.entity_id = record.entityId ? String(record.entityId) : null;
+      dbRow.module = record.module || record.entityType || record.entity_type || null;
+      dbRow.entity_type = record.entityType || record.entity_type || record.module || 'General';
+      dbRow.target_label = record.targetItem || record.targetLabel || null;
+      const entityId = record.entityId ?? record.entity_id ?? record.targetItem;
+      dbRow.entity_id = entityId !== undefined && entityId !== null ? String(entityId) : null;
       break;
     }
 
@@ -650,17 +819,22 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
     }
 
     default: {
-      // Generic fallback: snake_case keys and filter against valid columns if known
-      for (const [k, v] of Object.entries(record)) {
-        const snakeKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-        if (!validCols || validCols.has(snakeKey)) {
+      if (!FIELD_SPECS[tableName]) {
+        // Generic fallback: snake_case keys, filtered against known columns below
+        for (const [k, v] of Object.entries(record)) {
+          const snakeKey = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
           dbRow[snakeKey] = v;
         }
       }
     }
   }
 
-  // Strict column whitelist filter: eliminate ANY column not present in the database table schema
+  // Full-fidelity copy of the application record.
+  if (DATA_TABLES.has(tableName)) {
+    dbRow.data = sanitizeRecord(record);
+  }
+
+  // Strict column whitelist filter: drop ANY column the table does not have.
   if (validCols) {
     const finalFiltered: Record<string, any> = {};
     for (const [k, v] of Object.entries(dbRow)) {
@@ -674,18 +848,61 @@ export function toDatabaseRow(tableName: string, record: any, callerUserId?: str
   return dbRow;
 }
 
+/** Record stored in `data`, re-anchored on the row's id and timestamps; null when absent. */
+function fromDataColumn(row: any): any | null {
+  const data = row?.data;
+  if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0) {
+    return null;
+  }
+  return {
+    ...data,
+    id: row.id,
+    createdAt: data.createdAt ?? row.created_at,
+    updatedAt: row.updated_at ?? data.updatedAt,
+  };
+}
+
+function parseJsonObject(value: any): Record<string, any> {
+  if (typeof value !== 'string' || !value.trim().startsWith('{')) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function categorical(value: any, whenTrue: string, whenFalse: string, fallback: string): string {
+  if (typeof value === 'string' && value !== '') return value;
+  if (value === true) return whenTrue;
+  if (value === false) return whenFalse;
+  return fallback;
+}
+
 /**
  * Converts a database row back into the rich frontend model.
  */
 export function fromDatabaseRow(tableName: string, row: any): any {
   if (!row || typeof row !== 'object') return row;
 
+  if (DATA_TABLES.has(tableName)) {
+    const fromData = fromDataColumn(row);
+    if (fromData) return fromData;
+  }
+
+  if (FIELD_SPECS[tableName]) {
+    const obj: Record<string, any> = { id: row.id };
+    for (const [field, column] of FIELD_SPECS[tableName]) {
+      if (row[column] !== undefined && row[column] !== null) obj[field] = row[column];
+    }
+    obj.createdAt = row.created_at;
+    obj.updatedAt = row.updated_at;
+    return obj;
+  }
+
   switch (tableName) {
     case 'referrals': {
-      let extra: any = {};
-      if (row.notes && typeof row.notes === 'string' && row.notes.startsWith('{')) {
-        try { extra = JSON.parse(row.notes); } catch {}
-      }
+      const extra = parseJsonObject(row.notes);
       return {
         ...extra,
         id: row.id,
@@ -706,39 +923,24 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         notesActionTaken: extra.notesActionTaken || row.actions_taken || '',
         assignedTo: row.assigned_to,
         followUpDate: row.follow_up_date,
-        gender: extra.gender || 'Unknown',
-        dob: extra.dob || '',
-        ethnicity: extra.ethnicity || '',
-        countryOfOrigin: extra.countryOfOrigin || '',
-        primaryLanguage: extra.primaryLanguage || 'English',
-        interpreterRequired: extra.interpreterRequired || false,
-        medicalConditions: extra.medicalConditions || [],
-        dietaryRequirements: extra.dietaryRequirements || 'None',
-        mobilityRequirements: extra.mobilityRequirements || 'None',
-        riskLevel: extra.riskLevel || row.priority || 'Low',
-        expectedCheckOutDate: extra.expectedCheckOutDate || row.follow_up_date || '',
-        actualCheckOutDate: extra.actualCheckOutDate || '',
-        acknowledgementReceived: extra.acknowledgementReceived !== false,
         mosaicId: extra.mosaicId || '',
         referralCouncil: extra.referralCouncil || '',
         methodOfReferral: extra.methodOfReferral || 'Mosaic Portal',
+        acknowledgementReceived: categorical(extra.acknowledgementReceived, 'Yes', 'No', 'Pending'),
         responseReceivedFromLA: extra.responseReceivedFromLA || 'Awaiting Allocation',
         laOfficerLeading: extra.laOfficerLeading || '',
         officerLeadingHotel: extra.officerLeadingHotel || extra.raisedBy || '',
         raisedBy: extra.raisedBy || extra.officerLeadingHotel || '',
         sgReview: extra.sgReview || '',
-        notes: extra.userNotes !== undefined ? extra.userNotes : (row.notes && !row.notes.startsWith('{') ? row.notes : ''),
-        createdAt: row.created_at,
+        notes: extra.userNotes !== undefined ? extra.userNotes : (row.notes && !String(row.notes).startsWith('{') ? row.notes : ''),
+        createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by
       };
     }
 
     case 'vulnerable_residents': {
-      let extra: any = {};
-      if (row.medical_notes && typeof row.medical_notes === 'string' && row.medical_notes.trim().startsWith('{')) {
-        try { extra = JSON.parse(row.medical_notes); } catch {}
-      }
+      const extra = parseJsonObject(row.medical_notes);
       return {
         ...extra,
         id: row.id,
@@ -758,7 +960,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         notesActionTaken: row.description || '',
         sgTeamUpdate: row.care_plan || '',
         emergencyContact: row.emergency_contact,
-        medicalNotes: extra._text !== undefined ? extra._text : (row.medical_notes && !row.medical_notes.startsWith('{') ? row.medical_notes : ''),
+        medicalNotes: extra._text !== undefined ? extra._text : (row.medical_notes && !String(row.medical_notes).startsWith('{') ? row.medical_notes : ''),
         status: row.status,
         lastReviewDate: row.last_review_date,
         nextReviewDate: row.next_review_date,
@@ -766,23 +968,21 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         flaggedBy: row.flagged_by,
         allocatedWorker: row.flagged_by,
         raisedBy: row.flagged_by || '',
-        group: 'Single Adult',
-        gender: 'Female',
-        createdAt: row.created_at,
+        group: extra.group || 'Single Adult',
+        gender: extra.gender || 'Prefer not to say',
+        createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by
       };
     }
 
     case 'challenging_behavior': {
-      let extra: any = {};
-      if (row.actions_taken && typeof row.actions_taken === 'string' && row.actions_taken.trim().startsWith('{')) {
-        try { extra = JSON.parse(row.actions_taken); } catch {}
-      }
+      const extra = parseJsonObject(row.actions_taken);
+      const plainAction = extra._text !== undefined ? extra._text : (row.actions_taken && !String(row.actions_taken).startsWith('{') ? row.actions_taken : '');
       return {
         ...extra,
         id: row.id,
-        date: row.date_of_incident || '',
+        date: extra.date || row.date_of_incident || '',
         site: row.site,
         serviceUserName: row.name,
         name: row.name,
@@ -796,36 +996,33 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         incidentType: row.type_of_issue,
         severity: row.risk_to_others,
         riskToOthers: row.risk_to_others,
-        riskFactor: row.risk_to_others || 'Medium',
+        riskFactor: extra.riskFactor || row.risk_to_others || 'Medium',
         description: row.description,
         incidentDescription: row.description || '',
-        policeInvolved: row.police_involved === 'Yes',
+        policeInvolved: row.police_involved === true || row.police_involved === 'Yes',
         policeCadNumber: row.police_cad_number,
-        warningIssued: row.warning_issued === 'Yes',
+        warningIssued: row.warning_issued === true || row.warning_issued === 'Yes',
         warningLevel: row.warning_level,
-        actionTaken: extra._text !== undefined ? extra._text : (row.actions_taken && !row.actions_taken.startsWith('{') ? row.actions_taken : ''),
-        actionsTaken: extra._text !== undefined ? extra._text : (row.actions_taken && !row.actions_taken.startsWith('{') ? row.actions_taken : ''),
+        actionTaken: plainAction,
+        actionsTaken: plainAction,
         status: row.status,
         loggedBy: row.logged_by,
-        raisedBy: row.logged_by || '',
-        group: 'Single Adult',
-        gender: 'Male',
-        followUpRequired: 'Yes',
-        adviceGivenBySGTeam: '',
-        followUpNotes: '',
-        comments: '',
-        reviewBySGTeam: '',
-        createdAt: row.created_at,
+        raisedBy: extra.raisedBy || row.logged_by || '',
+        group: extra.group || 'Single Adult',
+        gender: extra.gender || 'Other',
+        followUpRequired: extra.followUpRequired || 'No',
+        adviceGivenBySGTeam: extra.adviceGivenBySGTeam || '',
+        followUpNotes: extra.followUpNotes || '',
+        comments: extra.comments || '',
+        reviewBySGTeam: extra.reviewBySGTeam || '',
+        createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by
       };
     }
 
     case 'maintenance_records': {
-      let extra: any = {};
-      if (row.notes && typeof row.notes === 'string' && row.notes.startsWith('{')) {
-        try { extra = JSON.parse(row.notes); } catch {}
-      }
+      const extra = parseJsonObject(row.notes);
       return {
         ...extra,
         id: row.id,
@@ -857,33 +1054,21 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         category: row.category,
         raisedBy: row.reported_by || '',
         reportedBy: row.reported_by || '',
-        notes: extra.userNotes !== undefined ? extra.userNotes : (row.notes && !row.notes.startsWith('{') ? row.notes : ''),
-        createdAt: row.created_at,
+        notes: extra.userNotes !== undefined ? extra.userNotes : (row.notes && !String(row.notes).startsWith('{') ? row.notes : ''),
+        createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by
       };
     }
 
     case 'spcd_records': {
-      let extra: any = {};
-      if (row.comments && typeof row.comments === 'string' && row.comments.trim().startsWith('{')) {
-        try { extra = JSON.parse(row.comments); } catch {}
-      }
-
+      const extra = parseJsonObject(row.comments);
       const siteName = extra.siteName || extra.site || row.site_name || 'All Sites';
       const suName = extra.suName || row.su_name || extra.serviceUserName || '';
-      const suPortReference = extra.suPortReference || row.su_port_reference || '';
       const date = extra.date || row.declaration_date || (row.created_at ? row.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
-      const roomNumber = extra.roomNumber || extra.room || '';
       const staffReporting = extra.staffReporting || extra.raisedBy || row.officer_name || '';
-      const suDob = extra.suDob || '';
       const briefDescriptionActionTaken = extra.briefDescriptionActionTaken || (typeof row.comments === 'string' && !row.comments.trim().startsWith('{') ? row.comments : '');
-      const followUpNotes = extra.followUpNotes || '';
-      const updates = extra.updates || '';
       const sgReview = extra.sgReview || (row.status !== 'Archived' ? row.status : 'Pending Safeguarding Lead Review') || 'Pending Safeguarding Lead Review';
-      const isArchived = extra.isArchived !== undefined ? extra.isArchived : (row.status === 'Archived');
-      const dateLeft = extra.dateLeft || row.expires_date || undefined;
-      const reasonForLeaving = extra.reasonForLeaving || undefined;
 
       return {
         ...extra,
@@ -891,22 +1076,22 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         date,
         site: siteName,
         siteName,
-        roomNumber,
+        roomNumber: extra.roomNumber || extra.room || '',
         staffReporting,
         raisedBy: staffReporting,
         suName,
         serviceUserName: suName,
-        suPortReference,
-        suDob,
+        suPortReference: extra.suPortReference || row.su_port_reference || '',
+        suDob: extra.suDob || '',
         briefDescriptionActionTaken,
-        followUpNotes,
-        updates,
+        followUpNotes: extra.followUpNotes || '',
+        updates: extra.updates || '',
         sgReview,
         status: sgReview,
-        isArchived,
-        dateLeft,
-        reasonForLeaving,
-        createdAt: row.created_at,
+        isArchived: extra.isArchived !== undefined ? extra.isArchived : (row.status === 'Archived'),
+        dateLeft: extra.dateLeft || row.expires_date || undefined,
+        reasonForLeaving: extra.reasonForLeaving || undefined,
+        createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by,
         // Legacy compatibility
@@ -919,10 +1104,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     }
 
     case 'sites': {
-      let extra: any = {};
-      if (row.address && typeof row.address === 'string' && row.address.trim().startsWith('{')) {
-        try { extra = JSON.parse(row.address); } catch {}
-      }
+      const extra = parseJsonObject(row.address);
       return {
         ...extra,
         id: row.id,
@@ -932,8 +1114,8 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         address: extra._text !== undefined ? extra._text : row.address,
         addressLine1: extra._text !== undefined ? extra._text : row.address,
         city: row.city,
-        totalRooms: Number(row.total_rooms || 20),
-        capacity: Number(row.total_rooms || 20),
+        totalRooms: Number(row.total_rooms ?? 20),
+        capacity: Number(row.total_rooms ?? 20),
         occupiedRooms: Number(row.active_residents || 0),
         activeResidents: Number(row.active_residents || 0),
         status: row.status,
@@ -1017,6 +1199,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
           dailyCounts: buffetMeta?.dailyCounts || {},
           notes: buffetMeta?.rawNotes || '',
           updatedAt: row.updated_at,
+          lastUpdatedBy: buffetMeta?.updatedBy || row.staff_name || 'Staff',
           updatedBy: buffetMeta?.updatedBy || row.staff_name || 'Staff'
         };
       }
@@ -1027,16 +1210,18 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         date: row.date,
         mealDate: row.date,
         mealType: row.meal_type,
+        vendor: row.vendor_name,
         vendorName: row.vendor_name,
         supplierName: row.supplier_name,
+        servings: numberOrNull(row.meals_delivered),
         mealsDelivered: numberOrNull(row.meals_delivered),
-        mealsOrdered: numberOrNull(row.meals_delivered),
+        tempCheckedCelsius: numberOrNull(row.temperature_c),
         temperatureC: numberOrNull(row.temperature_c),
         qualityCheck: row.quality_check,
-        temperatureCheckPassed: row.quality_check === 'Passed',
+        status: row.quality_check || 'Delivered',
+        deliveredBy: row.staff_name,
         staffName: row.staff_name,
         staffSignoff: row.staff_signoff,
-        status: row.quality_check === 'Passed' ? 'Delivered' : 'Flagged',
         notes: row.notes,
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -1044,54 +1229,71 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     }
 
     case 'escalations': {
-      let extra: any = {};
-      if (row.description && typeof row.description === 'string' && row.description.trim().startsWith('{')) {
-        try { extra = JSON.parse(row.description); } catch {}
-      }
-
-      const suName = extra.suName || row.su_name || (row.title && row.title.includes(' - ') ? row.title.split(' - ')[0] : '') || '';
-      const suPortNassRef = extra.suPortNassRef || row.su_port_nass_ref || '';
-      const dateOfIncident = extra.dateOfIncident || row.date_of_incident || (row.created_at ? row.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
-      const personReporting = extra.personReporting || row.reported_by || '';
+      const extra = parseJsonObject(row.description);
+      const suName = extra.suName || (row.title && row.title.includes(' - ') ? row.title.split(' - ')[0] : '') || '';
       const incidentType = extra.incidentType || (row.title && row.title.includes(' - ') ? row.title.split(' - ').slice(1).join(' - ') : row.title) || row.category || 'Safeguarding Incident';
-      const wlIssued = extra.wlIssued || 'No';
+      const personReporting = extra.personReporting || row.reported_by || '';
       const reportedAuthorities = extra.reportedAuthorities || row.assigned_to || '';
       const incidentNotes = extra.incidentNotes || (typeof row.description === 'string' && !row.description.trim().startsWith('{') ? row.description : '') || '';
       const actionTaken = extra.actionTaken || row.resolution_notes || '';
       const urgency = extra.urgency || row.severity || 'High';
-      const attachments = Array.isArray(extra.attachments) ? extra.attachments : [];
+      const dateOfIncident = extra.dateOfIncident || (row.created_at ? row.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
 
       return {
         ...extra,
         id: row.id,
         site: row.site,
-        siteName: row.site,
+        siteName: extra.siteName || row.site,
         title: incidentType,
-        incidentTitle: incidentType,
+        incidentTitle: extra.incidentTitle || incidentType,
         category: incidentType,
         incidentCategory: incidentType,
         severity: urgency,
         urgency,
         status: row.status || 'Active',
         suName,
-        suPortNassRef,
+        suPortNassRef: extra.suPortNassRef || '',
         dateOfIncident,
-        dateTime: dateOfIncident,
+        dateTime: extra.dateTime || dateOfIncident,
         personReporting,
         reportedBy: personReporting,
-        submittedBy: personReporting,
+        submittedBy: extra.submittedBy || personReporting,
         incidentType,
-        wlIssued,
+        wlIssued: extra.wlIssued || 'No',
         reportedAuthorities,
         assignedTo: reportedAuthorities,
-        escalatedTo: reportedAuthorities,
+        escalatedTo: extra.escalatedTo || reportedAuthorities,
         incidentNotes,
         incidentSummary: incidentNotes,
         description: incidentNotes,
         actionTaken,
         resolutionNotes: actionTaken,
         immediateAction: actionTaken,
-        attachments,
+        attachments: Array.isArray(extra.attachments) ? extra.attachments : [],
+        createdAt: extra.createdAt || row.created_at,
+        updatedAt: row.updated_at
+      };
+    }
+
+    case 'documents': {
+      const sizeKb = parseInt(String(row.file_size || '').replace(/[^0-9]/g, ''), 10);
+      return {
+        id: row.id,
+        site: row.site,
+        documentTitle: row.title,
+        title: row.title,
+        category: row.category,
+        fileSizeKb: Number.isFinite(sizeKb) ? sizeKb : 0,
+        fileSize: row.file_size,
+        fileUrl: row.file_url,
+        uploadedBy: row.uploaded_by,
+        uploadDate: row.uploaded_date,
+        uploadedDate: row.uploaded_date,
+        version: row.version,
+        suName: '',
+        refNumber: '',
+        fileFormat: 'PDF',
+        confidentiality: 'Official',
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };
@@ -1120,6 +1322,45 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         userIds: Array.isArray(row.user_ids) ? row.user_ids : [],
         createdAt: row.created_at,
         updatedAt: row.updated_at
+      };
+    }
+
+    case 'data_change_requests': {
+      const payload = row.payload && typeof row.payload === 'object' ? row.payload : {};
+      return {
+        id: row.id,
+        module: row.module,
+        requestType: row.action_type,
+        requestedBy: row.requested_by,
+        requestedByRole: payload.requestedByRole || 'Staff',
+        site: row.site,
+        status: row.status,
+        reason: row.reason,
+        recordId: payload.recordId || undefined,
+        recordTitle: payload.recordTitle || '',
+        proposedChanges: payload.proposedChanges || undefined,
+        reviewedBy: payload.reviewedBy || undefined,
+        reviewedAt: payload.reviewedAt || undefined,
+        reviewNotes: payload.reviewNotes || undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    }
+
+    case 'audit_trails': {
+      return {
+        id: row.id,
+        timestamp: row.timestamp || row.created_at,
+        action: row.action,
+        module: row.module || moduleLabelFor(row.entity_type),
+        targetItem: row.target_label || row.entity_id || '',
+        performedByRole: row.role || 'Staff',
+        performedByUser: row.user || 'Staff',
+        site: row.site || 'All Sites',
+        details: row.details || '',
+        entityType: row.entity_type,
+        entityId: row.entity_id,
+        userId: row.user_id
       };
     }
 

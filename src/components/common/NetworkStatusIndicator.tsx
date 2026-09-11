@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Wifi, WifiOff, RefreshCw, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, CheckCircle2, AlertCircle, Info, Database } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 export const NetworkStatusIndicator: React.FC = () => {
+  const { liveDataStatus } = useApp();
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     return typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean' 
       ? navigator.onLine 
@@ -184,7 +186,7 @@ export const NetworkStatusIndicator: React.FC = () => {
                 <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#7f6000]" />
                 <div>
                   <strong className="block text-[#323130] font-semibold text-[11px]">Offline Notice:</strong>
-                  You can continue viewing and editing cached records. Changes will remain securely in local storage and will sync once connection is restored.
+                  Records are stored only in the live database, so changes cannot be saved while you are offline. Anything you try to save now will be refused and reverted - reconnect before entering data.
                 </div>
               </div>
             ) : (
@@ -195,6 +197,20 @@ export const NetworkStatusIndicator: React.FC = () => {
                 </div>
               </div>
             )}
+
+            <div className="flex items-center justify-between gap-2 text-[10px] pt-1">
+              <span className="flex items-center gap-1 text-[#797775]">
+                <Database className="w-3 h-3" /> Live database:
+              </span>
+              <span className={`font-semibold ${
+                liveDataStatus.state === 'live' ? 'text-[#107c10]' : liveDataStatus.state === 'degraded' ? 'text-[#7f6000]' : liveDataStatus.state === 'offline' ? 'text-[#a4262c]' : 'text-[#605e5c]'
+              }`}>
+                {liveDataStatus.state === 'live' && `Connected${liveDataStatus.lastSyncAt ? ` · synced ${new Date(liveDataStatus.lastSyncAt).toLocaleTimeString()}` : ''}`}
+                {liveDataStatus.state === 'degraded' && `Partially connected (${liveDataStatus.unavailable.length} module(s) unavailable)`}
+                {liveDataStatus.state === 'offline' && 'Unavailable - saving disabled'}
+                {(liveDataStatus.state === 'loading' || liveDataStatus.state === 'idle') && 'Connecting...'}
+              </span>
+            </div>
 
             {lastChanged && (
               <div className="flex justify-between items-center text-[10px] text-[#797775] pt-1">

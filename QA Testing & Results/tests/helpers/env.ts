@@ -56,7 +56,9 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   referrals: {
     label: /^SG Referrals/, index: 1, title: 'SG Referrals', entity: 'referrals',
     createButton: /^\+ New Record$/, createModalTitle: /New SG Referral Submission/,
-    submitButton: /Submit & Confirm/,
+    // The form was rebuilt on DynamicRecordFormModal (commit 1b418da), whose
+    // create button reads "Create Record".
+    submitButton: /^(Create Record|Submit & Confirm)$/,
   },
   referralsArchive: { index: 2, title: 'SG Referrals (Archive)' },
 

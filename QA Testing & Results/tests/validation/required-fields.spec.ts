@@ -47,8 +47,9 @@ test.describe('TS-Validation required fields', () => {
   test('a referral missing only the service user name is still blocked', async ({ page, tag, api }) => {
     await gotoModule(page, 'referrals');
     await openCreateForm(page, 'referrals');
-    await field(page, 'Referral Council').fill('Westminster City Council');
-    await field(page, 'Notes - Action').fill(`${tag} partial submission`);
+    await field(page, 'Referral Council').selectOption('Westminster City Council');
+    await field(page, 'Port / NASS Ref').fill(`PORT-${tag.slice(-6)}`);
+    await field(page, 'Actions Taken & Case Details').fill(`${tag} partial submission`);
     // Service user name deliberately left empty.
     await submitCreateForm(page, 'referrals');
 

@@ -13,6 +13,9 @@ import authRouter from './routes/auth.js';
 import dbRouter from './routes/db.js';
 import smtpRouter from './routes/smtp.js';
 import { runDatabaseMigrations } from './migrate.js';
+import { seedReferenceData } from './seed.js';
+import { invalidateLiveSchema } from './liveSchema.js';
+import { isSupabaseConfigured } from './supabase.js';
 import { getNetworkIps, getClientOrigin } from './urlHelper.js';
 import { requireAuth } from './middleware/requireAuth.js';
 
@@ -78,14 +81,30 @@ async function startServer() {
   const app = express();
   const PORT = await getAvailablePort(DEFAULT_PORT);
 
-  // Auto-run database schema migrations on bootup if PostgreSQL connection string exists
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.AUTH_TOKEN_SECRET) {
+      console.warn('[Startup] AUTH_TOKEN_SECRET is not set: built-in administrator sessions will not survive a restart.');
+    }
+    if (!isSupabaseConfigured()) {
+      console.error('[Startup] Live database is NOT configured (SUPABASE_URL / SUPABASE_SECRET_KEY). Every save will be refused.');
+    }
+  }
+
+  // Apply the (non-destructive, idempotent) schema, then seed reference data
+  // into any empty tables. Neither blocks the server from starting.
   runDatabaseMigrations()
-    .then((res) => {
+    .then(async (res) => {
       if (res.success) {
         console.log('[Migration]', res.message);
       } else {
-        console.log('[Migration Note]', res.message);
+        console.warn('[Migration NOT applied]', res.message);
       }
+      invalidateLiveSchema();
+      const seed = await seedReferenceData();
+      if (seed.seeded.length) console.log('[Seed] Seeded:', seed.seeded.join(', '));
+      if (seed.errors.length) console.warn('[Seed] Errors:', seed.errors.join('; '));
+      const pending = seed.skipped.filter(s => s.includes('migration pending'));
+      if (pending.length) console.warn('[Seed] Waiting for migration:', pending.join(', '));
     })
     .catch((err) => {
       console.error('[Migration Error]', err);
@@ -142,7 +161,7 @@ async function startServer() {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Admin-Email, Origin, Accept, x-user-id, x-user-email, x-user-name, x-user-role, x-user-site, x-action-type');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Admin-Email, Origin, Accept, x-user-id, x-user-email, x-user-name, x-user-role, x-user-site, x-action-type, x-audit-context');
       res.setHeader('Vary', 'Origin');
     }
     if (req.method === 'OPTIONS') {
@@ -189,7 +208,9 @@ async function startServer() {
   // (BUG-001). Authorization decisions downstream use req.user, not the
   // client-supplied x-user-* headers, which any caller can forge.
   app.use('/api/db', requireAuth, dbRouter);
-  app.use('/api/smtp', smtpRouter);
+  // The SMTP routes send mail through the organisation's account and edit
+  // notification rules; they were previously reachable anonymously.
+  app.use('/api/smtp', requireAuth, smtpRouter);
 
   // Vite middleware for development / Static files for production
   if (process.env.NODE_ENV !== 'production') {

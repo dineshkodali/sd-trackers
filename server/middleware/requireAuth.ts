@@ -72,26 +72,37 @@ export async function resolveUser(token: string): Promise<AuthenticatedUser | nu
     const admin = getSupabaseAdmin();
     let profile: any = null;
     if (admin) {
-      const { data: prof } = await admin.from('profiles').select('*').eq('id', data.user.id).single();
+      const { data: prof, error: profileError } = await admin.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
+      // A failed lookup is not the same as "no profile": surface it as a
+      // temporary outage rather than treating the session as unprovisioned.
+      if (profileError) throw new ProfileLookupError(profileError.message);
       profile = prof;
     }
 
-    if (profile?.status && String(profile.status).toLowerCase() !== 'active') {
+    // Authorization is decided by the profile row alone. user_metadata is
+    // editable by the account holder, so it must never supply a role, and an
+    // account with no profile was never provisioned by an administrator.
+    if (!profile) return null;
+    if (String(profile.status || '').toLowerCase() !== 'active') {
       return null; // suspended or inactive accounts must not transact
     }
 
     return {
       id: data.user.id,
       email: data.user.email || '',
-      name: profile?.name || data.user.user_metadata?.name || (data.user.email || '').split('@')[0],
-      role: profile?.role || data.user.user_metadata?.role || 'Staff',
-      assignedSite: profile?.assigned_site || data.user.user_metadata?.assigned_site || 'All Sites',
+      name: profile.name || data.user.user_metadata?.name || (data.user.email || '').split('@')[0],
+      role: profile.role || 'Staff',
+      assignedSite: profile.assigned_site || 'All Sites',
       provider: 'supabase',
     };
-  } catch {
+  } catch (err) {
+    if (err instanceof ProfileLookupError) throw err;
     return null;
   }
 }
+
+/** The profile store could not be read; the session itself may be valid. */
+export class ProfileLookupError extends Error {}
 
 /** Reject the request unless it carries a valid session. */
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -100,7 +111,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  const user = await resolveUser(token);
+  let user: AuthenticatedUser | null;
+  try {
+    user = await resolveUser(token);
+  } catch (err) {
+    if (err instanceof ProfileLookupError) {
+      return res.status(503).json({ error: 'User profile lookup is temporarily unavailable. Please retry.' });
+    }
+    throw err;
+  }
   if (!user) {
     return res.status(401).json({ error: 'Invalid or expired session' });
   }

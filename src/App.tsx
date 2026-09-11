@@ -39,6 +39,7 @@ import { LoginView } from './components/auth/LoginView';
 import { QuickJumpModal } from './components/common/QuickJumpModal';
 import { AuthenticationBlockedView } from './components/auth/AuthenticationBlockedView';
 import { DiagnosticInspectorModal } from './components/auth/DiagnosticInspectorModal';
+import { LiveDataBanner } from './components/common/LiveDataBanner';
 
 function AppLayout() {
   const { 
@@ -187,6 +188,7 @@ function AppLayout() {
 
         {/* Viewport Content Area - Dedicated scrolling container */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-[1700px] mx-auto w-full h-full">
+          <LiveDataBanner />
           {renderActiveView()}
         </main>
       </div>

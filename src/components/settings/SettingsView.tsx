@@ -31,6 +31,7 @@ export const SettingsView: React.FC = () => {
     updateSettings,
     resetAllData,
     restoreBackup,
+    buildBackupSnapshot,
     requestConfirmation,
     currentUserRole,
     setCurrentUserRole,
@@ -129,7 +130,7 @@ export const SettingsView: React.FC = () => {
 
     requestConfirmation({
       title: 'CRITICAL: Confirm Batch Permanent Deletion',
-      message: `WARNING: You are about to PERMANENTLY PURGE ${totalEligibleToDelete} record(s) older than ${cutoffDate} (${deleteScopeDescription}). This action cannot be reversed and will free local storage to optimize browser performance.`,
+      message: `WARNING: You are about to PERMANENTLY PURGE ${totalEligibleToDelete} record(s) older than ${cutoffDate} (${deleteScopeDescription}) from the live database. This action cannot be reversed.`,
       confirmLabel: `Permanently Purge ${totalEligibleToDelete} Record(s)`,
       isDanger: true,
       itemDetails: targetStats
@@ -141,7 +142,7 @@ export const SettingsView: React.FC = () => {
       onConfirm: () => {
         const res = batchDeleteRecordsOlderThan(batchModule, cutoffDate, onlyArchivedForDelete);
         setBatchResultBanner({
-          message: `Permanently purged ${res.totalAffected} records older than ${cutoffDate}. Local storage refreshed.`,
+          message: `Permanently purged ${res.totalAffected} records older than ${cutoffDate} from the live database.`,
           count: res.totalAffected,
           action: 'delete'
         });
@@ -185,26 +186,9 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleFullBackup = () => {
-    const backupKeys = [
-      'sg_tracker_sites',
-      'sg_tracker_referrals',
-      'sg_tracker_vulnerable',
-      'sg_tracker_challenging',
-      'sg_tracker_laundry',
-      'sg_tracker_food',
-      'sg_tracker_escalations',
-      'sg_tracker_documents',
-      'sg_tracker_settings'
-    ];
-    const data: Record<string, any> = {};
-    backupKeys.forEach(k => {
-      const val = localStorage.getItem(k);
-      if (val) {
-        try {
-          data[k.replace('sg_tracker_', '')] = JSON.parse(val);
-        } catch {}
-      }
-    });
+    // Every module, as currently held by the live database (previously this read
+    // nine localStorage keys and silently omitted every other module).
+    const data = buildBackupSnapshot();
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -225,9 +209,9 @@ export const SettingsView: React.FC = () => {
       try {
         const text = event.target?.result as string;
         requestConfirmation({
-          title: 'Restore Database from JSON Backup',
-          message: 'CRITICAL: Are you sure you want to restore data from this file? All current records will be replaced with the imported dataset.',
-          confirmLabel: 'Yes, Restore Database',
+          title: 'Restore Records from JSON Backup',
+          message: 'Every record in this file will be written to the live database. Records with the same ID are overwritten with the backup copy; records not in the file are kept.',
+          confirmLabel: 'Yes, Restore Records',
           isDanger: true,
           onConfirm: () => {
             const success = restoreBackup(text);
@@ -903,7 +887,7 @@ export const SettingsView: React.FC = () => {
             <div>
               <h3 className="font-semibold text-xs text-[#242424]">Backup & Data Recovery</h3>
               <p className="text-[11px] text-[#605e5c]">
-                Download a copy of your records, restore a saved backup, or reset to sample data.
+                Download a copy of every module from the live database, restore records from a saved backup, or reload all data.
               </p>
             </div>
           </div>
@@ -928,10 +912,10 @@ export const SettingsView: React.FC = () => {
             <button
               onClick={resetAllData}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-red-50 border border-red-200 rounded-xs hover:bg-red-100 font-semibold text-[#a4262c] ml-auto"
-              title="Emergency Super Admin Backup Reset Option"
+              title="Discard what is on screen and reload every module from the live database"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Sample Data (Super Admin Emergency Only)</span>
+              <span>Reload All Data From Database</span>
             </button>
           )}
         </div>

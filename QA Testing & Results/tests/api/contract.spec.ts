@@ -140,10 +140,13 @@ test.describe('TS-21 API contract', () => {
   });
 
   /**
-   * DEF-11. The schema adapter drops fields the SQL table has no column for
-   * instead of round-tripping them, and flips the type of others.
+   * DEF-11 / BUG-023 regression — FIXED 2026-09-11. The schema adapter dropped
+   * fields the SQL table had no column for and flipped the type of others. Every
+   * record is now stored whole in a `data` JSONB column (and, before that
+   * column exists, the previously dropped fields are packed with the rest), so
+   * the `test.fail()` annotation was removed.
    */
-  test.fail('21.12 DEF-11 every submitted field survives a round trip', async ({ api, tag }) => {
+  test('21.12 DEF-11 every submitted field survives a round trip', async ({ api, tag }) => {
     const payload = { ...referralPayload({ suName: tag }), srNo: 42, acknowledgementReceived: 'Pending' };
     await api.post('/api/db/referrals', { data: payload });
 

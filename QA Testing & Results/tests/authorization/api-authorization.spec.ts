@@ -101,6 +101,18 @@ test.describe('TS-02 API authorization', () => {
     expect([401, 403]).toContain(res.status());
   });
 
+  test('02.n the SMTP API refuses anonymous callers (it sends mail through the organisation account)', async () => {
+    for (const [method, path] of [['get', '/api/smtp/rules'], ['post', '/api/smtp/trigger'], ['post', '/api/smtp/alert'], ['post', '/api/smtp/test']] as const) {
+      const res = method === 'get' ? await anon.get(path) : await anon.post(path, { data: { eventCode: 'referral.created', title: 'x', testRecipient: 'attacker@example.com' } });
+      expect([401, 403], `anonymous ${method.toUpperCase()} ${path} returned ${res.status()}`).toContain(res.status());
+    }
+  });
+
+  test('02.o the batch reader refuses anonymous callers', async () => {
+    const res = await anon.post('/api/db/batch-read', { data: { requests: [{ entity: 'referrals' }] } });
+    expect([401, 403]).toContain(res.status());
+  });
+
   test('02.m an authenticated session can still read its data', async ({ api }) => {
     // The counterpart to every test above: locking the API down must not break
     // legitimate access.

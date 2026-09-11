@@ -4,16 +4,14 @@
 import { test, expect } from '../helpers/fixtures';
 import {
   gotoModule, openCreateForm, submitCreateForm, acceptConfirmation,
-  field, waitForRow, filters, rowContaining, rowAction,
+  waitForRow, filters, rowContaining, rowAction, fillReferralForm,
 } from '../helpers/ui';
 import { listRecords } from '../helpers/api';
 
 async function createReferral(page: any, tag: string) {
   await gotoModule(page, 'referrals');
   await openCreateForm(page, 'referrals');
-  await field(page, 'Referral Council').fill('Westminster City Council');
-  await field(page, 'Service User (SU) Full Name').fill(tag);
-  await field(page, 'Notes - Action').fill('Audit trail test record.');
+  await fillReferralForm(page, tag, 'Audit trail test record.');
   await submitCreateForm(page, 'referrals');
   await acceptConfirmation(page, /^Create Referral$/i);
   await waitForRow(page, tag);

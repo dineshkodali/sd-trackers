@@ -38,23 +38,33 @@ async function bootAs(context: any, page: any, role: string, perms: Partial<Perm
     })
   );
 
+  // Live mode reads the RBAC matrix from the database (role_permissions, loaded
+  // by the batch reader) rather than from localStorage, so the permissions under
+  // test are injected into that response. The rest of the payload is real.
+  await context.route('**/api/db/batch-read', async (route: any) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    if (body?.results) {
+      body.results.rolePermissions = { success: true, data: [{ id: role, role, ...ALL_TRUE, ...perms }] };
+    }
+    await route.fulfill({ response, json: body });
+  });
+
   // A real signed token: /api/auth/me is stubbed for the role under test, but the
   // app's data calls still hit a live API that now demands a valid session.
   const { getAuthToken } = await import('../helpers/api');
   const sessionToken = await getAuthToken();
 
   await context.addInitScript(
-    ([keys, user, roleName, permissions, assignedSite, token]: any) => {
+    ([keys, user, roleName, assignedSite, token]: any) => {
       localStorage.setItem(keys.token, JSON.stringify(token));
       localStorage.setItem(keys.user, JSON.stringify({ ...user, role: roleName, assignedSite }));
       localStorage.setItem(keys.role, JSON.stringify(roleName));
-      localStorage.setItem(keys.permissions, JSON.stringify(permissions));
     },
     [
       STORAGE_KEYS,
       { id: MASTER.id, email: MASTER.email, name: MASTER.name },
       role,
-      { [role]: { ...ALL_TRUE, ...perms } },
       site,
       sessionToken,
     ]

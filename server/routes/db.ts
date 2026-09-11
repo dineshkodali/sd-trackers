@@ -1,617 +1,819 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getSupabaseAdmin, isSupabaseConfigured } from '../supabase.js';
-import { runDatabaseMigrations } from '../migrate.js';
-import { toDatabaseRow, fromDatabaseRow } from '../schemaAdapter.js';
+import { getSupabaseAdmin, isSupabaseConfigured, getSupabaseUrl } from '../supabase.js';
+import { runDatabaseMigrations, loadSchemaSql } from '../migrate.js';
+import { toDatabaseRow, fromDatabaseRow, TABLE_COLUMNS, DATA_TABLES, moduleLabelFor } from '../schemaAdapter.js';
 import { requireRole } from '../middleware/requireAuth.js';
+import { getLiveSchema, getLiveColumns, invalidateLiveSchema } from '../liveSchema.js';
+import { seedReferenceData } from '../seed.js';
+import { INITIAL_ROLE_PERMISSIONS } from '../../src/data/initialData.js';
 
 const router = Router();
 
 /**
- * Canonical table registry — maps frontend entity names to Supabase table names.
- * No duplicate/legacy tables. Each entity maps to exactly one canonical table.
+ * Who may perform an operation on an entity:
+ *   any        - any authenticated user
+ *   admin      - Super Admin / Admin
+ *   superadmin - Super Admin only
+ *   append     - create only (any user); updates refused
+ *   permission - governed by role_permissions.canDeleteRecords (deletes only)
+ *   none       - not through this API
  */
-export const PAGE_TABLE_REGISTRY = {
-  referrals: { page: 'Referrals', table: 'referrals' },
-  vulnerable: { page: 'Vulnerable Service Users', table: 'vulnerable_residents' },
-  challenging: { page: 'Challenging Service Users', table: 'challenging_behavior' },
-  maintenance: { page: 'Maintenance & Defects', table: 'maintenance_records' },
-  spcd: { page: 'SPCD Tracker', table: 'spcd_records' },
-  sites: { page: 'Properties & Sites', table: 'sites' },
-  userGroups: { page: 'User Groups', table: 'user_groups' },
-  property_user_assignments: { page: 'Property Assignments', table: 'property_user_assignments' },
-  audit_trails: { page: 'Audit Trails', table: 'audit_trails' },
-  laundry: { page: 'Laundry Logs', table: 'laundry_logs' },
-  laundry_logs: { page: 'Laundry Operational Logs', table: 'laundry_logs' },
-  property_laundry_logs: { page: 'Property Laundry Logs', table: 'laundry_logs' },
-  food: { page: 'Food Records', table: 'hot_food_logs' },
-  hot_food_logs: { page: 'Hot Food Logs', table: 'hot_food_logs' },
-  food_vendor_buffet_logs: { page: 'Food Vendor Buffet Logs', table: 'hot_food_logs' },
-  escalations: { page: 'Escalations', table: 'escalations' },
-  documents: { page: 'Documents', table: 'documents' },
-  requests: { page: 'Data Change Requests', table: 'data_change_requests' },
-  profiles: { page: 'User Profiles', table: 'profiles' },
-  users: { page: 'Users', table: 'profiles' },
-  passwordAudit: { page: 'Password Audit', table: 'password_audit_logs' },
-  email_notification_rules: { page: 'Email Notification Rules', table: 'email_notification_rules' },
-  email_notification_logs: { page: 'Email Notification Logs', table: 'email_notification_logs' }
-} as const;
+type Policy = 'any' | 'admin' | 'superadmin' | 'append' | 'permission' | 'none';
 
-// Canonical entity → table mapping (no legacy duplicates)
-const TABLE_MAP: Record<string, string> = {
-  referrals: 'referrals',
-  vulnerable: 'vulnerable_residents',
-  challenging: 'challenging_behavior',
-  maintenance: 'maintenance_records',
-  spcd: 'spcd_records',
-  sites: 'sites',
-  userGroups: 'user_groups',
-  property_user_assignments: 'property_user_assignments',
-  audit: 'audit_trails',
-  audit_trails: 'audit_trails',
-  laundry: 'laundry_logs',
-  laundry_logs: 'laundry_logs',
-  property_laundry_logs: 'laundry_logs',
-  food: 'hot_food_logs',
-  hot_food_logs: 'hot_food_logs',
-  food_vendor_buffet_logs: 'hot_food_logs',
-  escalations: 'escalations',
-  documents: 'documents',
-  requests: 'data_change_requests',
-  profiles: 'profiles',
-  users: 'profiles',
-  passwordAudit: 'password_audit_logs',
-  email_notification_rules: 'email_notification_rules',
-  email_notification_logs: 'email_notification_logs'
+interface EntityDef {
+  page: string;
+  table: string;
+  read?: 'any' | 'admin';
+  write?: Policy;
+  remove?: Policy;
+  /** Discriminator for entities sharing one table. */
+  variant?: (record: any) => boolean;
+  /** Alias kept for older clients; omitted from page coverage. */
+  alias?: boolean;
+}
+
+const isPropertyLaundry = (r: any) => !!r.periodType || String(r.id || '').startsWith('prop-lau');
+const isVendorBuffet = (r: any) => !!r.dailyCounts || String(r.id || '').startsWith('vendor-bf');
+
+/**
+ * Canonical entity registry: every page that stores data, the table that
+ * holds it, and who may change it.
+ */
+export const ENTITY_REGISTRY: Record<string, EntityDef> = {
+  referrals: { page: 'SG Referrals', table: 'referrals' },
+  vulnerable: { page: 'Vulnerable SUs', table: 'vulnerable_residents' },
+  challenging: { page: 'Challenging SUs', table: 'challenging_behavior' },
+  maintenance: { page: 'Maintenance Tracker', table: 'maintenance_records' },
+  spcd: { page: 'SPCD Tracker', table: 'spcd_records' },
+  laundry: { page: 'Laundry Support - resident intake', table: 'laundry_logs', variant: r => !isPropertyLaundry(r) },
+  property_laundry_logs: { page: 'Laundry Support - property logs', table: 'laundry_logs', variant: isPropertyLaundry },
+  food: { page: 'Hot Meals Tracker - deliveries', table: 'hot_food_logs', variant: r => !isVendorBuffet(r) },
+  food_vendor_buffet_logs: { page: 'Hot Meals Tracker - vendor buffet', table: 'hot_food_logs', variant: isVendorBuffet },
+  escalations: { page: 'Escalations Log', table: 'escalations' },
+  documents: { page: 'Proof Documents', table: 'documents' },
+  publicTransport: { page: 'Public Transport Tracker', table: 'public_transport_records' },
+  compliance: { page: 'SD-Compliance Tracker', table: 'compliance_records' },
+  gpAppointments: { page: 'GP Appointments', table: 'gp_appointments' },
+  rfaWelfare: { page: 'RFA Welfare Checks', table: 'rfa_welfare_checks' },
+  dispersal: { page: 'Dispersal Sheet', table: 'dispersal_records' },
+  booklets: { page: 'Booklets to be Collected', table: 'booklet_collections' },
+  vcsAgencies: { page: 'SD VCS Directory', table: 'vcs_agencies' },
+  requests: { page: 'Requests & Approvals', table: 'data_change_requests' },
+  sites: { page: 'Properties Directory', table: 'sites', write: 'admin', remove: 'admin' },
+  users: { page: 'Staff & User Accounts', table: 'profiles', write: 'admin', remove: 'none' },
+  userGroups: { page: 'User Groups', table: 'user_groups', write: 'admin', remove: 'admin' },
+  property_user_assignments: { page: 'Property Assignments', table: 'property_user_assignments', write: 'admin', remove: 'admin' },
+  rolePermissions: { page: 'Roles & RBAC Matrix', table: 'role_permissions', write: 'admin', remove: 'admin' },
+  fieldOptions: { page: 'Field Options & Setup', table: 'field_options', write: 'admin', remove: 'admin' },
+  appSettings: { page: 'System Preferences', table: 'app_settings', write: 'admin', remove: 'none' },
+  tableSchemas: { page: 'Custom Table Columns', table: 'table_schemas', write: 'admin', remove: 'admin' },
+  audit_trails: { page: 'Audit Security Trail', table: 'audit_trails', write: 'append', remove: 'superadmin' },
+  email_notification_rules: { page: 'Notifications - rules', table: 'email_notification_rules', write: 'none', remove: 'none' },
+  email_notification_logs: { page: 'Notifications - delivery log', table: 'email_notification_logs', write: 'none', remove: 'none' },
+  passwordAudit: { page: 'Password Audit Log', table: 'password_audit_logs', read: 'admin', write: 'none', remove: 'none' },
+
+  // Aliases used by existing clients
+  audit: { page: 'Audit Security Trail', table: 'audit_trails', write: 'append', remove: 'superadmin', alias: true },
+  laundry_logs: { page: 'Laundry Support - resident intake', table: 'laundry_logs', variant: r => !isPropertyLaundry(r), alias: true },
+  hot_food_logs: { page: 'Hot Meals Tracker - deliveries', table: 'hot_food_logs', variant: r => !isVendorBuffet(r), alias: true },
+  profiles: { page: 'Staff & User Accounts', table: 'profiles', write: 'admin', remove: 'none', alias: true },
 };
 
-// Helper to test if a string is a valid UUID
+/** Retained for callers that imported the old name. */
+export const PAGE_TABLE_REGISTRY = Object.fromEntries(
+  Object.entries(ENTITY_REGISTRY).filter(([, d]) => !d.alias).map(([k, d]) => [k, { page: d.page, table: d.table }])
+);
+
+const ADMIN_ROLES = ['Super Admin', 'Admin'];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-function isValidUuid(val: any): boolean {
-  return typeof val === 'string' && UUID_REGEX.test(val.trim());
+const isValidUuid = (val: any) => typeof val === 'string' && UUID_REGEX.test(val.trim());
+const isMissingTableError = (error: any) => error?.code === '42P01' || error?.code === 'PGRST205';
+
+function resolveEntity(req: Request, res: Response): EntityDef | null {
+  const def = ENTITY_REGISTRY[req.params.entity];
+  if (!def) {
+    res.status(404).json({ success: false, error: `Unknown entity: ${req.params.entity}` });
+    return null;
+  }
+  return def;
+}
+
+function requireDatabase(res: Response): SupabaseClient | null {
+  if (!isSupabaseConfigured()) {
+    res.status(503).json({
+      success: false,
+      error: 'Live database is not configured on the server (SUPABASE_URL / SUPABASE_SECRET_KEY). Changes cannot be saved.'
+    });
+    return null;
+  }
+  const client = getSupabaseAdmin();
+  if (!client) {
+    res.status(503).json({ success: false, error: 'Supabase client unavailable. Changes cannot be saved.' });
+    return null;
+  }
+  return client;
+}
+
+function tableMissing(res: Response, table: string) {
+  return res.status(503).json({
+    success: false,
+    tableMissing: true,
+    table,
+    error: `Database table "${table}" does not exist yet. An administrator must apply the database migration (Settings > Database > Run Migration).`
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Authorization
+// ---------------------------------------------------------------------------
+
+let permissionCache: { at: number; canDelete: Map<string, boolean> } | null = null;
+
+async function roleMayDelete(role: string): Promise<boolean> {
+  if (role === 'Super Admin') return true;
+  if (!permissionCache || Date.now() - permissionCache.at > 60_000) {
+    const canDelete = new Map<string, boolean>();
+    const client = getSupabaseAdmin();
+    if (client) {
+      const { data } = await client.from('role_permissions').select('id, can_delete_records');
+      for (const row of data || []) canDelete.set(row.id, row.can_delete_records === true);
+    }
+    permissionCache = { at: Date.now(), canDelete };
+  }
+  if (permissionCache.canDelete.has(role)) return permissionCache.canDelete.get(role)!;
+  return (INITIAL_ROLE_PERMISSIONS as Record<string, any>)[role]?.canDeleteRecords === true;
+}
+
+async function authorize(req: Request, res: Response, policy: Policy, operation: 'create' | 'update' | 'delete'): Promise<boolean> {
+  const role = req.user?.role || '';
+  let allowed = false;
+  switch (policy) {
+    case 'any': allowed = true; break;
+    case 'admin': allowed = ADMIN_ROLES.includes(role); break;
+    case 'superadmin': allowed = role === 'Super Admin'; break;
+    case 'append': allowed = operation === 'create'; break;
+    case 'permission': allowed = operation === 'delete' ? await roleMayDelete(role) : true; break;
+    case 'none': allowed = false; break;
+  }
+  if (!allowed) {
+    res.status(403).json({ success: false, error: 'Insufficient privileges for this operation' });
+  }
+  return allowed;
+}
+
+// ---------------------------------------------------------------------------
+// Audit trail
+// ---------------------------------------------------------------------------
+
+const AUDIT_ACTIONS = new Set([
+  'CREATE', 'UPDATE', 'DELETE', 'ARCHIVE', 'RESTORE', 'SETTINGS_UPDATE', 'ROLE_CHANGE', 'BACKUP_EXPORT', 'DATA_RESTORE'
+]);
+
+interface ClientAuditContext {
+  action?: string;
+  module?: string;
+  targetItem?: string;
+  details?: string;
+  site?: string;
 }
 
 /**
- * Caller identity for the audit trail.
- *
- * The verified session (`req.user`, set by requireAuth) is authoritative. The
- * `x-user-*` headers are client-supplied and were previously the sole source of
- * audit attribution, so any caller could write audit entries naming somebody
- * else. They are retained only as a fallback for the fields a session does not
- * carry, and can never override a verified identity.
+ * Descriptive audit text supplied by the client in the `x-audit-context`
+ * header (base64 JSON). Only the description comes from the client: identity
+ * always comes from the verified session.
  */
-function extractAuditCallerContext(req: Request) {
-  const authenticated = req.user;
+function readClientAuditContext(req: Request): ClientAuditContext | null {
+  const raw = req.headers['x-audit-context'];
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > 8192) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
-  const userId = authenticated?.id
-    || (req.headers['x-user-id'] as string) || req.body?.createdBy || req.body?.created_by || req.body?.userId || null;
-  const userEmail = authenticated?.email
-    || (req.headers['x-user-email'] as string) || req.body?.userEmail || null;
-  const userName = authenticated?.name
-    || (req.headers['x-user-name'] as string) || req.body?.userName || req.body?.lastUpdatedBy || req.body?.staffName || null;
-  const role = authenticated?.role
-    || (req.headers['x-user-role'] as string) || req.body?.userRole || req.body?.role || 'Staff';
-  const site = (req.headers['x-user-site'] as string) || req.body?.site || req.body?.siteName || authenticated?.assignedSite || 'All Sites';
-  const actionHeader = req.headers['x-action-type'] as string;
-
+function callerIdentity(req: Request) {
+  const u = req.user;
   return {
-    userId,
-    validUuid: isValidUuid(userId) ? userId : null,
-    userEmail,
-    userName,
-    displayName: userName || userEmail || (userId ? `User (${userId})` : 'Authenticated Staff'),
-    role,
-    site,
-    actionHeader
+    validUuid: isValidUuid(u?.id) ? u!.id : null,
+    displayName: u?.name || u?.email || 'Authenticated Staff',
+    role: u?.role || 'Staff',
+    site: (req.headers['x-user-site'] as string) || u?.assignedSite || 'All Sites',
   };
 }
 
-// Centralized Audit Logger to persist into public.audit_trails
-async function recordAuditTrailEntry(params: {
-  action: 'CREATE' | 'UPDATE' | 'DELETE';
+async function recordAuditTrailEntry(req: Request, params: {
+  defaultAction: 'CREATE' | 'UPDATE' | 'DELETE';
   entity: string;
   entityId?: string;
-  userId?: string | null;
-  validUuid?: string | null;
-  displayName: string;
-  role: string;
-  site: string;
-  details?: string;
+  site?: string;
+  defaultDetails: string;
 }) {
-  if (!isSupabaseConfigured()) return;
+  if (params.entity === 'audit' || params.entity === 'audit_trails') return; // no self-auditing
   const client = getSupabaseAdmin();
   if (!client) return;
 
   try {
-    const { action, entity, entityId, userId, validUuid, displayName, role, site, details } = params;
-
-    // Skip self-auditing to prevent recursion
-    if (entity === 'audit' || entity === 'audit_trails') {
-      return;
-    }
-
-    const defaultDetails = `${action} on ${entity}${entityId ? ` [${entityId}]` : ''} by ${displayName} (${role})`;
-    const fullDetails = details || defaultDetails;
+    const caller = callerIdentity(req);
+    const ctx = readClientAuditContext(req) || {};
+    const action = ctx.action && AUDIT_ACTIONS.has(ctx.action) ? ctx.action : params.defaultAction;
     const nowIso = new Date().toISOString();
-    const auditId = `aud-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-    const trailPayload: any = {
-      id: auditId,
+    const row = toDatabaseRow('audit_trails', {
+      id: `aud-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
       timestamp: nowIso,
-      user: displayName,
-      role: role || 'Staff',
+      user: caller.displayName,
+      userId: caller.validUuid,
+      role: caller.role,
       action,
-      details: fullDetails,
-      site: site || 'All Sites',
-      entity_type: entity,
-      entity_id: entityId ? String(entityId) : null,
-      created_at: nowIso,
-      updated_at: nowIso
-    };
+      details: String(ctx.details || params.defaultDetails).slice(0, 4000),
+      site: ctx.site || params.site || caller.site,
+      module: ctx.module || moduleLabelFor(params.entity),
+      entityType: params.entity,
+      entityId: params.entityId,
+      targetItem: ctx.targetItem ? String(ctx.targetItem).slice(0, 500) : params.entityId,
+    }, caller.validUuid, await getLiveColumns('audit_trails'));
 
-    if (validUuid) {
-      trailPayload.user_id = validUuid;
-      trailPayload.created_by = validUuid;
-    }
-
-    // Persist to audit_trails (canonical table)
-    const { error } = await client.from('audit_trails').insert(trailPayload);
-    if (error) {
-      console.warn(`[Audit Middleware] audit_trails insert error: ${error.message}`);
-    } else {
-      console.log(`[Audit Middleware] Successfully logged ${action} on ${entity} by ${displayName} (UID: ${validUuid || userId || 'none'})`);
-    }
+    const { error } = await client.from('audit_trails').insert(row);
+    if (error) console.warn(`[Audit] audit_trails insert error: ${error.message}`);
   } catch (err: any) {
-    console.warn('[Audit Middleware Error]', err.message);
+    console.warn('[Audit] error:', err.message);
   }
 }
 
+// ---------------------------------------------------------------------------
+// Reads
+// ---------------------------------------------------------------------------
+
 /**
  * PostgREST (which Supabase sits on) caps a single response at 1000 rows and
- * gives no indication when it does so. A bare `.select('*')` therefore returned
- * a silently truncated table once any entity passed that mark — the audit trail
- * hit it first. Page through with `.range()` until the table is exhausted.
- *
- * Paging requires a deterministic sort or rows can repeat or vanish between
- * pages, so results are ordered by primary key. Callers already sort client-side.
+ * gives no indication when it does so. Page through with `.range()` until the
+ * table is exhausted or `limit` is reached (BUG-025). Paging needs a
+ * deterministic order, so `id` is always the final sort key.
  */
 const PAGE_SIZE = 1000;
 const MAX_ROWS = 50_000; // hard ceiling so one enormous table cannot exhaust memory
 
-async function selectAllRows(
+interface ListOptions {
+  limit?: number;
+  orderColumn?: string;
+  ascending?: boolean;
+  filters?: Array<[string, string]>;
+}
+
+async function selectRows(
   client: SupabaseClient,
-  tableName: string
+  tableName: string,
+  opts: ListOptions = {}
 ): Promise<{ data: any[] | null; error: any; truncated: boolean }> {
   const rows: any[] = [];
+  const cap = Math.min(opts.limit ?? MAX_ROWS, MAX_ROWS);
 
-  while (rows.length < MAX_ROWS) {
-    const { data, error } = await client
-      .from(tableName)
-      .select('*')
-      .order('id', { ascending: true })
-      .range(rows.length, rows.length + PAGE_SIZE - 1);
+  while (rows.length < cap) {
+    const from = rows.length;
+    const to = Math.min(from + PAGE_SIZE, cap) - 1;
+
+    let query = client.from(tableName).select('*');
+    for (const [column, value] of opts.filters || []) {
+      query = query.eq(column, value);
+    }
+    if (opts.orderColumn && opts.orderColumn !== 'id') {
+      query = query.order(opts.orderColumn, { ascending: opts.ascending ?? true, nullsFirst: false });
+    }
+    const { data, error } = await query.order('id', { ascending: true }).range(from, to);
 
     if (error) return { data: null, error, truncated: false };
     if (!data || data.length === 0) break;
 
     rows.push(...data);
-    if (data.length < PAGE_SIZE) break; // last page
+    if (data.length < to - from + 1) break; // short page: table exhausted
   }
 
-  // If we stopped at the ceiling the caller must be told, not left guessing.
-  return { data: rows, error: null, truncated: rows.length >= MAX_ROWS };
+  return { data: rows, error: null, truncated: opts.limit === undefined && rows.length >= MAX_ROWS };
 }
 
-// -------------------------------------------------------------
-// 1. Static API Routes (Must be declared BEFORE /:entity)
-// -------------------------------------------------------------
+/** limit, order ("column.asc|desc") and equality filters, restricted to the table's known columns. */
+function buildListOptions(src: { limit?: any; order?: any; eq?: Record<string, any> }, tableName: string): ListOptions {
+  const opts: ListOptions = {};
+  const known = TABLE_COLUMNS[tableName];
+  const limit = Number(src.limit);
+  if (Number.isFinite(limit) && limit > 0) opts.limit = Math.min(Math.trunc(limit), MAX_ROWS);
 
-function getPageCoverage(tableCounts: Record<string, number | string>) {
-  return Object.entries(PAGE_TABLE_REGISTRY).map(([entity, meta]) => {
-    const tableCount = tableCounts[entity];
-    const present = typeof tableCount === 'number' && tableCount >= 0;
-    const hasError = typeof tableCount === 'string' && tableCount.startsWith('Error:');
+  const order = typeof src.order === 'string' ? src.order : '';
+  const [column, direction] = order.split('.');
+  if (column && known?.has(column)) {
+    opts.orderColumn = column;
+    opts.ascending = direction !== 'desc';
+  }
 
-    return {
-      entity,
-      page: meta.page,
-      table: meta.table,
-      connected: !hasError && present,
-      status: hasError ? 'error' : present ? 'connected' : 'missing'
-    };
-  });
+  for (const [filterColumn, value] of Object.entries(src.eq || {})) {
+    if (typeof value === 'string' && known?.has(filterColumn)) (opts.filters ||= []).push([filterColumn, value]);
+  }
+  return opts;
 }
 
-// GET /api/db/status
-router.get('/status', async (req: Request, res: Response) => {
+/** ?limit=N, ?order=column.asc|desc and equality filters ?eq.column=value. */
+function parseListOptions(req: Request, tableName: string): ListOptions {
+  const eq: Record<string, string> = {};
+  for (const [key, value] of Object.entries(req.query)) {
+    if (key.startsWith('eq.') && typeof value === 'string') eq[key.slice(3)] = value;
+  }
+  return buildListOptions({ limit: req.query.limit, order: req.query.order, eq }, tableName);
+}
+
+async function readEntity(client: SupabaseClient, def: EntityDef, opts: ListOptions) {
+  const { data, error, truncated } = await selectRows(client, def.table, opts);
+  if (error) return { success: false as const, error: error.message, tableMissing: isMissingTableError(error), data: [] as any[] };
+  let rows = (data || []).map((row: any) => fromDatabaseRow(def.table, row));
+  if (def.variant) rows = rows.filter(def.variant);
+  return { success: true as const, data: rows, total: rows.length, truncated };
+}
+
+// ---------------------------------------------------------------------------
+// Static routes (declared before the parametric ones)
+// ---------------------------------------------------------------------------
+
+// GET /api/db/status — live connection, schema and per-page coverage
+router.get('/status', async (_req: Request, res: Response) => {
   if (!isSupabaseConfigured()) {
     return res.json({
       connected: false,
-      mode: 'offline-local',
-      message: 'Supabase credentials not configured in .env. Using local storage.',
+      live: false,
+      mode: 'unconfigured',
+      message: 'Live database is not configured on the server. Set SUPABASE_URL and SUPABASE_SECRET_KEY in .env.',
       tables: {},
       pages: []
     });
   }
 
-  try {
-    const client = getSupabaseAdmin();
-    if (!client) {
-      return res.json({ connected: false, mode: 'offline-local', error: 'Client unavailable', pages: [] });
-    }
-
-    const tableCounts: Record<string, number | string> = {};
-    for (const [key, tableName] of Object.entries(TABLE_MAP)) {
-      try {
-        const { count, error } = await client.from(tableName).select('*', { count: 'exact', head: true });
-        if (error) {
-          tableCounts[key] = `Error: ${error.message}`;
-        } else {
-          tableCounts[key] = count ?? 0;
-        }
-      } catch (e: any) {
-        tableCounts[key] = 'Unreachable';
-      }
-    }
-
-    const pageCoverage = getPageCoverage(tableCounts);
-    const missingTables = pageCoverage.filter(item => item.status === 'missing' || item.status === 'error').map(item => item.table);
-
-    res.json({
-      connected: true,
-      mode: 'supabase-cloud',
-      url: process.env.SUPABASE_URL,
-      tables: tableCounts,
-      pages: pageCoverage,
-      missingTables,
-      totalPages: pageCoverage.length,
-      connectedPages: pageCoverage.filter(item => item.connected).length
+  const client = getSupabaseAdmin();
+  const schema = await getLiveSchema(true);
+  if (!client || !schema) {
+    return res.status(503).json({
+      connected: false,
+      live: false,
+      mode: 'unreachable',
+      message: 'The Supabase API did not respond. Changes cannot be saved until it is reachable.',
+      tables: {},
+      pages: []
     });
-  } catch (err: any) {
-    res.status(500).json({ connected: false, error: err.message, pages: [] });
-  }
-});
-
-router.post('/ensure', requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
-  const result = await runDatabaseMigrations();
-  if (!result.success) {
-    return res.status(500).json({ success: false, ...result });
   }
 
-  return res.json({ success: true, message: 'Database schema validated and repaired.', ...result });
-});
+  const distinctTables = Array.from(new Set(Object.values(ENTITY_REGISTRY).map(d => d.table)));
+  const tableInfo: Record<string, { exists: boolean; rows: number | null; missingColumns: string[]; error?: string }> = {};
 
-// POST /api/db/migrate - Execute supabase-schema.sql using PostgreSQL connection string
-router.post('/migrate', requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
-  const result = await runDatabaseMigrations();
-  if (result.success) {
-    res.json(result);
-  } else {
-    res.status(500).json(result);
+  await Promise.all(distinctTables.map(async (table) => {
+    const live = schema.get(table);
+    if (!live) {
+      tableInfo[table] = { exists: false, rows: null, missingColumns: [] };
+      return;
+    }
+    const expected = TABLE_COLUMNS[table];
+    const missingColumns = expected ? Array.from(expected).filter(c => !live.has(c)) : [];
+    const { count, error } = await client.from(table).select('*', { count: 'exact', head: true });
+    tableInfo[table] = { exists: true, rows: error ? null : (count ?? 0), missingColumns, ...(error ? { error: error.message } : {}) };
+  }));
+
+  const pages = Object.entries(ENTITY_REGISTRY)
+    .filter(([, d]) => !d.alias)
+    .map(([entity, d]) => {
+      const info = tableInfo[d.table];
+      const status = !info.exists ? 'missing' : info.error ? 'error' : info.missingColumns.length > 0 ? 'outdated' : 'connected';
+      return {
+        entity,
+        page: d.page,
+        table: d.table,
+        rows: info.rows,
+        sharedTable: !!d.variant,
+        missingColumns: info.missingColumns,
+        connected: status === 'connected' || status === 'outdated',
+        status
+      };
+    });
+
+  // Per-entity row counts, for entities whose GET returns the whole table.
+  const tables: Record<string, number | string> = {};
+  for (const [entity, d] of Object.entries(ENTITY_REGISTRY)) {
+    if (d.alias || d.variant) continue;
+    const info = tableInfo[d.table];
+    tables[entity] = !info.exists ? 'Error: table missing' : info.error ? `Error: ${info.error}` : (info.rows ?? 0);
   }
+
+  let schemaVersion: string | null = null;
+  if (schema.has('app_settings')) {
+    const { data } = await client.from('app_settings').select('value').eq('id', 'schema_version').maybeSingle();
+    schemaVersion = (data?.value as any)?.version ?? null;
+  }
+
+  const missingTables = distinctTables.filter(t => !tableInfo[t].exists);
+  const outdatedTables = distinctTables.filter(t => tableInfo[t].exists && tableInfo[t].missingColumns.length > 0);
+
+  res.json({
+    connected: true,
+    live: true,
+    mode: 'supabase-cloud',
+    url: getSupabaseUrl(),
+    schemaVersion,
+    migrationRequired: missingTables.length > 0 || outdatedTables.length > 0,
+    tables,
+    pages,
+    missingTables,
+    outdatedTables,
+    totalPages: pages.length,
+    connectedPages: pages.filter(p => p.status === 'connected').length
+  });
 });
 
-// POST /api/db/sync/push - Push full database backup / sync from client to Supabase
+async function migrateAndSeed() {
+  const migration = await runDatabaseMigrations();
+  invalidateLiveSchema();
+  const seed = await seedReferenceData();
+  return { migration, seed };
+}
+
+router.post('/ensure', requireRole(...ADMIN_ROLES), async (_req: Request, res: Response) => {
+  const { migration, seed } = await migrateAndSeed();
+  res.status(migration.success ? 200 : 500).json({ ...migration, seed });
+});
+
+// POST /api/db/migrate - apply db/schema.sql (non-destructive) and seed reference data
+router.post('/migrate', requireRole(...ADMIN_ROLES), async (_req: Request, res: Response) => {
+  const { migration, seed } = await migrateAndSeed();
+  res.status(migration.success ? 200 : 500).json({ ...migration, seed });
+});
+
+// GET /api/db/migration-sql - the migration script, for the Supabase SQL editor
+router.get('/migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
+  const sql = loadSchemaSql();
+  if (!sql) return res.status(404).json({ success: false, error: 'db/schema.sql not found' });
+  res.type('text/plain').send(sql);
+});
+
+/**
+ * POST /api/db/batch-read  { requests: [{ key?, entity, limit?, order?, eq? }] }
+ *
+ * Loads several entities in one round trip - the application's periodic sync
+ * reads every page's data, and one request per entity would be ~27 requests
+ * every 45 seconds per open tab. Each entity succeeds or fails independently.
+ */
+router.post('/batch-read', async (req: Request, res: Response) => {
+  const client = requireDatabase(res);
+  if (!client) return;
+
+  const requests = req.body?.requests;
+  if (!Array.isArray(requests) || requests.length === 0 || requests.length > 60) {
+    return res.status(400).json({ success: false, error: 'Body must be { requests: [...] } with 1-60 entries' });
+  }
+
+  const role = req.user?.role || '';
+  const results: Record<string, any> = {};
+  await Promise.all(requests.map(async (r: any) => {
+    const key = String(r?.key || r?.entity || '');
+    const def = ENTITY_REGISTRY[r?.entity];
+    if (!def) {
+      results[key] = { success: false, error: `Unknown entity: ${r?.entity}`, data: [] };
+      return;
+    }
+    if (def.read === 'admin' && !ADMIN_ROLES.includes(role)) {
+      results[key] = { success: false, error: 'Insufficient privileges for this operation', data: [] };
+      return;
+    }
+    try {
+      results[key] = await readEntity(client, def, buildListOptions(r, def.table));
+    } catch (err: any) {
+      results[key] = { success: false, error: err.message, data: [] };
+    }
+  }));
+
+  res.json({ success: true, results });
+});
+
+// POST /api/db/seed - seed reference data into empty tables
+router.post('/seed', requireRole(...ADMIN_ROLES), async (_req: Request, res: Response) => {
+  const seed = await seedReferenceData();
+  res.status(seed.errors.length ? 500 : 200).json({ success: seed.errors.length === 0, ...seed });
+});
+
+// ---------------------------------------------------------------------------
+// Write helpers shared by single, bulk and sync routes
+// ---------------------------------------------------------------------------
+
+function ensureId(entityDef: EntityDef, record: any) {
+  if (entityDef.table === 'profiles') return record;
+  if (record.id === undefined || record.id === null || String(record.id).trim() === '') {
+    return { ...record, id: crypto.randomUUID() };
+  }
+  return record;
+}
+
+/** Identity on client-submitted audit entries always comes from the session. */
+function withVerifiedAuditIdentity(req: Request, entityDef: EntityDef, record: any) {
+  if (entityDef.table !== 'audit_trails') return record;
+  const caller = callerIdentity(req);
+  return {
+    ...record,
+    user: caller.displayName,
+    performedByUser: caller.displayName,
+    userId: caller.validUuid,
+    role: caller.role,
+    performedByRole: caller.role,
+    timestamp: record.timestamp || new Date().toISOString()
+  };
+}
+
+async function bulkUpsert(
+  client: SupabaseClient,
+  req: Request,
+  entityDef: EntityDef,
+  records: any[],
+  liveCols: Set<string>
+): Promise<{ data: any[]; error: any }> {
+  const caller = callerIdentity(req);
+  const rows = records.map(r =>
+    toDatabaseRow(entityDef.table, withVerifiedAuditIdentity(req, entityDef, ensureId(entityDef, r)), caller.validUuid, liveCols)
+  );
+  const saved: any[] = [];
+  for (let i = 0; i < rows.length; i += 500) {
+    const { data, error } = await client.from(entityDef.table).upsert(rows.slice(i, i + 500)).select();
+    if (error) return { data: saved, error };
+    saved.push(...(data || []));
+  }
+  return { data: saved, error: null };
+}
+
+// POST /api/db/sync/push - bulk upsert of several entities at once
 router.post('/sync/push', async (req: Request, res: Response) => {
-  if (!isSupabaseConfigured()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Supabase credentials are not configured in .env'
-    });
+  const client = requireDatabase(res);
+  if (!client) return;
+
+  const results: Record<string, string> = {};
+  for (const [entity, records] of Object.entries(req.body || {})) {
+    const def = ENTITY_REGISTRY[entity];
+    if (!def || !Array.isArray(records) || records.length === 0) continue;
+    const policy = def.write || 'any';
+    const role = req.user?.role || '';
+    const permitted = policy === 'any' || (policy === 'admin' && ADMIN_ROLES.includes(role)) || (policy === 'superadmin' && role === 'Super Admin');
+    if (!permitted) {
+      results[entity] = 'Error: insufficient privileges';
+      continue;
+    }
+    const liveCols = await getLiveColumns(def.table);
+    if (liveCols && liveCols.size === 0) {
+      results[entity] = `Error: table ${def.table} missing`;
+      continue;
+    }
+    const { error } = await bulkUpsert(client, req, def, records, liveCols || TABLE_COLUMNS[def.table]);
+    results[entity] = error ? `Error: ${error.message}` : `Synced ${records.length} items`;
   }
 
+  const failed = Object.values(results).some(v => v.startsWith('Error'));
+  res.status(failed ? 207 : 200).json({ success: !failed, message: failed ? 'Some entities failed to sync' : 'Cloud sync operation completed', results });
+});
+
+// ---------------------------------------------------------------------------
+// Parametric routes (/:entity, /:entity/:id)
+// ---------------------------------------------------------------------------
+
+// GET /api/db/:entity  (optional ?limit=N&order=column.asc|desc)
+router.get('/:entity', async (req: Request, res: Response) => {
+  const def = resolveEntity(req, res);
+  if (!def) return;
+  if (def.read === 'admin' && !ADMIN_ROLES.includes(req.user?.role || '')) {
+    return res.status(403).json({ success: false, error: 'Insufficient privileges for this operation' });
+  }
+  const client = requireDatabase(res);
+  if (!client) return;
+
   try {
-    const client = getSupabaseAdmin();
-    if (!client) throw new Error('Supabase client unavailable');
-
-    const { referrals, vulnerable, challenging, maintenance, spcd, sites, laundry, food, escalations, documents, requests, profiles } = req.body;
-    const results: Record<string, any> = {};
-
-    if (Array.isArray(referrals) && referrals.length > 0) {
-      const rows = referrals.map(r => toDatabaseRow('referrals', r));
-      const { error } = await client.from('referrals').upsert(rows);
-      results.referrals = error ? `Error: ${error.message}` : `Synced ${referrals.length} items`;
+    const result = await readEntity(client, def, parseListOptions(req, def.table));
+    if (!result.success) {
+      if (result.tableMissing) return tableMissing(res, def.table);
+      return res.status(500).json({ success: false, error: result.error });
     }
-
-    if (Array.isArray(vulnerable) && vulnerable.length > 0) {
-      const rows = vulnerable.map(r => toDatabaseRow('vulnerable_residents', r));
-      const { error } = await client.from('vulnerable_residents').upsert(rows);
-      results.vulnerable = error ? `Error: ${error.message}` : `Synced ${vulnerable.length} items`;
-    }
-
-    if (Array.isArray(challenging) && challenging.length > 0) {
-      const rows = challenging.map(r => toDatabaseRow('challenging_behavior', r));
-      const { error } = await client.from('challenging_behavior').upsert(rows);
-      results.challenging = error ? `Error: ${error.message}` : `Synced ${challenging.length} items`;
-    }
-
-    if (Array.isArray(maintenance) && maintenance.length > 0) {
-      const rows = maintenance.map(r => toDatabaseRow('maintenance_records', r));
-      const { error } = await client.from('maintenance_records').upsert(rows);
-      results.maintenance = error ? `Error: ${error.message}` : `Synced ${maintenance.length} items`;
-    }
-
-    if (Array.isArray(spcd) && spcd.length > 0) {
-      const rows = spcd.map(r => toDatabaseRow('spcd_records', r));
-      const { error } = await client.from('spcd_records').upsert(rows);
-      results.spcd = error ? `Error: ${error.message}` : `Synced ${spcd.length} items`;
-    }
-
-    if (Array.isArray(sites) && sites.length > 0) {
-      const rows = sites.map(r => toDatabaseRow('sites', r));
-      const { error } = await client.from('sites').upsert(rows);
-      results.sites = error ? `Error: ${error.message}` : `Synced ${sites.length} items`;
-    }
-
-    if (Array.isArray(laundry) && laundry.length > 0) {
-      const rows = laundry.map(r => toDatabaseRow('laundry_logs', r));
-      const { error } = await client.from('laundry_logs').upsert(rows);
-      results.laundry = error ? `Error: ${error.message}` : `Synced ${laundry.length} items`;
-    }
-
-    if (Array.isArray(food) && food.length > 0) {
-      const rows = food.map(r => toDatabaseRow('hot_food_logs', r));
-      const { error } = await client.from('hot_food_logs').upsert(rows);
-      results.food = error ? `Error: ${error.message}` : `Synced ${food.length} items`;
-    }
-
-    if (Array.isArray(escalations) && escalations.length > 0) {
-      const rows = escalations.map(r => toDatabaseRow('escalations', r));
-      const { error } = await client.from('escalations').upsert(rows);
-      results.escalations = error ? `Error: ${error.message}` : `Synced ${escalations.length} items`;
-    }
-
-    if (Array.isArray(documents) && documents.length > 0) {
-      const rows = documents.map(r => toDatabaseRow('documents', r));
-      const { error } = await client.from('documents').upsert(rows);
-      results.documents = error ? `Error: ${error.message}` : `Synced ${documents.length} items`;
-    }
-
-    if (Array.isArray(requests) && requests.length > 0) {
-      const rows = requests.map(r => toDatabaseRow('data_change_requests', r));
-      const { error } = await client.from('data_change_requests').upsert(rows);
-      results.requests = error ? `Error: ${error.message}` : `Synced ${requests.length} items`;
-    }
-
-    if (Array.isArray(profiles) && profiles.length > 0) {
-      const rows = profiles.map(r => toDatabaseRow('profiles', r));
-      const { error } = await client.from('profiles').upsert(rows);
-      results.profiles = error ? `Error: ${error.message}` : `Synced ${profiles.length} items`;
-    }
-
-    res.json({
-      success: true,
-      message: 'Cloud sync operation completed',
-      results
-    });
+    // `total` and `truncated` let a caller tell a complete result from a capped one.
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// -------------------------------------------------------------
-// 2. Dynamic Parametric Routes (/:entity, /:entity/:id)
-// -------------------------------------------------------------
+// POST /api/db/:entity/bulk  { records: [...] }
+router.post('/:entity/bulk', async (req: Request, res: Response) => {
+  const def = resolveEntity(req, res);
+  if (!def) return;
+  if (!(await authorize(req, res, def.write || 'any', 'create'))) return;
+  const client = requireDatabase(res);
+  if (!client) return;
 
-// GET /api/db/:entity
-router.get('/:entity', async (req: Request, res: Response) => {
-  const { entity } = req.params;
-  const tableName = TABLE_MAP[entity];
+  const records = req.body?.records;
+  if (!Array.isArray(records) || records.some(r => !r || typeof r !== 'object' || Array.isArray(r))) {
+    return res.status(400).json({ success: false, error: 'Body must be { records: [ {...}, ... ] }' });
+  }
+  if (records.length > 5000) {
+    return res.status(413).json({ success: false, error: 'At most 5000 records per bulk request' });
+  }
+  if (records.length === 0) return res.json({ success: true, count: 0, records: [] });
 
-  if (!tableName) {
-    return res.status(404).json({ error: `Unknown entity: ${entity}` });
+  const liveCols = await getLiveColumns(def.table);
+  if (liveCols && liveCols.size === 0) return tableMissing(res, def.table);
+
+  const { data, error } = await bulkUpsert(client, req, def, records, liveCols || TABLE_COLUMNS[def.table]);
+  if (error) {
+    if (isMissingTableError(error)) return tableMissing(res, def.table);
+    return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
   }
 
-  if (!isSupabaseConfigured()) {
-    return res.json({ fallback: true, data: [] });
-  }
+  if (def.table === 'role_permissions') permissionCache = null;
+  recordAuditTrailEntry(req, {
+    defaultAction: 'UPDATE',
+    entity: req.params.entity,
+    defaultDetails: `Bulk saved ${records.length} ${req.params.entity} record(s)`
+  });
 
-  try {
-    const client = getSupabaseAdmin();
-    if (!client) throw new Error('Supabase client unavailable');
-
-    const { data, error, truncated } = await selectAllRows(client, tableName);
-    if (error) {
-      if (error.code === '42P01') {
-        const migration = await runDatabaseMigrations();
-        if (migration.success) {
-          const { data: rerunData, error: rerunError } = await selectAllRows(client, tableName);
-          if (!rerunError && rerunData) {
-            return res.json({ success: true, data: rerunData.map((row: any) => fromDatabaseRow(tableName, row)) });
-          }
-        }
-
-        return res.json({
-          fallback: true,
-          tableMissing: true,
-          hint: 'Table was missing and has been re-created by the migration. Please refresh the page and retry.',
-          data: []
-        });
-      }
-      return res.status(500).json({ error: error.message });
-    }
-
-    let resultData = (data || []).map((row: any) => fromDatabaseRow(tableName, row));
-
-    // Entity-specific discriminators for shared canonical tables
-    if (entity === 'property_laundry_logs') {
-      resultData = resultData.filter((r: any) => r.periodType || String(r.id || '').startsWith('prop-lau'));
-    } else if (entity === 'laundry' || entity === 'laundry_logs') {
-      resultData = resultData.filter((r: any) => !r.periodType && !String(r.id || '').startsWith('prop-lau'));
-    } else if (entity === 'food_vendor_buffet_logs') {
-      resultData = resultData.filter((r: any) => r.dailyCounts || String(r.id || '').startsWith('vendor-bf'));
-    } else if (entity === 'food' || entity === 'hot_food_logs') {
-      resultData = resultData.filter((r: any) => !r.dailyCounts && !String(r.id || '').startsWith('vendor-bf'));
-    }
-
-    // `total` and `truncated` are additive: existing clients read `data` as before,
-    // but a caller can now tell a complete result from a capped one.
-    res.json({ success: true, data: resultData, total: resultData.length, truncated });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  res.json({ success: true, count: data.length, records: data.map(row => fromDatabaseRow(def.table, row)) });
 });
 
-// POST /api/db/:entity
+// POST /api/db/:entity/bulk-delete  { ids: [...] }
+router.post('/:entity/bulk-delete', async (req: Request, res: Response) => {
+  const def = resolveEntity(req, res);
+  if (!def) return;
+  if (!(await authorize(req, res, def.remove || 'permission', 'delete'))) return;
+  const client = requireDatabase(res);
+  if (!client) return;
+
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.some(id => typeof id !== 'string' || id.length === 0)) {
+    return res.status(400).json({ success: false, error: 'Body must be { ids: [ "id", ... ] }' });
+  }
+  if (ids.length === 0) return res.json({ success: true, deleted: 0 });
+
+  let deleted = 0;
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await client.from(def.table).delete().in('id', ids.slice(i, i + 200)).select('id');
+    if (error) {
+      if (isMissingTableError(error)) return tableMissing(res, def.table);
+      return res.status(500).json({ success: false, error: error.message, deleted });
+    }
+    deleted += data?.length || 0;
+  }
+
+  if (def.table === 'role_permissions') permissionCache = null;
+  if (deleted > 0) {
+    recordAuditTrailEntry(req, {
+      defaultAction: 'DELETE',
+      entity: req.params.entity,
+      defaultDetails: `Bulk deleted ${deleted} ${req.params.entity} record(s)`
+    });
+  }
+  res.json({ success: true, deleted });
+});
+
+// POST /api/db/:entity — create (or replace) one record
 router.post('/:entity', async (req: Request, res: Response) => {
-  const { entity } = req.params;
-  const tableName = TABLE_MAP[entity];
-  const caller = extractAuditCallerContext(req);
+  const def = resolveEntity(req, res);
+  if (!def) return;
+  if (!(await authorize(req, res, def.write || 'any', 'create'))) return;
+  const client = requireDatabase(res);
+  if (!client) return;
 
-  if (!tableName) {
-    return res.status(404).json({ error: `Unknown entity: ${entity}` });
-  }
-
-  if (!isSupabaseConfigured()) {
-    return res.json({ success: true, fallback: true, record: req.body });
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
   }
 
   try {
-    const client = getSupabaseAdmin();
-    if (!client) throw new Error('Supabase client unavailable');
+    const liveCols = await getLiveColumns(def.table);
+    if (liveCols && liveCols.size === 0) return tableMissing(res, def.table);
 
-    const dbRow = toDatabaseRow(tableName, req.body, caller.validUuid);
+    const caller = callerIdentity(req);
+    const record = withVerifiedAuditIdentity(req, def, ensureId(def, req.body));
+    const dbRow = toDatabaseRow(def.table, record, caller.validUuid, liveCols || TABLE_COLUMNS[def.table]);
 
-    const { data, error } = await client.from(tableName).upsert(dbRow).select().single();
-
+    const { data, error } = await client.from(def.table).upsert(dbRow).select().single();
     if (error) {
-      console.error(`[DB POST /api/db/${entity}] Supabase error:`, error.message, 'dbRow:', dbRow);
-      return res.status(500).json({ error: error.message, details: error.details, hint: error.hint });
+      if (isMissingTableError(error)) return tableMissing(res, def.table);
+      console.error(`[DB POST /api/db/${req.params.entity}] ${error.message}`);
+      return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
     }
 
-    const record = fromDatabaseRow(tableName, data || dbRow);
+    const saved = fromDatabaseRow(def.table, data || dbRow);
+    if (def.table === 'role_permissions') permissionCache = null;
 
-    // Centralized Audit Middleware: record audit trail
-    recordAuditTrailEntry({
-      action: 'CREATE',
-      entity,
-      entityId: record.id || dbRow.id,
-      userId: caller.userId,
-      validUuid: caller.validUuid,
-      displayName: caller.displayName,
-      role: caller.role,
-      site: caller.site,
-      details: req.body?.auditDetails || `Created ${entity} record [${record.id || dbRow.id || 'new'}]`
-    }).catch(e => console.warn('Audit trail async error:', e));
+    recordAuditTrailEntry(req, {
+      defaultAction: 'CREATE',
+      entity: req.params.entity,
+      entityId: saved.id || dbRow.id,
+      site: record.site || record.siteName,
+      defaultDetails: `Created ${req.params.entity} record [${saved.id || dbRow.id}]`
+    });
 
-    res.status(201).json({ success: true, record });
+    res.status(201).json({ success: true, record: saved, fullFidelity: DATA_TABLES.has(def.table) ? (liveCols ? liveCols.has('data') : true) : true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PUT /api/db/:entity/:id
+// PUT /api/db/:entity/:id — merge an update onto the stored record
 router.put('/:entity/:id', async (req: Request, res: Response) => {
-  const { entity, id } = req.params;
-  const tableName = TABLE_MAP[entity];
-  const caller = extractAuditCallerContext(req);
+  const def = resolveEntity(req, res);
+  if (!def) return;
+  if (!(await authorize(req, res, def.write || 'any', 'update'))) return;
+  const client = requireDatabase(res);
+  if (!client) return;
 
-  if (!tableName) {
-    return res.status(404).json({ error: `Unknown entity: ${entity}` });
-  }
-
-  if (!isSupabaseConfigured()) {
-    return res.json({ success: true, fallback: true, record: req.body });
+  const { id } = req.params;
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
   }
 
   try {
-    const client = getSupabaseAdmin();
-    if (!client) throw new Error('Supabase client unavailable');
+    const liveCols = await getLiveColumns(def.table);
+    if (liveCols && liveCols.size === 0) return tableMissing(res, def.table);
+    const allowed = liveCols || TABLE_COLUMNS[def.table];
+    const caller = callerIdentity(req);
 
-    // `toDatabaseRow` always builds a COMPLETE row, defaulting anything absent
-    // to ''. Mapping a partial body directly would therefore blank every column
-    // the caller did not send — which is what the row Archive action and the
-    // inline status dropdown do, since both PUT only { status, updatedAt }.
-    // Merge onto the stored record first so untouched columns survive.
-    const { data: existingRow, error: readError } = await client
-      .from(tableName)
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (readError || !existingRow) {
-      // If record was previously created in client state/localStorage, persist it now
-      const dbRow = toDatabaseRow(tableName, { ...req.body, id }, caller.validUuid);
-      const { data, error: upsertErr } = await client.from(tableName).upsert(dbRow).select().single();
-      if (upsertErr) {
-        console.error(`[DB PUT /api/db/${entity}/${id}] Upsert fallback error:`, upsertErr.message);
-        return res.status(500).json({ error: upsertErr.message, details: upsertErr.details, hint: upsertErr.hint });
-      }
-      const record = fromDatabaseRow(tableName, data || dbRow);
-      return res.json({ success: true, record });
+    // `toDatabaseRow` builds a COMPLETE row, so mapping a partial body directly
+    // would blank every column the caller did not send (BUG-004). Merge onto
+    // the stored record first so untouched fields survive.
+    const { data: existingRow, error: readError } = await client.from(def.table).select('*').eq('id', id).maybeSingle();
+    if (readError) {
+      if (isMissingTableError(readError)) return tableMissing(res, def.table);
+      return res.status(500).json({ success: false, error: readError.message });
     }
 
-    const merged = { ...fromDatabaseRow(tableName, existingRow), ...req.body };
-    const dbRow = toDatabaseRow(tableName, merged, caller.validUuid);
+    if (!existingRow) {
+      // Not stored yet: persist the full record now.
+      const dbRow = toDatabaseRow(def.table, { ...req.body, id }, caller.validUuid, allowed);
+      const { data, error } = await client.from(def.table).upsert(dbRow).select().single();
+      if (error) return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
+      recordAuditTrailEntry(req, {
+        defaultAction: 'CREATE',
+        entity: req.params.entity,
+        entityId: id,
+        site: req.body.site || req.body.siteName,
+        defaultDetails: `Created ${req.params.entity} record [${id}]`
+      });
+      return res.json({ success: true, record: fromDatabaseRow(def.table, data || dbRow) });
+    }
+
+    const merged = { ...fromDatabaseRow(def.table, existingRow), ...req.body, id };
+    const dbRow = toDatabaseRow(def.table, merged, caller.validUuid, allowed);
     delete dbRow.id;
+    delete dbRow.created_by; // the creator never changes on update
 
-    const { data, error } = await client.from(tableName).update(dbRow).eq('id', id).select().single();
-
+    const { data, error } = await client.from(def.table).update(dbRow).eq('id', id).select().single();
     if (error) {
-      console.error(`[DB PUT /api/db/${entity}/${id}] Supabase error:`, error.message, 'dbRow:', dbRow);
-      return res.status(500).json({ error: error.message, details: error.details, hint: error.hint });
+      console.error(`[DB PUT /api/db/${req.params.entity}/${id}] ${error.message}`);
+      return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
     }
 
-    const record = fromDatabaseRow(tableName, data || { id, ...dbRow });
-
-    // Centralized Audit Middleware: record audit trail
-    recordAuditTrailEntry({
-      action: 'UPDATE',
-      entity,
+    if (def.table === 'role_permissions') permissionCache = null;
+    recordAuditTrailEntry(req, {
+      defaultAction: 'UPDATE',
+      entity: req.params.entity,
       entityId: id,
-      userId: caller.userId,
-      validUuid: caller.validUuid,
-      displayName: caller.displayName,
-      role: caller.role,
-      site: caller.site,
-      details: req.body?.auditDetails || `Updated ${entity} record [${id}]`
-    }).catch(e => console.warn('Audit trail async error:', e));
+      site: merged.site || merged.siteName,
+      defaultDetails: `Updated ${req.params.entity} record [${id}]`
+    });
 
-    res.json({ success: true, record });
+    res.json({ success: true, record: fromDatabaseRow(def.table, data || { id, ...dbRow }) });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // DELETE /api/db/:entity/:id
 router.delete('/:entity/:id', async (req: Request, res: Response) => {
-  const { entity, id } = req.params;
-  const tableName = TABLE_MAP[entity];
-  const caller = extractAuditCallerContext(req);
+  const def = resolveEntity(req, res);
+  if (!def) return;
+  if (!(await authorize(req, res, def.remove || 'permission', 'delete'))) return;
+  const client = requireDatabase(res);
+  if (!client) return;
 
-  if (!tableName) {
-    return res.status(404).json({ error: `Unknown entity: ${entity}` });
-  }
-
-  if (!isSupabaseConfigured()) {
-    return res.json({ success: true, fallback: true });
-  }
-
+  const { id } = req.params;
   try {
-    const client = getSupabaseAdmin();
-    if (!client) throw new Error('Supabase client unavailable');
-
-    const { error } = await client.from(tableName).delete().eq('id', id);
+    const { data, error } = await client.from(def.table).delete().eq('id', id).select('id');
     if (error) {
-      return res.status(500).json({ error: error.message });
+      if (isMissingTableError(error)) return tableMissing(res, def.table);
+      return res.status(500).json({ success: false, error: error.message });
     }
 
-    // Centralized Audit Middleware: record audit trail
-    recordAuditTrailEntry({
-      action: 'DELETE',
-      entity,
-      entityId: id,
-      userId: caller.userId,
-      validUuid: caller.validUuid,
-      displayName: caller.displayName,
-      role: caller.role,
-      site: caller.site,
-      details: `Permanently deleted ${entity} record [${id}]`
-    }).catch(e => console.warn('Audit trail async error:', e));
+    const deleted = data?.length || 0;
+    if (def.table === 'role_permissions') permissionCache = null;
+    if (deleted > 0) {
+      recordAuditTrailEntry(req, {
+        defaultAction: 'DELETE',
+        entity: req.params.entity,
+        entityId: id,
+        defaultDetails: `Permanently deleted ${req.params.entity} record [${id}]`
+      });
+    }
 
-    res.json({ success: true, id });
+    res.json({ success: true, id, deleted });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

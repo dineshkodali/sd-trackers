@@ -71,10 +71,12 @@ test.describe('TS-22 Error handling', () => {
   });
 
   /**
-   * DEF-10. The sync only assigns when the payload is non-empty, so records
-   * deleted server-side linger in the UI indefinitely.
+   * DEF-10 / BUG-021 regression — FIXED 2026-09-11. The sync used to assign only
+   * non-empty payloads, so records deleted server-side lingered in the UI. Live
+   * mode applies every successful result, including an empty one, so the
+   * `test.fail()` annotation was removed.
    */
-  test.fail('22.7 DEF-10 server-side deletion clears the row from the UI', async ({ page, api, tag }) => {
+  test('22.7 DEF-10 server-side deletion clears the row from the UI', async ({ page, api, tag }) => {
     const payload = referralPayload({ suName: tag });
     await createRecord(api, 'referrals', payload);
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -82,10 +84,9 @@ test.describe('TS-22 Error handling', () => {
     await expect(page.locator('main table tbody tr').filter({ hasText: tag })).toBeVisible({ timeout: 30_000 });
 
     await deleteRecord(api, 'referrals', payload.id);
-    // Allow several background sync cycles to land.
-    await page.waitForTimeout(12_000);
-
-    await expect(page.locator('main table tbody tr').filter({ hasText: tag })).toHaveCount(0);
+    // The background sync runs every 45 s (BUG-011 fixed the ~2.4 s runaway this
+    // wait was written against), so allow one full cycle to land.
+    await expect(page.locator('main table tbody tr').filter({ hasText: tag })).toHaveCount(0, { timeout: 60_000 });
   });
 });
 

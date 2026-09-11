@@ -16,6 +16,9 @@ import { QA_PREFIX } from './env';
 const PURGE_ENTITIES = [
   'referrals', 'vulnerable', 'challenging', 'maintenance',
   'spcd', 'laundry', 'food', 'escalations', 'documents',
+  // Modules that gained database tables in live mode
+  'property_laundry_logs', 'food_vendor_buffet_logs', 'publicTransport', 'compliance',
+  'gpAppointments', 'rfaWelfare', 'dispersal', 'booklets', 'vcsAgencies', 'requests',
 ];
 
 interface Fixtures {

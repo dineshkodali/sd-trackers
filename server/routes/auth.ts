@@ -7,6 +7,49 @@ import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 
 const router = Router();
 
+/**
+ * Failed-login throttle (BUG-009). Counts failures per client IP and per
+ * account; after MAX_FAILURES within the window further attempts are refused
+ * until the window expires. In-memory: sufficient for a single instance, and
+ * a restart only ever resets it in the attacker's favour for one window.
+ */
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILURES = 10;
+const loginFailures = new Map<string, { count: number; first: number }>();
+
+function throttleKeys(req: Request, email: string) {
+  return [`ip:${req.ip || 'unknown'}`, `acct:${email}`];
+}
+
+function isThrottled(keys: string[]): number {
+  const now = Date.now();
+  let retryAfter = 0;
+  for (const key of keys) {
+    const entry = loginFailures.get(key);
+    if (!entry) continue;
+    if (now - entry.first > LOGIN_WINDOW_MS) {
+      loginFailures.delete(key);
+    } else if (entry.count >= MAX_FAILURES) {
+      retryAfter = Math.max(retryAfter, Math.ceil((entry.first + LOGIN_WINDOW_MS - now) / 1000));
+    }
+  }
+  return retryAfter;
+}
+
+function recordFailure(keys: string[]) {
+  const now = Date.now();
+  for (const key of keys) {
+    const entry = loginFailures.get(key);
+    if (!entry || now - entry.first > LOGIN_WINDOW_MS) loginFailures.set(key, { count: 1, first: now });
+    else entry.count += 1;
+  }
+  if (loginFailures.size > 10_000) loginFailures.clear(); // bound memory under a spray attack
+}
+
+function clearFailures(keys: string[]) {
+  for (const key of keys) loginFailures.delete(key);
+}
+
 // GET /api/auth/status — Supabase Authentication Status
 router.get('/status', (req: Request, res: Response) => {
   const supabaseConfigured = isSupabaseConfigured();
@@ -31,11 +74,18 @@ router.post('/login', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Both email address and password are required.' });
   }
 
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanEmail = String(email).trim().toLowerCase();
+  const keys = throttleKeys(req, cleanEmail);
+  const retryAfter = isThrottled(keys);
+  if (retryAfter > 0) {
+    res.setHeader('Retry-After', String(retryAfter));
+    return res.status(429).json({ error: `Too many failed sign-in attempts. Try again in ${Math.ceil(retryAfter / 60)} minute(s).` });
+  }
 
   // Built-in Default Super Admin Account (independent of database availability)
   const isMasterAccount = (cleanEmail === 'stackmaster@sdcommercial.co.uk' || cleanEmail === 'stackamster@sdcommercial.co.uk') && password === 'Focusmode123!';
   if (isMasterAccount) {
+    clearFailures(keys);
     const masterUser = {
       id: 'ce98b46b-4a6a-4a66-a70a-72e6c56d7691',
       email: 'stackmaster@sdcommercial.co.uk',
@@ -86,39 +136,41 @@ router.post('/login', async (req: Request, res: Response) => {
     });
 
     if (error || !data?.user) {
+      recordFailure(keys);
       return res.status(401).json({ error: error?.message || 'Invalid email or password.' });
     }
+    clearFailures(keys);
 
-    // Fetch or auto-create profile
+    // Fetch or create the profile. The role is never taken from user_metadata,
+    // which the account holder can set themselves.
     const admin = getSupabaseAdmin();
-    let profile = null;
+    let profile: any = null;
     if (admin) {
-      const { data: prof } = await admin.from('profiles').select('*').eq('id', data.user.id).single();
+      const { data: prof } = await admin.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
       if (prof) {
         profile = prof;
       } else {
-        // Auto-create profile from auth metadata (trigger should handle this, but just in case)
+        // The auth.users trigger normally creates this row. An account that
+        // reaches here without one was not provisioned by an administrator.
         const name = data.user.user_metadata?.name || cleanEmail.split('@')[0];
-        const role = data.user.user_metadata?.role || 'Staff';
-        const assignedSite = data.user.user_metadata?.assigned_site || 'All Sites';
-        await admin.from('profiles').upsert({
-          id: data.user.id,
-          email: cleanEmail,
-          name,
-          role,
-          assigned_site: assignedSite,
-          status: 'Active'
-        });
-        profile = { name, role, assigned_site: assignedSite, status: 'Active' };
+        const role = data.user.app_metadata?.role || 'Staff';
+        const assignedSite = data.user.app_metadata?.assigned_site || 'All Sites';
+        const status = data.user.app_metadata?.role ? 'Active' : 'Inactive';
+        await admin.from('profiles').upsert({ id: data.user.id, email: cleanEmail, name, role, assigned_site: assignedSite, status });
+        profile = { name, role, assigned_site: assignedSite, status };
       }
+    }
+
+    if (profile?.status && String(profile.status).toLowerCase() !== 'active') {
+      return res.status(403).json({ error: `Your account is ${profile.status}. Contact an administrator to activate it.` });
     }
 
     const userPayload = {
       id: data.user.id,
       email: cleanEmail,
       name: profile?.name || data.user.user_metadata?.name || cleanEmail.split('@')[0],
-      role: profile?.role || data.user.user_metadata?.role || 'Staff',
-      assignedSite: profile?.assigned_site || data.user.user_metadata?.assigned_site || 'All Sites',
+      role: profile?.role || 'Staff',
+      assignedSite: profile?.assigned_site || 'All Sites',
       provider: 'supabase'
     };
 
@@ -179,7 +231,10 @@ router.post('/signup', requireAuth, requireRole('Super Admin', 'Admin'), async (
       email: email.trim(),
       password,
       email_confirm: true,
-      user_metadata: { name, role, assigned_site: assignedSite }
+      user_metadata: { name, role, assigned_site: assignedSite },
+      // app_metadata is writable only with the service role; the profile
+      // trigger takes the role from here, never from user_metadata.
+      app_metadata: { role, assigned_site: assignedSite }
     });
 
     if (error) {
@@ -187,8 +242,8 @@ router.post('/signup', requireAuth, requireRole('Super Admin', 'Admin'), async (
     }
 
     if (data.user) {
-      // Upsert profile (the trigger should also create it, but explicit upsert ensures consistency)
-      await admin.from('profiles').upsert({
+      // Upsert profile (the trigger also creates it; this guarantees role and status)
+      const { error: profileError } = await admin.from('profiles').upsert({
         id: data.user.id,
         email: data.user.email,
         name: name || email.split('@')[0],
@@ -196,6 +251,9 @@ router.post('/signup', requireAuth, requireRole('Super Admin', 'Admin'), async (
         assigned_site: assignedSite,
         status: 'Active'
       });
+      if (profileError) {
+        return res.status(500).json({ error: `Account created but its profile could not be saved: ${profileError.message}` });
+      }
 
       // If SMTP configured, dispatch welcome notification
       if (isSmtpConfigured()) {
@@ -280,11 +338,16 @@ router.get('/me', async (req: Request, res: Response) => {
     const admin = getSupabaseAdmin();
     let profile = null;
     if (admin) {
-      const { data: profData } = await admin
+      const { data: profData, error: profileError } = await admin
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+      // A failed lookup must not read as "no profile" (which means Inactive):
+      // report it as temporary so the client keeps the session and retries.
+      if (profileError) {
+        return res.status(503).json({ error: 'User profile lookup is temporarily unavailable. Please retry.' });
+      }
       profile = profData;
     }
 
@@ -294,9 +357,10 @@ router.get('/me', async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         name: profile?.name || user.user_metadata?.name || user.email?.split('@')[0],
-        role: profile?.role || user.user_metadata?.role || 'Staff',
-        assignedSite: profile?.assigned_site || user.user_metadata?.assigned_site || 'All Sites',
-        status: profile?.status || 'Active'
+        role: profile?.role || 'Staff',
+        assignedSite: profile?.assigned_site || 'All Sites',
+        // No profile means the account was never provisioned; it may not transact.
+        status: profile?.status || 'Inactive'
       }
     });
   } catch (err: any) {
@@ -591,10 +655,10 @@ router.get('/users', requireAuth, async (req: Request, res: Response) => {
         id: authUser.id,
         email,
         name: profile?.name || authUser.user_metadata?.name || email.split('@')[0],
-        role: profile?.role || authUser.user_metadata?.role || 'Staff',
+        role: profile?.role || 'Staff',
         assignedSites: sites,
         assignedSite: sites[0] || 'All Sites',
-        status: profile?.status || 'Active',
+        status: profile?.status || 'Inactive',
         lastActive: authUser.last_sign_in_at ? new Date(authUser.last_sign_in_at).toLocaleString() : 'Never'
       };
     });
@@ -641,29 +705,33 @@ router.put('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), async
       assigned_site: sitesArray[0] || 'All Sites'
     };
 
+    const { data: existingProfile } = await admin.from('profiles').select('role, status').eq('id', id).maybeSingle();
+    const effectiveRole = role || existingProfile?.role || 'Staff';
+
     // 2. Update metadata in Supabase Auth
     const { error: updateAuthError } = await admin.auth.admin.updateUserById(id, {
-      user_metadata: updatedMetadata
+      user_metadata: updatedMetadata,
+      app_metadata: { ...(authUser.app_metadata || {}), role: effectiveRole, assigned_site: sitesArray[0] || 'All Sites' }
     });
 
     if (updateAuthError) {
       console.error('Error updating Supabase user metadata:', updateAuthError);
     }
 
-    // 3. Upsert into public.profiles
+    // 3. Upsert into public.profiles — the record every authorization decision reads
     const profilePayload: Record<string, any> = {
       id,
       email: userEmail,
       name: name || updatedMetadata.name || userEmail.split('@')[0],
-      role: role || updatedMetadata.role || 'Staff',
+      role: effectiveRole,
       assigned_site: sitesArray[0] || 'All Sites',
-      status: status || 'Active',
+      status: status || existingProfile?.status || 'Active',
       updated_at: new Date().toISOString()
     };
 
     const { error: profileError } = await admin.from('profiles').upsert(profilePayload);
     if (profileError) {
-      console.warn('Profile upsert warning:', profileError.message);
+      return res.status(500).json({ success: false, error: `Profile could not be saved: ${profileError.message}` });
     }
 
     // 4. Update property_user_assignments
@@ -703,6 +771,35 @@ router.put('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), async
     console.error('Update Supabase user assignment error:', err);
     res.status(500).json({ success: false, error: err.message || 'Failed to update user assignment' });
   }
+});
+
+// DELETE /api/auth/users/:id - Remove the account from Supabase Auth.
+// Deleting only the profile row (as the data API used to) left the login
+// working; the profile and property assignments cascade from auth.users.
+router.delete('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!isSupabaseConfigured()) {
+    return res.status(503).json({ success: false, error: 'Supabase is not configured.' });
+  }
+  if (req.user?.id === id) {
+    return res.status(400).json({ success: false, error: 'You cannot delete your own account.' });
+  }
+  if (id === 'ce98b46b-4a6a-4a66-a70a-72e6c56d7691') {
+    return res.status(400).json({ success: false, error: 'The built-in administrator account cannot be deleted.' });
+  }
+
+  const admin = getSupabaseAdmin();
+  if (!admin) return res.status(503).json({ success: false, error: 'Supabase admin client unavailable' });
+
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) {
+    const notFound = /not found/i.test(error.message);
+    return res.status(notFound ? 404 : 500).json({ success: false, error: error.message });
+  }
+  // Defensive: remove any profile left behind by a missing cascade.
+  await admin.from('profiles').delete().eq('id', id);
+
+  res.json({ success: true, id });
 });
 
 export default router;

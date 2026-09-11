@@ -5,8 +5,8 @@ import { test, expect } from '../helpers/fixtures';
 import { MODULES, ModuleKey } from '../helpers/env';
 import {
   gotoModule, openCreateForm, closeDialog, dialogIsOpen, dialog,
-  submitCreateForm, confirmationText, field, rowContaining, rowAction, waitForRow,
-  acceptConfirmation,
+  submitCreateForm, confirmationText, rowContaining, rowAction, waitForRow,
+  acceptConfirmation, fillReferralForm,
 } from '../helpers/ui';
 
 const MODAL_MODULES: ModuleKey[] = ['referrals', 'vulnerable', 'challenging', 'escalations', 'properties'];
@@ -55,9 +55,7 @@ test.describe('TS-Modals confirmation gate', () => {
   test('creating raises a confirmation summarising the record', async ({ page, tag }) => {
     await gotoModule(page, 'referrals');
     await openCreateForm(page, 'referrals');
-    await field(page, 'Referral Council').fill('Westminster City Council');
-    await field(page, 'Service User (SU) Full Name').fill(tag);
-    await field(page, 'Notes - Action').fill('Modal confirmation test.');
+    await fillReferralForm(page, tag, 'Modal confirmation test.');
     await submitCreateForm(page, 'referrals');
 
     const text = await confirmationText(page);
@@ -72,9 +70,7 @@ test.describe('TS-Modals confirmation gate', () => {
   test('deleting raises an audit-compliance confirmation', async ({ page, tag }) => {
     await gotoModule(page, 'referrals');
     await openCreateForm(page, 'referrals');
-    await field(page, 'Referral Council').fill('Westminster City Council');
-    await field(page, 'Service User (SU) Full Name').fill(tag);
-    await field(page, 'Notes - Action').fill('Delete confirmation test.');
+    await fillReferralForm(page, tag, 'Delete confirmation test.');
     await submitCreateForm(page, 'referrals');
     await acceptConfirmation(page, /^Create Referral$/i);
     await waitForRow(page, tag);

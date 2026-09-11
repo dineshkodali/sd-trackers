@@ -27,13 +27,49 @@ export interface SystemConfigStatus {
   };
 }
 
+export interface DbPageCoverage {
+  entity: string;
+  page: string;
+  table: string;
+  rows: number | null;
+  sharedTable?: boolean;
+  missingColumns: string[];
+  connected: boolean;
+  status: 'connected' | 'outdated' | 'missing' | 'error';
+}
+
 export interface DbStatusResponse {
   connected: boolean;
-  mode: 'supabase-cloud' | 'offline-local';
+  live?: boolean;
+  mode: 'supabase-cloud' | 'unconfigured' | 'unreachable' | 'offline';
   message?: string;
   url?: string;
+  schemaVersion?: string | null;
+  migrationRequired?: boolean;
   tables?: Record<string, number | string>;
+  pages?: DbPageCoverage[];
+  missingTables?: string[];
+  outdatedTables?: string[];
+  totalPages?: number;
+  connectedPages?: number;
   error?: string;
+}
+
+/** Human-readable audit description sent alongside a write; identity is added by the server. */
+export interface AuditDescriptor {
+  action?: 'CREATE' | 'UPDATE' | 'DELETE' | 'ARCHIVE' | 'RESTORE' | 'SETTINGS_UPDATE' | 'ROLE_CHANGE' | 'BACKUP_EXPORT' | 'DATA_RESTORE';
+  module?: string;
+  targetItem?: string;
+  site?: string;
+  details?: string;
+}
+
+export interface WriteResult<T = any> {
+  success: boolean;
+  record?: T;
+  error?: string;
+  status?: number;
+  tableMissing?: boolean;
 }
 
 export type DbEntityName =
@@ -138,11 +174,12 @@ async function parseApiResponse<T = any>(res: Response): Promise<T> {
  * (BUG-001). Reads previously went out with no headers at all, which was fine
  * while the API was open and returns 401 now, so every call must carry the token.
  */
-function getActiveToken(): string | null {
+export function getActiveToken(): string | null {
   if (activeAuditContext?.token) return activeAuditContext.token;
   if (typeof window !== 'undefined') {
     try {
-      const stored = localStorage.getItem('token');
+      // AppContext persists the session under `sg_tracker_token`; `token` is a legacy key.
+      const stored = localStorage.getItem('sg_tracker_token') || localStorage.getItem('token');
       if (stored) {
         return stored.startsWith('"') ? JSON.parse(stored) : stored;
       }
@@ -151,12 +188,49 @@ function getActiveToken(): string | null {
   return null;
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   const token = getActiveToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function getAuditHeaders(actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'READ' = 'READ'): Record<string, string> {
+/** base64 of UTF-8 JSON, safe for an HTTP header. */
+function encodeAuditContext(audit?: AuditDescriptor): string | null {
+  if (!audit) return null;
+  try {
+    const trimmed: AuditDescriptor = { ...audit, details: audit.details ? String(audit.details).slice(0, 3000) : undefined };
+    const bytes = new TextEncoder().encode(JSON.stringify(trimmed));
+    let binary = '';
+    bytes.forEach(b => { binary += String.fromCharCode(b); });
+    return btoa(binary);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Normalise a write response. A non-2xx status is a failure even when the body
+ * omits `success: false` — previously a 401/500 whose body lacked that flag
+ * was reported to the UI as a successful save.
+ */
+async function toWriteResult<T>(res: Response): Promise<WriteResult<T>> {
+  let json: any = {};
+  try {
+    json = await parseApiResponse<any>(res);
+  } catch (err: any) {
+    return { success: false, error: err.message, status: res.status };
+  }
+  if (!res.ok || json?.success === false) {
+    return {
+      success: false,
+      error: json?.error || json?.message || `Request failed (HTTP ${res.status})`,
+      status: res.status,
+      tableMissing: !!json?.tableMissing
+    };
+  }
+  return { success: true, record: json?.record, status: res.status };
+}
+
+function getAuditHeaders(actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'READ' = 'READ', audit?: AuditDescriptor): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
@@ -173,6 +247,8 @@ function getAuditHeaders(actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'READ' = '
     headers['Authorization'] = `Bearer ${token}`;
   }
   headers['x-action-type'] = actionType;
+  const auditHeader = encodeAuditContext(audit);
+  if (auditHeader) headers['x-audit-context'] = auditHeader;
   return headers;
 }
 
@@ -186,24 +262,24 @@ export const apiService = {
     return activeAuditContext;
   },
 
-  // Record into audit_trails table directly
-  async recordAuditTrail(entry: AuditTrailPayload): Promise<{ success: boolean; error?: string }> {
+  /**
+   * Record an audit entry that is not tied to a data write (sign-in, sign-out,
+   * session lock, role switch). Data writes are audited by the server itself,
+   * from the `audit` descriptor passed with the write.
+   */
+  async recordAuditTrail(entry: AuditTrailPayload & { module?: string; targetItem?: string }): Promise<{ success: boolean; error?: string }> {
     try {
       const now = new Date().toISOString();
       const payload = {
         id: entry.id || `aud-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         timestamp: entry.timestamp || now,
-        user: entry.user || activeAuditContext?.userName || activeAuditContext?.userEmail || 'Staff',
-        userId: entry.userId || activeAuditContext?.userId || null,
-        role: entry.role || activeAuditContext?.role || 'Staff',
         action: entry.action,
         details: entry.details,
         site: entry.site || activeAuditContext?.site || 'All Sites',
-        entityType: entry.entityType || 'General',
+        module: entry.module || entry.entityType || 'Settings',
+        entityType: entry.entityType || entry.module || 'General',
         entityId: entry.entityId || null,
-        createdBy: entry.createdBy || entry.userId || activeAuditContext?.userId || null,
-        createdAt: now,
-        updatedAt: now
+        targetItem: entry.targetItem || entry.entityId || null
       };
 
       const res = await fetch(getApiUrl('/api/db/audit_trails'), {
@@ -211,14 +287,15 @@ export const apiService = {
         headers: getAuditHeaders(entry.action as any),
         body: JSON.stringify(payload)
       });
-      const json = await parseApiResponse<any>(res);
-      
+      const json = await toWriteResult(res);
+
       diagnosticLogger.logAuditDispatch({
         action: entry.action,
         entity: entry.entityType || 'audit_trails',
         entityId: entry.entityId,
         userId: activeAuditContext?.userId,
-        success: json.success !== false
+        success: json.success,
+        error: json.error
       });
 
       return json;
@@ -296,117 +373,149 @@ export const apiService = {
     }
   },
 
-  // Database API
+  // Database API — every page's data lives in the live Supabase database.
   async getDbStatus(): Promise<DbStatusResponse> {
     try {
       const res = await fetch(getApiUrl('/api/db/status'), { headers: authHeaders() });
-      return await parseApiResponse<DbStatusResponse>(res);
-    } catch (err: any) {
-      return { connected: false, mode: 'offline-local', error: err.message };
-    }
-  },
-
-  async fetchEntityRecords<T = any>(entity: DbEntityName): Promise<{ success: boolean; data: T[]; fallback?: boolean; tableMissing?: boolean }> {
-    try {
-      const res = await fetch(getApiUrl(`/api/db/${entity}`), { headers: authHeaders() });
-      const json = await parseApiResponse<any>(res);
+      const json = await parseApiResponse<DbStatusResponse>(res);
+      if (!res.ok && !json?.mode) {
+        return { connected: false, mode: 'offline', error: (json as any)?.error || `HTTP ${res.status}` };
+      }
       return json;
     } catch (err: any) {
-      console.warn(`Failed to fetch ${entity} from API:`, err);
-      return { success: false, data: [], fallback: true };
+      return { connected: false, mode: 'offline', error: err.message };
     }
   },
 
-  async saveEntityRecord<T = any>(entity: DbEntityName, record: T): Promise<{ success: boolean; record?: T; error?: string }> {
+  async fetchEntityRecords<T = any>(
+    entity: DbEntityName,
+    options: { limit?: number; order?: string; eq?: Record<string, string> } = {}
+  ): Promise<{ success: boolean; data: T[]; error?: string; status?: number; tableMissing?: boolean }> {
+    try {
+      const params = new URLSearchParams();
+      if (options.limit) params.set('limit', String(options.limit));
+      if (options.order) params.set('order', options.order);
+      for (const [column, value] of Object.entries(options.eq || {})) params.set(`eq.${column}`, value);
+      const qs = params.toString();
+      const res = await fetch(getApiUrl(`/api/db/${entity}${qs ? `?${qs}` : ''}`), { headers: authHeaders() });
+      const json = await parseApiResponse<any>(res);
+      if (!res.ok || json?.success === false || !Array.isArray(json?.data)) {
+        return {
+          success: false,
+          data: [],
+          error: json?.error || `HTTP ${res.status}`,
+          status: res.status,
+          tableMissing: !!json?.tableMissing
+        };
+      }
+      return { success: true, data: json.data };
+    } catch (err: any) {
+      console.warn(`Failed to fetch ${entity} from API:`, err);
+      return { success: false, data: [], error: err.message };
+    }
+  },
+
+  async saveEntityRecord<T = any>(entity: DbEntityName, record: T, audit?: AuditDescriptor): Promise<WriteResult<T>> {
     try {
       const res = await fetch(getApiUrl(`/api/db/${entity}`), {
         method: 'POST',
-        headers: getAuditHeaders('CREATE'),
+        headers: getAuditHeaders('CREATE', audit),
         body: JSON.stringify(record)
       });
-      const json = await parseApiResponse<any>(res);
-      if (json.success !== false) {
-        diagnosticLogger.logAuditDispatch({
-          action: 'CREATE',
-          entity,
-          entityId: (record as any)?.id,
-          userId: activeAuditContext?.userId,
-          success: true
-        });
-      }
-      return json;
+      const result = await toWriteResult<T>(res);
+      diagnosticLogger.logAuditDispatch({ action: 'CREATE', entity, entityId: (record as any)?.id, userId: activeAuditContext?.userId, success: result.success, error: result.error });
+      return result;
     } catch (err: any) {
-      diagnosticLogger.logAuditDispatch({
-        action: 'CREATE',
-        entity,
-        entityId: (record as any)?.id,
-        userId: activeAuditContext?.userId,
-        success: false,
-        error: err.message
-      });
-      return { success: false, error: err.message };
+      diagnosticLogger.logAuditDispatch({ action: 'CREATE', entity, entityId: (record as any)?.id, userId: activeAuditContext?.userId, success: false, error: err.message });
+      return { success: false, error: `Network error: ${err.message}` };
     }
   },
 
-  async updateEntityRecord<T = any>(entity: DbEntityName, id: string, record: Partial<T>): Promise<{ success: boolean; record?: T; error?: string }> {
+  async updateEntityRecord<T = any>(entity: DbEntityName, id: string, record: Partial<T>, audit?: AuditDescriptor): Promise<WriteResult<T>> {
     try {
       const res = await fetch(getApiUrl(`/api/db/${entity}/${encodeURIComponent(id)}`), {
         method: 'PUT',
-        headers: getAuditHeaders('UPDATE'),
+        headers: getAuditHeaders('UPDATE', audit),
         body: JSON.stringify(record)
       });
-      const json = await parseApiResponse<any>(res);
-      if (json.success !== false) {
-        diagnosticLogger.logAuditDispatch({
-          action: 'UPDATE',
-          entity,
-          entityId: id,
-          userId: activeAuditContext?.userId,
-          success: true
-        });
-      }
-      return json;
+      const result = await toWriteResult<T>(res);
+      diagnosticLogger.logAuditDispatch({ action: 'UPDATE', entity, entityId: id, userId: activeAuditContext?.userId, success: result.success, error: result.error });
+      return result;
     } catch (err: any) {
-      diagnosticLogger.logAuditDispatch({
-        action: 'UPDATE',
-        entity,
-        entityId: id,
-        userId: activeAuditContext?.userId,
-        success: false,
-        error: err.message
-      });
-      return { success: false, error: err.message };
+      diagnosticLogger.logAuditDispatch({ action: 'UPDATE', entity, entityId: id, userId: activeAuditContext?.userId, success: false, error: err.message });
+      return { success: false, error: `Network error: ${err.message}` };
     }
   },
 
-  async deleteEntityRecord(entity: DbEntityName, id: string): Promise<{ success: boolean; error?: string }> {
+  async deleteEntityRecord(entity: DbEntityName, id: string, audit?: AuditDescriptor): Promise<WriteResult> {
     try {
       const res = await fetch(getApiUrl(`/api/db/${entity}/${encodeURIComponent(id)}`), {
         method: 'DELETE',
-        headers: getAuditHeaders('DELETE')
+        headers: getAuditHeaders('DELETE', audit)
+      });
+      const result = await toWriteResult(res);
+      diagnosticLogger.logAuditDispatch({ action: 'DELETE', entity, entityId: id, userId: activeAuditContext?.userId, success: result.success, error: result.error });
+      return result;
+    } catch (err: any) {
+      diagnosticLogger.logAuditDispatch({ action: 'DELETE', entity, entityId: id, userId: activeAuditContext?.userId, success: false, error: err.message });
+      return { success: false, error: `Network error: ${err.message}` };
+    }
+  },
+
+  /** Read several entities in one request. Each entry in `results` succeeds or fails independently. */
+  async batchFetchEntities(
+    requests: Array<{ key: string; entity: DbEntityName; limit?: number; order?: string; eq?: Record<string, string> }>
+  ): Promise<{ success: boolean; error?: string; status?: number; results: Record<string, { success: boolean; data: any[]; error?: string; tableMissing?: boolean }> }> {
+    try {
+      const res = await fetch(getApiUrl('/api/db/batch-read'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ requests })
       });
       const json = await parseApiResponse<any>(res);
-      if (json.success !== false && !json.error) {
-        diagnosticLogger.logAuditDispatch({
-          action: 'DELETE',
-          entity,
-          entityId: id,
-          userId: activeAuditContext?.userId,
-          success: true
-        });
-        return { success: true };
+      if (!res.ok || json?.success === false || !json?.results) {
+        return { success: false, error: json?.error || `HTTP ${res.status}`, status: res.status, results: {} };
       }
-      return { success: false, error: json.error || 'Server reported failure on delete' };
+      return { success: true, results: json.results };
     } catch (err: any) {
-      diagnosticLogger.logAuditDispatch({
-        action: 'DELETE',
-        entity,
-        entityId: id,
-        userId: activeAuditContext?.userId,
-        success: false,
-        error: err.message
+      return { success: false, error: err.message, results: {} };
+    }
+  },
+
+  /** Upsert many records in one request (resets, restores, batch archives, local-data migration). */
+  async bulkSaveEntityRecords<T = any>(entity: DbEntityName, records: T[], audit?: AuditDescriptor): Promise<{ success: boolean; count?: number; error?: string; status?: number; tableMissing?: boolean }> {
+    if (records.length === 0) return { success: true, count: 0 };
+    try {
+      const res = await fetch(getApiUrl(`/api/db/${entity}/bulk`), {
+        method: 'POST',
+        headers: getAuditHeaders('UPDATE', audit),
+        body: JSON.stringify({ records })
       });
-      return { success: false, error: err.message };
+      const json = await parseApiResponse<any>(res);
+      if (!res.ok || json?.success === false) {
+        return { success: false, error: json?.error || `HTTP ${res.status}`, status: res.status, tableMissing: !!json?.tableMissing };
+      }
+      return { success: true, count: json.count };
+    } catch (err: any) {
+      return { success: false, error: `Network error: ${err.message}` };
+    }
+  },
+
+  async bulkDeleteEntityRecords(entity: DbEntityName, ids: string[], audit?: AuditDescriptor): Promise<{ success: boolean; deleted?: number; error?: string; status?: number }> {
+    if (ids.length === 0) return { success: true, deleted: 0 };
+    try {
+      const res = await fetch(getApiUrl(`/api/db/${entity}/bulk-delete`), {
+        method: 'POST',
+        headers: getAuditHeaders('DELETE', audit),
+        body: JSON.stringify({ ids })
+      });
+      const json = await parseApiResponse<any>(res);
+      if (!res.ok || json?.success === false) {
+        return { success: false, error: json?.error || `HTTP ${res.status}`, status: res.status };
+      }
+      return { success: true, deleted: json.deleted };
+    } catch (err: any) {
+      return { success: false, error: `Network error: ${err.message}` };
     }
   },
 
@@ -423,15 +532,30 @@ export const apiService = {
     }
   },
 
-  async runMigration(): Promise<{ success: boolean; message: string; details?: any }> {
+  async runMigration(): Promise<{ success: boolean; message: string; applied?: boolean; seed?: { seeded: string[]; skipped: string[]; errors: string[] } }> {
     try {
       const res = await fetch(getApiUrl('/api/db/migrate'), {
         method: 'POST',
         headers: authHeaders()
       });
-      return await parseApiResponse<any>(res);
+      const json = await parseApiResponse<any>(res);
+      if (!res.ok && !json?.message) {
+        return { success: false, message: json?.error || `Migration request failed (HTTP ${res.status})` };
+      }
+      return json;
     } catch (err: any) {
       return { success: false, message: `Migration request failed: ${err.message}` };
+    }
+  },
+
+  /** The migration SQL, for pasting into the Supabase SQL editor when Postgres is unreachable from the server. */
+  async getMigrationSql(): Promise<{ success: boolean; sql?: string; error?: string }> {
+    try {
+      const res = await fetch(getApiUrl('/api/db/migration-sql'), { headers: authHeaders() });
+      if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
+      return { success: true, sql: await res.text() };
+    } catch (err: any) {
+      return { success: false, error: err.message };
     }
   },
 
@@ -479,38 +603,12 @@ export const apiService = {
   }> {
     const cleanEmail = (email || '').trim().toLowerCase();
 
-    // 1. Built-in break-glass Super Admin Account (works offline or on static Amplify)
-    const isMasterAccount = (cleanEmail === 'stackmaster@sdcommercial.co.uk' || cleanEmail === 'stackamster@sdcommercial.co.uk') && password === 'Focusmode123!';
-    if (isMasterAccount) {
-      const masterUser = {
-        id: 'ce98b46b-4a6a-4a66-a70a-72e6c56d7691',
-        email: 'stackmaster@sdcommercial.co.uk',
-        name: 'Stack Master',
-        role: 'Super Admin',
-        assignedSite: 'All Sites'
-      };
-      const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24;
-      const payloadBase64 = btoa(unescape(encodeURIComponent(JSON.stringify({
-        sub: masterUser.id,
-        email: masterUser.email,
-        role: masterUser.role,
-        iss: 'sdtracker-internal',
-        exp
-      }))));
-      const dummyToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${payloadBase64}.master_signature`;
-      return {
-        success: true,
-        user: masterUser,
-        token: dummyToken,
-        session: {
-          accessToken: dummyToken,
-          expiresAt: exp
-        },
-        fallbackMode: true
-      };
-    }
+    // A browser-side "break-glass" login used to live here: it matched a
+    // hardcoded password shipped in this bundle and minted an unsigned token.
+    // The server rejects that token, so every database call failed with 401 and
+    // the app silently ran on local state. Sessions are issued by the server only.
 
-    // 2. Try the Express backend API (if running)
+    // 1. The Express backend API
     try {
       const res = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
@@ -528,7 +626,7 @@ export const apiService = {
       console.warn('Backend API unavailable, falling back to direct browser Supabase auth:', apiErr.message);
     }
 
-    // 3. Browser-Direct Supabase Authentication Fallback (for static hosting like Amplify)
+    // 2. Browser-Direct Supabase Authentication Fallback (for static hosting like Amplify)
     try {
       const supabase = getBrowserSupabaseClient();
       if (!supabase) {
@@ -583,33 +681,20 @@ export const apiService = {
     user?: { id: string; email: string; name: string; role: string; assignedSite: string; status?: string };
     error?: string;
     blockedReason?: string;
+    /** The server could not be asked (outage), which is not the same as a rejected session. */
+    transient?: boolean;
   }> {
     const startTime = performance.now();
     diagnosticLogger.logTokenExpiration(token, 'Session Verification');
 
-    // 1. Break-Glass Master Token
-    if (token && (token.includes('master_signature') || token.includes('default-superadmin') || token.startsWith('static-session'))) {
-      const masterUser = {
-        id: 'ce98b46b-4a6a-4a66-a70a-72e6c56d7691',
-        email: 'stackmaster@sdcommercial.co.uk',
-        name: 'Stack Master',
-        role: 'Super Admin',
-        assignedSite: 'All Sites',
-        status: 'Active'
-      };
-      diagnosticLogger.logProfileRetrieval({
-        success: true,
-        profile: masterUser,
-        source: 'Built-in Master Session',
-        durationMs: 1
-      });
-      return {
-        success: true,
-        user: masterUser
-      };
+    // Tokens minted by the removed browser-side break-glass login were never
+    // valid on the server; discard them so the user signs in properly.
+    if (token && (token.includes('master_signature') || token.startsWith('static-session'))) {
+      return { error: 'This session was created offline and is not valid. Please sign in again.' };
     }
 
-    // 2. Try the Express backend API
+    // 1. The Express backend API
+    let transientFailure = false;
     try {
       const res = await fetch(getApiUrl('/api/auth/me'), {
         headers: {
@@ -629,11 +714,16 @@ export const apiService = {
         diagnosticLogger.logSessionStatus('active', `Session verified for ${json.user.email} (${json.user.role})`);
         return json;
       }
+      if (res.status === 401 || res.status === 403) {
+        return { error: json?.error || 'Invalid or expired session' };
+      }
+      transientFailure = res.status >= 500;
     } catch (apiErr: any) {
+      transientFailure = true;
       console.warn('Backend API /api/auth/me unreachable, checking session directly with Supabase...');
     }
 
-    // 3. Verify directly with browser Supabase client
+    // 2. Verify directly with browser Supabase client
     try {
       const supabase = getBrowserSupabaseClient();
       if (supabase) {
@@ -680,7 +770,9 @@ export const apiService = {
       console.warn('Supabase direct session check failed:', supErr);
     }
 
-    return { error: 'Session verification failed' };
+    return transientFailure
+      ? { error: 'The server could not verify the session right now', transient: true }
+      : { error: 'Session verification failed' };
   },
 
   async logout(token?: string): Promise<{ success: boolean }> {
@@ -825,7 +917,28 @@ export const apiService = {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(updates)
       });
-      return await parseApiResponse<any>(res);
+      const json = await parseApiResponse<any>(res);
+      if (!res.ok || json?.success === false) {
+        return { success: false, error: json?.error || `HTTP ${res.status}` };
+      }
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  /** Delete the account from Supabase Auth; its profile and assignments cascade. */
+  async deleteUserAccount(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(getApiUrl(`/api/auth/users/${encodeURIComponent(userId)}`), {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      const json = await parseApiResponse<any>(res);
+      if (!res.ok || json?.success === false) {
+        return { success: false, error: json?.error || `HTTP ${res.status}` };
+      }
+      return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
     }

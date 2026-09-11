@@ -19,14 +19,7 @@ import { apiService, SystemConfigStatus, DbStatusResponse } from '../../services
 import { useApp } from '../../context/AppContext';
 
 export const SupabaseBackendCard: React.FC = () => {
-  const { 
-    referrals, 
-    vulnerableSUs, 
-    challengingSUs, 
-    maintenanceRecords, 
-    spcdRecords, 
-    sites 
-  } = useApp();
+  const { syncFromDatabase, liveDataStatus } = useApp();
 
   const [config, setConfig] = useState<SystemConfigStatus | null>(null);
   const [dbStatus, setDbStatus] = useState<DbStatusResponse | null>(null);
@@ -99,26 +92,16 @@ export const SupabaseBackendCard: React.FC = () => {
     }
   };
 
-  const handlePushAllToSupabase = async () => {
+  // The database is the only store, so there is nothing to "push": reload what it holds.
+  const handleReloadLiveData = async () => {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await apiService.syncPushAll({
-        referrals,
-        vulnerable: vulnerableSUs,
-        challenging: challengingSUs,
-        maintenance: maintenanceRecords,
-        spcd: spcdRecords,
-        sites
-      });
-      if (res.success) {
-        setSyncResult('All active records successfully synchronized to Supabase PostgreSQL database.');
-        await loadStatus();
-      } else {
-        setSyncResult(`Sync issue: ${res.message}`);
-      }
+      await syncFromDatabase();
+      await loadStatus();
+      setSyncResult('All modules reloaded from the live Supabase database.');
     } catch (err: any) {
-      setSyncResult(`Sync failed: ${err.message}`);
+      setSyncResult(`Reload failed: ${err.message}`);
     } finally {
       setSyncing(false);
     }
@@ -129,8 +112,10 @@ export const SupabaseBackendCard: React.FC = () => {
     setMigrationResult(null);
     try {
       const res = await apiService.runMigration();
-      setMigrationResult(res);
+      const seeded = res.seed?.seeded?.length ? ` Seeded: ${res.seed.seeded.join(', ')}.` : '';
+      setMigrationResult({ success: res.success, message: `${res.message}${seeded}` });
       await loadStatus();
+      if (res.success) await syncFromDatabase();
     } catch (err: any) {
       setMigrationResult({ success: false, message: `Migration error: ${err.message}` });
     } finally {
@@ -138,12 +123,25 @@ export const SupabaseBackendCard: React.FC = () => {
     }
   };
 
+  const [sqlCopied, setSqlCopied] = useState<boolean>(false);
+  const copyMigrationSql = async () => {
+    const res = await apiService.getMigrationSql();
+    if (!res.success || !res.sql) {
+      setMigrationResult({ success: false, message: `Could not load the migration SQL: ${res.error}` });
+      return;
+    }
+    await navigator.clipboard.writeText(res.sql);
+    setSqlCopied(true);
+    setTimeout(() => setSqlCopied(false), 2500);
+  };
+
   const copyEnvSnippet = () => {
     const text = `# Supabase Database & Auth (Backend credentials)
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-public-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-secret-key
-SUPABASE_DB_URL=postgresql://postgres:[PASSWORD]@db.your-project.supabase.co:5432/postgres
+# Session pooler string (IPv4) from Supabase > Connect > Session pooler
+DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-1-[REGION].pooler.supabase.com:5432/postgres
 
 # SMTP Email Service
 SMTP_HOST=smtp.gmail.com
@@ -237,9 +235,26 @@ SMTP_SECURE=false`;
                 <span>Anon Public Key:</span>
                 <span className="font-mono text-neutral-800">{config?.services?.supabase?.hasAnonKey ? 'Present' : 'Missing'}</span>
               </div>
-              <div className="flex justify-between py-1">
+              <div className="flex justify-between py-1 border-b border-[#edebe9]">
                 <span>Storage Mode:</span>
-                <span className="font-semibold text-[#0d9488]">{dbStatus?.mode === 'supabase-cloud' ? 'Supabase Cloud PostgreSQL' : 'Local State (Safe Fallback)'}</span>
+                <span className={`font-semibold ${dbStatus?.mode === 'supabase-cloud' ? 'text-[#0d9488]' : 'text-red-700'}`}>
+                  {dbStatus?.mode === 'supabase-cloud'
+                    ? 'Supabase Cloud PostgreSQL (Live)'
+                    : dbStatus?.mode === 'unconfigured'
+                      ? 'Not configured - saving disabled'
+                      : 'Unreachable - saving disabled'}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-[#edebe9]">
+                <span>Schema Version:</span>
+                <span className="font-mono text-neutral-800">{dbStatus?.schemaVersion || (dbStatus?.migrationRequired ? 'Migration pending' : 'n/a')}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span>Pages Connected:</span>
+                <span className={`font-semibold ${dbStatus?.migrationRequired ? 'text-amber-700' : 'text-neutral-800'}`}>
+                  {dbStatus?.connectedPages ?? 0} / {dbStatus?.totalPages ?? 0}
+                  {liveDataStatus.lastSyncAt ? ` · synced ${new Date(liveDataStatus.lastSyncAt).toLocaleTimeString()}` : ''}
+                </span>
               </div>
             </div>
 
@@ -268,13 +283,23 @@ SMTP_SECURE=false`;
 
               <button
                 type="button"
-                onClick={handlePushAllToSupabase}
+                onClick={handleReloadLiveData}
                 disabled={syncing || !isSupabaseConfigured}
                 className="px-2.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold rounded-xs text-[11px] transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Push active local records into Supabase tables"
+                title="Reload every module from the live database"
               >
                 <UploadCloud className="w-3 h-3" />
-                <span>{syncing ? 'Syncing...' : 'Push All Data'}</span>
+                <span>{syncing ? 'Reloading...' : 'Reload Live Data'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={copyMigrationSql}
+                className="px-2.5 py-1.5 bg-white border border-[#8a8886] hover:bg-[#edebe9] text-neutral-800 font-semibold rounded-xs text-[11px] transition-colors flex items-center gap-1.5"
+                title="Copy the migration SQL to run in the Supabase SQL Editor"
+              >
+                {sqlCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-[#0d9488]" />}
+                <span>{sqlCopied ? 'SQL Copied' : 'Copy Migration SQL'}</span>
               </button>
             </div>
 
@@ -414,34 +439,46 @@ SMTP_SECURE=false`;
           </div>
         </div>
 
-        {/* Database Table Inspector */}
-        {dbStatus?.tables && Object.keys(dbStatus.tables).length > 0 && (
-          <div className="border border-[#e1dfdd] rounded-xs p-3.5 bg-white space-y-2.5">
-            <div className="flex items-center justify-between">
+        {/* Page → table coverage */}
+        {dbStatus?.pages && dbStatus.pages.length > 0 && (
+          <div className="border border-[#e1dfdd] rounded-xs p-3.5 bg-white space-y-2.5" id="db-page-coverage">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="font-semibold text-xs text-[#242424] flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-[#0d9488]" />
-                Live Database Tables Inspector ({Object.keys(dbStatus.tables).length} Entities)
+                Page Storage Coverage ({dbStatus.connectedPages}/{dbStatus.totalPages} pages fully connected)
               </h4>
-              <span className="text-[10px] text-[#605e5c]">Supabase PostgreSQL Table Status</span>
+              {dbStatus.migrationRequired && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                  Migration required: {[...(dbStatus.missingTables || []), ...(dbStatus.outdatedTables || [])].join(', ')}
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 text-[11px]">
-              {Object.entries(dbStatus.tables).map(([entity, count]) => {
-                const isErr = typeof count === 'string' && count.startsWith('Error');
-                return (
-                  <div key={entity} className={`p-2 rounded-xs border text-xs ${
-                    isErr ? 'bg-red-50/50 border-red-200 text-red-900' : 'bg-[#faf9f8] border-[#edebe9] text-[#242424]'
-                  }`}>
-                    <div className="font-mono font-bold text-[10px] text-[#605e5c] uppercase truncate">{entity}</div>
-                    <div className="font-semibold mt-0.5 truncate">
-                      {isErr ? (
-                        <span className="text-red-600 text-[10px]">Table Missing</span>
-                      ) : (
-                        <span className="text-[#0d9488]">{count} records</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="text-left text-[#605e5c] border-b border-[#edebe9]">
+                    <th className="py-1.5 pr-3 font-semibold">Page</th>
+                    <th className="py-1.5 pr-3 font-semibold">Database table</th>
+                    <th className="py-1.5 pr-3 font-semibold text-right">Rows</th>
+                    <th className="py-1.5 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dbStatus.pages.map(p => (
+                    <tr key={p.entity} className="border-b border-[#f3f2f1] last:border-0">
+                      <td className="py-1.5 pr-3 text-[#242424]">{p.page}</td>
+                      <td className="py-1.5 pr-3 font-mono text-[#605e5c]">{p.table}{p.sharedTable ? ' (shared)' : ''}</td>
+                      <td className="py-1.5 pr-3 text-right font-mono">{p.rows ?? '-'}</td>
+                      <td className="py-1.5">
+                        {p.status === 'connected' && <span className="text-emerald-700 font-semibold">Connected</span>}
+                        {p.status === 'outdated' && <span className="text-amber-700 font-semibold" title={p.missingColumns.join(', ')}>Connected - missing columns ({p.missingColumns.join(', ')})</span>}
+                        {p.status === 'missing' && <span className="text-red-700 font-semibold">Table missing - run migration</span>}
+                        {p.status === 'error' && <span className="text-red-700 font-semibold">Error</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -453,7 +490,7 @@ SMTP_SECURE=false`;
             <div>
               <div className="font-semibold text-xs text-[#242424]">Database Schema Initialization File</div>
               <div className="text-[11px] text-[#605e5c]">
-                A complete SQL migration script is prepared at <code className="font-mono font-semibold text-[#0d9488]">/supabase-schema.sql</code>. Execute this once in the Supabase SQL Editor to initialize all tables, indexes, and security policies.
+                The migration script is <code className="font-mono font-semibold text-[#0d9488]">db/schema.sql</code>. It is non-destructive and safe to re-run: it only creates missing tables and columns and never drops data. The server applies it on start-up when <code className="font-mono">DATABASE_URL</code> is reachable.
               </div>
             </div>
           </div>
@@ -478,15 +515,14 @@ SMTP_SECURE=false`;
         {showSchemaHelp && (
           <div className="p-3.5 bg-neutral-900 text-neutral-100 rounded-xs font-mono text-[11px] space-y-2 border border-neutral-800">
             <div className="text-emerald-400 font-bold font-sans flex items-center justify-between">
-              <span>Quick Supabase Setup Instructions:</span>
-              <span className="text-neutral-400 text-[10px]">supabase-schema.sql</span>
+              <span>Applying the database migration:</span>
+              <span className="text-neutral-400 text-[10px]">db/schema.sql</span>
             </div>
             <ol className="list-decimal pl-5 space-y-1 font-sans text-neutral-300">
-              <li>Open your project at <strong>https://app.supabase.com</strong>.</li>
-              <li>Navigate to the <strong>SQL Editor</strong> in the left navigation sidebar.</li>
-              <li>Paste the contents of <code className="text-amber-300">supabase-schema.sql</code> from this project's root folder and click <strong>Run</strong>.</li>
-              <li>Go to <strong>Project Settings &gt; API</strong> to copy your <strong>URL</strong>, <strong>anon key</strong>, and <strong>service_role secret</strong> into your root <code className="text-amber-300">.env</code> file.</li>
-              <li>Restart or refresh the application — your cloud database and auth are now fully connected!</li>
+              <li><strong>Automatic:</strong> set <code className="text-amber-300">DATABASE_URL</code> in <code className="text-amber-300">.env</code> to the <strong>Session pooler</strong> connection string (Supabase &gt; Connect &gt; Session pooler) with the current database password, then restart the server or click <strong>Run Migration SQL</strong>.</li>
+              <li><strong>Manual:</strong> click <strong>Copy Migration SQL</strong>, open the Supabase <strong>SQL Editor</strong>, paste and click <strong>Run</strong>. Then click <strong>Run Migration SQL</strong> here once to seed reference data.</li>
+              <li>The script only adds what is missing; running it again changes nothing. Existing records are never dropped.</li>
+              <li>Recommended: in Supabase &gt; Authentication &gt; Providers &gt; Email, turn off <strong>Allow new users to sign up</strong>; accounts are created by administrators.</li>
             </ol>
           </div>
         )}

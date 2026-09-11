@@ -1,11 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { isSmtpConfigured, testSmtpConnection, sendEmail, getSmtpConfigSummary } from '../mailer.js';
-import { getSupabaseAdmin, isSupabaseConfigured } from '../supabase.js';
+import { getSupabaseAdmin } from '../supabase.js';
+import { requireRole } from '../middleware/requireAuth.js';
 
 const router = Router();
 
+const ADMIN_ROLES = ['Super Admin', 'Admin'];
+const isAdmin = (req: Request) => !!req.user && ADMIN_ROLES.includes(req.user.role);
+
 // Canonical default notification rules
-const DEFAULT_RULES = [
+export const DEFAULT_RULES = [
   // Safeguarding
   {
     id: 'rule-sg-01',
@@ -480,9 +484,112 @@ const DEFAULT_RULES = [
   }
 ];
 
-// In-memory runtime cache for notification rules and logs
+/**
+ * Notification rules and delivery logs are persisted in
+ * email_notification_rules / email_notification_logs.
+ *
+ * `runtimeRules` is a read-through cache of the rules table, used by /trigger
+ * on every record save so that dispatch does not cost a database round trip.
+ * It is only a source of truth when the table does not exist yet (migration
+ * pending); responses then say `persisted: false` so the UI can warn.
+ */
 let runtimeRules: any[] = JSON.parse(JSON.stringify(DEFAULT_RULES));
 let runtimeLogs: any[] = [];
+let rulesLoadedFromDb = false;
+
+export function notificationRuleToRow(rule: any) {
+  return {
+    id: rule.id,
+    event_code: rule.eventCode,
+    module: rule.module,
+    title: rule.title,
+    description: rule.description ?? null,
+    enabled: rule.enabled !== false,
+    min_severity: rule.minSeverity || 'All',
+    recipient_roles: Array.isArray(rule.recipientRoles) ? rule.recipientRoles : [],
+    custom_recipients: Array.isArray(rule.customRecipients) ? rule.customRecipients : [],
+    custom_cc: Array.isArray(rule.customCc) ? rule.customCc : [],
+    subject_template: rule.subjectTemplate ?? null,
+    include_metadata: rule.includeMetadata !== false,
+    last_dispatched_at: rule.lastDispatchedAt ?? null,
+    dispatch_count: Number(rule.dispatchCount || 0),
+  };
+}
+
+function rowToNotificationRule(r: any) {
+  return {
+    id: r.id,
+    eventCode: r.event_code,
+    module: r.module,
+    title: r.title,
+    description: r.description,
+    enabled: r.enabled,
+    minSeverity: r.min_severity,
+    recipientRoles: r.recipient_roles || [],
+    customRecipients: r.custom_recipients || [],
+    customCc: r.custom_cc || [],
+    subjectTemplate: r.subject_template,
+    includeMetadata: r.include_metadata,
+    lastDispatchedAt: r.last_dispatched_at,
+    dispatchCount: r.dispatch_count || 0,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at
+  };
+}
+
+function logToRow(log: any) {
+  return {
+    id: log.id,
+    rule_id: log.ruleId ?? null,
+    event_code: log.eventCode,
+    module: log.module,
+    subject: log.subject,
+    recipients: log.recipients || [],
+    site: log.site ?? null,
+    status: log.status,
+    error_message: log.errorMessage ?? null,
+    entity_id: log.entityId != null ? String(log.entityId) : null,
+    payload_summary: log.payloadSummary ?? null,
+    dispatched_at: log.dispatchedAt
+  };
+}
+
+const isMissingTable = (error: any) => error?.code === '42P01' || error?.code === 'PGRST205';
+
+/**
+ * Load rules from the database into the cache. An empty table is seeded with
+ * the defaults so that every rule has a row to update.
+ */
+async function loadRulesFromDb(): Promise<{ persisted: boolean; error?: string }> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return { persisted: false, error: 'Database not configured' };
+
+  const { data, error } = await admin.from('email_notification_rules').select('*').order('module', { ascending: true });
+  if (error) {
+    return { persisted: false, error: isMissingTable(error) ? 'email_notification_rules table missing - run the database migration' : error.message };
+  }
+
+  if (!data || data.length === 0) {
+    const { error: seedError } = await admin
+      .from('email_notification_rules')
+      .upsert(DEFAULT_RULES.map(notificationRuleToRow), { onConflict: 'id', ignoreDuplicates: true });
+    if (seedError) return { persisted: false, error: seedError.message };
+    runtimeRules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  } else {
+    runtimeRules = data.map(rowToNotificationRule);
+  }
+  rulesLoadedFromDb = true;
+  return { persisted: true };
+}
+
+async function persistLog(logEntry: any) {
+  runtimeLogs.unshift(logEntry);
+  if (runtimeLogs.length > 150) runtimeLogs.pop();
+  const admin = getSupabaseAdmin();
+  if (!admin) return;
+  const { error } = await admin.from('email_notification_logs').insert(logToRow(logEntry));
+  if (error) console.warn(`[Notifications] delivery log not persisted: ${error.message}`);
+}
 
 // Helper: Replace template tokens like {{suName}} with values
 function interpolateTemplate(template: string, data: Record<string, any>): string {
@@ -609,8 +716,8 @@ router.get('/status', async (req: Request, res: Response) => {
   });
 });
 
-// POST /api/smtp/test
-router.post('/test', async (req: Request, res: Response) => {
+// POST /api/smtp/test — sends mail to an arbitrary address, so administrators only
+router.post('/test', requireRole(...ADMIN_ROLES), async (req: Request, res: Response) => {
   const { testRecipient } = req.body;
   const targetEmail = testRecipient || process.env.SMTP_USER;
 
@@ -656,115 +763,72 @@ router.post('/test', async (req: Request, res: Response) => {
 
 // GET /api/smtp/rules - Fetch all configured notification rules
 router.get('/rules', async (req: Request, res: Response) => {
-  try {
-    const admin = getSupabaseAdmin();
-    if (admin) {
-      const { data, error } = await admin
-        .from('email_notification_rules')
-        .select('*')
-        .order('module', { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        // Map database row snake_case back to camelCase
-        const mapped = data.map(r => ({
-          id: r.id,
-          eventCode: r.event_code,
-          module: r.module,
-          title: r.title,
-          description: r.description,
-          enabled: r.enabled,
-          minSeverity: r.min_severity,
-          recipientRoles: r.recipient_roles || [],
-          customRecipients: r.custom_recipients || [],
-          customCc: r.custom_cc || [],
-          subjectTemplate: r.subject_template,
-          includeMetadata: r.include_metadata,
-          lastDispatchedAt: r.last_dispatched_at,
-          dispatchCount: r.dispatch_count || 0,
-          createdAt: r.created_at,
-          updatedAt: r.updated_at
-        }));
-        runtimeRules = mapped;
-        return res.json({ success: true, rules: mapped, source: 'database' });
-      }
-    }
-  } catch (err) {
-    console.error('Failed to load rules from Supabase, using runtime cache:', err);
-  }
-
-  res.json({ success: true, rules: runtimeRules, source: 'runtime-memory' });
+  const loaded = await loadRulesFromDb();
+  res.json({
+    success: true,
+    rules: runtimeRules,
+    source: loaded.persisted ? 'database' : 'runtime-memory',
+    persisted: loaded.persisted,
+    ...(loaded.error ? { warning: loaded.error } : {})
+  });
 });
 
 // PUT /api/smtp/rules/:id - Update an individual notification rule
-router.put('/rules/:id', async (req: Request, res: Response) => {
+router.put('/rules/:id', requireRole(...ADMIN_ROLES), async (req: Request, res: Response) => {
   const { id } = req.params;
-  const updates = req.body;
+  if (!rulesLoadedFromDb) await loadRulesFromDb();
 
-  // Update in runtime cache
-  const index = runtimeRules.findIndex(r => r.id === id);
-  if (index !== -1) {
-    runtimeRules[index] = {
-      ...runtimeRules[index],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
+  const current = runtimeRules.find(r => r.id === id);
+  if (!current) {
+    return res.status(404).json({ success: false, error: `Notification rule ${id} not found` });
   }
 
-  // Attempt update in Supabase
-  try {
-    const admin = getSupabaseAdmin();
-    if (admin) {
-      const dbPayload: any = {
-        updated_at: new Date().toISOString()
-      };
-      if (updates.enabled !== undefined) dbPayload.enabled = updates.enabled;
-      if (updates.minSeverity !== undefined) dbPayload.min_severity = updates.minSeverity;
-      if (updates.recipientRoles !== undefined) dbPayload.recipient_roles = updates.recipientRoles;
-      if (updates.customRecipients !== undefined) dbPayload.custom_recipients = updates.customRecipients;
-      if (updates.customCc !== undefined) dbPayload.custom_cc = updates.customCc;
-      if (updates.subjectTemplate !== undefined) dbPayload.subject_template = updates.subjectTemplate;
-      if (updates.includeMetadata !== undefined) dbPayload.include_metadata = updates.includeMetadata;
+  // Only configuration fields are client-editable; identity and counters are not.
+  const { enabled, minSeverity, recipientRoles, customRecipients, customCc, subjectTemplate, includeMetadata } = req.body || {};
+  const merged = {
+    ...current,
+    ...(enabled !== undefined ? { enabled: !!enabled } : {}),
+    ...(minSeverity !== undefined ? { minSeverity } : {}),
+    ...(recipientRoles !== undefined ? { recipientRoles } : {}),
+    ...(customRecipients !== undefined ? { customRecipients } : {}),
+    ...(customCc !== undefined ? { customCc } : {}),
+    ...(subjectTemplate !== undefined ? { subjectTemplate } : {}),
+    ...(includeMetadata !== undefined ? { includeMetadata: !!includeMetadata } : {}),
+    updatedAt: new Date().toISOString()
+  };
 
-      await admin.from('email_notification_rules').update(dbPayload).eq('id', id);
-    }
-  } catch (err) {
-    console.warn('Could not persist rule update to Supabase:', err);
+  const admin = getSupabaseAdmin();
+  if (!admin) return res.status(503).json({ success: false, error: 'Database not configured' });
+
+  // Upsert the whole rule: an UPDATE silently touched zero rows when the rule
+  // had never been written to the table, so edits were lost on restart.
+  const { error } = await admin.from('email_notification_rules').upsert(notificationRuleToRow(merged), { onConflict: 'id' });
+  if (error) {
+    return res.status(isMissingTable(error) ? 503 : 500).json({
+      success: false,
+      error: isMissingTable(error) ? 'email_notification_rules table missing - run the database migration' : error.message
+    });
   }
 
-  const updatedRule = runtimeRules.find(r => r.id === id) || updates;
-  res.json({ success: true, rule: updatedRule });
+  runtimeRules = runtimeRules.map(r => (r.id === id ? merged : r));
+  res.json({ success: true, rule: merged });
 });
 
 // POST /api/smtp/rules/reset - Reset rules to system defaults
-router.post('/rules/reset', async (req: Request, res: Response) => {
-  runtimeRules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+router.post('/rules/reset', requireRole(...ADMIN_ROLES), async (req: Request, res: Response) => {
+  const admin = getSupabaseAdmin();
+  if (!admin) return res.status(503).json({ success: false, error: 'Database not configured' });
 
-  try {
-    const admin = getSupabaseAdmin();
-    if (admin) {
-      for (const rule of DEFAULT_RULES) {
-        await admin.from('email_notification_rules').upsert({
-          id: rule.id,
-          event_code: rule.eventCode,
-          module: rule.module,
-          title: rule.title,
-          description: rule.description,
-          enabled: rule.enabled,
-          min_severity: rule.minSeverity,
-          recipient_roles: rule.recipientRoles,
-          custom_recipients: rule.customRecipients,
-          custom_cc: rule.customCc,
-          subject_template: rule.subjectTemplate,
-          include_metadata: rule.includeMetadata,
-          dispatch_count: 0,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'event_code' });
-      }
-    }
-  } catch (err) {
-    console.warn('Could not reset Supabase rules table:', err);
+  const defaults = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  const { error } = await admin
+    .from('email_notification_rules')
+    .upsert(defaults.map(notificationRuleToRow), { onConflict: 'id' });
+  if (error) {
+    return res.status(isMissingTable(error) ? 503 : 500).json({ success: false, error: error.message });
   }
 
+  runtimeRules = defaults;
+  rulesLoadedFromDb = true;
   res.json({ success: true, rules: runtimeRules, message: 'Notification rules successfully reset to system defaults.' });
 });
 
@@ -782,6 +846,8 @@ router.post('/trigger', async (req: Request, res: Response) => {
   if (!eventCode) {
     return res.status(400).json({ success: false, error: 'eventCode is required.' });
   }
+
+  if (!rulesLoadedFromDb) await loadRulesFromDb();
 
   // 1. Match Rule
   const rule = runtimeRules.find(r => r.eventCode === eventCode);
@@ -819,14 +885,17 @@ router.post('/trigger', async (req: Request, res: Response) => {
     });
   }
 
-  // Add ad-hoc recipients passed in trigger
-  if (Array.isArray(targetRecipients)) {
-    targetRecipients.forEach((email: string) => {
-      if (email && email.includes('@')) resolvedRecipients.add(email.trim());
-    });
-  }
-  if (payload.recipientEmail && payload.recipientEmail.includes('@')) {
-    resolvedRecipients.add(payload.recipientEmail.trim());
+  // Ad-hoc recipients let a caller mail any address through the organisation's
+  // SMTP account, so only administrators may supply them.
+  if (isAdmin(req)) {
+    if (Array.isArray(targetRecipients)) {
+      targetRecipients.forEach((email: string) => {
+        if (typeof email === 'string' && email.includes('@')) resolvedRecipients.add(email.trim());
+      });
+    }
+    if (typeof payload.recipientEmail === 'string' && payload.recipientEmail.includes('@')) {
+      resolvedRecipients.add(payload.recipientEmail.trim());
+    }
   }
 
   // Fetch recipients matching target roles from Supabase profiles if possible
@@ -911,7 +980,7 @@ router.post('/trigger', async (req: Request, res: Response) => {
       payloadSummary: JSON.stringify({ site: mergedContext.site, severity, entity: mergedContext.entityId }),
       dispatchedAt: new Date().toISOString()
     };
-    runtimeLogs.unshift(failEntry);
+    await persistLog(failEntry);
     return res.status(500).json({
       success: false,
       delivered: false,
@@ -938,10 +1007,11 @@ router.post('/trigger', async (req: Request, res: Response) => {
   try {
     const admin = getSupabaseAdmin();
     if (admin) {
-      await admin.from('email_notification_rules').update({
+      const { error: statsError } = await admin.from('email_notification_rules').update({
         dispatch_count: rule.dispatchCount,
         last_dispatched_at: rule.lastDispatchedAt
       }).eq('id', rule.id);
+      if (statsError) console.warn(`[Notifications] dispatch stats not persisted: ${statsError.message}`);
     }
   } catch {}
 
@@ -961,28 +1031,7 @@ router.post('/trigger', async (req: Request, res: Response) => {
     dispatchedAt: new Date().toISOString()
   };
 
-  runtimeLogs.unshift(logEntry);
-  if (runtimeLogs.length > 150) runtimeLogs.pop();
-
-  try {
-    const admin = getSupabaseAdmin();
-    if (admin) {
-      await admin.from('email_notification_logs').insert({
-        id: logEntry.id,
-        rule_id: logEntry.ruleId,
-        event_code: logEntry.eventCode,
-        module: logEntry.module,
-        subject: logEntry.subject,
-        recipients: logEntry.recipients,
-        site: logEntry.site,
-        status: logEntry.status,
-        error_message: logEntry.errorMessage,
-        entity_id: logEntry.entityId,
-        payload_summary: logEntry.payloadSummary,
-        dispatched_at: logEntry.dispatchedAt
-      });
-    }
-  } catch {}
+  await persistLog(logEntry);
 
   res.json({
     success: dispatchResult.success,
@@ -995,7 +1044,7 @@ router.post('/trigger', async (req: Request, res: Response) => {
 });
 
 // GET /api/smtp/logs - Fetch recent delivery logs
-router.get('/logs', async (req: Request, res: Response) => {
+router.get('/logs', async (_req: Request, res: Response) => {
   try {
     const admin = getSupabaseAdmin();
     if (admin) {
@@ -1005,7 +1054,8 @@ router.get('/logs', async (req: Request, res: Response) => {
         .order('dispatched_at', { ascending: false })
         .limit(100);
 
-      if (!error && data && data.length > 0) {
+      // An empty table is a real answer; only a missing table falls back to memory.
+      if (!error && data) {
         const mapped = data.map(l => ({
           id: l.id,
           ruleId: l.rule_id,
@@ -1020,17 +1070,18 @@ router.get('/logs', async (req: Request, res: Response) => {
           payloadSummary: l.payload_summary,
           dispatchedAt: l.dispatched_at
         }));
-        return res.json({ success: true, logs: mapped });
+        return res.json({ success: true, logs: mapped, persisted: true });
       }
     }
   } catch {}
 
-  res.json({ success: true, logs: runtimeLogs });
+  res.json({ success: true, logs: runtimeLogs, persisted: false });
 });
 
 // POST /api/smtp/test-rule - Test dispatch a specific rule with mock payload
-router.post('/test-rule', async (req: Request, res: Response) => {
+router.post('/test-rule', requireRole(...ADMIN_ROLES), async (req: Request, res: Response) => {
   const { ruleId, targetEmail } = req.body;
+  if (!rulesLoadedFromDb) await loadRulesFromDb();
   const rule = runtimeRules.find(r => r.id === ruleId);
 
   if (!rule) {
@@ -1093,7 +1144,7 @@ router.post('/test-rule', async (req: Request, res: Response) => {
     errorMessage: result.success ? undefined : result.message,
     dispatchedAt: new Date().toISOString()
   };
-  runtimeLogs.unshift(logEntry);
+  await persistLog(logEntry);
 
   res.json({
     success: result.success,
@@ -1107,9 +1158,10 @@ router.post('/test-rule', async (req: Request, res: Response) => {
 
 // Existing dedicated alert endpoints preserved for backward compatibility
 router.post('/alert', async (req: Request, res: Response) => {
-  const { recipient, alertType, title, message, entityId, site, severity = 'Urgent', metadata } = req.body;
+  const { recipient, title, message, entityId, site, severity = 'Urgent', metadata } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required.' });
-  const targetRecipient = recipient || process.env.SMTP_USER || 'admin@sdcommercial.co.uk';
+  // Only administrators may direct an alert to an arbitrary address.
+  const targetRecipient = (isAdmin(req) && recipient) || process.env.SMTP_USER || 'admin@sdcommercial.co.uk';
 
   if (!isSmtpConfigured()) {
     return res.status(500).json({ success: false, message: 'Production SMTP Error: SMTP is not configured in root .env' });
@@ -1136,7 +1188,7 @@ router.post('/alert', async (req: Request, res: Response) => {
 
 router.post('/escalation-alert', async (req: Request, res: Response) => {
   const { suName, site, roomNo, incidentTitle, urgency = 'Critical', escalatedTo, reason, actionRequired, reportedBy, recipientEmail } = req.body;
-  const targetEmail = recipientEmail || process.env.SMTP_USER || 'admin@sdcommercial.co.uk';
+  const targetEmail = (isAdmin(req) && recipientEmail) || process.env.SMTP_USER || 'admin@sdcommercial.co.uk';
 
   if (!isSmtpConfigured()) {
     return res.status(500).json({ success: false, message: 'Production SMTP Error: SMTP is not configured in root .env' });

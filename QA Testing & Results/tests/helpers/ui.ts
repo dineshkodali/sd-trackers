@@ -156,6 +156,22 @@ export function xpathLiteral(s: string): string {
   return `concat('${s.replace(/'/g, `', "'", '`)}')`;
 }
 
+/**
+ * Fill the SG Referral create form with a complete, valid record.
+ *
+ * The form was rebuilt on DynamicRecordFormModal (commit 1b418da): Referral
+ * Council became a <select> and the service user, reference and notes fields
+ * were relabelled. Every spec that creates a referral goes through here so the
+ * next relabelling is a one-line change.
+ */
+export async function fillReferralForm(page: Page, name: string, notes = 'Created by automated test. Safe to delete.') {
+  await field(page, 'Referral Council').selectOption('Westminster City Council');
+  await field(page, 'Service User Name').fill(name);
+  await field(page, 'Port / NASS Ref').fill(`PORT-${name.slice(-6)}`);
+  await field(page, 'Mosaic ID').fill(`MOS-${name.slice(-6)}`);
+  await field(page, 'Actions Taken & Case Details').fill(notes);
+}
+
 /** All form controls inside the modal, in DOM order. */
 export function dialogFields(page: Page): Locator {
   return dialog(page).locator('input, select, textarea');

@@ -10,4 +10,7 @@ scratch/
 !.env.example
 
 # Playwright artefacts
-QA Testing & Results/test-results/
+"QA Testing & Results/test-results/"
+"QA Testing & Results/playwright-report/"
+playwright-report/
+test-results/

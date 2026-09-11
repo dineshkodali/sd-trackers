@@ -1,52 +1,18 @@
 import { NotificationRule, EmailNotificationLog, NotificationEventCode } from '../types';
 import { DEFAULT_NOTIFICATION_RULES } from '../data/defaultNotificationRules';
+import { authHeaders, getApiUrl } from './apiService';
 
 /**
  * Client Service for Email Notification Management
- * Communicates with backend endpoints (/api/smtp/*) with token authentication and fallback runtime caching.
+ * Communicates with backend endpoints (/api/smtp/*); rules and delivery logs
+ * are persisted in the email_notification_rules / email_notification_logs tables.
  */
 
 function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
-  };
-
-  let token: string | null = null;
-  try {
-    const raw = localStorage.getItem('sd_tracker_token') 
-      || localStorage.getItem('sdtracker_session_token') 
-      || localStorage.getItem('sd_auth_token')
-      || localStorage.getItem('token');
-
-    if (raw) {
-      if (raw.startsWith('"') && raw.endsWith('"')) {
-        token = JSON.parse(raw);
-      } else {
-        token = raw;
-      }
-    }
-
-    if (!token) {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
-          const item = localStorage.getItem(key);
-          if (item) {
-            const parsed = JSON.parse(item);
-            if (parsed?.access_token) {
-              token = parsed.access_token;
-              break;
-            }
-          }
-        }
-      }
-    }
-  } catch {}
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
+  // Same session token as every other API call. This previously looked under
+  // four localStorage keys, none of which the app writes, so notification
+  // requests went out unauthenticated.
+  return { 'Content-Type': 'application/json', ...authHeaders() };
 }
 
 export const emailNotificationService = {
@@ -55,7 +21,7 @@ export const emailNotificationService = {
    */
   async getRules(): Promise<NotificationRule[]> {
     try {
-      const res = await fetch('/api/smtp/rules', {
+      const res = await fetch(getApiUrl('/api/smtp/rules'), {
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -75,12 +41,15 @@ export const emailNotificationService = {
    */
   async updateRule(id: string, updates: Partial<NotificationRule>): Promise<{ success: boolean; rule?: NotificationRule; error?: string }> {
     try {
-      const res = await fetch(`/api/smtp/rules/${encodeURIComponent(id)}`, {
+      const res = await fetch(getApiUrl(`/api/smtp/rules/${encodeURIComponent(id)}`), {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(updates)
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        return { success: false, error: data?.error || `HTTP ${res.status}` };
+      }
       return data;
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -92,11 +61,14 @@ export const emailNotificationService = {
    */
   async resetRules(): Promise<{ success: boolean; rules?: NotificationRule[]; message?: string }> {
     try {
-      const res = await fetch('/api/smtp/rules/reset', {
+      const res = await fetch(getApiUrl('/api/smtp/rules/reset'), {
         method: 'POST',
         headers: getAuthHeaders()
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        return { success: false, message: data?.error || data?.message || `HTTP ${res.status}` };
+      }
       return data;
     } catch (err: any) {
       return { success: false, rules: DEFAULT_NOTIFICATION_RULES, message: err.message };
@@ -127,7 +99,7 @@ export const emailNotificationService = {
     error?: string;
   }> {
     try {
-      const res = await fetch('/api/smtp/trigger', {
+      const res = await fetch(getApiUrl('/api/smtp/trigger'), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -151,7 +123,7 @@ export const emailNotificationService = {
    */
   async getLogs(): Promise<EmailNotificationLog[]> {
     try {
-      const res = await fetch('/api/smtp/logs', {
+      const res = await fetch(getApiUrl('/api/smtp/logs'), {
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -171,7 +143,7 @@ export const emailNotificationService = {
    */
   async testRule(ruleId: string, targetEmail: string): Promise<{ success: boolean; simulated?: boolean; message?: string; error?: string }> {
     try {
-      const res = await fetch('/api/smtp/test-rule', {
+      const res = await fetch(getApiUrl('/api/smtp/test-rule'), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ ruleId, targetEmail })
@@ -188,7 +160,7 @@ export const emailNotificationService = {
    */
   async getStatus(): Promise<{ configured: boolean; host: string | null; port: string | number; from: string | null; user: string | null }> {
     try {
-      const res = await fetch('/api/smtp/status', {
+      const res = await fetch(getApiUrl('/api/smtp/status'), {
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -203,7 +175,7 @@ export const emailNotificationService = {
    */
   async testConnection(testRecipient: string): Promise<{ success: boolean; message: string }> {
     try {
-      const res = await fetch('/api/smtp/test', {
+      const res = await fetch(getApiUrl('/api/smtp/test'), {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ testRecipient })

@@ -9,17 +9,11 @@ import { test, expect } from '../helpers/fixtures';
 import {
   gotoModule, openCreateForm, submitCreateForm, acceptConfirmation, closeDialog,
   field, rowContaining, rowAction, waitForRow, bodyRows, confirmationText,
-  filters, dialogIsOpen, watchWrites,
+  filters, dialogIsOpen, watchWrites, fillReferralForm,
 } from '../helpers/ui';
 import { listRecords } from '../helpers/api';
 
-async function fillReferral(page: any, name: string) {
-  await field(page, 'Referral Council').fill('Westminster City Council');
-  await field(page, 'Service User (SU) Full Name').fill(name);
-  await field(page, 'Port / NASS Reference').fill(`PORT-${name.slice(-6)}`);
-  await field(page, 'Mosaic ID').fill(`MOS-${name.slice(-6)}`);
-  await field(page, 'Notes - Action').fill('Created by automated test. Safe to delete.');
-}
+const fillReferral = (page: any, name: string) => fillReferralForm(page, name);
 
 async function createReferral(page: any, name: string) {
   await openCreateForm(page, 'referrals');
@@ -91,14 +85,9 @@ test.describe('TS-05 SG Referrals — full lifecycle', () => {
   });
 
   /**
-   * Locator healed: the edit modal labels this field "LA Lead Officer" while the
-   * create modal calls the same field "LA Officer Leading".
-   *
-   * This test still fails, and must. The edit modal exposes only 11 of the
-   * referral's fields, so saving sends a partial payload — and the server
-   * rebuilds the whole row from it, blanking every field the modal does not
-   * show (including suName, which carries the lookup tag). That is defect F-01,
-   * a real data-loss bug. Do not annotate it away.
+   * The edit modal now shares the create form's configuration, so the field is
+   * "LA Officer Leading" in both. A partial edit must change only that field:
+   * the server merges it onto the stored record (F-01 / BUG-004).
    */
   test('CRUD.7 a referral can be edited and the change persists', async ({ page, tag, api }) => {
     await createReferral(page, tag);
@@ -106,7 +95,7 @@ test.describe('TS-05 SG Referrals — full lifecycle', () => {
     await page.waitForTimeout(1200);
     expect(await dialogIsOpen(page)).toBe(true);
 
-    await field(page, 'LA Lead Officer').fill('QA Reviewer');
+    await field(page, 'LA Officer Leading').fill('QA Reviewer');
     await page.locator('button').filter({ hasText: /save|update|confirm/i }).last().click();
     await page.waitForTimeout(1200);
     await acceptConfirmation(page, /^(save changes|confirm|yes|update)/i);

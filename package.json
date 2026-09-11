@@ -9,7 +9,11 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:unit": "tsx --test server/schemaAdapter.test.ts src/services/legacyLocalDataMigration.test.ts",
+    "test:qa:report": "tsx scripts/generate-qa-report.ts",
+    "db:coverage": "tsx scripts/verify-db-coverage.ts",
+    "db:migrate": "tsx scripts/db-migrate.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",
