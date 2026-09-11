@@ -92,6 +92,17 @@ If you want the frontend to make requests to `/api/*` on the same domain without
 
 > ⚠️ **Important**: Do **NOT** set the target address of `/api/<*>` to the Amplify domain itself (`trackers.sdcdms.co.uk`), because that causes Amplify to route requests right back to its static files! It must point to your external Node.js backend server.
 
+#### Option C: Emergency In-Browser Override (No Redeploy Required)
+If your Amplify site is already built and you need to immediately connect it to your backend without waiting for an Amplify rebuild:
+1. Open your deployed Amplify webapp in Google Chrome / Edge.
+2. Press `F12` to open Developer Tools > **Console**.
+3. Run:
+   ```js
+   localStorage.setItem('sd_api_url', 'https://api.trackers.sdcdms.co.uk'); // or your backend IP/URL
+   location.reload();
+   ```
+4. The client will immediately route all `/api/*` requests to your backend URL!
+
 ---
 
 ## 5. Custom Domain Setup (`trackers.sdcdms.co.uk`)

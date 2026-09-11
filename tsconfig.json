@@ -22,5 +22,12 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "QA Testing & Results/test-results",
+    "QA Testing & Results/playwright-report"
+  ]
 }

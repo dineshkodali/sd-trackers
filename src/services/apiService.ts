@@ -122,10 +122,26 @@ export interface AuditTrailPayload {
 
 let activeAuditContext: AuditUserContext | null = null;
 
-const rawApiBase = typeof window !== 'undefined'
-  ? ((window as any).__VITE_API_URL__ || (import.meta as any).env?.VITE_API_URL || '')
-  : ((import.meta as any).env?.VITE_API_URL || '');
-const API_BASE = (rawApiBase || '').replace(/\/+$/, '');
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const override = localStorage.getItem('sd_api_url');
+    if (override) return override.replace(/\/+$/, '');
+    const winVal = (window as any).__VITE_API_URL__;
+    if (winVal) return String(winVal).replace(/\/+$/, '');
+  }
+  const envVal = (import.meta as any).env?.VITE_API_URL || '';
+  return String(envVal || '').replace(/\/+$/, '');
+}
+
+export function setApiBaseUrl(url: string): void {
+  if (typeof window !== 'undefined') {
+    if (url && url.trim()) {
+      localStorage.setItem('sd_api_url', url.trim().replace(/\/+$/, ''));
+    } else {
+      localStorage.removeItem('sd_api_url');
+    }
+  }
+}
 
 /**
  * Resolves an API path against the configured backend base URL (if any).
@@ -134,7 +150,8 @@ const API_BASE = (rawApiBase || '').replace(/\/+$/, '');
  */
 export function getApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return API_BASE ? `${API_BASE}${cleanPath}` : cleanPath;
+  const base = getApiBaseUrl();
+  return base ? `${base}${cleanPath}` : cleanPath;
 }
 
 /**
@@ -152,8 +169,9 @@ async function parseApiResponse<T = any>(res: Response): Promise<T> {
       text.includes('__vite_plugin_react_preamble_installed__') ||
       text.includes('<title>')
     ) {
+      const attemptedUrl = res.url || 'API endpoint';
       throw new Error(
-        `Backend API unreachable (HTTP ${res.status} ${res.statusText}). ` +
+        `Backend API unreachable at ${attemptedUrl} (HTTP ${res.status} ${res.statusText || 'Not Found'}). ` +
         `The server returned a web page (HTML) instead of JSON. ` +
         `If hosted on AWS Amplify, ensure your Express backend is running and either the /api rewrite rule or VITE_API_URL environment variable is set.`
       );

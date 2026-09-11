@@ -302,3 +302,38 @@ export async function migrateLegacyLocalData(ctx: LegacyMigrationContext): Promi
   for (const key of DISCARD_KEYS) removeLocal(key);
   return report;
 }
+
+/**
+ * Completely purges all legacy operational, draft, layout, and cached records
+ * from browser localStorage, preserving only session authentication credentials.
+ */
+export function purgeAllLegacyLocalStorage(): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || '';
+      // Retain active auth tokens and API config
+      if (
+        key === 'sg_tracker_token' ||
+        key === 'sg_tracker_auth_user' ||
+        key === 'token' ||
+        key === 'sd_api_url'
+      ) {
+        continue;
+      }
+      if (
+        key.startsWith(PREFIX) ||
+        key.startsWith('sg_smart_cache_') ||
+        key.startsWith('sg_cache_') ||
+        key.startsWith(LEGACY_SCHEMA_STORAGE_PREFIX) ||
+        key.startsWith('recent_searches_')
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => {
+      try { localStorage.removeItem(k); } catch {}
+    });
+  } catch {}
+}

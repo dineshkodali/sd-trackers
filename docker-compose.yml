@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        - VITE_API_URL=${VITE_API_URL:-}
         - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-https://kxikojvpcyprfbyxsdaa.supabase.co}
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd}
         - VITE_AZURE_CLIENT_ID=${VITE_AZURE_CLIENT_ID:-8902bae4-3763-4455-ae7d-8c7c5aac4011}
@@ -21,7 +22,7 @@ services:
       - APP_URL=${APP_URL:-https://trackers.sdcdms.co.uk}
       - PUBLIC_URL=${PUBLIC_URL:-https://trackers.sdcdms.co.uk}
       - AUTH_TOKEN_SECRET=${AUTH_TOKEN_SECRET:-39dee3d43e2f3ac8d9481ce0fe572a7d2866ea3c658a5d2d192e701f58c3e25b}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://trackers.sdcdms.co.uk,http://trackers.sdcdms.co.uk,http://localhost:3020}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://trackers.sdcdms.co.uk,http://trackers.sdcdms.co.uk,http://localhost:3020,https://main.*.amplifyapp.com}
       # Supabase Configuration
       - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-https://kxikojvpcyprfbyxsdaa.supabase.co}
       - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd}

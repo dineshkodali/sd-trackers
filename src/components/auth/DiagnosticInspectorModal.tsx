@@ -47,7 +47,7 @@ export const DiagnosticInspectorModal: React.FC<DiagnosticInspectorModalProps> =
 
   if (!isOpen) return null;
 
-  const parsedToken = parseJwtPayload(currentToken || localStorage.getItem('sdtracker_session_token'));
+  const parsedToken = parseJwtPayload(currentToken || localStorage.getItem('sg_tracker_token'));
 
   const filteredEvents = selectedCategory === 'all' 
     ? events 
@@ -76,7 +76,7 @@ ${events.slice(0, 15).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] [
       const startTime = performance.now();
       const statusRes = await apiService.getAuthStatus();
       const dbStatus = await apiService.getDbStatus();
-      const token = currentToken || localStorage.getItem('sdtracker_session_token');
+      const token = currentToken || localStorage.getItem('sg_tracker_token');
       let meRes: any = { note: 'No token' };
       if (token) {
         meRes = await apiService.verifySession(token);

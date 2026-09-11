@@ -4,13 +4,15 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
+ARG VITE_API_URL=""
 ARG VITE_SUPABASE_URL=https://kxikojvpcyprfbyxsdaa.supabase.co
 ARG VITE_SUPABASE_ANON_KEY=sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd
 ARG VITE_AZURE_CLIENT_ID=8902bae4-3763-4455-ae7d-8c7c5aac4011
 ARG VITE_AZURE_TENANT_ID=common
 ARG VITE_AZURE_REDIRECT_URI=https://kxikojvpcyprfbyxsdaa.supabase.co/auth/v1/callback
 
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
     VITE_AZURE_CLIENT_ID=$VITE_AZURE_CLIENT_ID \
     VITE_AZURE_TENANT_ID=$VITE_AZURE_TENANT_ID \
@@ -43,4 +45,9 @@ COPY --from=builder /app/db ./db
 
 EXPOSE 3020
 
+# Container healthcheck for monitoring backend service availability
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost:3020/api/config/status || exit 1
+
 CMD ["node", "dist/server.cjs"]
+

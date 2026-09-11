@@ -1,13 +1,34 @@
 version: 1
+# ==============================================================================
+# AWS Amplify Hosting Build Specification — SD Operations Platform
+#
+# IMPORTANT FOR API CONNECTIVITY:
+# Amplify Hosting serves static files. For /api/* calls to reach your Express backend,
+# EITHER:
+#   1. Set VITE_API_URL in Amplify Console (App settings > Environment variables)
+#      e.g. VITE_API_URL = https://api.trackers.sdcdms.co.uk (or http://YOUR_VPS_IP:3020)
+#   2. OR set a Rewrite Rule in Amplify Console (App settings > Rewrites and redirects):
+#      Order 1: /api/<*> -> http://YOUR_BACKEND_IP:3020/api/<*> (200 Rewrite)
+#      Order 2: </^[^.]+$|\.(?!(css|...)$)([^.]+$)/> -> /index.html (200 Rewrite)
+# ==============================================================================
 frontend:
   phases:
     preBuild:
       commands:
         # Install exact dependencies with cached offline preference for fast builds
         - npm ci --cache .npm --prefer-offline
+        # Diagnostic check for API backend routing
+        - |
+          if [ -n "$VITE_API_URL" ]; then
+            echo "[Amplify Build] VITE_API_URL configured: $VITE_API_URL"
+          else
+            echo "[Amplify Build] WARNING: VITE_API_URL is not set."
+            echo "[Amplify Build] Frontend will issue requests to current host (/api/*)."
+            echo "[Amplify Build] Ensure an Amplify Console rewrite rule (/api/<*>) is active."
+          fi
     build:
       commands:
-        # Build the production bundle (Vite SPA + Server bundle)
+        # Build the production bundle (Vite frontend + Server bundle)
         - npm run build
   artifacts:
     # Amplify serves the compiled frontend assets from the dist directory

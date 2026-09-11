@@ -128,8 +128,15 @@ export class SmartCacheManager {
   private static instance: SmartCacheManager;
   private syncListeners: ((stats: SmartCacheStats) => void)[] = [];
   private isSyncing = false;
+  private propertiesPayload: CachedPayload<PropertyInfo> | null = null;
+  private usersPayload: CachedPayload<UserAccount> | null = null;
 
   private constructor() {
+    // Proactively purge any residual localStorage caches
+    try {
+      localStorage.removeItem(STORAGE_PREFIX + 'properties');
+      localStorage.removeItem(STORAGE_PREFIX + 'users');
+    } catch {}
     // Initial warmup
     this.getPropertiesInstant();
     this.getUsersInstant();
@@ -143,24 +150,16 @@ export class SmartCacheManager {
   }
 
   /**
-   * Loads properties instantly from localStorage or fallback with 0ms latency
+   * Returns in-memory properties with 0ms latency.
+   * Data is hydrated strictly from the live database, not localStorage.
    */
   public getPropertiesInstant(): { data: PropertyInfo[]; metadata: CacheMetadata } {
-    const raw = localStorage.getItem(STORAGE_PREFIX + 'properties');
-    if (raw) {
-      try {
-        const payload: CachedPayload<PropertyInfo> = JSON.parse(raw);
-        if (Array.isArray(payload.data) && payload.data.length > 0) {
-          payload.metadata.hitCount = (payload.metadata.hitCount || 0) + 1;
-          fastIndices.rebuildPropertyIndices(payload.data);
-          return payload;
-        }
-      } catch (err) {
-        console.warn('SmartCache: Failed to parse cached properties, refreshing from master data');
-      }
+    if (this.propertiesPayload && Array.isArray(this.propertiesPayload.data) && this.propertiesPayload.data.length > 0) {
+      this.propertiesPayload.metadata.hitCount = (this.propertiesPayload.metadata.hitCount || 0) + 1;
+      return this.propertiesPayload;
     }
 
-    // Default Seed Initialization
+    // In-memory seed initialization before live database sync completes
     const initialData: PropertyInfo[] = INITIAL_SITES;
     const metadata: CacheMetadata = {
       key: 'properties',
@@ -175,41 +174,22 @@ export class SmartCacheManager {
     };
 
     const payload: CachedPayload<PropertyInfo> = { data: initialData, metadata };
-    this.savePropertiesCache(payload);
+    this.propertiesPayload = payload;
     fastIndices.rebuildPropertyIndices(initialData);
     return payload;
   }
 
   /**
-   * Loads users instantly from localStorage or fallback with 0ms latency
+   * Returns in-memory users with 0ms latency.
+   * Data is hydrated strictly from the live database, not localStorage.
    */
   public getUsersInstant(): { data: UserAccount[]; metadata: CacheMetadata } {
-    const raw = localStorage.getItem(STORAGE_PREFIX + 'users');
-    if (raw) {
-      try {
-        const payload: CachedPayload<UserAccount> = JSON.parse(raw);
-        if (Array.isArray(payload.data) && payload.data.length > 0) {
-          if (payload.data.length < INITIAL_USERS.length) {
-            const merged = [...payload.data];
-            INITIAL_USERS.forEach(iu => {
-              if (!merged.some(u => u.email?.toLowerCase() === iu.email?.toLowerCase())) {
-                merged.push(iu);
-              }
-            });
-            payload.data = merged;
-            payload.metadata.itemCount = merged.length;
-            this.saveUsersCache(payload);
-          }
-          payload.metadata.hitCount = (payload.metadata.hitCount || 0) + 1;
-          fastIndices.rebuildUserIndices(payload.data);
-          return payload;
-        }
-      } catch (err) {
-        console.warn('SmartCache: Failed to parse cached users, refreshing from master data');
-      }
+    if (this.usersPayload && Array.isArray(this.usersPayload.data) && this.usersPayload.data.length > 0) {
+      this.usersPayload.metadata.hitCount = (this.usersPayload.metadata.hitCount || 0) + 1;
+      return this.usersPayload;
     }
 
-    // Default Seed Initialization
+    // In-memory seed initialization before live database sync completes
     const initialData: UserAccount[] = INITIAL_USERS;
     const metadata: CacheMetadata = {
       key: 'users',
@@ -224,95 +204,44 @@ export class SmartCacheManager {
     };
 
     const payload: CachedPayload<UserAccount> = { data: initialData, metadata };
-    this.saveUsersCache(payload);
+    this.usersPayload = payload;
     fastIndices.rebuildUserIndices(initialData);
     return payload;
   }
 
   public savePropertiesCache(payload: CachedPayload<PropertyInfo>): void {
-    try {
-      localStorage.setItem(STORAGE_PREFIX + 'properties', JSON.stringify(payload));
-      fastIndices.rebuildPropertyIndices(payload.data);
-    } catch {
-      // quota safeguard
-    }
+    this.propertiesPayload = payload;
+    fastIndices.rebuildPropertyIndices(payload.data);
   }
 
   public saveUsersCache(payload: CachedPayload<UserAccount>): void {
-    try {
-      localStorage.setItem(STORAGE_PREFIX + 'users', JSON.stringify(payload));
-      fastIndices.rebuildUserIndices(payload.data);
-    } catch {
-      // quota safeguard
-    }
+    this.usersPayload = payload;
+    fastIndices.rebuildUserIndices(payload.data);
   }
 
   /**
-   * Background Delta Sync: Merges only modified / new records without replacing unchanged ones
+   * Background Delta Sync: Hydrates properties directly from live database stream
    */
   public async syncPropertiesDelta(
-    currentItems: PropertyInfo[],
+    _currentItems: PropertyInfo[],
     incomingMasterItems: PropertyInfo[]
   ): Promise<{ updatedData: PropertyInfo[]; deltaCount: number; durationMs: number }> {
     const startTime = performance.now();
     this.isSyncing = true;
     this.notifyStats();
 
-    // Simulated background micro-task latency
-    await new Promise(resolve => setTimeout(resolve, 80));
-
-    let deltaCount = 0;
-    const existingMap = new Map<string, PropertyInfo>();
-    currentItems.forEach(item => existingMap.set(item.id, item));
-
-    const updatedData: PropertyInfo[] = [];
-
-    // Detect new or updated items from incoming stream
-    for (const incoming of incomingMasterItems) {
-      const existing = existingMap.get(incoming.id);
-      if (!existing) {
-        // New item
-        updatedData.push(incoming);
-        deltaCount++;
-      } else {
-        // Compare fields for changes
-        const hasChanged = 
-          existing.name !== incoming.name ||
-          existing.city !== incoming.city ||
-          existing.capacity !== incoming.capacity ||
-          existing.status !== incoming.status ||
-          existing.leadOfficer !== incoming.leadOfficer ||
-          existing.contactNumber !== incoming.contactNumber ||
-          existing.pid !== incoming.pid;
-
-        if (hasChanged) {
-          updatedData.push({ ...existing, ...incoming });
-          deltaCount++;
-        } else {
-          updatedData.push(existing); // keep unchanged reference
-        }
-      }
-    }
-
-    // Preserve any custom properties added locally not in incoming stream
-    for (const existing of currentItems) {
-      if (!existing || !existing.name || typeof existing.name !== 'string') continue;
-      const existingName = existing.name.toLowerCase().trim();
-      if (!incomingMasterItems.some(i => i && (i.id === existing.id || (i.name && typeof i.name === 'string' && i.name.toLowerCase().trim() === existingName)))) {
-        updatedData.push(existing);
-      }
-    }
-
+    const updatedData: PropertyInfo[] = Array.isArray(incomingMasterItems) ? [...incomingMasterItems] : [];
+    const deltaCount = updatedData.length;
     const durationMs = Math.round(performance.now() - startTime);
 
     const oldCached = this.getPropertiesInstant();
     const metadata: CacheMetadata = {
       key: 'properties',
-      version: oldCached.metadata.version + (deltaCount > 0 ? 1 : 0),
+      version: (oldCached.metadata.version || 1) + 1,
       lastSyncTimestamp: Date.now(),
       checksum: calculateChecksum(updatedData),
       itemCount: updatedData.length,
-      hitCount: oldCached.metadata.hitCount + 1,
+      hitCount: (oldCached.metadata.hitCount || 0) + 1,
       syncState: 'synced',
       lastSyncDurationMs: durationMs,
       deltaUpdatesCount: deltaCount
@@ -326,79 +255,28 @@ export class SmartCacheManager {
   }
 
   /**
-   * Background Delta Sync for Users
+   * Background Delta Sync: Hydrates users directly from live database stream
    */
   public async syncUsersDelta(
-    currentUsers: UserAccount[],
+    _currentUsers: UserAccount[],
     incomingMasterUsers: UserAccount[]
   ): Promise<{ updatedData: UserAccount[]; deltaCount: number; durationMs: number }> {
     const startTime = performance.now();
     this.isSyncing = true;
     this.notifyStats();
 
-    let deltaCount = 0;
-    const existingMap = new Map<string, UserAccount>();
-    (currentUsers || []).forEach(u => {
-      if (u?.id) existingMap.set(u.id, u);
-      if (u?.email) existingMap.set(u.email.toLowerCase().trim(), u);
-    });
-
-    const updatedData: UserAccount[] = [];
-    const processedKeys = new Set<string>();
-
-    for (const incoming of (incomingMasterUsers || [])) {
-      if (!incoming || !incoming.email) continue;
-      const emailKey = incoming.email.toLowerCase().trim();
-      processedKeys.add(incoming.id);
-      processedKeys.add(emailKey);
-
-      const existing = existingMap.get(incoming.id) || existingMap.get(emailKey);
-      if (!existing) {
-        updatedData.push(incoming);
-        deltaCount++;
-      } else {
-        const merged: UserAccount = {
-          ...incoming,
-          ...existing,
-          assignedSites: Array.isArray(existing.assignedSites) && existing.assignedSites.length > 0
-            ? existing.assignedSites
-            : (Array.isArray(incoming.assignedSites) && incoming.assignedSites.length > 0 ? incoming.assignedSites : ['All Sites'])
-        };
-
-        const hasChanged =
-          existing.name !== merged.name ||
-          existing.email !== merged.email ||
-          existing.role !== merged.role ||
-          existing.status !== merged.status ||
-          JSON.stringify(existing.assignedSites) !== JSON.stringify(merged.assignedSites);
-
-        if (hasChanged) {
-          updatedData.push(merged);
-          deltaCount++;
-        } else {
-          updatedData.push(existing);
-        }
-      }
-    }
-
-    for (const current of (currentUsers || [])) {
-      if (!current || !current.email) continue;
-      const emailKey = current.email.toLowerCase().trim();
-      if (!processedKeys.has(current.id) && !processedKeys.has(emailKey)) {
-        updatedData.push(current);
-      }
-    }
-
+    const updatedData: UserAccount[] = Array.isArray(incomingMasterUsers) ? [...incomingMasterUsers] : [];
+    const deltaCount = updatedData.length;
     const durationMs = Math.round(performance.now() - startTime);
 
     const oldCached = this.getUsersInstant();
     const metadata: CacheMetadata = {
       key: 'users',
-      version: oldCached.metadata.version + (deltaCount > 0 ? 1 : 0),
+      version: (oldCached.metadata.version || 1) + 1,
       lastSyncTimestamp: Date.now(),
       checksum: calculateChecksum(updatedData),
       itemCount: updatedData.length,
-      hitCount: oldCached.metadata.hitCount + 1,
+      hitCount: (oldCached.metadata.hitCount || 0) + 1,
       syncState: 'synced',
       lastSyncDurationMs: durationMs,
       deltaUpdatesCount: deltaCount

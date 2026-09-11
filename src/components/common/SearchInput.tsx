@@ -29,24 +29,19 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const localStorageKey = `recent_searches_${storageKey}`;
+  // In-memory cache for recent searches during active session
+  const memorySearchCache = useRef<Map<string, string[]>>(new Map());
 
-  // Load recent searches from localStorage
+  // Initialize recent searches from in-memory cache and clean legacy localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(localStorageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setRecentSearches(parsed.slice(0, MAX_RECENT_SEARCHES));
-        }
-      }
-    } catch {
-      // Ignore storage read errors
-    }
-  }, [localStorageKey]);
+      localStorage.removeItem(`recent_searches_${storageKey}`);
+    } catch {}
+    const cached = memorySearchCache.current.get(storageKey) || [];
+    setRecentSearches(cached);
+  }, [storageKey]);
 
-  // Save to recent searches
+  // Save to recent searches (in-memory only)
   const saveRecentSearch = (query: string) => {
     const trimmed = query.trim();
     if (!trimmed || trimmed.length < 2) return;
@@ -54,11 +49,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
     setRecentSearches(prev => {
       const filtered = prev.filter(item => item && typeof item === 'string' && item.toLowerCase() !== trimmed.toLowerCase());
       const updated = [trimmed, ...filtered].slice(0, MAX_RECENT_SEARCHES);
-      try {
-        localStorage.setItem(localStorageKey, JSON.stringify(updated));
-      } catch {
-        // Ignore storage write errors
-      }
+      memorySearchCache.current.set(storageKey, updated);
       return updated;
     });
   };
@@ -67,11 +58,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
     e.stopPropagation();
     setRecentSearches(prev => {
       const updated = prev.filter(item => item !== itemToRemove);
-      try {
-        localStorage.setItem(localStorageKey, JSON.stringify(updated));
-      } catch {
-        // Ignore
-      }
+      memorySearchCache.current.set(storageKey, updated);
       return updated;
     });
   };
@@ -79,11 +66,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   const clearAllRecentSearches = (e: React.MouseEvent) => {
     e.stopPropagation();
     setRecentSearches([]);
-    try {
-      localStorage.removeItem(localStorageKey);
-    } catch {
-      // Ignore
-    }
+    memorySearchCache.current.delete(storageKey);
     setIsOpen(false);
   };
 

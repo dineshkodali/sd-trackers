@@ -5,8 +5,25 @@ export interface FormDraft<T> {
 
 const DRAFT_PREFIX = 'sg_tracker_draft_';
 
+// In-memory draft store for active user session — avoids local storage retention
+const memoryDraftStore = new Map<string, FormDraft<any>>();
+
+// Proactively purge any residual drafts from browser localStorage on startup
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(DRAFT_PREFIX)) {
+        localStorage.removeItem(key);
+      }
+    }
+  }
+} catch {
+  // Ignore
+}
+
 /**
- * Saves partial form progress to browser local storage with a timestamp.
+ * Saves partial form progress to in-memory session store (no localStorage).
  */
 export function saveFormDraft<T>(key: string, data: T): void {
   try {
@@ -14,27 +31,20 @@ export function saveFormDraft<T>(key: string, data: T): void {
       data,
       savedAt: new Date().toISOString()
     };
-    localStorage.setItem(`${DRAFT_PREFIX}${key}`, JSON.stringify(draft));
+    memoryDraftStore.set(key, draft);
   } catch (err) {
-    console.warn(`[AutoSave] Failed to save draft for "${key}":`, err);
+    console.warn(`[AutoSave] Failed to save in-memory draft for "${key}":`, err);
   }
 }
 
 /**
- * Loads a previously saved form draft from local storage if available.
+ * Loads a previously saved form draft from in-memory session store if available.
+ * Does not read stale data from localStorage.
  */
 export function loadFormDraft<T>(key: string): FormDraft<T> | null {
   try {
-    const raw = localStorage.getItem(`${DRAFT_PREFIX}${key}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object' && 'data' in parsed && 'savedAt' in parsed) {
-      return parsed as FormDraft<T>;
-    }
-    return {
-      data: parsed as T,
-      savedAt: new Date().toISOString()
-    };
+    const draft = memoryDraftStore.get(key);
+    return (draft as FormDraft<T>) || null;
   } catch {
     return null;
   }
@@ -45,7 +55,10 @@ export function loadFormDraft<T>(key: string): FormDraft<T> | null {
  */
 export function clearFormDraft(key: string): void {
   try {
-    localStorage.removeItem(`${DRAFT_PREFIX}${key}`);
+    memoryDraftStore.delete(key);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(`${DRAFT_PREFIX}${key}`);
+    }
   } catch (err) {
     console.warn(`[AutoSave] Failed to clear draft for "${key}":`, err);
   }

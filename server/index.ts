@@ -142,7 +142,12 @@ async function startServer() {
     let isAllowed = false;
     if (origin) {
       const cleanOrigin = origin.replace(/\/+$/, '');
-      if (allowedOrigins.has(cleanOrigin)) {
+      if (
+        allowedOrigins.has('*') ||
+        allowedOrigins.has(cleanOrigin) ||
+        cleanOrigin.endsWith('.amplifyapp.com') ||
+        cleanOrigin.endsWith('.sdcdms.co.uk')
+      ) {
         isAllowed = true;
       } else if (reqHost) {
         try {

@@ -65,7 +65,7 @@ import { emailNotificationService } from '../services/emailNotificationService';
 import { smartCache, fastIndices, SmartCacheStats } from '../utils/smartCache';
 import { apiService, AuditDescriptor } from '../services/apiService';
 import { tableSchemaService } from '../services/tableSchemaService';
-import { migrateLegacyLocalData, hasLegacyLocalData } from '../services/legacyLocalDataMigration';
+import { migrateLegacyLocalData, hasLegacyLocalData, purgeAllLegacyLocalStorage } from '../services/legacyLocalDataMigration';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 import { diagnosticLogger, parseJwtPayload } from '../utils/diagnosticLogger';
 import { AuthBlockedInfo } from '../components/auth/AuthenticationBlockedView';
@@ -506,12 +506,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lastOperationDurationMs, setLastOperationDurationMs] = useState<number>(8);
   const [confirmModal, setConfirmModal] = useState<ConfirmationRequest | null>(null);
 
-  // Entities — loaded from the live database by syncFromDatabase
-  const [sites, setSites] = useState<SiteInfo[]>(() => {
-    // Property list only (no personal data): the read-through cache gives filters an instant first paint.
-    const cached = smartCache.getPropertiesInstant();
-    return deduplicateSites(cached.data && cached.data.length > 0 ? cached.data : INITIAL_SITES);
-  });
+  // Proactively purge any residual localStorage operational data on startup
+  useEffect(() => {
+    purgeAllLegacyLocalStorage();
+  }, []);
+
+  // Entities — loaded strictly from the live database by syncFromDatabase
+  const [sites, setSites] = useState<SiteInfo[]>(() => deduplicateSites(INITIAL_SITES));
   const [referrals, setReferrals] = useState<SGReferral[]>(INITIAL_REFERRALS);
   const [vulnerableSUs, setVulnerableSUs] = useState<VulnerableSU[]>(INITIAL_VULNERABLE);
   const [challengingSUs, setChallengingSUs] = useState<ChallengingSU[]>(INITIAL_CHALLENGING);
@@ -533,10 +534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [vcsAgencies, setVcsAgencies] = useState<SDVCSAgency[]>([]);
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
   const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>([]);
-  const [users, setUsers] = useState<UserAccount[]>(() => {
-    const cached = smartCache.getUsersInstant();
-    return cached.data && cached.data.length > 0 ? cached.data : INITIAL_USERS;
-  });
+  const [users, setUsers] = useState<UserAccount[]>(() => INITIAL_USERS);
   const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT);
   const [dataChangeRequests, setDataChangeRequests] = useState<DataChangeRequest[]>(INITIAL_CHANGE_REQUESTS);
@@ -1374,6 +1372,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           isSuperAdmin: verifiedRole === 'Super Admin',
           snapshot: Object.fromEntries(plan.map(p => [p.entity === 'audit_trails' ? 'audit' : p.entity, got<any>(p.key)]))
         });
+        purgeAllLegacyLocalStorage();
         if (report.uploaded.length > 0 || report.failed.length > 0) {
           setNotifications(prev => [
             {
