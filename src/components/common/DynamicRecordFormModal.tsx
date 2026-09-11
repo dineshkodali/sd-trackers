@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, AlertCircle, Loader2, Lock } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
 
@@ -32,6 +32,9 @@ export function DynamicRecordFormModal<T = any>({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const prevOpenRef = useRef<boolean>(false);
+  const prevRecordIdRef = useRef<string | null>(null);
+
   // Filter out internal system metadata fields
   const formColumns = useMemo(() => {
     return columns.filter(col => !col.isSystemMetadata);
@@ -48,9 +51,24 @@ export function DynamicRecordFormModal<T = any>({
     return Array.from(map.entries());
   }, [formColumns]);
 
-  // Initialize form data when modal opens or initialValues change
+  // Initialize form data only when modal opens or target record changes — avoids wiping user input on typing
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      prevOpenRef.current = false;
+      prevRecordIdRef.current = null;
+      return;
+    }
+
+    const currentRecordId = (initialValues as any)?.id || null;
+    const justOpened = !prevOpenRef.current;
+    const recordChanged = currentRecordId !== null && currentRecordId !== prevRecordIdRef.current;
+
+    if (!justOpened && !recordChanged) {
+      return;
+    }
+
+    prevOpenRef.current = true;
+    prevRecordIdRef.current = currentRecordId;
 
     const initial: Record<string, any> = initialValues ? { ...initialValues } : {};
     formColumns.forEach(col => {
@@ -88,7 +106,7 @@ export function DynamicRecordFormModal<T = any>({
     setFormData(initial);
     setErrors({});
     setSubmitError(null);
-  }, [isOpen, initialValues, formColumns, contextData]);
+  }, [isOpen, initialValues]);
 
   const handleClearOrRevert = () => {
     if (isEdit && initialValues) {
@@ -296,7 +314,7 @@ export function DynamicRecordFormModal<T = any>({
                             readOnly={isReadOnly}
                             disabled={isSubmitting}
                             placeholder={col.placeholder || '0.00'}
-                            onChange={e => handleChange(key, e.target.value === '' ? '' : Number(e.target.value))}
+                            onChange={e => handleChange(key, e.target.value)}
                             className={`w-full pl-6 pr-2 py-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors ${
                               errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
                             } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}
@@ -312,7 +330,7 @@ export function DynamicRecordFormModal<T = any>({
                           readOnly={isReadOnly}
                           disabled={isSubmitting}
                           placeholder={col.placeholder}
-                          onChange={e => handleChange(key, e.target.value === '' ? '' : Number(e.target.value))}
+                          onChange={e => handleChange(key, e.target.value)}
                           className={`w-full p-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors ${
                             errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
                           } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}

@@ -96,9 +96,11 @@ export async function seedReferenceData(): Promise<SeedResult> {
     }
 
     if ((count ?? 0) === 0) {
-      const liveCols = schema.get(table)!;
+      const liveCols = schema.get(table);
       const rows = spec.rows().map(row =>
-        Object.fromEntries(Object.entries(row).filter(([col]) => liveCols.has(col)))
+        liveCols && liveCols.size > 0
+          ? Object.fromEntries(Object.entries(row).filter(([col]) => liveCols.has(col)))
+          : row
       );
       const { error } = await client.from(table).upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
       if (error) {
