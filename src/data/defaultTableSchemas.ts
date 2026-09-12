@@ -55,6 +55,8 @@ export const ESCALATIONS_TABLE_COLUMNS: TableColumnConfig<EscalationRecord>[] = 
     key: 'incidentType', 
     label: 'Incident Type', 
     type: 'select', 
+    optionCategory: 'incidentTypes',
+    allowQuickAdd: true,
     options: ['Safeguarding Incident', 'Medical Emergency', 'Verbal / Physical Dispute', 'Missing Person / Absconded', 'Property Damage', 'Mental Health Crisis', 'Anti-Social Behaviour', 'Other'],
     section: 'Incident Details' 
   },
@@ -62,6 +64,8 @@ export const ESCALATIONS_TABLE_COLUMNS: TableColumnConfig<EscalationRecord>[] = 
     key: 'urgency', 
     label: 'Urgency / Risk', 
     type: 'select', 
+    optionCategory: 'riskLevels',
+    allowQuickAdd: true,
     options: ['Critical', 'High', 'Medium', 'Low'],
     badgeColors: {
       Critical: 'bg-red-200 text-red-900 border border-red-300',
@@ -75,6 +79,8 @@ export const ESCALATIONS_TABLE_COLUMNS: TableColumnConfig<EscalationRecord>[] = 
     key: 'wlIssued', 
     label: 'WL Issued', 
     type: 'select', 
+    optionCategory: 'wlIssuedStatuses',
+    allowQuickAdd: true,
     options: ['No', 'Yes', 'Warning Letter Issued', 'Notice to Quit', 'N/A'],
     badgeColors: {
       Yes: 'bg-red-100 text-red-800',
@@ -90,6 +96,8 @@ export const ESCALATIONS_TABLE_COLUMNS: TableColumnConfig<EscalationRecord>[] = 
     key: 'status', 
     label: 'Status', 
     type: 'select', 
+    optionCategory: 'escalationStatuses',
+    allowQuickAdd: true,
     options: ['Active', 'Under Investigation', 'Awaiting Multi-Agency Review', 'Resolved'],
     badgeColors: {
       Active: 'bg-amber-100 text-amber-800 border border-amber-200',
@@ -116,6 +124,8 @@ export const GP_APPOINTMENTS_TABLE_COLUMNS: TableColumnConfig<GPAppointmentRecor
     key: 'status', 
     label: 'Status', 
     type: 'select', 
+    optionCategory: 'gpAppointmentStatuses',
+    allowQuickAdd: true,
     options: ['Scheduled', 'Attended', 'Did Not Attend (DNA)', 'Cancelled', 'Rescheduled'],
     badgeColors: {
       Scheduled: 'bg-blue-100 text-blue-800 border border-blue-200',
@@ -140,6 +150,8 @@ export const RFA_WELFARE_TABLE_COLUMNS: TableColumnConfig<RFAWelfareCheckRecord>
     key: 'group', 
     label: 'Group', 
     type: 'select', 
+    optionCategory: 'welfareResidentGroups',
+    allowQuickAdd: true,
     options: ['Single Adult', 'Family', 'Couple', 'Vulnerable Adult'],
     section: 'Resident Details'
   },
@@ -169,6 +181,8 @@ export const PUBLIC_TRANSPORT_TABLE_COLUMNS: TableColumnConfig<PublicTransportRe
     key: 'modeOfTransport', 
     label: 'Mode of Transport', 
     type: 'select', 
+    optionCategory: 'transportModes',
+    allowQuickAdd: true,
     options: ['Bus', 'Train', 'Underground', 'Tram', 'Taxi', 'Walking'],
     badgeColors: {
       Bus: 'bg-blue-100 text-blue-800',
@@ -185,6 +199,8 @@ export const PUBLIC_TRANSPORT_TABLE_COLUMNS: TableColumnConfig<PublicTransportRe
     key: 'status', 
     label: 'Status', 
     type: 'select', 
+    optionCategory: 'transportApprovalStatuses',
+    allowQuickAdd: true,
     options: ['Approved', 'Pending', 'Completed', 'Cancelled'],
     badgeColors: {
       Approved: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
@@ -210,6 +226,8 @@ export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
     key: 'iaExitBriefingCompleted', 
     label: 'IA Exit Briefing', 
     type: 'select', 
+    optionCategory: 'dispersalExitStatuses',
+    allowQuickAdd: true,
     options: ['Yes', 'No'],
     badgeColors: { Yes: 'bg-emerald-100 text-emerald-800', No: 'bg-red-100 text-red-800' },
     section: 'Compliance Check' 
@@ -218,6 +236,8 @@ export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
     key: 'hoDispersalLetterReceived', 
     label: 'HO Letter Received', 
     type: 'select', 
+    optionCategory: 'dispersalLetterStatuses',
+    allowQuickAdd: true,
     options: ['Yes', 'No'],
     badgeColors: { Yes: 'bg-emerald-100 text-emerald-800', No: 'bg-red-100 text-red-800' },
     section: 'Compliance Check' 
@@ -226,6 +246,8 @@ export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
     key: 'travelled', 
     label: 'Travelled', 
     type: 'select', 
+    optionCategory: 'dispersalTravelStatuses',
+    allowQuickAdd: true,
     options: ['Yes', 'No'],
     badgeColors: { Yes: 'bg-emerald-100 text-emerald-800', No: 'bg-red-100 text-red-800' },
     section: 'Departure Details' 
@@ -235,6 +257,8 @@ export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
     key: 'incidentWarningCompleted', 
     label: 'Incident Warning', 
     type: 'select', 
+    optionCategory: 'dispersalWarningStatuses',
+    allowQuickAdd: true,
     options: ['Yes', 'No', 'No need'],
     section: 'Compliance Check' 
   },
@@ -249,6 +273,8 @@ export const SD_COMPLIANCE_TABLE_COLUMNS: TableColumnConfig<SDComplianceRecord>[
     key: 'complianceType', 
     label: 'Compliance Type', 
     type: 'select', 
+    optionCategory: 'complianceTypes',
+    allowQuickAdd: true,
     options: [
       'Fire Risk Assessment (FRA)',
       'Gas Safety Certificate (CP12)',
@@ -274,6 +300,8 @@ export const SD_COMPLIANCE_TABLE_COLUMNS: TableColumnConfig<SDComplianceRecord>[
     key: 'status', 
     label: 'Status', 
     type: 'select', 
+    optionCategory: 'complianceStatuses',
+    allowQuickAdd: true,
     options: ['Compliant', 'Expiring Soon', 'Expired', 'In Progress', 'Overdue'],
     badgeColors: {
       Compliant: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
@@ -301,6 +329,8 @@ export const BOOKLETS_TABLE_COLUMNS: TableColumnConfig<BookletCollectionRecord>[
     key: 'status', 
     label: 'Status', 
     type: 'select', 
+    optionCategory: 'bookletStatuses',
+    allowQuickAdd: true,
     options: ['Pending Collection', 'Partially Collected', 'Received at Site'],
     badgeColors: {
       'Pending Collection': 'bg-amber-100 text-amber-800 border border-amber-200',
@@ -319,6 +349,8 @@ export const VCS_AGENCIES_TABLE_COLUMNS: TableColumnConfig<SDVCSAgency>[] = [
     key: 'category', 
     label: 'Category', 
     type: 'select', 
+    optionCategory: 'vcsCategories',
+    allowQuickAdd: true,
     options: [
       'Charity & Welfare',
       'Food & Nutrition',
@@ -350,6 +382,8 @@ export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
     key: 'category', 
     label: 'Category', 
     type: 'select', 
+    optionCategory: 'documentCategories',
+    allowQuickAdd: true,
     options: [
       'Risk Assessment',
       'Incident Report',
@@ -365,6 +399,8 @@ export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
     key: 'fileFormat', 
     label: 'Format', 
     type: 'select', 
+    optionCategory: 'fileFormats',
+    allowQuickAdd: true,
     options: ['PDF', 'DOCX', 'XLSX', 'JPG', 'PNG'],
     section: 'File Details'
   },
@@ -372,6 +408,8 @@ export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
     key: 'confidentiality', 
     label: 'Confidentiality', 
     type: 'select', 
+    optionCategory: 'documentConfidentialities',
+    allowQuickAdd: true,
     options: ['General', 'Restricted', 'Strictly Confidential'],
     badgeColors: {
       General: 'bg-blue-100 text-blue-800',
@@ -392,6 +430,8 @@ export const PROPERTY_LAUNDRY_TABLE_COLUMNS: TableColumnConfig<PropertyLaundryLo
     key: 'periodType', 
     label: 'Log Type', 
     type: 'select', 
+    optionCategory: 'laundryPeriodTypes',
+    allowQuickAdd: true,
     options: ['Weekly', 'Monthly'], 
     defaultValue: 'Weekly', 
     badgeColors: {
@@ -408,6 +448,8 @@ export const PROPERTY_LAUNDRY_TABLE_COLUMNS: TableColumnConfig<PropertyLaundryLo
     key: 'hasDiscrepancy', 
     label: 'Discrepancy Status', 
     type: 'select', 
+    optionCategory: 'discrepancyStatuses',
+    allowQuickAdd: true,
     options: ['No', 'Yes'], 
     badgeColors: {
       Yes: 'bg-amber-100 text-amber-900 border border-amber-300',
@@ -428,6 +470,8 @@ export const FOOD_VENDOR_BUFFET_TABLE_COLUMNS: TableColumnConfig<PropertyFoodVen
     key: 'vendor', 
     label: 'Food Vendor', 
     type: 'select', 
+    optionCategory: 'foodVendors',
+    allowQuickAdd: true,
     required: true, 
     options: ['A&M', 'Freshbite', '9 Cuisines', 'Sands'],
     defaultValue: 'A&M',

@@ -1,4 +1,5 @@
 import React from 'react';
+import { FieldOptionCategory } from './index';
 
 export type FieldType = 
   | 'text' 
@@ -16,6 +17,7 @@ export interface SelectOption {
   color?: string;
   badgeBg?: string;
   badgeText?: string;
+  description?: string;
 }
 
 export interface TableColumnConfig<T = any> {
@@ -23,6 +25,8 @@ export interface TableColumnConfig<T = any> {
   label: string;
   type?: FieldType;
   options?: SelectOption[] | string[] | ((context?: any) => SelectOption[] | string[]);
+  optionCategory?: FieldOptionCategory; // Links column to centralized FieldOptionCategory in AppContext
+  allowQuickAdd?: boolean; // If true, enables in-modal + Add / ⚙️ Manage controls
   required?: boolean;
   placeholder?: string;
   defaultValue?: any;

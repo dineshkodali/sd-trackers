@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, AlertCircle, Loader2, Lock, Building2, UserCheck, Calendar } from 'lucide-react';
+import { X, AlertCircle, Loader2, Lock, Building2, UserCheck, Calendar, Plus, Settings2 } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
 import { useApp } from '../../context/AppContext';
 import { AttachmentsSection } from './AttachmentsSection';
+import { QuickOptionModal } from './QuickOptionModal';
 
 interface DynamicRecordFormModalProps<T = any> {
   isOpen: boolean;
@@ -37,7 +38,8 @@ export function DynamicRecordFormModal<T = any>({
     sites,
     authProfile,
     currentUserName,
-    currentUserRole
+    currentUserRole,
+    getFieldOptions
   } = useApp();
 
   const userAssignedHotel = useMemo(() => {
@@ -236,6 +238,7 @@ export function DynamicRecordFormModal<T = any>({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [quickManageCol, setQuickManageCol] = useState<TableColumnConfig<T> | null>(null);
 
   const prevOpenRef = useRef<boolean>(false);
   const prevRecordIdRef = useRef<string | null>(null);
@@ -516,6 +519,12 @@ export function DynamicRecordFormModal<T = any>({
       }
       return allSiteNames.map(name => ({ label: name, value: name }));
     }
+    if (col.optionCategory) {
+      const dynamic = getFieldOptions(col.optionCategory, false);
+      if (dynamic && dynamic.length > 0) {
+        return dynamic.map(d => ({ label: d.label, value: d.value, color: d.color, description: d.description }));
+      }
+    }
     if (!col.options) return [];
     const rawOptions = typeof col.options === 'function' ? col.options(effectiveContext) : col.options;
     return (rawOptions || []).map(opt => {
@@ -705,6 +714,26 @@ export function DynamicRecordFormModal<T = any>({
                           <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5">
                             <Lock className="w-2.5 h-2.5 text-amber-600" /> Auto
                           </span>
+                        ) : (col.type === 'select' && !isSite && col.allowQuickAdd !== false) ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setQuickManageCol(col)}
+                              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold text-[#0f766e] hover:text-[#0d9488] hover:bg-teal-50 rounded border border-teal-200/70 transition-colors cursor-pointer"
+                              title={`Quick add new choice to ${col.label}`}
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                              <span>Add</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setQuickManageCol(col)}
+                              className="p-0.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded transition-colors cursor-pointer"
+                              title={`Manage choices for ${col.label}`}
+                            >
+                              <Settings2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         ) : null}
                       </label>
 
@@ -736,7 +765,13 @@ export function DynamicRecordFormModal<T = any>({
                         <select
                           value={value}
                           disabled={isReadOnly || isSubmitting}
-                          onChange={e => handleChange(key, e.target.value)}
+                          onChange={e => {
+                            if (e.target.value === '__ADD_NEW_OPTION__') {
+                              setQuickManageCol(col);
+                              return;
+                            }
+                            handleChange(key, e.target.value);
+                          }}
                           className={`w-full p-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors ${
                             errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
                           } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed font-medium' : ''}`}
@@ -747,6 +782,11 @@ export function DynamicRecordFormModal<T = any>({
                               {opt.label}
                             </option>
                           ))}
+                          {col.type === 'select' && !isSite && col.allowQuickAdd !== false && (
+                            <option value="__ADD_NEW_OPTION__" className="font-bold text-teal-800 bg-teal-50">
+                              ➕ + Add New Option...
+                            </option>
+                          )}
                         </select>
                       ) : col.type === 'textarea' ? (
                         <textarea
@@ -903,6 +943,19 @@ export function DynamicRecordFormModal<T = any>({
             </div>
           </div>
         </form>
+
+        {quickManageCol && (
+          <QuickOptionModal
+            isOpen={Boolean(quickManageCol)}
+            onClose={() => setQuickManageCol(null)}
+            categoryKey={quickManageCol.optionCategory}
+            categoryName={quickManageCol.label}
+            onOptionAdded={newOpt => {
+              handleChange(String(quickManageCol.key), newOpt.value);
+            }}
+            customOptions={!quickManageCol.optionCategory ? (resolveOptions(quickManageCol) as any) : undefined}
+          />
+        )}
       </div>
     </div>
   );

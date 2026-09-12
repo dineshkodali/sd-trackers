@@ -15,6 +15,8 @@ import {
   Edit2
 } from 'lucide-react';
 import { TableColumnConfig, FieldType } from '../../types/tableSchema';
+import { FIELD_CATEGORIES_META } from '../../data/defaultFieldOptions';
+import { FieldOptionCategory } from '../../types';
 
 interface TableSchemaEditorModalProps<T = any> {
   isOpen: boolean;
@@ -54,6 +56,7 @@ export function TableSchemaEditorModal<T = any>({
   const [newRequired, setNewRequired] = useState(false);
   const [newPlaceholder, setNewPlaceholder] = useState('');
   const [newOptionsStr, setNewOptionsStr] = useState('');
+  const [newCategory, setNewCategory] = useState<string>('');
   const [newSection, setNewSection] = useState('General Information');
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -63,6 +66,7 @@ export function TableSchemaEditorModal<T = any>({
   const [editType, setEditType] = useState<FieldType>('text');
   const [editPlaceholder, setEditPlaceholder] = useState('');
   const [editOptionsStr, setEditOptionsStr] = useState('');
+  const [editCategory, setEditCategory] = useState<string>('');
   const [editRequired, setEditRequired] = useState(false);
 
   if (!isOpen) return null;
@@ -131,6 +135,7 @@ export function TableSchemaEditorModal<T = any>({
     setEditType(col.type || 'text');
     setEditPlaceholder(col.placeholder || '');
     setEditRequired(Boolean(col.required));
+    setEditCategory(col.optionCategory || '');
     const optStr = Array.isArray(col.options) 
       ? col.options.map((o: any) => typeof o === 'string' ? o : (o?.label || o?.value || '')).filter(Boolean).join(', ') 
       : '';
@@ -151,7 +156,9 @@ export function TableSchemaEditorModal<T = any>({
           type: editType,
           placeholder: editPlaceholder.trim(),
           required: editRequired,
-          options: opts
+          options: opts,
+          optionCategory: editType === 'select' && editCategory ? (editCategory as FieldOptionCategory) : undefined,
+          allowQuickAdd: true
         };
       }
       return c;
@@ -196,6 +203,8 @@ export function TableSchemaEditorModal<T = any>({
       placeholder: newPlaceholder.trim(),
       required: newRequired,
       options,
+      optionCategory: newType === 'select' && newCategory ? (newCategory as FieldOptionCategory) : undefined,
+      allowQuickAdd: true,
       section: newSection.trim() || 'General Information',
       visibleInTable: true,
       visibleInView: true,
@@ -214,6 +223,7 @@ export function TableSchemaEditorModal<T = any>({
     setNewRequired(false);
     setNewPlaceholder('');
     setNewOptionsStr('');
+    setNewCategory('');
   };
 
   const handleApplyAll = () => {
@@ -339,17 +349,39 @@ export function TableSchemaEditorModal<T = any>({
                               </div>
 
                               {editType === 'select' && (
-                                <div>
-                                  <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
-                                    Dropdown Options (comma-separated)
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="e.g. Option 1, Option 2, Option 3"
-                                    value={editOptionsStr}
-                                    onChange={e => setEditOptionsStr(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 border border-neutral-300 rounded text-xs focus:ring-1 focus:ring-[#0d9488]"
-                                  />
+                                <div className="space-y-2 pt-1">
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                                      Link to Master Field Category (Recommended)
+                                    </label>
+                                    <select
+                                      value={editCategory}
+                                      onChange={e => setEditCategory(e.target.value)}
+                                      className="w-full px-2.5 py-1.5 border border-neutral-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#0d9488]"
+                                    >
+                                      <option value="">-- Custom options below (Not linked to master) --</option>
+                                      {FIELD_CATEGORIES_META.map(cat => (
+                                        <option key={cat.key} value={cat.key}>
+                                          {cat.name} ({cat.department})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {!editCategory && (
+                                    <div>
+                                      <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                                        Custom Options (comma-separated)
+                                      </label>
+                                      <input
+                                        type="text"
+                                        placeholder="e.g. Option 1, Option 2, Option 3"
+                                        value={editOptionsStr}
+                                        onChange={e => setEditOptionsStr(e.target.value)}
+                                        className="w-full px-2.5 py-1.5 border border-neutral-300 rounded text-xs focus:ring-1 focus:ring-[#0d9488]"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
@@ -542,18 +574,40 @@ export function TableSchemaEditorModal<T = any>({
               </div>
 
               {newType === 'select' && (
-                <div>
-                  <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
-                    Dropdown Select Options (comma-separated list) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. English, Arabic, Kurdish, Spanish, Other"
-                    value={newOptionsStr}
-                    onChange={e => setNewOptionsStr(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-neutral-300 rounded text-xs focus:ring-1 focus:ring-[#0d9488]"
-                  />
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Link to Master Field Category (Recommended)
+                    </label>
+                    <select
+                      value={newCategory}
+                      onChange={e => setNewCategory(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-neutral-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#0d9488]"
+                    >
+                      <option value="">-- Custom comma-separated options (enter below) --</option>
+                      {FIELD_CATEGORIES_META.map(cat => (
+                        <option key={cat.key} value={cat.key}>
+                          {cat.name} ({cat.department})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {!newCategory && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                        Dropdown Select Options (comma-separated list) *
+                      </label>
+                      <input
+                        type="text"
+                        required={!newCategory}
+                        placeholder="e.g. English, Arabic, Kurdish, Spanish, Other"
+                        value={newOptionsStr}
+                        onChange={e => setNewOptionsStr(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-neutral-300 rounded text-xs focus:ring-1 focus:ring-[#0d9488]"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 

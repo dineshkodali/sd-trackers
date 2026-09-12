@@ -3,12 +3,13 @@ import { CustomFieldOption, FieldOptionCategory } from '../types';
 export interface CategoryMeta {
   key: FieldOptionCategory;
   name: string;
-  department: 'Safeguarding' | 'Facilities' | 'Welfare' | 'Governance';
+  department: 'Safeguarding' | 'Facilities' | 'Welfare' | 'Healthcare & Transport' | 'Compliance & Documents' | 'Operations & Governance';
   description: string;
   iconName: string;
 }
 
 export const FIELD_CATEGORIES_META: CategoryMeta[] = [
+  // --- 1. Safeguarding ---
   {
     key: 'referralTypes',
     name: 'Referral Types',
@@ -87,6 +88,15 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'ShieldAlert'
   },
   {
+    key: 'wlIssuedStatuses',
+    name: 'Warning Letter & Notice Statuses',
+    department: 'Safeguarding',
+    description: 'Status of behavioral warning letters or tenancy notices issued',
+    iconName: 'FileText'
+  },
+
+  // --- 2. Facilities & Assets ---
+  {
     key: 'maintenancePriorities',
     name: 'Maintenance Priority SLAs',
     department: 'Facilities',
@@ -107,6 +117,22 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     description: 'Resolution and repair progress statuses for defect tickets',
     iconName: 'Wrench'
   },
+  {
+    key: 'propertyRoomTypes',
+    name: 'Room / Accommodation Types',
+    department: 'Facilities',
+    description: 'Classifications of accommodation units across hotel properties',
+    iconName: 'Home'
+  },
+  {
+    key: 'propertyStatuses',
+    name: 'Property Operational Statuses',
+    department: 'Facilities',
+    description: 'Operational status stages for contracted property sites',
+    iconName: 'Building2'
+  },
+
+  // --- 3. Welfare & Catering ---
   {
     key: 'mealTypes',
     name: 'Catering Meal Types',
@@ -129,6 +155,13 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'Utensils'
   },
   {
+    key: 'foodVendors',
+    name: 'Food Catering Vendors',
+    department: 'Welfare',
+    description: 'Contracted food and buffet preparation partners',
+    iconName: 'ChefHat'
+  },
+  {
     key: 'laundryStages',
     name: 'Laundry Cycle Stages',
     department: 'Welfare',
@@ -136,9 +169,141 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'Waves'
   },
   {
+    key: 'laundryPeriodTypes',
+    name: 'Laundry Log Period Types',
+    department: 'Welfare',
+    description: 'Reporting frequency periods for laundry distribution logs',
+    iconName: 'Calendar'
+  },
+  {
+    key: 'discrepancyStatuses',
+    name: 'Discrepancy Statuses',
+    department: 'Welfare',
+    description: 'Reconciliation status flags for stock or linen variances',
+    iconName: 'CheckCircle2'
+  },
+
+  // --- 4. Healthcare & Transport ---
+  {
+    key: 'gpAppointmentStatuses',
+    name: 'GP Appointment Statuses',
+    department: 'Healthcare & Transport',
+    description: 'Clinical consultation attendance and scheduling statuses',
+    iconName: 'Stethoscope'
+  },
+  {
+    key: 'transportModes',
+    name: 'Public Transport Modes',
+    department: 'Healthcare & Transport',
+    description: 'Approved transport travel methods for resident journeys',
+    iconName: 'Bus'
+  },
+  {
+    key: 'transportApprovalStatuses',
+    name: 'Transport Approval Statuses',
+    department: 'Healthcare & Transport',
+    description: 'Statutory approval stages for public transport requests',
+    iconName: 'CheckCircle'
+  },
+
+  // --- 5. Compliance & Documents ---
+  {
+    key: 'complianceTypes',
+    name: 'Compliance Certification Types',
+    department: 'Compliance & Documents',
+    description: 'Statutory building safety certificates (FRA, CP12, EICR, etc.)',
+    iconName: 'ShieldCheck'
+  },
+  {
+    key: 'complianceStatuses',
+    name: 'Compliance Validity Statuses',
+    department: 'Compliance & Documents',
+    description: 'Certificate audit and expiry status stages',
+    iconName: 'Activity'
+  },
+  {
+    key: 'documentCategories',
+    name: 'Document Hub Categories',
+    department: 'Compliance & Documents',
+    description: 'Categories for compliance, medical, and legal file uploads',
+    iconName: 'FileText'
+  },
+  {
+    key: 'fileFormats',
+    name: 'File Attachment Formats',
+    department: 'Compliance & Documents',
+    description: 'Allowed document and evidence file format tags',
+    iconName: 'Paperclip'
+  },
+  {
+    key: 'documentConfidentialities',
+    name: 'Document Confidentiality Levels',
+    department: 'Compliance & Documents',
+    description: 'Information security and GDPR privacy access tiers',
+    iconName: 'Lock'
+  },
+  {
+    key: 'vcsCategories',
+    name: 'VCS Support Agency Categories',
+    department: 'Compliance & Documents',
+    description: 'Categories for voluntary and community sector partner agencies',
+    iconName: 'Heart'
+  },
+
+  // --- 6. Operations & Governance ---
+  {
+    key: 'bookletStatuses',
+    name: 'Welcome Booklet Statuses',
+    department: 'Operations & Governance',
+    description: 'Collection and delivery progress of resident welcome packs',
+    iconName: 'BookOpen'
+  },
+  {
+    key: 'welfareResidentGroups',
+    name: 'Resident Household Groups',
+    department: 'Operations & Governance',
+    description: 'Demographic and family composition groups for residents',
+    iconName: 'Users'
+  },
+  {
+    key: 'dispersalExitStatuses',
+    name: 'IA Exit Briefing Statuses',
+    department: 'Operations & Governance',
+    description: 'Initial accommodation exit briefing completion statuses',
+    iconName: 'LogOut'
+  },
+  {
+    key: 'dispersalLetterStatuses',
+    name: 'HO Dispersal Letter Statuses',
+    department: 'Operations & Governance',
+    description: 'Home Office dispersal notification confirmation flags',
+    iconName: 'Mail'
+  },
+  {
+    key: 'dispersalTravelStatuses',
+    name: 'Dispersal Travel Statuses',
+    department: 'Operations & Governance',
+    description: 'Verification of resident travel to permanent dispersal address',
+    iconName: 'Plane'
+  },
+  {
+    key: 'dispersalWarningStatuses',
+    name: 'Dispersal Warning Statuses',
+    department: 'Operations & Governance',
+    description: 'Notice compliance check status on dispersal departures',
+    iconName: 'AlertTriangle'
+  },
+  {
+    key: 'userRoles',
+    name: 'System User Roles',
+    department: 'Operations & Governance',
+    description: 'Platform access roles and permission tiers',
+    iconName: 'Shield'
+  },
+  {
     key: 'councils',
     name: 'Responsible Councils & LAs',
-    department: 'Governance',
+    department: 'Operations & Governance',
     description: 'Contracted local borough councils and statutory authorities',
     iconName: 'Landmark'
   }
@@ -289,5 +454,145 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-fstat-2', category: 'foodStatuses', label: 'Pending Distribution', value: 'Pending', color: 'blue', description: 'Prepared and scheduled for room distribution', isActive: true, isSystem: true, order: 2 },
   { id: 'opt-fstat-3', category: 'foodStatuses', label: 'Refused by Resident', value: 'Refused', color: 'red', description: 'Resident declined meal service at door', isActive: true, isSystem: true, order: 3 },
   { id: 'opt-fstat-4', category: 'foodStatuses', label: 'Not in Room / Absent', value: 'Not in Room', color: 'amber', description: 'Resident did not answer room knock during service window', isActive: true, isSystem: true, order: 4 },
-  { id: 'opt-fstat-5', category: 'foodStatuses', label: 'Cancelled', value: 'Cancelled', color: 'slate', description: 'Order cancelled due to hospital appointment or leave', isActive: true, isSystem: false, order: 5 }
+  { id: 'opt-fstat-5', category: 'foodStatuses', label: 'Cancelled', value: 'Cancelled', color: 'slate', description: 'Order cancelled due to hospital appointment or leave', isActive: true, isSystem: false, order: 5 },
+
+  // 19. Warning Letter & Notice Statuses
+  { id: 'opt-wl-1', category: 'wlIssuedStatuses', label: 'No Warning Letter', value: 'No', color: 'slate', description: 'No statutory warning letter issued', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-wl-2', category: 'wlIssuedStatuses', label: 'Warning Letter Issued', value: 'Warning Letter Issued', color: 'amber', description: 'Formal written warning issued to resident', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-wl-3', category: 'wlIssuedStatuses', label: 'Notice to Quit (NTQ)', value: 'Notice to Quit', color: 'purple', description: 'Formal eviction notice to quit served', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-wl-4', category: 'wlIssuedStatuses', label: 'Yes (General Action)', value: 'Yes', color: 'red', description: 'Action confirmed and issued', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-wl-5', category: 'wlIssuedStatuses', label: 'Not Applicable', value: 'N/A', color: 'slate', description: 'Not applicable for this incident type', isActive: true, isSystem: true, order: 5 },
+
+  // 20. Room Accommodation Types
+  { id: 'opt-room-1', category: 'propertyRoomTypes', label: 'Single En-Suite Room', value: 'Single En-Suite Room', color: 'blue', description: 'Single resident en-suite room', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-room-2', category: 'propertyRoomTypes', label: 'Twin Room', value: 'Twin Room', color: 'teal', description: 'Twin beds for 2 individuals', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-room-3', category: 'propertyRoomTypes', label: 'Double Room', value: 'Double Room', color: 'purple', description: 'Double occupancy room', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-room-4', category: 'propertyRoomTypes', label: 'Family Room / Studio', value: 'Family Room', color: 'amber', description: 'Multiple bed unit for family placements', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-room-5', category: 'propertyRoomTypes', label: 'Self-Contained Flat', value: 'Self-Contained Flat', color: 'emerald', description: 'Kitchen and living space included', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-room-6', category: 'propertyRoomTypes', label: 'Accessible / DDA Room', value: 'Accessible Room', color: 'rose', description: 'Wheelchair accessible unit with hoist/wetroom', isActive: true, isSystem: true, order: 6 },
+
+  // 21. Property Operational Statuses
+  { id: 'opt-pstat-1', category: 'propertyStatuses', label: 'Active / Contracted', value: 'Active', color: 'emerald', description: 'Operational hotel receiving resident placements', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-pstat-2', category: 'propertyStatuses', label: 'Under Refurbishment', value: 'Refurbishment', color: 'amber', description: 'Temporary pause for planned maintenance or upgrades', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-pstat-3', category: 'propertyStatuses', label: 'Pending Mobilisation', value: 'Mobilisation', color: 'blue', description: 'Onboarding property undergoing Home Office compliance audit', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-pstat-4', category: 'propertyStatuses', label: 'Decommissioned', value: 'Decommissioned', color: 'slate', description: 'Contract terminated and handed back to landlord', isActive: true, isSystem: true, order: 4 },
+
+  // 22. Food Catering Vendors
+  { id: 'opt-fvend-1', category: 'foodVendors', label: 'A&M Catering', value: 'A&M', color: 'amber', description: 'Contracted halal hot meal delivery vendor', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fvend-2', category: 'foodVendors', label: 'Freshbite Kitchens', value: 'Freshbite', color: 'emerald', description: 'Continental and cultural hot meal catering partner', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-fvend-3', category: 'foodVendors', label: '9 Cuisines Catering', value: '9 Cuisines', color: 'blue', description: 'Multi-dietary meal distribution service', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-fvend-4', category: 'foodVendors', label: 'Sands Catering', value: 'Sands', color: 'purple', description: 'Commercial buffet and dry provision partner', isActive: true, isSystem: true, order: 4 },
+
+  // 23. Laundry Log Period Types
+  { id: 'opt-lper-1', category: 'laundryPeriodTypes', label: 'Weekly Log', value: 'Weekly', color: 'teal', description: 'Weekly operational laundry intake and return audit', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-lper-2', category: 'laundryPeriodTypes', label: 'Monthly Reconciled Log', value: 'Monthly', color: 'purple', description: 'Monthly batch invoice and stock reconciliation', isActive: true, isSystem: true, order: 2 },
+
+  // 24. Discrepancy Statuses
+  { id: 'opt-disc-1', category: 'discrepancyStatuses', label: 'No Variance / Reconciled', value: 'No', color: 'emerald', description: 'Inventory counts fully balance', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-disc-2', category: 'discrepancyStatuses', label: 'Variance Reported (Yes)', value: 'Yes', color: 'amber', description: 'Discrepancy identified between dispatch and returned stock', isActive: true, isSystem: true, order: 2 },
+
+  // 25. GP Appointment Statuses
+  { id: 'opt-gpstat-1', category: 'gpAppointmentStatuses', label: 'Scheduled', value: 'Scheduled', color: 'blue', description: 'Appointment confirmed with clinic', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-gpstat-2', category: 'gpAppointmentStatuses', label: 'Attended', value: 'Attended', color: 'emerald', description: 'Service user attended consultation', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-gpstat-3', category: 'gpAppointmentStatuses', label: 'Did Not Attend (DNA)', value: 'Did Not Attend (DNA)', color: 'red', description: 'Resident missed appointment without prior notice', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-gpstat-4', category: 'gpAppointmentStatuses', label: 'Cancelled', value: 'Cancelled', color: 'slate', description: 'Cancelled by patient or clinic in advance', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-gpstat-5', category: 'gpAppointmentStatuses', label: 'Rescheduled', value: 'Rescheduled', color: 'amber', description: 'Moved to a later consultation date', isActive: true, isSystem: true, order: 5 },
+
+  // 26. Public Transport Modes
+  { id: 'opt-tmode-1', category: 'transportModes', label: 'Local Bus Service', value: 'Bus', color: 'blue', description: 'TfL or regional bus route journey', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-tmode-2', category: 'transportModes', label: 'National Rail / Train', value: 'Train', color: 'purple', description: 'Intercity or commuter rail transit', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-tmode-3', category: 'transportModes', label: 'London Underground (Tube)', value: 'Underground', color: 'indigo', description: 'Subway transport transit', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-tmode-4', category: 'transportModes', label: 'Tramway', value: 'Tram', color: 'teal', description: 'Light rail / tram system', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-tmode-5', category: 'transportModes', label: 'Approved Taxi / Cab', value: 'Taxi', color: 'amber', description: 'Authorised private hire vehicle for high vulnerability', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-tmode-6', category: 'transportModes', label: 'Walking Escort', value: 'Walking', color: 'emerald', description: 'Pedestrian staff-accompanied transfer', isActive: true, isSystem: true, order: 6 },
+
+  // 27. Transport Approval Statuses
+  { id: 'opt-tstat-1', category: 'transportApprovalStatuses', label: 'Pending Review', value: 'Pending', color: 'amber', description: 'Awaiting manager approval and travel voucher', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-tstat-2', category: 'transportApprovalStatuses', label: 'Approved & Authorised', value: 'Approved', color: 'emerald', description: 'Journey approved and ticket funds issued', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-tstat-3', category: 'transportApprovalStatuses', label: 'Journey Completed', value: 'Completed', color: 'blue', description: 'Resident arrived safely and returned tokens logged', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-tstat-4', category: 'transportApprovalStatuses', label: 'Cancelled / Rejected', value: 'Cancelled', color: 'red', description: 'Booking cancelled or request rejected', isActive: true, isSystem: true, order: 4 },
+
+  // 28. Statutory Compliance Certification Types
+  { id: 'opt-ctype-1', category: 'complianceTypes', label: 'Fire Risk Assessment (FRA)', value: 'Fire Risk Assessment (FRA)', color: 'red', description: 'Annual statutory FRA review', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-ctype-2', category: 'complianceTypes', label: 'Gas Safety Certificate (CP12)', value: 'Gas Safety Certificate (CP12)', color: 'amber', description: 'Commercial boiler & gas appliance certification', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-ctype-3', category: 'complianceTypes', label: 'Electrical Condition Report (EICR)', value: 'Electrical Installation Condition Report (EICR)', color: 'blue', description: '5-year fixed electrical installation safety inspection', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-ctype-4', category: 'complianceTypes', label: 'Emergency Lighting Testing', value: 'Emergency Lighting Testing', color: 'teal', description: 'Annual 3-hour discharge and periodic operational check', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-ctype-5', category: 'complianceTypes', label: 'Fire Alarm & Detection Inspection', value: 'Fire Alarm & Detection Inspection', color: 'rose', description: 'Quarterly BS5839 fire alarm maintenance audit', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-ctype-6', category: 'complianceTypes', label: 'Legionella Risk Assessment (LRA)', value: 'Legionella Risk Assessment (LRA)', color: 'cyan', description: 'Water system bacterial risk survey and temperature logging', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-ctype-7', category: 'complianceTypes', label: 'PAT Portable Appliance Testing', value: 'PAT Testing', color: 'purple', description: 'Electrical safety testing for small appliances and irons', isActive: true, isSystem: true, order: 7 },
+  { id: 'opt-ctype-8', category: 'complianceTypes', label: 'Asbestos Management Survey', value: 'Asbestos Management Survey', color: 'slate', description: 'Non-domestic property asbestos register and risk rating', isActive: true, isSystem: true, order: 8 },
+  { id: 'opt-ctype-9', category: 'complianceTypes', label: 'Lift Inspection (LOLER)', value: 'Lift Inspection (LOLER)', color: 'indigo', description: 'Statutory 6-monthly passenger lift engineering inspection', isActive: true, isSystem: true, order: 9 },
+  { id: 'opt-ctype-10', category: 'complianceTypes', label: 'Building Insurance Certificate', value: 'Building Insurance Certificate', color: 'emerald', description: 'Property and public liability coverage policy', isActive: true, isSystem: true, order: 10 },
+
+  // 29. Compliance Validity Statuses
+  { id: 'opt-cstat-comp-1', category: 'complianceStatuses', label: 'Compliant (Valid)', value: 'Compliant', color: 'emerald', description: 'Certificate valid and within inspection date', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-cstat-comp-2', category: 'complianceStatuses', label: 'Expiring Soon (30 Days)', value: 'Expiring Soon', color: 'amber', description: 'Renewal scheduled within current month', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-cstat-comp-3', category: 'complianceStatuses', label: 'Expired (Immediate Action)', value: 'Expired', color: 'red', description: 'Certificate lapsed and requires urgent contractor visit', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-cstat-comp-4', category: 'complianceStatuses', label: 'In Progress / Booked', value: 'In Progress', color: 'blue', description: 'Contractor appointed and site inspection underway', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-cstat-comp-5', category: 'complianceStatuses', label: 'Overdue Penalty Notice', value: 'Overdue', color: 'red', description: 'Statutory deadline breached', isActive: true, isSystem: true, order: 5 },
+
+  // 30. Document Hub Categories
+  { id: 'opt-doccat-1', category: 'documentCategories', label: 'Risk Assessment', value: 'Risk Assessment', color: 'amber', description: 'Individual risk assessment document', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-doccat-2', category: 'documentCategories', label: 'Incident Report', value: 'Incident Report', color: 'red', description: 'Signed incident log or police disclosure', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-doccat-3', category: 'documentCategories', label: 'Medical Assessment', value: 'Medical Assessment', color: 'blue', description: 'Clinical letter or hospital discharge paperwork', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-doccat-4', category: 'documentCategories', label: 'Safeguarding Dossier', value: 'Safeguarding Dossier', color: 'purple', description: 'Statutory safeguarding case folder', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-doccat-5', category: 'documentCategories', label: 'Police Report / CAD', value: 'Police Report', color: 'slate', description: 'Police CAD log or formal crime reference sheet', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-doccat-6', category: 'documentCategories', label: 'Compliance Certificate', value: 'Compliance Certificate', color: 'emerald', description: 'Statutory property safety signoff', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-doccat-7', category: 'documentCategories', label: 'Legal Notice', value: 'Legal Notice', color: 'rose', description: 'Solicitor or Home Office formal correspondence', isActive: true, isSystem: true, order: 7 },
+
+  // 31. Supported File Formats
+  { id: 'opt-fmt-1', category: 'fileFormats', label: 'PDF Document', value: 'PDF', color: 'red', description: 'Adobe Portable Document Format', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fmt-2', category: 'fileFormats', label: 'Word Document (DOCX)', value: 'DOCX', color: 'blue', description: 'Microsoft Word document', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-fmt-3', category: 'fileFormats', label: 'Excel Spreadsheet (XLSX)', value: 'XLSX', color: 'emerald', description: 'Microsoft Excel workbook', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-fmt-4', category: 'fileFormats', label: 'JPEG Image (JPG)', value: 'JPG', color: 'purple', description: 'Photo evidence file', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-fmt-5', category: 'fileFormats', label: 'PNG Image', value: 'PNG', color: 'teal', description: 'Lossless graphic or screenshot', isActive: true, isSystem: true, order: 5 },
+
+  // 32. Document Confidentialities
+  { id: 'opt-conf-1', category: 'documentConfidentialities', label: 'General Staff Access', value: 'General', color: 'blue', description: 'Accessible to all duty officers and operational teams', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-conf-2', category: 'documentConfidentialities', label: 'Restricted (Lead Officers)', value: 'Restricted', color: 'amber', description: 'Accessible only to senior managers and designated safeguarding leads', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-conf-3', category: 'documentConfidentialities', label: 'Strictly Confidential (Super Admin)', value: 'Strictly Confidential', color: 'red', description: 'Encrypted tier for high-sensitivity police / child protection cases', isActive: true, isSystem: true, order: 3 },
+
+  // 33. VCS Support Agency Categories
+  { id: 'opt-vcs-1', category: 'vcsCategories', label: 'Charity & Welfare Assistance', value: 'Charity & Welfare', color: 'rose', description: 'Clothing, hardship vouchers, and emergency aid', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-vcs-2', category: 'vcsCategories', label: 'Food & Nutrition Support', value: 'Food & Nutrition', color: 'amber', description: 'Foodbanks and community pantries', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-vcs-3', category: 'vcsCategories', label: 'Family & Children Wellbeing', value: 'Family & Children', color: 'purple', description: 'Playgroups, mother & baby packs, youth mentoring', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-vcs-4', category: 'vcsCategories', label: 'ESOL & Education Providers', value: 'ESOL & Education', color: 'blue', description: 'English language classes and skills training', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-vcs-5', category: 'vcsCategories', label: 'Faith & Community Hubs', value: 'Faith & Community', color: 'teal', description: 'Interfaith community centers and cultural places of worship', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-vcs-6', category: 'vcsCategories', label: 'Advocacy & Legal Advice', value: 'Advocacy & Legal', color: 'indigo', description: 'Legal aid solicitors and immigration advice hubs', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-vcs-7', category: 'vcsCategories', label: 'Statutory Local Council Service', value: 'Statutory / Council', color: 'emerald', description: 'Local authority social work and housing departments', isActive: true, isSystem: true, order: 7 },
+
+  // 34. Welcome Booklet Statuses
+  { id: 'opt-bstat-1', category: 'bookletStatuses', label: 'Pending Collection', value: 'Pending Collection', color: 'amber', description: 'Order submitted, awaiting delivery to site', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-bstat-2', category: 'bookletStatuses', label: 'Partially Collected', value: 'Partially Collected', color: 'blue', description: 'Portion of order received', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-bstat-3', category: 'bookletStatuses', label: 'Received at Site', value: 'Received at Site', color: 'emerald', description: 'Complete inventory received at property reception', isActive: true, isSystem: true, order: 3 },
+
+  // 35. Resident Household Groups
+  { id: 'opt-rgroup-1', category: 'welfareResidentGroups', label: 'Single Adult', value: 'Single Adult', color: 'blue', description: 'Individual adult service user', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-rgroup-2', category: 'welfareResidentGroups', label: 'Family Unit', value: 'Family', color: 'purple', description: 'Parents with dependent children', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-rgroup-3', category: 'welfareResidentGroups', label: 'Couple / Partners', value: 'Couple', color: 'teal', description: 'Co-habiting adult couple without minors', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-rgroup-4', category: 'welfareResidentGroups', label: 'Vulnerable Adult', value: 'Vulnerable Adult', color: 'rose', description: 'Single resident with documented medical or mental health vulnerability', isActive: true, isSystem: true, order: 4 },
+
+  // 36. Dispersal Exit Briefing Statuses
+  { id: 'opt-dexit-1', category: 'dispersalExitStatuses', label: 'Briefing Completed (Yes)', value: 'Yes', color: 'emerald', description: 'Exit briefing conducted and pack issued', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-dexit-2', category: 'dispersalExitStatuses', label: 'Briefing Incomplete (No)', value: 'No', color: 'red', description: 'Resident departed without formal briefing', isActive: true, isSystem: true, order: 2 },
+
+  // 37. HO Dispersal Letter Statuses
+  { id: 'opt-dlet-1', category: 'dispersalLetterStatuses', label: 'Letter Received (Yes)', value: 'Yes', color: 'emerald', description: 'Formal Home Office allocation letter verified', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-dlet-2', category: 'dispersalLetterStatuses', label: 'Letter Pending (No)', value: 'No', color: 'red', description: 'Awaiting copy of official dispersal letter', isActive: true, isSystem: true, order: 2 },
+
+  // 38. Dispersal Travel Statuses
+  { id: 'opt-dtrav-1', category: 'dispersalTravelStatuses', label: 'Travelled Successfully (Yes)', value: 'Yes', color: 'emerald', description: 'Resident arrived at destination accommodation', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-dtrav-2', category: 'dispersalTravelStatuses', label: 'Failed to Travel (No)', value: 'No', color: 'red', description: 'Resident refused or missed transport', isActive: true, isSystem: true, order: 2 },
+
+  // 39. Dispersal Warning Statuses
+  { id: 'opt-dwar-1', category: 'dispersalWarningStatuses', label: 'Warning Completed (Yes)', value: 'Yes', color: 'red', description: 'Breach warning logged and served', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-dwar-2', category: 'dispersalWarningStatuses', label: 'No Warning Needed', value: 'No need', color: 'slate', description: 'Compliance met, no notice required', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-dwar-3', category: 'dispersalWarningStatuses', label: 'Warning Not Completed (No)', value: 'No', color: 'amber', description: 'Pending warning issuance', isActive: true, isSystem: true, order: 3 },
+
+  // 40. User System Roles
+  { id: 'opt-urole-1', category: 'userRoles', label: 'Super Administrator', value: 'Super Admin', color: 'purple', description: 'Full system management and configuration permissions', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-urole-2', category: 'userRoles', label: 'Administrator', value: 'Admin', color: 'blue', description: 'Operational administrator with management permissions', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-urole-3', category: 'userRoles', label: 'Duty Staff Officer', value: 'Staff', color: 'emerald', description: 'Standard daily operational and logging permissions', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-urole-4', category: 'userRoles', label: 'Compliance & Quality Auditor', value: 'Auditor', color: 'amber', description: 'Read-only audit and reporting inspector access', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-urole-5', category: 'userRoles', label: 'Security & Concierge Lead', value: 'Security', color: 'slate', description: 'Night concierge and physical perimeter logging', isActive: true, isSystem: true, order: 5 }
 ];

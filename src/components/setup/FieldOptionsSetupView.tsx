@@ -61,7 +61,8 @@ export const FieldOptionsSetupView: React.FC = () => {
   } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState<FieldOptionCategory>('referralTypes');
-  const [selectedDepartment, setSelectedDepartment] = useState<'All' | 'Safeguarding' | 'Facilities' | 'Welfare' | 'Governance'>('All');
+  const [selectedDepartment, setSelectedDepartment] = useState<'All' | 'Safeguarding' | 'Facilities' | 'Welfare' | 'Healthcare & Transport' | 'Compliance & Documents' | 'Operations & Governance'>('All');
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Modal states
@@ -84,11 +85,18 @@ export const FieldOptionsSetupView: React.FC = () => {
     return FIELD_CATEGORIES_META.find(c => c.key === selectedCategory) || FIELD_CATEGORIES_META[0];
   }, [selectedCategory]);
 
-  // Filtered categories for department ribbon
+  // Filtered categories for department ribbon and category search
   const visibleCategories = useMemo(() => {
-    if (selectedDepartment === 'All') return FIELD_CATEGORIES_META;
-    return FIELD_CATEGORIES_META.filter(c => c.department === selectedDepartment);
-  }, [selectedDepartment]);
+    let list = selectedDepartment === 'All' 
+      ? FIELD_CATEGORIES_META 
+      : FIELD_CATEGORIES_META.filter(c => c.department === selectedDepartment);
+    
+    if (categorySearchQuery.trim()) {
+      const q = categorySearchQuery.toLowerCase();
+      list = list.filter(c => c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.key.toLowerCase().includes(q));
+    }
+    return list;
+  }, [selectedDepartment, categorySearchQuery]);
 
   // Options for current selected category
   const categoryOptions = useMemo(() => {
@@ -287,11 +295,11 @@ export const FieldOptionsSetupView: React.FC = () => {
         {/* Department Filter Pills */}
         <div className="flex items-center gap-1.5 pt-4 mt-3 border-t border-[#edebe9] overflow-x-auto custom-scrollbar">
           <span className="text-[11px] font-semibold text-[#8a8886] uppercase tracking-wider mr-2">Department:</span>
-          {(['All', 'Safeguarding', 'Facilities', 'Welfare', 'Governance'] as const).map(dept => (
+          {(['All', 'Safeguarding', 'Facilities', 'Welfare', 'Healthcare & Transport', 'Compliance & Documents', 'Operations & Governance'] as const).map(dept => (
             <button
               key={dept}
               onClick={() => setSelectedDepartment(dept)}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-xs transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-xs whitespace-nowrap transition-all ${
                 selectedDepartment === dept
                   ? 'bg-[#0d9488] text-white shadow-xs'
                   : 'bg-[#f3f2f1] text-[#605e5c] hover:bg-[#edebe9] hover:text-[#242424]'
@@ -313,6 +321,17 @@ export const FieldOptionsSetupView: React.FC = () => {
               <span className="text-xs font-semibold text-[#242424] uppercase tracking-wider">
                 Configurable Categories ({visibleCategories.length})
               </span>
+            </div>
+
+            {/* Category Quick Search */}
+            <div className="mb-2">
+              <input
+                type="text"
+                value={categorySearchQuery}
+                onChange={e => setCategorySearchQuery(e.target.value)}
+                placeholder="Search categories (e.g. status, transport, fra)..."
+                className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-xs bg-neutral-50/50 focus:bg-white focus:ring-1 focus:ring-[#0d9488]"
+              />
             </div>
 
             <div className="space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar pr-1">

@@ -20,6 +20,7 @@ import { useApp } from '../../context/AppContext';
 import { RiskLevel, EscalationRecord, RecordAttachment } from '../../types';
 import { saveFormDraft, loadFormDraft, clearFormDraft, formatDraftTime } from '../../utils/autoSave';
 import { AttachmentsSection } from '../common/AttachmentsSection';
+import { ManageableSelect } from '../common/ManageableSelect';
 
 interface QuickIncidentModalProps {
   isOpen: boolean;
@@ -570,47 +571,23 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
             {/* Incident Specifics */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="font-semibold text-neutral-700 block mb-1">
-                  Incident Category / Type <span className="text-red-600">*</span>
-                </label>
-                <select
-                  id="incident-type"
+                <ManageableSelect
+                  label="Incident Category / Type"
                   value={incidentType}
-                  onChange={(e) => setIncidentType(e.target.value)}
-                  className="w-full p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
-                >
-                  <option value="Severe Medical Emergency / Ambulance Dispatched">Severe Medical Emergency / Ambulance Dispatched</option>
-                  <option value="Police Attendance / Crime / Weapon / Altercation">Police Attendance / Crime / Weapon / Altercation</option>
-                  <option value="Acute Self-Harm / Suicide Risk Alert">Acute Self-Harm / Suicide Risk Alert</option>
-                  <option value="Missing Person / Unaccounted Minor Alert">Missing Person / Unaccounted Minor Alert</option>
-                  <option value="Domestic Abuse / Violence / Coercive Control">Domestic Abuse / Violence / Coercive Control</option>
-                  <option value="Severe Anti-Social Behavior / Threat to Residents & Staff">Severe Anti-Social Behavior / Threat to Residents & Staff</option>
-                  <option value="Fire Alarm / Smoke / Room Arson Risk">Fire Alarm / Smoke / Room Arson Risk</option>
-                  <option value="Substance Overdose / Paraphernalia Seized">Substance Overdose / Paraphernalia Seized</option>
-                  <option value="Critical Safeguarding Emergency">Critical Safeguarding Emergency</option>
-                  <option value="Other Urgent Escalation">Other Urgent Escalation</option>
-                </select>
+                  onChange={val => setIncidentType(val)}
+                  optionCategory="incidentTypes"
+                  required
+                />
               </div>
 
               <div>
-                <label className="font-semibold text-neutral-700 block mb-1">
-                  Escalation Urgency <span className="text-red-600">*</span>
-                </label>
-                <select
-                  id="incident-urgency"
+                <ManageableSelect
+                  label="Escalation Urgency"
                   value={urgency}
-                  onChange={(e) => setUrgency(e.target.value as RiskLevel)}
-                  className={`w-full p-2 border font-bold rounded-xs focus:outline-2 focus:outline-red-500 ${
-                    urgency === 'Critical' ? 'bg-red-50 border-red-400 text-red-800' :
-                    urgency === 'High' ? 'bg-amber-50 border-amber-400 text-amber-800' :
-                    'bg-white border-neutral-300 text-neutral-800'
-                  }`}
-                >
-                  <option value="Critical">Critical (Immediate Dispatch)</option>
-                  <option value="High">High (24h Action Required)</option>
-                  <option value="Medium">Medium Priority</option>
-                  <option value="Low">Low / Informational</option>
-                </select>
+                  onChange={val => setUrgency(val as RiskLevel)}
+                  optionCategory="riskLevels"
+                  required
+                />
               </div>
             </div>
 
@@ -709,21 +686,12 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
               </div>
 
               <div>
-                <label className="font-semibold text-neutral-700 block mb-1">
-                  Warning Letter / Notice to Quit
-                </label>
-                <select
-                  id="incident-wl"
+                <ManageableSelect
+                  label="Warning Letter / Notice to Quit"
                   value={wlIssued}
-                  onChange={(e) => setWlIssued(e.target.value as EscalationRecord['wlIssued'])}
-                  className="w-full p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
-                >
-                  <option value="No">No</option>
-                  <option value="Warning Letter Issued">Warning Letter Issued</option>
-                  <option value="Notice to Quit">Notice to Quit (NTQ)</option>
-                  <option value="Yes">Yes</option>
-                  <option value="N/A">N/A</option>
-                </select>
+                  onChange={val => setWlIssued(val as EscalationRecord['wlIssued'])}
+                  optionCategory="wlIssuedStatuses"
+                />
               </div>
             </div>
 
