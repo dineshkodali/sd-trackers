@@ -31,7 +31,15 @@ interface QuickJumpModalProps {
 }
 
 export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose }) => {
-  const { setActivePage } = useApp();
+  const { 
+    setActivePage,
+    currentUserRole,
+    canManageRoles,
+    canManageSettings,
+    canManageProperties,
+    canManageUsers,
+    rolePermissions
+  } = useApp();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +70,16 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
     { id: 'settings', name: 'System Settings', category: 'Administration', icon: Settings, desc: 'Global configuration & sync' }
   ];
 
+  const allowedModules = modules.filter(m => {
+    if (m.id === 'roles') return canManageRoles();
+    if (m.id === 'settings') return canManageSettings();
+    if (m.id === 'properties') return canManageProperties();
+    if (m.id === 'users') return canManageUsers();
+    if (m.id === 'audit') return currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
+    if (m.id === 'reports') return rolePermissions[currentUserRole]?.canExportData || canManageSettings();
+    return true;
+  });
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -89,8 +107,8 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
   if (!isOpen) return null;
 
   const filtered = query.trim() === '' 
-    ? modules 
-    : modules.filter(m => {
+    ? allowedModules 
+    : allowedModules.filter(m => {
         const q = (query || '').toLowerCase();
         return (
           (m.name || '').toLowerCase().includes(q) || 

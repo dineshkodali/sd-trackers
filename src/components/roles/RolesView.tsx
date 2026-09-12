@@ -38,8 +38,11 @@ export const RolesView: React.FC = () => {
     rolePermissions,
     updateRolePermissions,
     resetRolePermissions,
-    canManageRoles
+    canManageRoles,
+    authProfile
   } = useApp();
+
+  const isSuperAdminUser = authProfile?.role === 'Super Admin' || (!authProfile && currentUserRole === 'Super Admin');
 
   const [localPermissions, setLocalPermissions] = useState<Record<RoleType, RolePermissions>>(() => ({
     ...rolePermissions
@@ -450,15 +453,9 @@ export const RolesView: React.FC = () => {
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-[#8a3700] shrink-0" />
               <span>
-                You are currently signed in as <strong>{currentUserRole}</strong> (Read-Only). Switch to <strong>Super Admin</strong> to adjust security permissions.
+                You are currently viewing roles in read-only mode as <strong>{currentUserRole}</strong>. RBAC modifications are strictly reserved for Super Administrators.
               </span>
             </div>
-            <button
-              onClick={() => setCurrentUserRole('Super Admin')}
-              className="text-xs font-bold text-[#0d9488] hover:underline shrink-0"
-            >
-              Switch to Super Admin
-            </button>
           </div>
         )}
 
@@ -469,7 +466,7 @@ export const RolesView: React.FC = () => {
               <Users2 className="w-3.5 h-3.5 text-[#0d9488]" />
               Configured Roles &amp; Operational Scopes
             </span>
-            <span>Click any role card to simulate testing under that active persona</span>
+            <span>{isSuperAdminUser ? 'Click any role card to simulate testing under that active persona' : 'Role permission distribution & operational scopes'}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -481,8 +478,10 @@ export const RolesView: React.FC = () => {
               return (
                 <div 
                   key={r.role}
-                  onClick={() => setCurrentUserRole(r.role)}
-                  className={`p-3 rounded-xs border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                  onClick={() => isSuperAdminUser ? setCurrentUserRole(r.role) : undefined}
+                  className={`p-3 rounded-xs border text-left transition-all relative flex flex-col justify-between ${
+                    isSuperAdminUser ? 'cursor-pointer' : 'cursor-default'
+                  } ${
                     isActive 
                       ? 'bg-[#f0f6ff] border-[#0d9488] shadow-xs ring-1 ring-[#0d9488]' 
                       : 'bg-[#faf9f8] border-[#edebe9] hover:bg-white hover:border-[#5eead4]'
@@ -497,11 +496,11 @@ export const RolesView: React.FC = () => {
                         <span className="text-[10px] font-bold text-[#0d9488] flex items-center gap-0.5">
                           <CheckCircle2 className="w-3 h-3 text-[#0d9488]" /> Active
                         </span>
-                      ) : (
+                      ) : isSuperAdminUser ? (
                         <span className="text-[10px] text-[#8a8886] hover:text-[#0d9488]">
                           Switch
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="text-[11px] font-semibold text-[#242424]">{r.subtitle}</div>
                     <p className="text-[11px] text-[#605e5c] line-clamp-2 leading-snug">{r.desc}</p>

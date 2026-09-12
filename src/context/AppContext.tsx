@@ -1573,26 +1573,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConfirmModal(null);
   }, []);
 
-  // Role Switcher with Confirmation
+  // Role Switcher with Confirmation (Super Admin Only)
   const setCurrentUserRole = useCallback((newRole: RoleType) => {
     if (newRole === currentUserRole) return;
+    const isRealSuperAdmin = authProfile?.role === 'Super Admin' || (!authProfile && currentUserRole === 'Super Admin');
+    if (!isRealSuperAdmin) {
+      console.warn('[Security] Unauthorized role escalation attempt prevented.');
+      return;
+    }
     requestConfirmation({
-      title: `Switch Active Role to ${newRole}`,
-      message: `You are changing your active session to "${newRole}". Permissions and site access will be updated in real time.`,
+      title: `Switch Active Role Preview to ${newRole}`,
+      message: `You are changing your active session preview to "${newRole}". Permissions and site access will be updated in real time.`,
       confirmLabel: `Switch to ${newRole}`,
       onConfirm: () => {
         setCurrentUserRoleState(newRole);
-        addAuditEntry('ROLE_CHANGE', 'Roles', `Switched active role to ${newRole}`, assignedSite, `Session switched from ${currentUserRole} to ${newRole}.`);
+        addAuditEntry('ROLE_CHANGE', 'Roles', `Switched active role preview to ${newRole}`, assignedSite, `Session preview switched from ${currentUserRole} to ${newRole}.`);
         closeConfirmation();
       }
     });
-  }, [currentUserRole, requestConfirmation, addAuditEntry, assignedSite, closeConfirmation]);
+  }, [currentUserRole, authProfile, requestConfirmation, addAuditEntry, assignedSite, closeConfirmation]);
 
   const setAssignedSite = useCallback((newSite: string) => {
-    setAssignedSiteState(newSite);
     if (!canAccessAllSites()) {
-      setSelectedSite(newSite);
+      console.warn('[RBAC] Property switching is restricted to Administrators and multi-site managers.');
+      return;
     }
+    setAssignedSiteState(newSite);
   }, [canAccessAllSites]);
 
   // Settings updater — system preferences are one row (id 'global') in app_settings

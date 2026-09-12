@@ -35,7 +35,10 @@ export const Header: React.FC = () => {
     activePage,
     authProfile,
     logout,
-    setDiagnosticModalOpen
+    setDiagnosticModalOpen,
+    canAccessAllSites,
+    canManageRoles,
+    canManageSettings
   } = useApp();
 
   const getPageTitle = (page: string) => {
@@ -142,11 +145,14 @@ export const Header: React.FC = () => {
           <div 
             id="assigned-property-topbar-tag"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4] rounded-xs shadow-xs"
-            title={`Assigned Property: ${assignedSite}`}
+            title={`Assigned Property: ${assignedSite} (Locked)`}
           >
             <Building2 className="w-3.5 h-3.5 text-[#0d9488]" />
             <span className="hidden sm:inline text-[#605e5c]">Property:</span>
             <span className="font-bold">{assignedSite}</span>
+            <span className="flex items-center gap-0.5 text-[9px] text-amber-700 font-semibold bg-amber-50 px-1 py-0.2 rounded border border-amber-200 ml-1">
+              <Lock className="w-2.5 h-2.5 text-amber-700" /> Locked
+            </span>
           </div>
         ) : (
           <div 
@@ -169,11 +175,11 @@ export const Header: React.FC = () => {
           className="hidden md:flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-1.5 rounded-xs transition-colors cursor-pointer"
           title="Supabase Session Status, Token Expiration & Diagnostics"
         >
-          <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-          <span className="hidden lg:inline">Diagnostics</span>
+          <Activity className="w-3.5 h-3.5 text-emerald-700" />
+          <span>Diagnostics</span>
         </button>
 
-        {/* Role Display / Selector */}
+        {/* Super Admin Role Preview Switcher */}
         {isSuperAdminUser ? (
           <div className="relative" ref={roleMenuRef}>
             <button
@@ -298,23 +304,16 @@ export const Header: React.FC = () => {
                         }
                       }}
                       className={`p-3 text-xs cursor-pointer hover:bg-[#f3f8fd] transition-colors ${
-                        !notif.read ? 'bg-[#f7f9fa] font-medium' : 'text-[#605e5c]'
+                        !notif.read ? 'bg-[#f0f6ff]/50' : ''
                       }`}
                     >
-                      <div className="flex justify-between items-start gap-1">
-                        <span className={`font-semibold text-[12px] ${!notif.read ? 'text-[#0f766e]' : 'text-[#323130]'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className={`font-semibold ${!notif.read ? 'text-[#0f766e]' : 'text-[#242424]'}`}>
                           {notif.title}
                         </span>
-                        <span className="text-[10px] text-[#797775] whitespace-nowrap">{notif.time}</span>
+                        <span className="text-[10px] text-[#8a8886] shrink-0">{notif.time}</span>
                       </div>
-                      <p className="text-[11px] text-[#605e5c] mt-0.5 leading-snug">
-                        {notif.description}
-                      </p>
-                      {notif.linkPage && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-[#0d9488] mt-1 hover:underline">
-                          View details <ExternalLink className="w-2.5 h-2.5" />
-                        </span>
-                      )}
+                      <p className="text-[11px] text-[#605e5c] mt-0.5 leading-snug">{notif.description}</p>
                     </div>
                   ))
                 )}
@@ -326,7 +325,7 @@ export const Header: React.FC = () => {
         {/* Profile Dropdown */}
         <div className="relative" ref={profileRef}>
           <button
-            id="btn-profile"
+            id="btn-profile-menu"
             onClick={() => setShowProfile(!showProfile)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-[#323130] hover:bg-[#edebe9] border border-[#8a8886] rounded-xs transition-colors"
           >
@@ -346,15 +345,15 @@ export const Header: React.FC = () => {
                 <div className="font-semibold text-sm text-[#242424]">{currentUserName}</div>
                 <div className="text-[11px] text-[#605e5c]">{currentUserRole}</div>
                 <div className="text-[11px] text-[#0d9488] font-medium mt-1">
-                  Active Property: {isPropertyBound ? assignedSite : 'All Properties'}
+                  Active Property: {canAccessAllSites() ? (assignedSite || 'All Properties') : assignedSite}
                 </div>
               </div>
 
-              {/* Site selector for Property-bound managers/employees */}
-              {isPropertyBound && (
+              {/* Property information / selector: Admins can filter; Staff is strictly locked */}
+              {canAccessAllSites() ? (
                 <div className="mb-2.5 bg-[#f8f9fa] p-2 rounded-xs border border-[#edebe9]">
                   <label className="text-[10px] font-bold text-[#605e5c] uppercase block mb-1">
-                    Change Assigned Property:
+                    Filter Active Property:
                   </label>
                   <select 
                     value={assignedSite}
@@ -366,31 +365,51 @@ export const Header: React.FC = () => {
                     ))}
                   </select>
                 </div>
+              ) : (
+                <div className="mb-2.5 bg-[#f8f9fa] p-2.5 rounded-xs border border-[#edebe9] space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-[#605e5c] uppercase">
+                    <span>Assigned Hotel:</span>
+                    <span className="flex items-center gap-1 text-amber-700 font-semibold normal-case text-[10px] bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                      <Lock className="w-2.5 h-2.5 text-amber-700" /> Locked
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-[#1e293b] flex items-center gap-1.5 bg-white p-1.5 rounded border border-[#e2e8f0]">
+                    <Building2 className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
+                    <span className="truncate">{assignedSite || 'Assigned Hotel'}</span>
+                  </div>
+                  <p className="text-[10px] text-[#64748b] leading-tight pt-0.5">
+                    Property assignment is locked to your account by system administrators.
+                  </p>
+                </div>
               )}
 
-              {/* Quick Admin Navigation for Super Admin & Admin */}
-              {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') ? (
+              {/* Quick Admin Navigation for Authorized Roles Only */}
+              {(canManageRoles() || canManageSettings()) ? (
                 <div className="space-y-1 pt-1 border-t border-[#edebe9] mt-2">
-                  <button
-                    onClick={() => {
-                      setShowProfile(false);
-                      setActivePage('roles');
-                    }}
-                    className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between"
-                  >
-                    <span>Role & Access Matrix</span>
-                    <Shield className="w-3 h-3 text-[#605e5c]" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowProfile(false);
-                      setActivePage('settings');
-                    }}
-                    className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between"
-                  >
-                    <span>Settings & Performance</span>
-                    <Zap className="w-3 h-3 text-[#107c10]" />
-                  </button>
+                  {canManageRoles() && (
+                    <button
+                      onClick={() => {
+                        setShowProfile(false);
+                        setActivePage('roles');
+                      }}
+                      className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between"
+                    >
+                      <span>Role & Access Matrix</span>
+                      <Shield className="w-3 h-3 text-[#605e5c]" />
+                    </button>
+                  )}
+                  {canManageSettings() && (
+                    <button
+                      onClick={() => {
+                        setShowProfile(false);
+                        setActivePage('settings');
+                      }}
+                      className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between"
+                    >
+                      <span>Settings & Performance</span>
+                      <Zap className="w-3 h-3 text-[#107c10]" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -399,13 +418,8 @@ export const Header: React.FC = () => {
                     }}
                     className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between text-xs cursor-pointer"
                   >
-                    <span className="flex items-center gap-1.5">
-                      <Activity className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Security & Session Diagnostics</span>
-                    </span>
-                    <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.2 rounded border border-emerald-200">
-                      Inspect
-                    </span>
+                    <span>Supabase Diagnostics</span>
+                    <Activity className="w-3 h-3 text-[#0d9488]" />
                   </button>
                 </div>
               ) : (

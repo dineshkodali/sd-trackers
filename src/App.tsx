@@ -40,6 +40,7 @@ import { QuickJumpModal } from './components/common/QuickJumpModal';
 import { AuthenticationBlockedView } from './components/auth/AuthenticationBlockedView';
 import { DiagnosticInspectorModal } from './components/auth/DiagnosticInspectorModal';
 import { LiveDataBanner } from './components/common/LiveDataBanner';
+import { AccessDeniedView } from './components/common/AccessDeniedView';
 
 function AppLayout() {
   const { 
@@ -49,7 +50,13 @@ function AppLayout() {
     authBlockedState, 
     clearAuthBlockedState, 
     diagnosticModalOpen, 
-    setDiagnosticModalOpen 
+    setDiagnosticModalOpen,
+    canManageSettings,
+    canManageRoles,
+    canManageUsers,
+    canManageProperties,
+    currentUserRole,
+    rolePermissions
   } = useApp();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -76,7 +83,7 @@ function AppLayout() {
   if (isAuthChecking) {
     return (
       <div className="h-screen w-screen bg-[#f3f2f1] flex flex-col items-center justify-center space-y-3">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0078d4]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0d9488]"></div>
         <p className="text-xs font-semibold text-[#323130] tracking-wider uppercase">Verifying Supabase Session & Profile...</p>
       </div>
     );
@@ -154,23 +161,39 @@ function AppLayout() {
       case 'documents':
         return <DocumentsView />;
       case 'properties':
-        return <PropertiesView />;
+        return canManageProperties()
+          ? <PropertiesView />
+          : <AccessDeniedView pageName="Properties Directory" requiredRole="Super Admin or Admin" />;
       case 'users':
-        return <UsersView />;
+        return canManageUsers()
+          ? <UsersView />
+          : <AccessDeniedView pageName="Staff & User Accounts" requiredRole="Super Admin or Admin" />;
       case 'reports':
-        return <ReportsView />;
+        return (rolePermissions[currentUserRole]?.canExportData || canManageSettings())
+          ? <ReportsView />
+          : <AccessDeniedView pageName="Reports & Compliance" requiredRole="Admin or Regional Manager" />;
       case 'audit':
-        return <AuditView />;
+        return (currentUserRole === 'Super Admin' || currentUserRole === 'Admin')
+          ? <AuditView />
+          : <AccessDeniedView pageName="Audit Security Trail" requiredRole="Super Admin or Admin" />;
       case 'requests':
         return <RequestsApprovalsView />;
       case 'roles':
-        return <RolesView />;
+        return canManageRoles()
+          ? <RolesView />
+          : <AccessDeniedView pageName="Roles & Security Permissions" requiredRole="Super Admin" />;
       case 'setupOptions':
-        return <FieldOptionsSetupView />;
+        return canManageRoles()
+          ? <FieldOptionsSetupView />
+          : <AccessDeniedView pageName="Field Options & Setup" requiredRole="Super Admin" />;
       case 'notifications':
-        return <NotificationsManagementView />;
+        return canManageSettings()
+          ? <NotificationsManagementView />
+          : <AccessDeniedView pageName="Email Notifications Management" requiredRole="Super Admin or Admin" />;
       case 'settings':
-        return <SettingsView />;
+        return canManageSettings()
+          ? <SettingsView />
+          : <AccessDeniedView pageName="System Settings & Preferences" requiredRole="Super Admin or Admin" />;
       default:
         return <DashboardView />;
     }

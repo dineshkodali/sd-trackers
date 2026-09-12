@@ -53,7 +53,12 @@ export const Sidebar: React.FC = () => {
     dispersalRecords,
     bookletRecords,
     vcsAgencies,
-    notificationRules
+    notificationRules,
+    canManageSettings,
+    canManageRoles,
+    canManageProperties,
+    canManageUsers,
+    rolePermissions
   } = useApp();
 
   const [openGroups, setOpenGroups] = useState<{ [key: string]: boolean }>({
@@ -590,22 +595,24 @@ export const Sidebar: React.FC = () => {
             </span>
           </button>
 
-          <button
-            id="nav-reports"
-            onClick={() => setActivePage('reports')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('reports')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <CloudUpload className={`w-4 h-4 ${isNavActive('reports') ? 'text-white' : 'text-[#0d9488]'}`} />
-              <span>Reports & SharePoint</span>
-            </div>
-          </button>
+          {(rolePermissions[currentUserRole]?.canExportData || canManageSettings()) && (
+            <button
+              id="nav-reports"
+              onClick={() => setActivePage('reports')}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                isNavActive('reports')
+                  ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                  : 'text-[#333333] hover:bg-[#f0efeb]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <CloudUpload className={`w-4 h-4 ${isNavActive('reports') ? 'text-white' : 'text-[#0d9488]'}`} />
+                <span>Reports & SharePoint</span>
+              </div>
+            </button>
+          )}
 
-          {isSuperAdmin && (
+          {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && (
             <button
               id="nav-audit"
               onClick={() => setActivePage('audit')}
@@ -652,8 +659,8 @@ export const Sidebar: React.FC = () => {
               <span>Admin & Governance</span>
             </div>
 
-            {/* Properties Directory (Super Admin Only) */}
-            {isSuperAdmin && (
+            {/* Properties Directory */}
+            {canManageProperties() && (
               <button
                 id="nav-properties"
                 onClick={() => setActivePage('properties')}
@@ -676,28 +683,30 @@ export const Sidebar: React.FC = () => {
             )}
 
             {/* Staff & User Accounts */}
-            <button
-              id="nav-users"
-              onClick={() => setActivePage('users')}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                isNavActive('users')
-                  ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                  : 'text-[#333333] hover:bg-[#f0efeb]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <UsersRound className={`w-4 h-4 ${isNavActive('users') ? 'text-white' : 'text-teal-700'}`} />
-                <span>Staff & User Accounts</span>
-              </div>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('users') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
-              }`}>
-                {users.length}
-              </span>
-            </button>
+            {canManageUsers() && (
+              <button
+                id="nav-users"
+                onClick={() => setActivePage('users')}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                  isNavActive('users')
+                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                    : 'text-[#333333] hover:bg-[#f0efeb]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <UsersRound className={`w-4 h-4 ${isNavActive('users') ? 'text-white' : 'text-teal-700'}`} />
+                  <span>Staff & User Accounts</span>
+                </div>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                  isNavActive('users') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
+                }`}>
+                  {users.length}
+                </span>
+              </button>
+            )}
 
             {/* Roles & RBAC Matrix (Super Admin Only) */}
-            {isSuperAdmin && (
+            {canManageRoles() && (
               <button
                 id="nav-roles"
                 onClick={() => setActivePage('roles')}
@@ -715,7 +724,7 @@ export const Sidebar: React.FC = () => {
             )}
 
             {/* Field Options & Form Setup (Super Admin Only) */}
-            {isSuperAdmin && (
+            {canManageRoles() && (
               <button
                 id="nav-setup-options"
                 onClick={() => setActivePage('setupOptions')}
@@ -732,8 +741,8 @@ export const Sidebar: React.FC = () => {
               </button>
             )}
 
-            {/* System Preferences (Super Admin Only) */}
-            {isSuperAdmin && (
+            {/* System Preferences (Admin & Super Admin) */}
+            {canManageSettings() && (
               <button
                 id="nav-settings"
                 onClick={() => setActivePage('settings')}
@@ -751,25 +760,27 @@ export const Sidebar: React.FC = () => {
             )}
 
             {/* Email Notifications Management (Admin & Super Admin) */}
-            <button
-              id="nav-notifications"
-              onClick={() => setActivePage('notifications')}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                isNavActive('notifications')
-                  ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                  : 'text-[#333333] hover:bg-[#f0efeb]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <BellRing className={`w-4 h-4 ${isNavActive('notifications') ? 'text-white' : 'text-[#0d9488]'}`} />
-                <span>Email Notifications</span>
-              </div>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('notifications') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
-              }`}>
-                {notificationRules.filter(r => r.enabled).length}
-              </span>
-            </button>
+            {canManageSettings() && (
+              <button
+                id="nav-notifications"
+                onClick={() => setActivePage('notifications')}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                  isNavActive('notifications')
+                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                    : 'text-[#333333] hover:bg-[#f0efeb]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <BellRing className={`w-4 h-4 ${isNavActive('notifications') ? 'text-white' : 'text-[#0d9488]'}`} />
+                  <span>Email Notifications</span>
+                </div>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                  isNavActive('notifications') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
+                }`}>
+                  {notificationRules.filter(r => r.enabled).length}
+                </span>
+              </button>
+            )}
           </div>
         )}
       </nav>
