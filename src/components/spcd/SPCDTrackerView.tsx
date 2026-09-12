@@ -835,18 +835,19 @@ export const SPCDTrackerView: React.FC = () => {
         columns={spcdColumns}
         initialValues={{
           date: new Date().toISOString().slice(0, 10),
-          siteName: allowedSites[0] || 'Victoria House',
+          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           staffReporting: loggedInUserName,
           suDob: '1990-01-01',
           sgReview: 'Pending Safeguarding Lead Review'
         }}
         onSave={(data) => {
           const reporter = data.staffReporting || loggedInUserName;
+          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
           addSPCDRecord({
             ...data,
             date: data.date || new Date().toISOString().slice(0, 10),
-            siteName: data.siteName || allowedSites[0] || 'Victoria House',
-            site: data.siteName || allowedSites[0] || 'Victoria House',
+            siteName: effectiveSite,
+            site: effectiveSite,
             roomNumber: data.roomNumber || '',
             staffReporting: reporter,
             raisedBy: reporter,

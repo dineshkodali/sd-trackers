@@ -13,9 +13,23 @@ import {
   PropertyFoodVendorBuffetLog
 } from '../types';
 
+export const resolveSiteOptions = (ctx: any) => {
+  if (ctx?.allowedSites && Array.isArray(ctx.allowedSites) && ctx.allowedSites.length > 0) {
+    return ctx.allowedSites;
+  }
+  if (ctx?.sites && Array.isArray(ctx.sites) && ctx.sites.length > 0) {
+    return ctx.sites.map((s: any) => typeof s === 'string' ? s : s?.name).filter(Boolean);
+  }
+  return ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth', 'Victoria House'];
+};
+
+export const resolveSiteDefault = (ctx: any) => {
+  return ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)';
+};
+
 export const ESCALATIONS_TABLE_COLUMNS: TableColumnConfig<EscalationRecord>[] = [
   { key: 'dateOfIncident', label: 'Date of Incident', type: 'date', required: true, section: 'Incident Details' },
-  { key: 'siteName', label: 'Site / Property', type: 'select', required: true, section: 'Incident Details' },
+  { key: 'siteName', label: 'Site / Property', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Incident Details' },
   { key: 'suName', label: 'Resident Name', type: 'text', required: true, section: 'Resident Information' },
   { key: 'suPortNassRef', label: 'Port / NASS Ref', type: 'text', section: 'Resident Information' },
   { key: 'personReporting', label: 'Submitted By', type: 'text', section: 'Incident Details' },
@@ -75,7 +89,7 @@ export const GP_APPOINTMENTS_TABLE_COLUMNS: TableColumnConfig<GPAppointmentRecor
   { key: 'roomNo', label: 'Room No', type: 'text', required: true, section: 'Resident & Room' },
   { key: 'portReference', label: 'Port Reference', type: 'text', required: true, section: 'Resident & Room' },
   { key: 'suName', label: 'Service User Name', type: 'text', section: 'Resident & Room' },
-  { key: 'siteName', label: 'Hotel Site', type: 'select', required: true, section: 'Resident & Room' },
+  { key: 'siteName', label: 'Hotel Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Resident & Room' },
   { key: 'referralSentOn', label: 'Referral Sent On', type: 'date', section: 'Consultation Details' },
   { key: 'appointmentDate', label: 'Appointment Date', type: 'date', required: true, section: 'Consultation Details' },
   { key: 'timeOfGp', label: 'Time of GP', type: 'text', placeholder: '10:00', section: 'Consultation Details' },
@@ -98,7 +112,7 @@ export const GP_APPOINTMENTS_TABLE_COLUMNS: TableColumnConfig<GPAppointmentRecor
 
 export const RFA_WELFARE_TABLE_COLUMNS: TableColumnConfig<RFAWelfareCheckRecord>[] = [
   { key: 'date', label: 'Date', type: 'date', required: true, section: 'Check Details' },
-  { key: 'siteName', label: 'Hotel / Site', type: 'select', required: true, section: 'Location' },
+  { key: 'siteName', label: 'Hotel / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location' },
   { key: 'roomOrFlatNo', label: 'Room / Flat No', type: 'text', required: true, section: 'Location' },
   { key: 'name', label: 'Resident Name', type: 'text', required: true, section: 'Resident Details' },
   { key: 'dob', label: 'Date of Birth', type: 'date', section: 'Resident Details' },
@@ -164,7 +178,7 @@ export const PUBLIC_TRANSPORT_TABLE_COLUMNS: TableColumnConfig<PublicTransportRe
 
 export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
   { key: 'sno', label: 'S.No', type: 'number', section: 'Dispersal Identification' },
-  { key: 'siteName', label: 'Site / Hotel', type: 'select', required: true, section: 'Dispersal Identification' },
+  { key: 'siteName', label: 'Site / Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Dispersal Identification' },
   { key: 'flatRoomNumber', label: 'Flat / Room No', type: 'text', required: true, section: 'Dispersal Identification' },
   { key: 'suPortNassRef', label: 'SU Port / NASS Ref', type: 'text', required: true, section: 'Dispersal Identification' },
   { key: 'reasonForDeparture', label: 'Reason for Departure', type: 'text', section: 'Departure Details' },
@@ -227,7 +241,7 @@ export const SD_COMPLIANCE_TABLE_COLUMNS: TableColumnConfig<SDComplianceRecord>[
     required: true,
     section: 'Certification'
   },
-  { key: 'siteName', label: 'Site / Hotel', type: 'select', required: true, section: 'Certification' },
+  { key: 'siteName', label: 'Site / Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Certification' },
   { key: 'contractorName', label: 'Contractor Name', type: 'text', required: true, section: 'Contractor Information' },
   { key: 'contractorKeyContact', label: 'Contractor Contact', type: 'text', section: 'Contractor Information' },
   { key: 'contractorEmail', label: 'Contractor Email', type: 'text', section: 'Contractor Information' },
@@ -252,7 +266,7 @@ export const SD_COMPLIANCE_TABLE_COLUMNS: TableColumnConfig<SDComplianceRecord>[
 ];
 
 export const BOOKLETS_TABLE_COLUMNS: TableColumnConfig<BookletCollectionRecord>[] = [
-  { key: 'hotelName', label: 'Hotel / Site', type: 'select', required: true, section: 'Location & Agent' },
+  { key: 'hotelName', label: 'Hotel / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location & Agent' },
   { key: 'agentName', label: 'Agent / Provider', type: 'text', required: true, section: 'Location & Agent' },
   { key: 'bookletType', label: 'Booklet Type', type: 'text', required: true, section: 'Booklet Details' },
   { key: 'language', label: 'Language', type: 'text', required: true, section: 'Booklet Details' },
@@ -292,7 +306,7 @@ export const VCS_AGENCIES_TABLE_COLUMNS: TableColumnConfig<SDVCSAgency>[] = [
     required: true,
     section: 'Organization'
   },
-  { key: 'hotelName', label: 'Hotel / Site', type: 'select', required: true, section: 'Organization' },
+  { key: 'hotelName', label: 'Hotel / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Organization' },
   { key: 'servicesProvided', label: 'Services Provided', type: 'text', required: true, section: 'Services & Support' },
   { key: 'contactPerson', label: 'Contact Person', type: 'text', section: 'Contact Details' },
   { key: 'contactNumber', label: 'Contact Number', type: 'text', section: 'Contact Details' },
@@ -303,7 +317,7 @@ export const VCS_AGENCIES_TABLE_COLUMNS: TableColumnConfig<SDVCSAgency>[] = [
 
 export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
   { key: 'documentTitle', label: 'Document Title', type: 'text', required: true, section: 'Document Info' },
-  { key: 'site', label: 'Hotel / Site', type: 'select', required: true, section: 'Document Info' },
+  { key: 'site', label: 'Hotel / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Document Info' },
   { key: 'suName', label: 'Resident Name', type: 'text', section: 'Resident Association' },
   { key: 'refNumber', label: 'Port Ref', type: 'text', section: 'Resident Association' },
   { 
@@ -346,7 +360,7 @@ export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
 ];
 
 export const PROPERTY_LAUNDRY_TABLE_COLUMNS: TableColumnConfig<PropertyLaundryLog>[] = [
-  { key: 'site', label: 'Property / Hotel', type: 'select', required: true, section: 'Property & Period' },
+  { key: 'site', label: 'Property / Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Property & Period' },
   { 
     key: 'periodType', 
     label: 'Log Type', 
@@ -397,7 +411,7 @@ export const FOOD_VENDOR_BUFFET_TABLE_COLUMNS: TableColumnConfig<PropertyFoodVen
     },
     section: 'Vendor & Property'
   },
-  { key: 'site', label: 'Property / Hotel', type: 'select', required: true, section: 'Vendor & Property' },
+  { key: 'site', label: 'Property / Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Vendor & Property' },
   { key: 'weekRange', label: 'Week Range', type: 'text', required: true, section: 'Schedule Details' },
   { key: 'startDate', label: 'Date From', type: 'date', required: true, section: 'Schedule Details' },
   { key: 'endDate', label: 'Date To', type: 'date', required: true, section: 'Schedule Details' },

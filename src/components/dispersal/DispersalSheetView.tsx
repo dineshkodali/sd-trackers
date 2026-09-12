@@ -16,12 +16,33 @@ import { useApp } from '../../context/AppContext';
 import { DispersalRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { DISPERSAL_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { ExportDropdown } from '../common/ExportDropdown';
+import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+
+const dispersalExportColumns: ExportColumnOption[] = [
+  { id: 'sno', label: 'S.No' },
+  { id: 'siteName', label: 'Hotel / Site' },
+  { id: 'suPortNassRef', label: 'Port / NASS Ref' },
+  { id: 'flatRoomNumber', label: 'Room / Flat' },
+  { id: 'dateReceived', label: 'Date Received' },
+  { id: 'dispersalDate', label: 'Dispersal Date' },
+  { id: 'dateLetterHandedToSu', label: 'Letter Handed Date' },
+  { id: 'reasonForDeparture', label: 'Reason for Departure' },
+  { id: 'iaExitBriefingCompleted', label: 'IA Exit Briefing' },
+  { id: 'hoDispersalLetterReceived', label: 'HO Letter Received' },
+  { id: 'travelled', label: 'Travelled' },
+  { id: 'dateLeftProperty', label: 'Date Left Property' },
+  { id: 'incidentWarningCompleted', label: 'Warning Completed' },
+  { id: 'reasonFailedToTravel', label: 'Reason Failed Travel' },
+  { id: 'secondDispersalDate', label: 'Second Dispersal Date' }
+];
 
 export const DispersalSheetView: React.FC = () => {
   const {
@@ -30,6 +51,8 @@ export const DispersalSheetView: React.FC = () => {
     updateDispersalRecord,
     deleteDispersalRecord,
     allowedSites,
+    assignedSite,
+    canAccessAllSites,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -45,7 +68,7 @@ export const DispersalSheetView: React.FC = () => {
   } = useTableSchema<DispersalRecord>('dispersal', DISPERSAL_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [siteFilter, setSiteFilter] = useState('all');
+  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
   const [travelledFilter, setTravelledFilter] = useState('all');
   const [secondDispersalFilter, setSecondDispersalFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -109,7 +132,9 @@ export const DispersalSheetView: React.FC = () => {
   const handleCreateSubmit = (data: Partial<DispersalRecord>) => {
     addDispersalRecord({
       sno: dispersalRecords.length + 1,
-      siteName: data.siteName || allowedSites[0] || 'Brit Hotel',
+      siteName: !canAccessAllSites() 
+        ? assignedSite 
+        : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
       dateReceived: data.dateReceived || new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
       suPortNassRef: data.suPortNassRef || '',
       reasonForDeparture: data.reasonForDeparture || 'Dispersal to Long-Term NASS accommodation',
@@ -143,17 +168,82 @@ export const DispersalSheetView: React.FC = () => {
     setEditingRecord(null);
   };
 
-  const handleExportCsv = () => {
-    exportTableToCsv({
-      filename: 'Dispersal_Tracker_Sheet.csv',
-      headers: visibleColumns.map(col => col.label),
-      rows: sortedRecords.map(r => 
-        visibleColumns.map(col => {
-          const val = (r as any)[col.key];
-          return val !== undefined && val !== null ? String(val) : '';
-        })
-      )
-    });
+  // Export Handlers with Custom Download & PDF/CSV Options
+  const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
+    let sourceData = dispersalRecords;
+    if (scope === 'filtered') sourceData = sortedRecords;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = dispersalRecords.filter(d => {
+        const dateVal = d.dispersalDate || d.dateReceived || '';
+        return (!startDate || dateVal >= startDate) && (!endDate || dateVal <= endDate);
+      });
+    }
+    return sourceData;
+  };
+
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return dispersalRecords.filter(d => {
+      const dateVal = d.dispersalDate || d.dateReceived || '';
+      return (!startDate || dateVal >= startDate) && (!endDate || dateVal <= endDate);
+    }).length;
+  };
+
+  const getExportPreviewData = ({
+    scope,
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    scope: ExportScope;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    orientation: ExportOrientation;
+    isCompact: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? dispersalExportColumns.filter(c => selectedColumns.includes(c.id))
+      : dispersalExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+    return { headers, rows };
+  };
+
+  const handlePerformExport = ({
+    format,
+    scope,
+    orientation = 'landscape',
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    format: ExportFormat;
+    scope: ExportScope;
+    orientation: ExportOrientation;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    isCompact?: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? dispersalExportColumns.filter(c => selectedColumns.includes(c.id))
+      : dispersalExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+
+    if (format === 'csv') {
+      exportTableToCsv({ filename: 'Dispersal_Tracker_Sheet.csv', headers, rows });
+    } else {
+      exportTableToPdf({
+        filename: 'Dispersal_Tracker_Sheet.pdf',
+        title: 'Service User Dispersals & Departures Log',
+        headers,
+        rows,
+        orientation
+      });
+    }
   };
 
   const renderColumnCell = (col: TableColumnConfig<DispersalRecord>, record: DispersalRecord) => {
@@ -223,13 +313,17 @@ export const DispersalSheetView: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-          >
-            <Download className="w-3.5 h-3.5 text-[#605e5c]" />
-            <span>Export CSV</span>
-          </button>
+          <ExportDropdown
+            moduleName="Dispersals"
+            totalRecordCount={dispersalRecords.length}
+            filteredRecordCount={filteredRecords.length}
+            defaultOrientation="landscape"
+            dateRangeRecordCount={calculateDateRangeCount}
+            availableColumns={dispersalExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+            buttonVariant="toolbar"
+          />
 
           {canCreateRecord() && (
             <button
@@ -422,7 +516,7 @@ export const DispersalSheetView: React.FC = () => {
         columns={columns}
         initialValues={{
           sno: dispersalRecords.length + 1,
-          siteName: allowedSites[0] || 'Brit Hotel',
+          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           dateReceived: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
           suPortNassRef: '',
           reasonForDeparture: 'Dispersal to Long-Term NASS accommodation',

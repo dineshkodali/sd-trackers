@@ -65,8 +65,8 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     label: 'Property / Site',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites || ['Brit Hotel', 'Holiday Inn Lambeth', 'Parmiter PDA']),
-    defaultValue: (ctx) => ctx?.allowedSites?.[0] || 'Brit Hotel',
+    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth', 'Parmiter PDA']),
+    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
     section: 'Location & Reporting'
   },
   {
@@ -172,8 +172,8 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     label: 'Property / Site',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites || ['Brit Hotel', 'Holiday Inn Lambeth']),
-    defaultValue: (ctx) => ctx?.allowedSites?.[0] || 'Brit Hotel',
+    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth']),
+    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
     section: 'Property & Council'
   },
   {
@@ -341,8 +341,8 @@ export const vulnerableTableConfig: TableColumnConfig<VulnerableSU>[] = [
     label: 'Property / Site',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites || ['Brit Hotel', 'Holiday Inn Lambeth']),
-    defaultValue: (ctx) => ctx?.allowedSites?.[0] || 'Brit Hotel',
+    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth']),
+    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
     section: 'Service User Identification'
   },
   {
@@ -487,8 +487,8 @@ export const challengingTableConfig: TableColumnConfig<ChallengingSU>[] = [
     label: 'Property / Site',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites || ['Brit Hotel', 'Holiday Inn Lambeth']),
-    defaultValue: (ctx) => ctx?.allowedSites?.[0] || 'Brit Hotel',
+    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth']),
+    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
     section: 'Service User'
   },
   {
@@ -663,8 +663,8 @@ export const spcdTableConfig: TableColumnConfig<SPCDRecord>[] = [
     label: 'Site Name',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites || ['Brit Hotel', 'Holiday Inn Lambeth']),
-    defaultValue: (ctx) => ctx?.allowedSites?.[0] || 'Brit Hotel',
+    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth']),
+    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
     section: 'Service User & Location'
   },
   {

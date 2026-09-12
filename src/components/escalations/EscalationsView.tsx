@@ -156,7 +156,9 @@ export const EscalationsView: React.FC = () => {
     const nowIso = new Date().toISOString();
     const suName = data.suName || '';
     const incidentType = data.incidentType || 'Safeguarding Concern';
-    const site = data.siteName || data.site || allowedSites[0] || 'Brit Hotel';
+    const site = !canAccessAllSites() 
+      ? assignedSite 
+      : (data.siteName || data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
 
     addEscalation({
       dateOfIncident: data.dateOfIncident || nowIso.slice(0, 10),
@@ -588,8 +590,8 @@ export const EscalationsView: React.FC = () => {
           dateOfIncident: new Date().toISOString().slice(0, 10),
           suPortNassRef: '',
           suName: '',
-          siteName: allowedSites[0] || 'Brit Hotel',
-          site: allowedSites[0] || 'Brit Hotel',
+          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           personReporting: loggedInUserName,
           incidentType: 'Safeguarding Concern',
           wlIssued: 'No',

@@ -14,10 +14,30 @@ import {
   MessageSquareQuote,
   Building2,
   User,
-  Shield
+  Shield,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DataChangeRequest } from '../../types';
+import { ExportDropdown } from '../common/ExportDropdown';
+import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
+
+const requestsExportColumns: ExportColumnOption[] = [
+  { id: 'id', label: 'Request ID' },
+  { id: 'site', label: 'Hotel / Site' },
+  { id: 'module', label: 'Tracker Module' },
+  { id: 'recordTitle', label: 'Record Subject / Title' },
+  { id: 'requestType', label: 'Request Type' },
+  { id: 'requestedBy', label: 'Submitted By' },
+  { id: 'requestedByRole', label: 'Submitter Role' },
+  { id: 'status', label: 'Status' },
+  { id: 'reason', label: 'Reason / Justification' },
+  { id: 'reviewedBy', label: 'Reviewed By' },
+  { id: 'reviewNotes', label: 'Review Remarks' },
+  { id: 'createdAt', label: 'Submission Date' }
+];
 
 export const RequestsApprovalsView: React.FC = () => {
   const {
@@ -27,7 +47,8 @@ export const RequestsApprovalsView: React.FC = () => {
     currentUserRole,
     currentUserName,
     assignedSite,
-    allowedSites
+    allowedSites,
+    canAccessAllSites
   } = useApp();
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -37,7 +58,9 @@ export const RequestsApprovalsView: React.FC = () => {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   const initialForm = {
-    site: assignedSite || allowedSites[0] || 'Brit Hotel',
+    site: !canAccessAllSites() 
+      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') 
+      : (assignedSite || allowedSites[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)'),
     module: 'Referrals' as DataChangeRequest['module'],
     recordTitle: '',
     recordId: '',
@@ -47,6 +70,15 @@ export const RequestsApprovalsView: React.FC = () => {
   };
 
   const [formData, setFormData] = useState(initialForm);
+
+  React.useEffect(() => {
+    if (isNewModalOpen) {
+      if (!canAccessAllSites()) {
+        setFormData(prev => ({ ...prev, site: assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)' }));
+      }
+    }
+  }, [isNewModalOpen, canAccessAllSites, assignedSite]);
+
   const [reviewModalRequest, setReviewModalRequest] = useState<DataChangeRequest | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewDecision, setReviewDecision] = useState<'Approved' | 'Rejected'>('Approved');
@@ -70,10 +102,14 @@ export const RequestsApprovalsView: React.FC = () => {
     e.preventDefault();
     if (!formData.recordTitle || !formData.reason) return;
 
+    const effectiveSite = !canAccessAllSites()
+      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)')
+      : (formData.site || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+
     addDataChangeRequest({
       requestedBy: currentUserName,
       requestedByRole: currentUserRole,
-      site: formData.site,
+      site: effectiveSite,
       module: formData.module,
       recordId: formData.recordId || `REC-${Math.floor(Math.random() * 90000 + 10000)}`,
       recordTitle: formData.recordTitle,
@@ -95,6 +131,84 @@ export const RequestsApprovalsView: React.FC = () => {
   };
 
   const pendingCount = dataChangeRequests.filter(r => r.status === 'Pending').length;
+
+  // Export Handlers with Custom Download & PDF/CSV Options
+  const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
+    let sourceData = dataChangeRequests;
+    if (scope === 'filtered') sourceData = filteredRequests;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = dataChangeRequests.filter(r => {
+        const d = r.createdAt ? r.createdAt.slice(0, 10) : '';
+        return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+      });
+    }
+    return sourceData;
+  };
+
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return dataChangeRequests.filter(r => {
+      const d = r.createdAt ? r.createdAt.slice(0, 10) : '';
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+    }).length;
+  };
+
+  const getExportPreviewData = ({
+    scope,
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    scope: ExportScope;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    orientation: ExportOrientation;
+    isCompact: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? requestsExportColumns.filter(c => selectedColumns.includes(c.id))
+      : requestsExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+    return { headers, rows };
+  };
+
+  const handlePerformExport = ({
+    format,
+    scope,
+    orientation = 'landscape',
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    format: ExportFormat;
+    scope: ExportScope;
+    orientation: ExportOrientation;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    isCompact?: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? requestsExportColumns.filter(c => selectedColumns.includes(c.id))
+      : requestsExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+
+    if (format === 'csv') {
+      exportTableToCsv({ filename: 'Change_Requests_Workflow.csv', headers, rows });
+    } else {
+      exportTableToPdf({
+        filename: 'Change_Requests_Workflow.pdf',
+        title: 'Data Change Requests & Administrative Approvals Log',
+        headers,
+        rows,
+        orientation
+      });
+    }
+  };
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in">
@@ -123,6 +237,18 @@ export const RequestsApprovalsView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <ExportDropdown
+              moduleName="Change Requests"
+              totalRecordCount={dataChangeRequests.length}
+              filteredRecordCount={filteredRequests.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={requestsExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+              buttonVariant="toolbar"
+            />
+
             <button
               onClick={() => setIsNewModalOpen(true)}
               className="px-3.5 py-2 bg-[#0d9488] text-white hover:bg-[#0f766e] text-xs font-semibold rounded-xs shadow-xs flex items-center gap-1.5 transition-colors"
@@ -335,16 +461,36 @@ export const RequestsApprovalsView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-[#323130] mb-1">Property / Site *</label>
-                  <select
-                    value={formData.site}
-                    onChange={e => setFormData({ ...formData, site: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white"
-                  >
-                    {allowedSites.map((s, idx) => (
-                      <option key={`${s}-${idx}`} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  <label className="block font-semibold text-[#323130] mb-1 flex items-center justify-between">
+                    <span>Property / Site *</span>
+                    {!canAccessAllSites() && (
+                      <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium flex items-center gap-0.5">
+                        <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
+                      </span>
+                    )}
+                  </label>
+                  {!canAccessAllSites() ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)'}
+                        readOnly
+                        disabled
+                        className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
+                      />
+                      <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2 top-1/2 -translate-y-1/2" />
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.site}
+                      onChange={e => setFormData({ ...formData, site: e.target.value })}
+                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white"
+                    >
+                      {allowedSites.map((s, idx) => (
+                        <option key={`${s}-${idx}`} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 

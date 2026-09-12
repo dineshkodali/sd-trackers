@@ -16,12 +16,24 @@ import { useApp } from '../../context/AppContext';
 import { GPAppointmentRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { GP_APPOINTMENTS_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { ExportDropdown } from '../common/ExportDropdown';
+import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+
+const gpExportColumns: ExportColumnOption[] = [
+  { id: 'siteName', label: 'Hotel / Site' },
+  { id: 'suName', label: 'Service User Name' },
+  { id: 'appointmentDate', label: 'Appointment Date' },
+  { id: 'timeOfGp', label: 'Time of Appointment' },
+  { id: 'status', label: 'Status' },
+  { id: 'comments', label: 'Clinical / Case Comments' }
+];
 
 export const GPAppointmentsView: React.FC = () => {
   const {
@@ -30,6 +42,8 @@ export const GPAppointmentsView: React.FC = () => {
     updateGPAppointmentRecord,
     deleteGPAppointmentRecord,
     allowedSites,
+    assignedSite,
+    canAccessAllSites,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -46,7 +60,7 @@ export const GPAppointmentsView: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [siteFilter, setSiteFilter] = useState('all');
+  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<string>('appointmentDate');
@@ -111,7 +125,9 @@ export const GPAppointmentsView: React.FC = () => {
       timeOfGp: data.timeOfGp || '10:00',
       comments: data.comments || '',
       status: (data.status as any) || 'Scheduled',
-      siteName: data.siteName || allowedSites[0] || 'Brit Hotel',
+      siteName: !canAccessAllSites() 
+        ? assignedSite 
+        : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
       suName: data.suName || '',
       ...data
     } as any);
@@ -127,17 +143,82 @@ export const GPAppointmentsView: React.FC = () => {
     setEditingRecord(null);
   };
 
-  const handleExportCsv = () => {
-    exportTableToCsv({
-      filename: 'GP_Appointments_Register.csv',
-      headers: visibleColumns.map(col => col.label),
-      rows: sortedRecords.map(r => 
-        visibleColumns.map(col => {
-          const val = (r as any)[col.key];
-          return val !== undefined && val !== null ? String(val) : '';
-        })
-      )
-    });
+  // Export Handlers with Custom Download & PDF/CSV Options
+  const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
+    let sourceData = gpAppointmentRecords;
+    if (scope === 'filtered') sourceData = sortedRecords;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = gpAppointmentRecords.filter(g => {
+        const d = g.appointmentDate || '';
+        return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+      });
+    }
+    return sourceData;
+  };
+
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return gpAppointmentRecords.filter(g => {
+      const d = g.appointmentDate || '';
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+    }).length;
+  };
+
+  const getExportPreviewData = ({
+    scope,
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    scope: ExportScope;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    orientation: ExportOrientation;
+    isCompact: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? gpExportColumns.filter(c => selectedColumns.includes(c.id))
+      : gpExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+    return { headers, rows };
+  };
+
+  const handlePerformExport = ({
+    format,
+    scope,
+    orientation = 'landscape',
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    format: ExportFormat;
+    scope: ExportScope;
+    orientation: ExportOrientation;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    isCompact?: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? gpExportColumns.filter(c => selectedColumns.includes(c.id))
+      : gpExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+
+    if (format === 'csv') {
+      exportTableToCsv({ filename: 'GP_Appointments_Register.csv', headers, rows });
+    } else {
+      exportTableToPdf({
+        filename: 'GP_Appointments_Register.pdf',
+        title: 'NHS & GP Clinical Consultations Register',
+        headers,
+        rows,
+        orientation
+      });
+    }
   };
 
   const renderColumnCell = (col: TableColumnConfig<GPAppointmentRecord>, record: GPAppointmentRecord) => {
@@ -211,13 +292,17 @@ export const GPAppointmentsView: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-          >
-            <Download className="w-3.5 h-3.5 text-[#605e5c]" />
-            <span>Export CSV</span>
-          </button>
+          <ExportDropdown
+            moduleName="GP Appointments"
+            totalRecordCount={gpAppointmentRecords.length}
+            filteredRecordCount={filteredRecords.length}
+            defaultOrientation="landscape"
+            dateRangeRecordCount={calculateDateRangeCount}
+            availableColumns={gpExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+            buttonVariant="toolbar"
+          />
 
           {canCreateRecord() && (
             <button
@@ -404,7 +489,7 @@ export const GPAppointmentsView: React.FC = () => {
           timeOfGp: '10:00',
           comments: '',
           status: 'Scheduled',
-          siteName: allowedSites[0] || 'Brit Hotel',
+          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           suName: ''
         }}
         onSubmit={handleCreateSubmit}

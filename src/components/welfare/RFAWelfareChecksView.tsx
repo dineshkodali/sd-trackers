@@ -16,12 +16,29 @@ import { useApp } from '../../context/AppContext';
 import { RFAWelfareCheckRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { RFA_WELFARE_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { ExportDropdown } from '../common/ExportDropdown';
+import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+
+const welfareExportColumns: ExportColumnOption[] = [
+  { id: 'date', label: 'Check Date' },
+  { id: 'siteName', label: 'Hotel / Site' },
+  { id: 'roomOrFlatNo', label: 'Room / Flat No' },
+  { id: 'name', label: 'Service User Name' },
+  { id: 'dob', label: 'Date of Birth' },
+  { id: 'group', label: 'Demographic Group' },
+  { id: 'gender', label: 'Gender' },
+  { id: 'portOrNassRef', label: 'Port / NASS Ref' },
+  { id: 'vulnerability', label: 'Identified Vulnerability' },
+  { id: 'actionTaken', label: 'Action Taken / Remedies' },
+  { id: 'mhTicket', label: 'Migrant Help Ticket' }
+];
 
 export const RFAWelfareChecksView: React.FC = () => {
   const {
@@ -30,6 +47,8 @@ export const RFAWelfareChecksView: React.FC = () => {
     updateRFAWelfareRecord,
     deleteRFAWelfareRecord,
     allowedSites,
+    assignedSite,
+    canAccessAllSites,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -45,7 +64,7 @@ export const RFAWelfareChecksView: React.FC = () => {
   } = useTableSchema<RFAWelfareCheckRecord>('rfaWelfare', RFA_WELFARE_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [siteFilter, setSiteFilter] = useState('all');
+  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
   const [groupFilter, setGroupFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -107,7 +126,9 @@ export const RFAWelfareChecksView: React.FC = () => {
   const handleCreateSubmit = (data: Partial<RFAWelfareCheckRecord>) => {
     addRFAWelfareRecord({
       date: data.date || new Date().toISOString().slice(0, 10),
-      siteName: data.siteName || allowedSites[0] || 'Brit Hotel',
+      siteName: !canAccessAllSites() 
+        ? assignedSite 
+        : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
       roomOrFlatNo: data.roomOrFlatNo || '',
       name: data.name || '',
       dob: data.dob || '1995-01-01',
@@ -131,17 +152,82 @@ export const RFAWelfareChecksView: React.FC = () => {
     setEditingRecord(null);
   };
 
-  const handleExportCsv = () => {
-    exportTableToCsv({
-      filename: 'RFA_Welfare_Checks.csv',
-      headers: visibleColumns.map(col => col.label),
-      rows: sortedRecords.map(r => 
-        visibleColumns.map(col => {
-          const val = (r as any)[col.key];
-          return val !== undefined && val !== null ? String(val) : '';
-        })
-      )
-    });
+  // Export Handlers with Custom Download & PDF/CSV Options
+  const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
+    let sourceData = rfaWelfareRecords;
+    if (scope === 'filtered') sourceData = sortedRecords;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = rfaWelfareRecords.filter(w => {
+        const d = w.date || '';
+        return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+      });
+    }
+    return sourceData;
+  };
+
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return rfaWelfareRecords.filter(w => {
+      const d = w.date || '';
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+    }).length;
+  };
+
+  const getExportPreviewData = ({
+    scope,
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    scope: ExportScope;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    orientation: ExportOrientation;
+    isCompact: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? welfareExportColumns.filter(c => selectedColumns.includes(c.id))
+      : welfareExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+    return { headers, rows };
+  };
+
+  const handlePerformExport = ({
+    format,
+    scope,
+    orientation = 'landscape',
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    format: ExportFormat;
+    scope: ExportScope;
+    orientation: ExportOrientation;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    isCompact?: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? welfareExportColumns.filter(c => selectedColumns.includes(c.id))
+      : welfareExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+
+    if (format === 'csv') {
+      exportTableToCsv({ filename: 'RFA_Welfare_Checks.csv', headers, rows });
+    } else {
+      exportTableToPdf({
+        filename: 'RFA_Welfare_Checks.pdf',
+        title: 'RFA Welfare Checks & Vulnerability Log',
+        headers,
+        rows,
+        orientation
+      });
+    }
   };
 
   const renderColumnCell = (col: TableColumnConfig<RFAWelfareCheckRecord>, record: RFAWelfareCheckRecord) => {
@@ -219,13 +305,17 @@ export const RFAWelfareChecksView: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-          >
-            <Download className="w-3.5 h-3.5 text-[#605e5c]" />
-            <span>Export CSV</span>
-          </button>
+          <ExportDropdown
+            moduleName="RFA Welfare Checks"
+            totalRecordCount={rfaWelfareRecords.length}
+            filteredRecordCount={filteredRecords.length}
+            defaultOrientation="landscape"
+            dateRangeRecordCount={calculateDateRangeCount}
+            availableColumns={welfareExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+            buttonVariant="toolbar"
+          />
 
           {canCreateRecord() && (
             <button
@@ -405,7 +495,7 @@ export const RFAWelfareChecksView: React.FC = () => {
         columns={columns}
         initialValues={{
           date: new Date().toISOString().slice(0, 10),
-          siteName: allowedSites[0] || 'Brit Hotel',
+          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           roomOrFlatNo: '',
           name: '',
           dob: '1995-01-01',

@@ -22,12 +22,27 @@ import { SDVCSAgency } from '../../types';
 import { SD_VCS_HOTEL_NAMES } from '../../data/initialData';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { VCS_AGENCIES_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { ExportDropdown } from '../common/ExportDropdown';
+import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+
+const vcsExportColumns: ExportColumnOption[] = [
+  { id: 'hotelName', label: 'Hotel / Site' },
+  { id: 'agencyName', label: 'Agency Name' },
+  { id: 'category', label: 'Support Category' },
+  { id: 'servicesProvided', label: 'Services Provided' },
+  { id: 'contactPerson', label: 'Key Contact' },
+  { id: 'contactNumber', label: 'Phone Number' },
+  { id: 'email', label: 'Email Address' },
+  { id: 'address', label: 'Location / Address' },
+  { id: 'notes', label: 'Operational Notes' }
+];
 
 export const SDVCSDirectoryView: React.FC = () => {
   const {
@@ -35,6 +50,9 @@ export const SDVCSDirectoryView: React.FC = () => {
     addVCSAgency,
     updateVCSAgency,
     deleteVCSAgency,
+    assignedSite,
+    allowedSites,
+    canAccessAllSites,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -49,7 +67,7 @@ export const SDVCSDirectoryView: React.FC = () => {
     resetToDefault
   } = useTableSchema<SDVCSAgency>('vcsDirectory', VCS_AGENCIES_TABLE_COLUMNS);
 
-  const [selectedProperty, setSelectedProperty] = useState<string>('all');
+  const [selectedProperty, setSelectedProperty] = useState<string>(!canAccessAllSites() ? assignedSite : 'all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [gridMode, setGridMode] = useState<'table' | 'matrix'>('table');
@@ -119,7 +137,9 @@ export const SDVCSDirectoryView: React.FC = () => {
 
   const handleCreateSubmit = (data: Partial<SDVCSAgency>) => {
     addVCSAgency({
-      hotelName: data.hotelName || (selectedProperty !== 'all' ? selectedProperty : SD_VCS_HOTEL_NAMES[0]),
+      hotelName: !canAccessAllSites() 
+        ? assignedSite 
+        : (data.hotelName || (selectedProperty !== 'all' ? selectedProperty : (assignedSite || allowedSites[0]))),
       agencyName: data.agencyName || '',
       category: (data.category as any) || 'Charity & Welfare',
       servicesProvided: data.servicesProvided || '',
@@ -142,17 +162,86 @@ export const SDVCSDirectoryView: React.FC = () => {
     setEditingAgency(null);
   };
 
-  const handleExportCsv = () => {
-    exportTableToCsv({
-      filename: `SD_VCS_Support_Agencies_${selectedProperty === 'all' ? 'All_Properties' : selectedProperty.replace(/\s+/g, '_')}.csv`,
-      headers: visibleColumns.map(col => col.label),
-      rows: sortedAgencies.map(a => 
-        visibleColumns.map(col => {
-          const val = (a as any)[col.key];
-          return val !== undefined && val !== null ? String(val) : '';
-        })
-      )
-    });
+  // Export Handlers with Custom Download & PDF/CSV Options
+  const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
+    let sourceData = vcsAgencies;
+    if (scope === 'filtered') sourceData = sortedAgencies;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = vcsAgencies.filter(a => {
+        const d = (a as any).createdAt ? (a as any).createdAt.slice(0, 10) : '';
+        return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+      });
+    }
+    return sourceData;
+  };
+
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return vcsAgencies.filter(a => {
+      const d = (a as any).createdAt ? (a as any).createdAt.slice(0, 10) : '';
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+    }).length;
+  };
+
+  const getExportPreviewData = ({
+    scope,
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    scope: ExportScope;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    orientation: ExportOrientation;
+    isCompact: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? vcsExportColumns.filter(c => selectedColumns.includes(c.id))
+      : vcsExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+    return { headers, rows };
+  };
+
+  const handlePerformExport = ({
+    format,
+    scope,
+    orientation = 'landscape',
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    format: ExportFormat;
+    scope: ExportScope;
+    orientation: ExportOrientation;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    isCompact?: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? vcsExportColumns.filter(c => selectedColumns.includes(c.id))
+      : vcsExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+
+    if (format === 'csv') {
+      exportTableToCsv({ 
+        filename: `SD_VCS_Support_Agencies_${selectedProperty === 'all' ? 'All_Properties' : selectedProperty.replace(/\s+/g, '_')}.csv`, 
+        headers, 
+        rows 
+      });
+    } else {
+      exportTableToPdf({
+        filename: `SD_VCS_Support_Agencies_${selectedProperty === 'all' ? 'All_Properties' : selectedProperty.replace(/\s+/g, '_')}.pdf`,
+        title: 'SD VCS Support Agencies & Community Partners Directory',
+        headers,
+        rows,
+        orientation
+      });
+    }
   };
 
   const getCategoryBadgeColor = (category?: string) => {
@@ -257,13 +346,17 @@ export const SDVCSDirectoryView: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-          >
-            <Download className="w-3.5 h-3.5 text-[#605e5c]" />
-            <span>Export CSV</span>
-          </button>
+          <ExportDropdown
+            moduleName="VCS Agencies"
+            totalRecordCount={vcsAgencies.length}
+            filteredRecordCount={filteredAgencies.length}
+            defaultOrientation="landscape"
+            dateRangeRecordCount={calculateDateRangeCount}
+            availableColumns={vcsExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+            buttonVariant="toolbar"
+          />
 
           {canCreateRecord() && (
             <button
@@ -508,7 +601,7 @@ export const SDVCSDirectoryView: React.FC = () => {
         title="Add Partner Agency"
         columns={columns}
         initialValues={{
-          hotelName: selectedProperty !== 'all' ? selectedProperty : SD_VCS_HOTEL_NAMES[0],
+          hotelName: !canAccessAllSites() ? assignedSite : (selectedProperty !== 'all' ? selectedProperty : (assignedSite || allowedSites[0])),
           agencyName: '',
           category: 'Charity & Welfare',
           servicesProvided: '',

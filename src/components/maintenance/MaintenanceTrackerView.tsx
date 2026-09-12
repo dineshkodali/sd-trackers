@@ -1181,18 +1181,19 @@ export const MaintenanceTrackerView: React.FC = () => {
           priorityTimeScale: '5 Working Days',
           defectStatus: 'In Process',
           action: 'Open',
-          site: allowedSites[0] || 'Victoria House',
+          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           raisedBy: loggedInUserName
         }}
         onSave={(data) => {
           const today = data.date || new Date().toISOString().slice(0, 10);
-          const fullLocation = data.room ? `${data.site || ''} - ${data.room}` : `${data.site || ''} - ${data.location || 'General Premises'}`;
+          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+          const fullLocation = data.room ? `${effectiveSite} - ${data.room}` : `${effectiveSite} - ${data.location || 'General Premises'}`;
           addMaintenanceRecord({
             ...data,
             date: today,
             location: fullLocation,
             raisedBy: data.raisedBy || loggedInUserName,
-            site: data.site || 'Victoria House',
+            site: effectiveSite,
             priority: data.priority || 'CAT 2',
             defectStatus: data.defectStatus || 'Pending',
             action: data.action || 'Pending',

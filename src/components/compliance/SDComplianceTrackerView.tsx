@@ -16,12 +16,28 @@ import { useApp } from '../../context/AppContext';
 import { SDComplianceRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { SD_COMPLIANCE_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { ExportDropdown } from '../common/ExportDropdown';
+import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+
+const complianceExportColumns: ExportColumnOption[] = [
+  { id: 'siteName', label: 'Hotel / Site' },
+  { id: 'complianceType', label: 'Certificate / Compliance Type' },
+  { id: 'contractorName', label: 'Contractor Name' },
+  { id: 'contractorKeyContact', label: 'Key Contact' },
+  { id: 'contractorEmail', label: 'Contractor Email' },
+  { id: 'issuedDate', label: 'Issued Date' },
+  { id: 'expiryDate', label: 'Expiry Date' },
+  { id: 'status', label: 'Compliance Status' },
+  { id: 'actionTaken', label: 'Action Taken / Remedies' },
+  { id: 'previousContractor', label: 'Previous Contractor' }
+];
 
 export const SDComplianceTrackerView: React.FC = () => {
   const {
@@ -30,6 +46,8 @@ export const SDComplianceTrackerView: React.FC = () => {
     updateComplianceRecord,
     deleteComplianceRecord,
     allowedSites,
+    assignedSite,
+    canAccessAllSites,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -47,7 +65,7 @@ export const SDComplianceTrackerView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [siteFilter, setSiteFilter] = useState('all');
+  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<string>('expiryDate');
@@ -118,7 +136,9 @@ export const SDComplianceTrackerView: React.FC = () => {
       status: (data.status as any) || 'Compliant',
       actionTaken: data.actionTaken || '',
       previousContractor: data.previousContractor || '',
-      siteName: data.siteName || allowedSites[0] || 'Brit Hotel',
+      siteName: !canAccessAllSites() 
+        ? assignedSite 
+        : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
       ...data
     } as any);
     setIsCreateModalOpen(false);
@@ -133,17 +153,82 @@ export const SDComplianceTrackerView: React.FC = () => {
     setEditingRecord(null);
   };
 
-  const handleExportCsv = () => {
-    exportTableToCsv({
-      filename: 'SD_Compliance_Register.csv',
-      headers: visibleColumns.map(col => col.label),
-      rows: sortedRecords.map(r => 
-        visibleColumns.map(col => {
-          const val = (r as any)[col.key];
-          return val !== undefined && val !== null ? String(val) : '';
-        })
-      )
-    });
+  // Export Handlers with Custom Download & PDF/CSV Options
+  const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
+    let sourceData = complianceRecords;
+    if (scope === 'filtered') sourceData = sortedRecords;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = complianceRecords.filter(c => {
+        const d = c.issuedDate || c.expiryDate || '';
+        return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+      });
+    }
+    return sourceData;
+  };
+
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return complianceRecords.filter(c => {
+      const d = c.issuedDate || c.expiryDate || '';
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+    }).length;
+  };
+
+  const getExportPreviewData = ({
+    scope,
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    scope: ExportScope;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    orientation: ExportOrientation;
+    isCompact: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? complianceExportColumns.filter(c => selectedColumns.includes(c.id))
+      : complianceExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+    return { headers, rows };
+  };
+
+  const handlePerformExport = ({
+    format,
+    scope,
+    orientation = 'landscape',
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    format: ExportFormat;
+    scope: ExportScope;
+    orientation: ExportOrientation;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    isCompact?: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? complianceExportColumns.filter(c => selectedColumns.includes(c.id))
+      : complianceExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+
+    if (format === 'csv') {
+      exportTableToCsv({ filename: 'SD_Compliance_Register.csv', headers, rows });
+    } else {
+      exportTableToPdf({
+        filename: 'SD_Compliance_Register.pdf',
+        title: 'Statutory Compliance & Contractor Certification Dossier',
+        headers,
+        rows,
+        orientation
+      });
+    }
   };
 
   const renderColumnCell = (col: TableColumnConfig<SDComplianceRecord>, record: SDComplianceRecord) => {
@@ -213,13 +298,17 @@ export const SDComplianceTrackerView: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-          >
-            <Download className="w-3.5 h-3.5 text-[#605e5c]" />
-            <span>Export CSV</span>
-          </button>
+          <ExportDropdown
+            moduleName="Compliance Certificates"
+            totalRecordCount={complianceRecords.length}
+            filteredRecordCount={filteredRecords.length}
+            defaultOrientation="landscape"
+            dateRangeRecordCount={calculateDateRangeCount}
+            availableColumns={complianceExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+            buttonVariant="toolbar"
+          />
 
           {canCreateRecord() && (
             <button
@@ -430,7 +519,7 @@ export const SDComplianceTrackerView: React.FC = () => {
           status: 'Compliant',
           actionTaken: '',
           previousContractor: '',
-          siteName: allowedSites[0] || 'Brit Hotel'
+          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Register Certificate"

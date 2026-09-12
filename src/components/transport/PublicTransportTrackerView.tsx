@@ -16,12 +16,28 @@ import { useApp } from '../../context/AppContext';
 import { PublicTransportRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { PUBLIC_TRANSPORT_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { ExportDropdown } from '../common/ExportDropdown';
+import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+
+const transportExportColumns: ExportColumnOption[] = [
+  { id: 'approvalUrn', label: 'Approval URN' },
+  { id: 'suNames', label: 'Service User Name(s)' },
+  { id: 'portRefs', label: 'Port Ref(s)' },
+  { id: 'accommodationAddress', label: 'Accommodation Address' },
+  { id: 'appointmentDate', label: 'Appointment Date' },
+  { id: 'appointmentTime', label: 'Appointment Time' },
+  { id: 'appointmentLocation', label: 'Appointment Location' },
+  { id: 'modeOfTransport', label: 'Mode of Transport' },
+  { id: 'distanceMiles', label: 'Distance (Miles)' },
+  { id: 'status', label: 'Status' }
+];
 
 export const PublicTransportTrackerView: React.FC = () => {
   const {
@@ -130,17 +146,82 @@ export const PublicTransportTrackerView: React.FC = () => {
     setEditingRecord(null);
   };
 
-  const handleExportCsv = () => {
-    exportTableToCsv({
-      filename: 'Public_Transport_Authorizations.csv',
-      headers: visibleColumns.map(col => col.label),
-      rows: sortedRecords.map(r => 
-        visibleColumns.map(col => {
-          const val = (r as any)[col.key];
-          return val !== undefined && val !== null ? String(val) : '';
-        })
-      )
-    });
+  // Export Handlers with Custom Download & PDF/CSV Options
+  const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
+    let sourceData = publicTransportRecords;
+    if (scope === 'filtered') sourceData = sortedRecords;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = publicTransportRecords.filter(t => {
+        const d = t.appointmentDate || '';
+        return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+      });
+    }
+    return sourceData;
+  };
+
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return publicTransportRecords.filter(t => {
+      const d = t.appointmentDate || '';
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+    }).length;
+  };
+
+  const getExportPreviewData = ({
+    scope,
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    scope: ExportScope;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    orientation: ExportOrientation;
+    isCompact: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? transportExportColumns.filter(c => selectedColumns.includes(c.id))
+      : transportExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+    return { headers, rows };
+  };
+
+  const handlePerformExport = ({
+    format,
+    scope,
+    orientation = 'landscape',
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    format: ExportFormat;
+    scope: ExportScope;
+    orientation: ExportOrientation;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    isCompact?: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? transportExportColumns.filter(c => selectedColumns.includes(c.id))
+      : transportExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+
+    if (format === 'csv') {
+      exportTableToCsv({ filename: 'Public_Transport_Authorizations.csv', headers, rows });
+    } else {
+      exportTableToPdf({
+        filename: 'Public_Transport_Authorizations.pdf',
+        title: 'Public Transport Assistance & Travel Authorizations',
+        headers,
+        rows,
+        orientation
+      });
+    }
   };
 
   const renderColumnCell = (col: TableColumnConfig<PublicTransportRecord>, record: PublicTransportRecord) => {
@@ -222,13 +303,17 @@ export const PublicTransportTrackerView: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-          >
-            <Download className="w-3.5 h-3.5 text-[#605e5c]" />
-            <span>Export CSV</span>
-          </button>
+          <ExportDropdown
+            moduleName="Transport Authorizations"
+            totalRecordCount={publicTransportRecords.length}
+            filteredRecordCount={filteredRecords.length}
+            defaultOrientation="landscape"
+            dateRangeRecordCount={calculateDateRangeCount}
+            availableColumns={transportExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+            buttonVariant="toolbar"
+          />
 
           {canCreateRecord() && (
             <button

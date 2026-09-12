@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Building2, 
   Calendar, 
@@ -19,7 +19,8 @@ import {
   SlidersHorizontal,
   Eye,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PropertyFoodVendorBuffetLog, FoodVendorName, FoodBuffetItemBreakdown, DayOfWeek } from '../../types';
@@ -211,7 +212,9 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
   });
 
   const [formData, setFormData] = useState({
-    site: allowedSites[0] || 'Brit Hotel',
+    site: !canAccessAllSites() 
+      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') 
+      : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)')),
     vendor: 'A&M' as FoodVendorName,
     weekRange: initialWeekInfo.weekRange,
     startDate: todayBounds.start,
@@ -224,6 +227,12 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     notes: '',
     lastUpdatedBy: loggedInUserName
   });
+
+  useEffect(() => {
+    if (!canAccessAllSites() && assignedSite) {
+      setFormData(prev => ({ ...prev, site: assignedSite }));
+    }
+  }, [canAccessAllSites, assignedSite]);
 
   const handleStartDateChange = (newStartDate: string) => {
     const newEndDate = addDays(newStartDate, 6);
@@ -269,8 +278,11 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     setEditingLog(null);
     const bounds = getWeekBounds(todayStr);
     const currentWk = formatWeekRangeFromDates(bounds.start, bounds.end);
+    const effectiveSite = !canAccessAllSites()
+      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)')
+      : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)'));
     setFormData({
-      site: allowedSites[0] || 'Brit Hotel',
+      site: effectiveSite,
       vendor: 'A&M',
       weekRange: currentWk.weekRange,
       startDate: bounds.start,
@@ -484,8 +496,12 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const effectiveSite = !canAccessAllSites()
+      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)')
+      : (formData.site || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+
     const payloadToValidate = {
-      site: formData.site,
+      site: effectiveSite,
       date: formData.startDate || todayStr,
       startDate: formData.startDate,
       endDate: formData.endDate,
@@ -505,6 +521,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
 
     const payload = {
       ...formData,
+      site: effectiveSite,
       lastUpdatedBy: formData.lastUpdatedBy || loggedInUserName
     };
 
@@ -1180,15 +1197,35 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
             <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs max-h-[80vh] overflow-y-auto">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Contracted Property *</label>
-                  <select
-                    value={formData.site}
-                    onChange={e => setFormData({ ...formData, site: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    required
-                  >
-                    {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
-                  </select>
+                  <label className="font-semibold text-[#605e5c] block mb-1 flex items-center justify-between">
+                    <span>Contracted Property *</span>
+                    {!canAccessAllSites() && (
+                      <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium flex items-center gap-0.5">
+                        <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
+                      </span>
+                    )}
+                  </label>
+                  {!canAccessAllSites() ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)'}
+                        readOnly
+                        disabled
+                        className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
+                      />
+                      <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2 top-1/2 -translate-y-1/2" />
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.site}
+                      onChange={e => setFormData({ ...formData, site: e.target.value })}
+                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
+                      required
+                    >
+                      {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
+                    </select>
+                  )}
                 </div>
 
                 <div>

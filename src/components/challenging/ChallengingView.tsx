@@ -754,7 +754,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
         columns={challengingColumns}
         initialValues={{
           date: new Date().toISOString().slice(0, 10),
-          site: allowedSites[0] || 'Victoria House',
+          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           riskFactor: 'Medium',
           status: 'Open',
           group: 'Single Adult',
@@ -763,10 +763,11 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
           raisedBy: loggedInUserName
         }}
         onSave={(data) => {
+          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
           addChallengingSU({
             ...data,
             date: data.date || new Date().toISOString().slice(0, 10),
-            site: data.site || allowedSites[0] || 'Victoria House',
+            site: effectiveSite,
             name: data.name || '',
             portRef: data.portRef || '',
             dob: data.dob || '',

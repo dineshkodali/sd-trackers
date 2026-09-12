@@ -116,12 +116,15 @@ export const DocumentsView: React.FC = () => {
   };
 
   const handleCreateSubmit = (data: Partial<DocumentRecord>) => {
+    const effectiveSite = !canAccessAllSites() 
+      ? assignedSite 
+      : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
     addDocument({
       documentTitle: data.documentTitle || 'Untitled Document',
       suName: data.suName || '',
       refNumber: data.refNumber || '',
       category: (data.category as any) || 'Risk Assessment',
-      site: data.site || allowedSites[0] || 'Hotel A',
+      site: effectiveSite,
       fileFormat: (data.fileFormat as any) || 'PDF',
       fileSizeKb: Number(data.fileSizeKb) || 1420,
       confidentiality: (data.confidentiality as any) || 'Restricted',
@@ -476,7 +479,7 @@ export const DocumentsView: React.FC = () => {
           suName: '',
           refNumber: '',
           category: 'Risk Assessment',
-          site: allowedSites[0] || 'Hotel A',
+          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           fileFormat: 'PDF',
           fileSizeKb: 1420,
           confidentiality: 'Restricted',

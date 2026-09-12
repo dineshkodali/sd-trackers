@@ -687,7 +687,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
         title="Log Vulnerable / Safeguarding Service User"
         columns={vulnerableColumns}
         initialValues={{
-          site: allowedSites[0] || 'Victoria House',
+          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           riskLevel: 'Low',
           status: 'Open',
           group: 'Single Adult',
@@ -695,8 +695,9 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
           raisedBy: loggedInUserName
         }}
         onSave={(data) => {
+          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
           addVulnerableSU({
-            site: data.site || allowedSites[0] || 'Victoria House',
+            site: effectiveSite,
             roomOrFlatNo: data.roomOrFlatNo || '',
             suName: data.suName || '',
             dob: data.dob || '',

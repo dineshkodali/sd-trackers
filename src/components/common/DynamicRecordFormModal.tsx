@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, AlertCircle, Loader2, Lock } from 'lucide-react';
+import { X, AlertCircle, Loader2, Lock, Building2 } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
+import { useApp } from '../../context/AppContext';
 
 interface DynamicRecordFormModalProps<T = any> {
   isOpen: boolean;
@@ -27,6 +28,48 @@ export function DynamicRecordFormModal<T = any>({
   submitLabel,
   contextData = {}
 }: DynamicRecordFormModalProps<T>) {
+  const {
+    assignedSite,
+    allowedSites,
+    canAccessAllSites,
+    selectedSite,
+    sites
+  } = useApp();
+
+  const userAssignedHotel = assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)';
+
+  const allSiteNames = useMemo(() => {
+    const fromAllowed = (allowedSites || []).filter(Boolean);
+    const fromSites = (sites || [])
+      .map(s => (typeof s === 'string' ? s : s?.name))
+      .filter((n): n is string => Boolean(n && typeof n === 'string' && n.trim() !== ''));
+    const combined = Array.from(new Set([...fromAllowed, ...fromSites, userAssignedHotel]));
+    return combined.length > 0 ? combined : [userAssignedHotel];
+  }, [allowedSites, sites, userAssignedHotel]);
+
+  const effectiveContext = useMemo(() => ({
+    assignedSite: userAssignedHotel,
+    allowedSites: allSiteNames,
+    sites,
+    selectedSite,
+    canAccessAllSites,
+    ...contextData
+  }), [userAssignedHotel, allSiteNames, sites, selectedSite, canAccessAllSites, contextData]);
+
+  const isSiteColumn = (col: TableColumnConfig<T>): boolean => {
+    const key = String(col.key).toLowerCase();
+    const label = String(col.label || '').toLowerCase();
+    return (
+      key === 'site' ||
+      key === 'sitename' ||
+      key === 'hotelname' ||
+      key === 'property' ||
+      label.includes('hotel') ||
+      label.includes('property') ||
+      (label.includes('site') && !label.includes('website'))
+    );
+  };
+
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -51,7 +94,7 @@ export function DynamicRecordFormModal<T = any>({
     return Array.from(map.entries());
   }, [formColumns]);
 
-  // Initialize form data only when modal opens or target record changes — avoids wiping user input on typing
+  // Initialize form data only when modal opens or target record changes
   useEffect(() => {
     if (!isOpen) {
       prevOpenRef.current = false;
@@ -73,10 +116,29 @@ export function DynamicRecordFormModal<T = any>({
     const initial: Record<string, any> = initialValues ? { ...initialValues } : {};
     formColumns.forEach(col => {
       const key = String(col.key);
-      if (initialValues && initialValues[col.key as keyof T] !== undefined) {
+      const isSite = isSiteColumn(col);
+
+      if (isSite) {
+        if (!canAccessAllSites()) {
+          initial[key] = userAssignedHotel;
+        } else {
+          const provided = initialValues ? (initialValues as any)[key] : undefined;
+          if (provided && typeof provided === 'string' && provided.trim() !== '') {
+            initial[key] = provided;
+          } else if (selectedSite && selectedSite !== 'all') {
+            initial[key] = selectedSite;
+          } else if (assignedSite) {
+            initial[key] = assignedSite;
+          } else if (col.defaultValue !== undefined) {
+            initial[key] = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
+          } else {
+            initial[key] = allSiteNames[0] || userAssignedHotel;
+          }
+        }
+      } else if (initialValues && initialValues[col.key as keyof T] !== undefined) {
         initial[key] = initialValues[col.key as keyof T];
       } else if (col.defaultValue !== undefined) {
-        initial[key] = typeof col.defaultValue === 'function' ? col.defaultValue(contextData) : col.defaultValue;
+        initial[key] = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
       } else {
         switch (col.type) {
           case 'number':
@@ -106,20 +168,31 @@ export function DynamicRecordFormModal<T = any>({
     setFormData(initial);
     setErrors({});
     setSubmitError(null);
-  }, [isOpen, initialValues]);
+  }, [isOpen, initialValues, assignedSite, selectedSite, canAccessAllSites, userAssignedHotel, allSiteNames, effectiveContext]);
 
   const handleClearOrRevert = () => {
     if (isEdit && initialValues) {
       // Revert to original record values
       const initial: Record<string, any> = { ...initialValues };
+      if (!canAccessAllSites()) {
+        formColumns.forEach(col => {
+          if (isSiteColumn(col)) {
+            initial[String(col.key)] = userAssignedHotel;
+          }
+        });
+      }
       setFormData(initial);
     } else {
       // Clear/Reset to blank defaults
       const blank: Record<string, any> = {};
       formColumns.forEach(col => {
         const key = String(col.key);
-        if (col.defaultValue !== undefined) {
-          blank[key] = typeof col.defaultValue === 'function' ? col.defaultValue(contextData) : col.defaultValue;
+        if (isSiteColumn(col)) {
+          blank[key] = !canAccessAllSites()
+            ? userAssignedHotel
+            : (selectedSite && selectedSite !== 'all' ? selectedSite : (assignedSite || allSiteNames[0] || userAssignedHotel));
+        } else if (col.defaultValue !== undefined) {
+          blank[key] = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
         } else {
           switch (col.type) {
             case 'number':
@@ -157,8 +230,14 @@ export function DynamicRecordFormModal<T = any>({
   };
 
   const resolveOptions = (col: TableColumnConfig<T>): SelectOption[] => {
+    if (isSiteColumn(col)) {
+      if (!canAccessAllSites()) {
+        return [{ label: userAssignedHotel, value: userAssignedHotel }];
+      }
+      return allSiteNames.map(name => ({ label: name, value: name }));
+    }
     if (!col.options) return [];
-    const rawOptions = typeof col.options === 'function' ? col.options(contextData) : col.options;
+    const rawOptions = typeof col.options === 'function' ? col.options(effectiveContext) : col.options;
     return (rawOptions || []).map(opt => {
       if (typeof opt === 'string') {
         return { label: opt, value: opt };
@@ -171,8 +250,11 @@ export function DynamicRecordFormModal<T = any>({
     const newErrors: Record<string, string> = {};
     formColumns.forEach(col => {
       const key = String(col.key);
+      const isSite = isSiteColumn(col);
       if (col.required) {
-        const val = formData[key];
+        const val = isSite && !canAccessAllSites() 
+          ? userAssignedHotel 
+          : (formData[key] ?? (isSite ? userAssignedHotel : ''));
         if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
           newErrors[key] = `${col.label} is required`;
         }
@@ -193,6 +275,13 @@ export function DynamicRecordFormModal<T = any>({
       const processed: Record<string, any> = { ...(initialValues || {}), ...formData };
       formColumns.forEach(col => {
         const key = String(col.key);
+        if (isSiteColumn(col)) {
+          if (!canAccessAllSites()) {
+            processed[key] = userAssignedHotel;
+          } else if (!processed[key]) {
+            processed[key] = selectedSite && selectedSite !== 'all' ? selectedSite : (assignedSite || allSiteNames[0] || userAssignedHotel);
+          }
+        }
         if (col.type === 'number' || col.type === 'currency') {
           const val = processed[key];
           processed[key] = val !== '' && val !== null && val !== undefined ? Number(val) : 0;
@@ -254,9 +343,11 @@ export function DynamicRecordFormModal<T = any>({
                 {secCols.map(col => {
                   const key = String(col.key);
                   const isFullWidth = col.colSpan === 2 || col.type === 'textarea';
-                  const isReadOnly = col.editable === false;
-                  const value = formData[key] ?? '';
-                  const options = col.type === 'select' ? resolveOptions(col) : [];
+                  const isSite = isSiteColumn(col);
+                  const isLockedForStaff = isSite && !canAccessAllSites();
+                  const isReadOnly = col.editable === false || isLockedForStaff;
+                  const value = isLockedForStaff ? userAssignedHotel : (formData[key] ?? '');
+                  const options = col.type === 'select' || isSite ? resolveOptions(col) : [];
 
                   return (
                     <div 
@@ -264,25 +355,41 @@ export function DynamicRecordFormModal<T = any>({
                       className={isFullWidth ? 'sm:col-span-2 space-y-1' : 'space-y-1'}
                     >
                       <label className="font-semibold text-[#605e5c] flex items-center justify-between">
-                        <span>
-                          {col.label} {col.required && <span className="text-red-500">*</span>}
+                        <span className="flex items-center gap-1">
+                          {isSite && <Building2 className="w-3.5 h-3.5 text-teal-600 inline" />}
+                          <span>{col.label} {col.required && <span className="text-red-500">*</span>}</span>
                         </span>
-                        {isReadOnly && (
+                        {isLockedForStaff ? (
+                          <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-teal-600" /> Assigned Property (Locked)
+                          </span>
+                        ) : isReadOnly ? (
                           <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5">
                             <Lock className="w-2.5 h-2.5 text-amber-600" /> Auto
                           </span>
-                        )}
+                        ) : null}
                       </label>
 
                       {/* Select input */}
-                      {col.type === 'select' ? (
+                      {isLockedForStaff ? (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={userAssignedHotel}
+                            readOnly
+                            disabled
+                            className="w-full p-2 pr-8 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed"
+                          />
+                          <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                        </div>
+                      ) : col.type === 'select' || isSite ? (
                         <select
                           value={value}
                           disabled={isReadOnly || isSubmitting}
                           onChange={e => handleChange(key, e.target.value)}
                           className={`w-full p-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors ${
                             errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
-                          } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}
+                          } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed font-medium' : ''}`}
                         >
                           <option value="" disabled>{col.placeholder || `Select ${col.label}...`}</option>
                           {options.map(opt => (

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Building2, 
   Calendar, 
@@ -16,7 +16,8 @@ import {
   ArrowUp,
   ArrowDown,
   SlidersHorizontal,
-  Eye
+  Eye,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PropertyLaundryLog } from '../../types';
@@ -207,7 +208,9 @@ export const PropertyLaundryLogSection: React.FC = () => {
   );
 
   const initialFormData = {
-    site: allowedSites[0] || 'Holiday Inn Lambeth',
+    site: !canAccessAllSites() 
+      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') 
+      : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)')),
     periodType: 'Weekly' as 'Weekly' | 'Monthly',
     periodLabel: initialWeeklyPeriod.periodLabel,
     startDate: todayBounds.start,
@@ -228,6 +231,12 @@ export const PropertyLaundryLogSection: React.FC = () => {
   };
 
   const [formData, setFormData] = useState(initialFormData);
+
+  useEffect(() => {
+    if (!canAccessAllSites() && assignedSite) {
+      setFormData(prev => ({ ...prev, site: assignedSite }));
+    }
+  }, [canAccessAllSites, assignedSite]);
 
   // Handle Date From change with restricted 1-week (max 7 days) enforcement
   const handleStartDateChange = (newStartDate: string, periodType: 'Weekly' | 'Monthly') => {
@@ -592,10 +601,15 @@ export const PropertyLaundryLogSection: React.FC = () => {
       return;
     }
 
+    const effectiveSite = !canAccessAllSites()
+      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)')
+      : (formData.site || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+
     // The two attested counts are held as '' until the operator types a figure,
     // so normalise them to numbers before they leave the form.
     const normalised = {
       ...formData,
+      site: effectiveSite,
       dirtyLaundrySent: Number(formData.dirtyLaundrySent || 0),
       cleanLaundryReturned: Number(formData.cleanLaundryReturned || 0),
     };
@@ -767,15 +781,18 @@ export const PropertyLaundryLogSection: React.FC = () => {
             <button
               onClick={() => {
                 setEditingLog(null);
-                const bounds = getWeekBounds(todayStr);
-                const currentWk = formatPeriodFromDates(bounds.start, bounds.end, 'Weekly');
+                const bounds = todayBounds;
+                const wk = formatPeriodFromDates(bounds.start, bounds.end, 'Weekly');
+                const effectiveSite = !canAccessAllSites()
+                  ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)')
+                  : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)'));
                 setFormData({ 
                   ...initialFormData, 
-                  site: allowedSites[0] || 'Brit Hotel',
+                  site: effectiveSite,
                   periodType: 'Weekly',
                   startDate: bounds.start,
                   endDate: bounds.end,
-                  periodLabel: currentWk.periodLabel,
+                  periodLabel: wk.periodLabel,
                   loggedBy: defaultAuditor
                 });
                 setIsCreateModalOpen(true);
@@ -1008,15 +1025,35 @@ export const PropertyLaundryLogSection: React.FC = () => {
             <form onSubmit={handleSubmit} className="p-4 space-y-3.5 text-xs max-h-[80vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">Property / Hotel *</label>
-                  <select
-                    value={formData.site}
-                    onChange={e => setFormData({ ...formData, site: e.target.value })}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-                    required
-                  >
-                    {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
-                  </select>
+                  <label className="font-semibold text-[#605e5c] block mb-1 flex items-center justify-between">
+                    <span>Property / Hotel *</span>
+                    {!canAccessAllSites() && (
+                      <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium flex items-center gap-0.5">
+                        <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
+                      </span>
+                    )}
+                  </label>
+                  {!canAccessAllSites() ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)'}
+                        readOnly
+                        disabled
+                        className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
+                      />
+                      <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2 top-1/2 -translate-y-1/2" />
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.site}
+                      onChange={e => setFormData({ ...formData, site: e.target.value })}
+                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
+                      required
+                    >
+                      {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
+                    </select>
+                  )}
                 </div>
 
                 <div>

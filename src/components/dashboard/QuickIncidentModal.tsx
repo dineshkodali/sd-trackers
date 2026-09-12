@@ -62,9 +62,19 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
   const todayStr = now.toISOString().slice(0, 10);
   const timeStr = now.toTimeString().slice(0, 5);
 
-  const defaultSite = canAccessAllSites() ? (allowedSites[0] || 'Brit Hotel') : assignedSite;
+  const defaultSite = canAccessAllSites() ? (allowedSites[0] || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') : (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
 
   const [site, setSite] = useState<string>(defaultSite);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (!canAccessAllSites()) {
+        setSite(assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+      } else if (!site) {
+        setSite(defaultSite);
+      }
+    }
+  }, [isOpen, canAccessAllSites, assignedSite, defaultSite]);
   const [suName, setSuName] = useState<string>('');
   const [suPortNassRef, setSuPortNassRef] = useState<string>('');
   const [roomNumber, setRoomNumber] = useState<string>('');
@@ -254,13 +264,15 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
       ? `[Room: ${roomNumber}] [Time: ${timeOfIncident}] ${incidentNotes.trim()}`
       : `[Time: ${timeOfIncident}] ${incidentNotes.trim()}`;
 
+    const effectiveSite = !canAccessAllSites() ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') : (site || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+
     // Dispatch escalation via AppContext
     addEscalation({
       dateOfIncident,
       suPortNassRef: suPortNassRef.trim() || 'Pending Ref',
       suName: suName.trim(),
-      siteName: site,
-      site,
+      siteName: effectiveSite,
+      site: effectiveSite,
       personReporting,
       incidentType,
       wlIssued,
@@ -451,19 +463,37 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
             {/* Core Identification Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="font-semibold text-neutral-700 block mb-1">
-                  Hotel / Site <span className="text-red-600">*</span>
+                <label className="font-semibold text-neutral-700 block mb-1 flex items-center justify-between">
+                  <span>Hotel / Site <span className="text-red-600">*</span></span>
+                  {!canAccessAllSites() && (
+                    <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5">
+                      <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
+                    </span>
+                  )}
                 </label>
-                <select
-                  id="incident-site"
-                  value={site}
-                  onChange={(e) => setSite(e.target.value)}
-                  className="w-full p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
-                >
-                  {allowedSites.map((s, idx) => (
-                    <option key={`${s}-${idx}`} value={s}>{s}</option>
-                  ))}
-                </select>
+                {!canAccessAllSites() ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)'}
+                      readOnly
+                      disabled
+                      className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
+                    />
+                    <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2 top-1/2 -translate-y-1/2" />
+                  </div>
+                ) : (
+                  <select
+                    id="incident-site"
+                    value={site}
+                    onChange={(e) => setSite(e.target.value)}
+                    className="w-full p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500 text-xs"
+                  >
+                    {allowedSites.map((s, idx) => (
+                      <option key={`${s}-${idx}`} value={s}>{s}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>

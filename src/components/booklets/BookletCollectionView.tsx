@@ -16,12 +16,27 @@ import { useApp } from '../../context/AppContext';
 import { BookletCollectionRecord } from '../../types';
 import { IA_HOTEL_NAMES } from '../../data/initialData';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { BOOKLETS_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { ExportDropdown } from '../common/ExportDropdown';
+import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+
+const bookletExportColumns: ExportColumnOption[] = [
+  { id: 'hotelName', label: 'Hotel / Site' },
+  { id: 'agentName', label: 'Agent / Organization' },
+  { id: 'bookletType', label: 'Booklet Title / Type' },
+  { id: 'language', label: 'Language / Translation' },
+  { id: 'numberForCollection', label: 'Target Stock' },
+  { id: 'collectedBooklets', label: 'Collected / Distributed' },
+  { id: 'bookletsReceived', label: 'Received on Site' },
+  { id: 'status', label: 'Status' },
+  { id: 'notes', label: 'Remarks & Notes' }
+];
 
 export const BookletCollectionView: React.FC = () => {
   const {
@@ -32,7 +47,10 @@ export const BookletCollectionView: React.FC = () => {
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
-    currentUserRole
+    currentUserRole,
+    canAccessAllSites,
+    assignedSite,
+    allowedSites
   } = useApp();
 
   // Table Schema Hook
@@ -43,7 +61,7 @@ export const BookletCollectionView: React.FC = () => {
     resetToDefault
   } = useTableSchema<BookletCollectionRecord>('booklets', BOOKLETS_TABLE_COLUMNS);
 
-  const [selectedHotel, setSelectedHotel] = useState<string>('all');
+  const [selectedHotel, setSelectedHotel] = useState<string>(!canAccessAllSites() ? assignedSite : 'all');
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [bookletTypeFilter, setBookletTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -95,7 +113,9 @@ export const BookletCollectionView: React.FC = () => {
 
   const handleCreateSubmit = (data: Partial<BookletCollectionRecord>) => {
     addBookletRecord({
-      hotelName: data.hotelName || IA_HOTEL_NAMES[0],
+      hotelName: !canAccessAllSites() 
+        ? assignedSite 
+        : (data.hotelName || (selectedHotel !== 'all' ? selectedHotel : (assignedSite || allowedSites[0]))),
       agentName: data.agentName || 'Ready Homes',
       bookletType: data.bookletType || 'Migrant Help booklets',
       language: data.language || 'English',
@@ -118,17 +138,82 @@ export const BookletCollectionView: React.FC = () => {
     setEditingRecord(null);
   };
 
-  const handleExportCsv = () => {
-    exportTableToCsv({
-      filename: 'Booklets_Collection_Register.csv',
-      headers: visibleColumns.map(col => col.label),
-      rows: sortedRecords.map(r => 
-        visibleColumns.map(col => {
-          const val = (r as any)[col.key];
-          return val !== undefined && val !== null ? String(val) : '';
-        })
-      )
-    });
+  // Export Handlers with Custom Download & PDF/CSV Options
+  const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
+    let sourceData = bookletRecords;
+    if (scope === 'filtered') sourceData = sortedRecords;
+    else if (scope === 'custom' && startDate && endDate) {
+      sourceData = bookletRecords.filter(b => {
+        const d = (b as any).createdAt ? (b as any).createdAt.slice(0, 10) : '';
+        return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+      });
+    }
+    return sourceData;
+  };
+
+  const calculateDateRangeCount = (startDate: string, endDate: string): number => {
+    return bookletRecords.filter(b => {
+      const d = (b as any).createdAt ? (b as any).createdAt.slice(0, 10) : '';
+      return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+    }).length;
+  };
+
+  const getExportPreviewData = ({
+    scope,
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    scope: ExportScope;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    orientation: ExportOrientation;
+    isCompact: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate).slice(0, 5);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? bookletExportColumns.filter(c => selectedColumns.includes(c.id))
+      : bookletExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+    return { headers, rows };
+  };
+
+  const handlePerformExport = ({
+    format,
+    scope,
+    orientation = 'landscape',
+    startDate,
+    endDate,
+    selectedColumns
+  }: {
+    format: ExportFormat;
+    scope: ExportScope;
+    orientation: ExportOrientation;
+    startDate?: string;
+    endDate?: string;
+    selectedColumns?: string[];
+    isCompact?: boolean;
+  }) => {
+    const raw = getExportDataForScope(scope, startDate, endDate);
+    const cols = selectedColumns && selectedColumns.length > 0
+      ? bookletExportColumns.filter(c => selectedColumns.includes(c.id))
+      : bookletExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = raw.map(row => cols.map(c => String((row as any)[c.id] ?? '')));
+
+    if (format === 'csv') {
+      exportTableToCsv({ filename: 'Booklets_Collection_Register.csv', headers, rows });
+    } else {
+      exportTableToPdf({
+        filename: 'Booklets_Collection_Register.pdf',
+        title: 'Initial Accommodation Literature & Booklet Consignments',
+        headers,
+        rows,
+        orientation
+      });
+    }
   };
 
   const renderColumnCell = (col: TableColumnConfig<BookletCollectionRecord>, record: BookletCollectionRecord) => {
@@ -194,13 +279,17 @@ export const BookletCollectionView: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-          >
-            <Download className="w-3.5 h-3.5 text-[#605e5c]" />
-            <span>Export CSV</span>
-          </button>
+          <ExportDropdown
+            moduleName="Booklet Consignments"
+            totalRecordCount={bookletRecords.length}
+            filteredRecordCount={filteredRecords.length}
+            defaultOrientation="landscape"
+            dateRangeRecordCount={calculateDateRangeCount}
+            availableColumns={bookletExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+            buttonVariant="toolbar"
+          />
 
           {canCreateRecord() && (
             <button
@@ -370,7 +459,7 @@ export const BookletCollectionView: React.FC = () => {
         title="Add Booklet Consignment"
         columns={columns}
         initialValues={{
-          hotelName: IA_HOTEL_NAMES[0],
+          hotelName: !canAccessAllSites() ? assignedSite : (selectedHotel !== 'all' ? selectedHotel : (assignedSite || allowedSites[0])),
           agentName: 'Ready Homes',
           bookletType: 'Migrant Help booklets',
           language: 'English',

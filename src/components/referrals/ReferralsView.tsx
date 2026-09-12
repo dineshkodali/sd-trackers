@@ -737,7 +737,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         title="New SG Referral Submission"
         columns={referralsColumns}
         initialValues={{
-          site: allowedSites[0] || 'Victoria House',
+          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           dateReferred: new Date().toISOString().slice(0, 10),
           status: 'Open',
           methodOfReferral: 'Encrypted Email',
@@ -746,8 +746,9 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         }}
         onSave={(data) => {
           const currentOfficer = (data as any).raisedBy || (data as any).officerLeadingHotel || loggedInUserName;
+          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
           addReferral({
-            site: data.site || allowedSites[0] || 'Victoria House',
+            site: effectiveSite,
             referralCouncil: data.referralCouncil || '',
             suName: data.suName || '',
             portRef: data.portRef || '',
