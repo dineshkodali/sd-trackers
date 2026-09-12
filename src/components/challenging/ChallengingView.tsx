@@ -22,6 +22,7 @@ import { ChallengingSU, RiskLevel, StatusType, RecordAttachment } from '../../ty
 import { FilterBar } from '../common/FilterBar';
 import { Pagination } from '../common/Pagination';
 import { AttachmentsSection } from '../common/AttachmentsSection';
+import { CompactRecordCard, CompactRecordList } from '../common/CompactRecordCards';
 import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrientation } from '../common/ExportModal';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -81,7 +82,8 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
     setActivePage,
     getFieldOptions,
     globalSearchFilter,
-    setGlobalSearchFilter
+    setGlobalSearchFilter,
+    isMobileCompactView
   } = useApp();
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
@@ -628,111 +630,151 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
 
       {/* Table */}
       <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left text-xs border-collapse min-w-[1800px]">
-            <thead>
-              <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                {visibleChallengingColumns.map(col => (
-                  <th
-                    key={String(col.key)}
-                    onClick={() => handleSort(col.key as any)}
-                    className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                    title={`Sort by ${col.label}`}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>{col.label}</span>
-                      {col.isCustom && (
-                        <span className="px-1 text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded">
-                          custom
-                        </span>
-                      )}
-                      {sortField === col.key ? (
-                        sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
-                      )}
-                    </div>
-                  </th>
-                ))}
-                <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edebe9]">
-              {paginatedData.length === 0 ? (
-                <tr>
-                  <td colSpan={visibleChallengingColumns.length + 1} className="text-center py-12 text-[#605e5c]">
-                    No challenging SU records found.
-                  </td>
+        {isMobileCompactView ? (
+          <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
+            <CompactRecordList
+              data={paginatedData}
+              emptyMessage="No challenging SU records found."
+              renderCard={(c, idx) => {
+                const canEdit = canEditRecord(c.site);
+                const canDelete = canDeleteRecord();
+                const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+                return (
+                  <CompactRecordCard
+                    key={c.id}
+                    id={c.id}
+                    srNo={srNo}
+                    title={c.name || 'Unnamed Resident'}
+                    subtitle={c.portRef ? `Port Ref: ${c.portRef}` : undefined}
+                    site={c.site}
+                    statusBadge={renderColumnCell({ key: 'status' } as any, c)}
+                    fields={[
+                      { label: 'Issue Type', value: c.typeOfIssue },
+                      { label: 'Risk Factor', value: c.riskFactor },
+                      { label: 'Incident Date', value: c.dateOfIncident || c.date },
+                      { label: 'Raised By', value: c.raisedBy }
+                    ]}
+                    isArchived={c.status === 'Archived'}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onView={() => setViewRecord(c)}
+                    onEdit={canEdit ? () => setEditingRecord(c) : undefined}
+                    onArchive={c.status !== 'Archived' ? () => archiveChallengingSU(c.id) : undefined}
+                    onRestore={c.status === 'Archived' ? () => restoreChallengingSU(c.id) : undefined}
+                    onDelete={canDelete ? () => deleteChallengingSU(c.id) : undefined}
+                  />
+                );
+              }}
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-left text-xs border-collapse min-w-[1800px]">
+              <thead>
+                <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
+                  {visibleChallengingColumns.map(col => (
+                    <th
+                      key={String(col.key)}
+                      onClick={() => handleSort(col.key as any)}
+                      className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                      title={`Sort by ${col.label}`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>{col.label}</span>
+                        {col.isCustom && (
+                          <span className="px-1 text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded">
+                            custom
+                          </span>
+                        )}
+                        {sortField === col.key ? (
+                          sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
+                        )}
+                      </div>
+                    </th>
+                  ))}
+                  <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
                 </tr>
-              ) : (
-                paginatedData.map(c => {
-                  const canEdit = canEditRecord(c.site);
-                  const canDelete = canDeleteRecord();
+              </thead>
+              <tbody className="divide-y divide-[#edebe9]">
+                {paginatedData.length === 0 ? (
+                  <tr>
+                    <td colSpan={visibleChallengingColumns.length + 1} className="text-center py-12 text-[#605e5c]">
+                      No challenging SU records found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedData.map(c => {
+                    const canEdit = canEditRecord(c.site);
+                    const canDelete = canDeleteRecord();
 
-                  return (
-                    <tr key={c.id} className="hover:bg-[#fafafa] transition-colors">
-                      {visibleChallengingColumns.map(col => (
-                        <td key={String(col.key)} className="p-2.5">
-                          {renderColumnCell(col, c)}
-                        </td>
-                      ))}
-                      <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => setViewRecord(c)}
-                            className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
-                            title="View Incident File"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-
-                          {canEdit && (
+                    return (
+                      <tr key={c.id} className="hover:bg-[#fafafa] transition-colors">
+                        {visibleChallengingColumns.map(col => (
+                          <td key={String(col.key)} className="p-2.5">
+                            {renderColumnCell(col, c)}
+                          </td>
+                        ))}
+                        <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                          <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => setEditingRecord(c)}
+                              onClick={() => setViewRecord(c)}
                               className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
-                              title="Edit Incident"
+                              title="View Incident File"
                             >
-                              <Edit3 className="w-3.5 h-3.5" />
+                              <Eye className="w-3.5 h-3.5" />
                             </button>
-                          )}
 
-                          {c.status === 'Archived' ? (
-                            <button
-                              onClick={() => restoreChallengingSU(c.id)}
-                              className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded font-semibold text-[11px] flex items-center gap-0.5"
-                              title="Restore"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span className="hidden xl:inline">Restore</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => archiveChallengingSU(c.id)}
-                              className="p-1 text-neutral-500 hover:text-purple-700 hover:bg-[#edebe9] rounded"
-                              title="Archive"
-                            >
-                              <Archive className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                            {canEdit && (
+                              <button
+                                onClick={() => setEditingRecord(c)}
+                                className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
+                                title="Edit Incident"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
 
-                          {canDelete && (
-                            <button
-                              onClick={() => deleteChallengingSU(c.id)}
-                              className="p-1 text-neutral-400 hover:text-[#a4262c] hover:bg-red-50 rounded"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                            {c.status === 'Archived' ? (
+                              <button
+                                onClick={() => restoreChallengingSU(c.id)}
+                                className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded font-semibold text-[11px] flex items-center gap-0.5"
+                                title="Restore"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span className="hidden xl:inline">Restore</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => archiveChallengingSU(c.id)}
+                                className="p-1 text-neutral-500 hover:text-purple-700 hover:bg-[#edebe9] rounded"
+                                title="Archive"
+                              >
+                                <Archive className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {canDelete && (
+                              <button
+                                onClick={() => deleteChallengingSU(c.id)}
+                                className="p-1 text-neutral-400 hover:text-[#a4262c] hover:bg-red-50 rounded"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <Pagination
           currentPage={currentPage}

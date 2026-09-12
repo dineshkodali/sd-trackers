@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RotateCcw, Download, Filter, Lock, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { RotateCcw, Download, Filter, Lock, FileText, FileSpreadsheet, ChevronDown, LayoutGrid, List } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SearchInput } from './SearchInput';
 
@@ -38,7 +38,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   searchStorageKey = 'safeguarding_filter_bar',
   searchPlaceholder = 'Filter by name, Port/NASS ref, room, or notes...'
 }) => {
-  const { allowedSites, canAccessAllSites } = useApp();
+  const { allowedSites, canAccessAllSites, isMobileCompactView, setIsMobileCompactView } = useApp();
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -208,13 +208,47 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#edebe9] text-[11px] text-[#605e5c]">
-        <span>
-          Matching records: <strong className="text-[#242424]">{totalFilteredCount}</strong>
-        </span>
-        <span className="text-[10px] text-neutral-400">
-          Instant search & filter with recent search history
-        </span>
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#edebe9] text-[11px] text-[#605e5c] flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <span>
+            Matching records: <strong className="text-[#242424]">{totalFilteredCount}</strong>
+          </span>
+          <span className="hidden sm:inline text-[10px] text-neutral-400">
+            Instant search & filter with recent search history
+          </span>
+        </div>
+
+        {/* View Mode Switcher: Compact Cards vs Full Table */}
+        <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded border border-[#edebe9]">
+          <button
+            id="btn-toggle-view-cards"
+            type="button"
+            onClick={() => setIsMobileCompactView(true)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+              isMobileCompactView 
+                ? 'bg-white text-[#0d9488] shadow-xs' 
+                : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+            title="Compact Cards View (Mobile Optimized)"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>Cards</span>
+          </button>
+          <button
+            id="btn-toggle-view-table"
+            type="button"
+            onClick={() => setIsMobileCompactView(false)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+              !isMobileCompactView 
+                ? 'bg-white text-[#0d9488] shadow-xs' 
+                : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+            title="Full Table View (Desktop Grid)"
+          >
+            <List className="w-3.5 h-3.5" />
+            <span>Table</span>
+          </button>
+        </div>
       </div>
     </div>
   );

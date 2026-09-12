@@ -28,9 +28,11 @@ import {
   PlaneTakeoff,
   BookOpen,
   HandHeart,
-  BellRing
+  BellRing,
+  X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { Logo } from './Logo';
 
 export const Sidebar: React.FC = () => {
   const { 
@@ -58,7 +60,9 @@ export const Sidebar: React.FC = () => {
     canManageRoles,
     canManageProperties,
     canManageUsers,
-    rolePermissions
+    rolePermissions,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen
   } = useApp();
 
   const [openGroups, setOpenGroups] = useState<{ [key: string]: boolean }>({
@@ -92,12 +96,45 @@ export const Sidebar: React.FC = () => {
   const isNavActive = (page: string) => activePage === page;
 
   return (
-    <aside 
-      id="main-app-sidebar"
-      className="w-64 bg-[#fbfbfa] border-r border-[#e5e5e5] flex flex-col shrink-0 h-full sticky top-0 left-0 z-20 select-none"
-    >
-      {/* Navigation List */}
-      <nav className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto custom-scrollbar text-xs">
+    <>
+      {/* Mobile Drawer Backdrop Overlay */}
+      <div 
+        id="sidebar-mobile-backdrop"
+        className={`fixed inset-0 bg-black/40 backdrop-blur-xs z-40 transition-opacity duration-300 lg:hidden ${
+          isMobileSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsMobileSidebarOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Responsive Sidebar Drawer */}
+      <aside 
+        id="main-app-sidebar"
+        className={`bg-[#fbfbfa] border-r border-[#e5e5e5] flex flex-col shrink-0 h-full select-none transition-transform duration-300 ease-in-out
+          fixed top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] shadow-2xl
+          lg:static lg:top-auto lg:bottom-auto lg:left-auto lg:z-20 lg:w-64 lg:shadow-none lg:translate-x-0
+          ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        {/* Mobile-Only Drawer Header with Logo & Close Button */}
+        <div className="flex lg:hidden items-center justify-between px-3.5 py-3 border-b border-[#e5e5e5] bg-white">
+          <div className="flex items-center gap-2">
+            <Logo size="sm" />
+            <span className="font-bold text-xs tracking-tight text-[#242424]">SD Trackers</span>
+          </div>
+          <button
+            id="btn-close-mobile-sidebar"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer"
+            aria-label="Close navigation menu"
+            title="Close menu"
+          >
+            <X className="w-5 h-5 text-neutral-600" />
+          </button>
+        </div>
+
+        {/* Navigation List */}
+        <nav className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto custom-scrollbar text-xs">
         
         {/* Section: Overview */}
         <div className="space-y-0.5">
@@ -785,5 +822,6 @@ export const Sidebar: React.FC = () => {
         )}
       </nav>
     </aside>
+  </>
   );
 };

@@ -23,6 +23,7 @@ import { SGReferral, StatusType, RiskLevel, RecordAttachment } from '../../types
 import { FilterBar } from '../common/FilterBar';
 import { Pagination } from '../common/Pagination';
 import { AttachmentsSection } from '../common/AttachmentsSection';
+import { CompactRecordCard, CompactRecordList } from '../common/CompactRecordCards';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrientation } from '../common/ExportModal';
@@ -80,7 +81,8 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     setActivePage,
     getFieldOptions,
     globalSearchFilter,
-    setGlobalSearchFilter
+    setGlobalSearchFilter,
+    isMobileCompactView
   } = useApp();
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
@@ -591,131 +593,171 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
 
       {/* Main Table Panel with persistent bottom-stretching height */}
       <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left text-xs border-collapse min-w-[1700px]">
-            <thead>
-              <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                {!isArchive && (
-                  <th className="p-2.5 w-12 text-center">Sr. No.</th>
-                )}
-                {visibleReferralsColumns.map(col => {
-                  const isSorted = sortField === col.key;
-                  return (
-                    <th
-                      key={String(col.key)}
-                      onClick={() => handleSort(String(col.key))}
-                      className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                      title={`Sort by ${col.label}`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>{col.label}</span>
-                        {col.isCustom && (
-                          <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
-                            Custom
-                          </span>
-                        )}
-                        {isSorted ? (
-                          sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
-                        ) : (
-                          <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-                <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edebe9]">
-              {paginatedData.length === 0 ? (
-                <tr>
-                  <td colSpan={visibleReferralsColumns.length + (isArchive ? 1 : 2)} className="text-center py-12 text-[#605e5c]">
-                    No referral records found matching current criteria.
-                  </td>
-                </tr>
-              ) : (
-                paginatedData.map((r, idx) => {
-                  const canEdit = canEditRecord(r.site);
-                  const canDelete = canDeleteRecord();
+        {isMobileCompactView ? (
+          <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
+            <CompactRecordList
+              data={paginatedData}
+              emptyMessage="No referral records found matching current criteria."
+              renderCard={(r, idx) => {
+                const canEdit = canEditRecord(r.site);
+                const canDelete = canDeleteRecord();
+                const srNo = r.srNo || (currentPage - 1) * pageSize + idx + 1;
 
-                  return (
-                    <tr key={r.id} className="hover:bg-[#fafafa] transition-colors">
-                      {!isArchive && (
-                        <td className="p-2.5 text-center text-neutral-400 font-mono">
-                          {r.srNo || (currentPage - 1) * pageSize + idx + 1}
-                        </td>
-                      )}
-                      {visibleReferralsColumns.map(col => (
-                        <td key={String(col.key)} className="p-2.5 whitespace-nowrap">
-                          {renderColumnCell(col, r)}
-                        </td>
-                      ))}
-                      <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* View details */}
-                          <button
-                            id={`view-ref-${r.id}`}
-                            onClick={() => setViewRecord(r)}
-                            className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
-                            title="View Record Details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-
-                          {/* Edit record */}
-                          {canEdit && (
-                            <button
-                              id={`edit-ref-${r.id}`}
-                              onClick={() => setEditingRecord(r)}
-                              className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
-                              title="Edit Record"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
+                return (
+                  <CompactRecordCard
+                    key={r.id}
+                    id={r.id}
+                    srNo={srNo}
+                    title={r.suName || 'Unnamed Service User'}
+                    subtitle={r.portRef ? `Port/NASS Ref: ${r.portRef}` : undefined}
+                    site={r.site}
+                    statusBadge={renderColumnCell({ key: 'status' } as any, r)}
+                    fields={[
+                      { label: 'Council', value: r.referralCouncil },
+                      { label: 'Mosaic ID', value: r.mosaicId },
+                      { label: 'Date', value: r.dateReferred },
+                      { label: 'Type', value: r.referralType }
+                    ]}
+                    isArchived={r.status === 'Archived'}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onView={() => setViewRecord(r)}
+                    onEdit={canEdit ? () => setEditingRecord(r) : undefined}
+                    onArchive={r.status !== 'Archived' ? () => archiveReferral(r.id) : undefined}
+                    onRestore={r.status === 'Archived' ? () => restoreReferral(r.id) : undefined}
+                    onDelete={canDelete ? () => deleteReferral(r.id) : undefined}
+                  />
+                );
+              }}
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-left text-xs border-collapse min-w-[1700px]">
+              <thead>
+                <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
+                  {!isArchive && (
+                    <th className="p-2.5 w-12 text-center">Sr. No.</th>
+                  )}
+                  {visibleReferralsColumns.map(col => {
+                    const isSorted = sortField === col.key;
+                    return (
+                      <th
+                        key={String(col.key)}
+                        onClick={() => handleSort(String(col.key))}
+                        className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                        title={`Sort by ${col.label}`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{col.label}</span>
+                          {col.isCustom && (
+                            <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
+                              Custom
+                            </span>
                           )}
-
-                          {/* Archive / Restore */}
-                          {r.status === 'Archived' ? (
-                            <button
-                              id={`restore-ref-${r.id}`}
-                              onClick={() => restoreReferral(r.id)}
-                              className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded font-semibold text-[11px] flex items-center gap-0.5"
-                              title="Restore Referral"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span className="hidden xl:inline">Restore</span>
-                            </button>
+                          {isSorted ? (
+                            sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
                           ) : (
-                            <button
-                              id={`archive-ref-${r.id}`}
-                              onClick={() => archiveReferral(r.id)}
-                              className="p-1 text-neutral-500 hover:text-purple-700 hover:bg-[#edebe9] rounded"
-                              title="Archive Referral"
-                            >
-                              <Archive className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-
-                          {/* Delete record (strictly checked) */}
-                          {canDelete && (
-                            <button
-                              id={`delete-ref-${r.id}`}
-                              onClick={() => deleteReferral(r.id)}
-                              className="p-1 text-neutral-400 hover:text-[#a4262c] hover:bg-red-50 rounded"
-                              title="Delete Record"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </th>
+                    );
+                  })}
+                  <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#edebe9]">
+                {paginatedData.length === 0 ? (
+                  <tr>
+                    <td colSpan={visibleReferralsColumns.length + (isArchive ? 1 : 2)} className="text-center py-12 text-[#605e5c]">
+                      No referral records found matching current criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedData.map((r, idx) => {
+                    const canEdit = canEditRecord(r.site);
+                    const canDelete = canDeleteRecord();
+
+                    return (
+                      <tr key={r.id} className="hover:bg-[#fafafa] transition-colors">
+                        {!isArchive && (
+                          <td className="p-2.5 text-center text-neutral-400 font-mono">
+                            {r.srNo || (currentPage - 1) * pageSize + idx + 1}
+                          </td>
+                        )}
+                        {visibleReferralsColumns.map(col => (
+                          <td key={String(col.key)} className="p-2.5 whitespace-nowrap">
+                            {renderColumnCell(col, r)}
+                          </td>
+                        ))}
+                        <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* View details */}
+                            <button
+                              id={`view-ref-${r.id}`}
+                              onClick={() => setViewRecord(r)}
+                              className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
+                              title="View Record Details"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Edit record */}
+                            {canEdit && (
+                              <button
+                                id={`edit-ref-${r.id}`}
+                                onClick={() => setEditingRecord(r)}
+                                className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
+                                title="Edit Record"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {/* Archive / Restore */}
+                            {r.status === 'Archived' ? (
+                              <button
+                                id={`restore-ref-${r.id}`}
+                                onClick={() => restoreReferral(r.id)}
+                                className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded font-semibold text-[11px] flex items-center gap-0.5"
+                                title="Restore Referral"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span className="hidden xl:inline">Restore</span>
+                              </button>
+                            ) : (
+                              <button
+                                id={`archive-ref-${r.id}`}
+                                onClick={() => archiveReferral(r.id)}
+                                className="p-1 text-neutral-500 hover:text-purple-700 hover:bg-[#edebe9] rounded"
+                                title="Archive Referral"
+                              >
+                                <Archive className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {/* Delete record (strictly checked) */}
+                            {canDelete && (
+                              <button
+                                id={`delete-ref-${r.id}`}
+                                onClick={() => deleteReferral(r.id)}
+                                className="p-1 text-neutral-400 hover:text-[#a4262c] hover:bg-red-50 rounded"
+                                title="Delete Record"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination bar */}
         <Pagination

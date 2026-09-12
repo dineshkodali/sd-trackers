@@ -12,7 +12,9 @@ import {
   RefreshCw,
   LogIn,
   LogOut,
-  Activity
+  Activity,
+  Menu,
+  X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
@@ -38,7 +40,9 @@ export const Header: React.FC = () => {
     setDiagnosticModalOpen,
     canAccessAllSites,
     canManageRoles,
-    canManageSettings
+    canManageSettings,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen
   } = useApp();
 
   const getPageTitle = (page: string) => {
@@ -119,12 +123,24 @@ export const Header: React.FC = () => {
 
   return (
     <header className="h-16 shrink-0 bg-white border-b border-[#e1dfdd] px-4 md:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-      {/* Brand area */}
-      <div className="flex items-center gap-3">
+      {/* Brand area with Hamburger Menu for Mobile & Tablet */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          id="btn-mobile-menu-toggle"
+          onClick={() => setIsMobileSidebarOpen(prev => !prev)}
+          className="lg:hidden p-2 -ml-1 text-[#323130] hover:text-[#0d9488] hover:bg-[#f3f2f1] rounded-md transition-colors focus:outline-hidden"
+          aria-label={isMobileSidebarOpen ? 'Close navigation drawer' : 'Open navigation drawer'}
+          title={isMobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
+        >
+          {isMobileSidebarOpen ? <X className="w-5 h-5 text-[#0d9488]" /> : <Menu className="w-5 h-5" />}
+        </button>
+
         <Logo size="sm" />
         <div className="h-5 w-[1px] bg-[#e1dfdd] hidden md:block" />
-        <div className="hidden md:flex items-center gap-2">
-          <span className="text-xs font-semibold text-[#242424]">{getPageTitle(activePage)}</span>
+        <div className="hidden sm:flex items-center gap-2 min-w-0">
+          <span className="text-xs font-semibold text-[#242424] truncate max-w-[160px] md:max-w-[280px] lg:max-w-[360px]">
+            {getPageTitle(activePage)}
+          </span>
         </div>
       </div>
 

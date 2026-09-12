@@ -22,6 +22,7 @@ import { VulnerableSU, RiskLevel, StatusType, RecordAttachment } from '../../typ
 import { FilterBar } from '../common/FilterBar';
 import { Pagination } from '../common/Pagination';
 import { AttachmentsSection } from '../common/AttachmentsSection';
+import { CompactRecordCard, CompactRecordList } from '../common/CompactRecordCards';
 import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrientation } from '../common/ExportModal';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -77,7 +78,8 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
     setActivePage,
     getFieldOptions,
     globalSearchFilter,
-    setGlobalSearchFilter
+    setGlobalSearchFilter,
+    isMobileCompactView
   } = useApp();
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
@@ -558,114 +560,154 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
 
       {/* Data Table with persistent bottom-stretching height */}
       <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left text-xs border-collapse min-w-[1300px]">
-            <thead>
-              <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                {visibleVulnerableColumns.map(col => {
-                  const isSorted = sortField === col.key;
-                  return (
-                    <th
-                      key={String(col.key)}
-                      onClick={() => handleSort(col.key as any)}
-                      className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                      title={`Sort by ${col.label}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>{col.label}</span>
-                        {col.isCustom && (
-                          <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
-                            Custom
-                          </span>
-                        )}
-                        {isSorted ? (
-                          sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
-                        ) : (
-                          <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-                <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edebe9]">
-              {paginatedData.length === 0 ? (
-                <tr>
-                  <td colSpan={visibleVulnerableColumns.length + 1} className="text-center py-12 text-[#605e5c]">
-                    No vulnerable resident records found.
-                  </td>
-                </tr>
-              ) : (
-                paginatedData.map(v => {
-                  const canEdit = canEditRecord(v.site);
-                  const canDelete = canDeleteRecord();
+        {isMobileCompactView ? (
+          <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
+            <CompactRecordList
+              data={paginatedData}
+              emptyMessage="No vulnerable resident records found."
+              renderCard={(v, idx) => {
+                const canEdit = canEditRecord(v.site);
+                const canDelete = canDeleteRecord();
+                const srNo = (currentPage - 1) * pageSize + idx + 1;
 
-                  return (
-                    <tr key={v.id} className="hover:bg-[#fafafa] transition-colors">
-                      {visibleVulnerableColumns.map(col => (
-                        <td key={String(col.key)} className="p-2.5 whitespace-nowrap">
-                          {renderColumnCell(col, v)}
-                        </td>
-                      ))}
-                      <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => setViewRecord(v)}
-                            className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
-                            title="View Details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-
-                          {canEdit && (
-                            <button
-                              onClick={() => setEditingRecord(v)}
-                              className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
-                              title="Edit Record"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
+                return (
+                  <CompactRecordCard
+                    key={v.id}
+                    id={v.id}
+                    srNo={srNo}
+                    title={v.suName || 'Unnamed Resident'}
+                    subtitle={v.portOrNassRef ? `Port/NASS Ref: ${v.portOrNassRef}` : undefined}
+                    site={v.site}
+                    statusBadge={renderColumnCell({ key: 'status' } as any, v)}
+                    fields={[
+                      { label: 'Room / Flat', value: v.roomOrFlatNo },
+                      { label: 'Risk Level', value: v.riskLevel },
+                      { label: 'Review Date', value: v.reviewDate },
+                      { label: 'Vulnerability', value: v.vulnerability }
+                    ]}
+                    isArchived={v.status === 'Archived'}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onView={() => setViewRecord(v)}
+                    onEdit={canEdit ? () => setEditingRecord(v) : undefined}
+                    onArchive={v.status !== 'Archived' ? () => archiveVulnerableSU(v.id) : undefined}
+                    onRestore={v.status === 'Archived' ? () => restoreVulnerableSU(v.id) : undefined}
+                    onDelete={canDelete ? () => deleteVulnerableSU(v.id) : undefined}
+                  />
+                );
+              }}
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-left text-xs border-collapse min-w-[1300px]">
+              <thead>
+                <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
+                  {visibleVulnerableColumns.map(col => {
+                    const isSorted = sortField === col.key;
+                    return (
+                      <th
+                        key={String(col.key)}
+                        onClick={() => handleSort(col.key as any)}
+                        className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                        title={`Sort by ${col.label}`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>{col.label}</span>
+                          {col.isCustom && (
+                            <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
+                              Custom
+                            </span>
                           )}
-
-                          {v.status === 'Archived' ? (
-                            <button
-                              onClick={() => restoreVulnerableSU(v.id)}
-                              className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded font-semibold text-[11px] flex items-center gap-0.5"
-                              title="Restore"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span className="hidden xl:inline">Restore</span>
-                            </button>
+                          {isSorted ? (
+                            sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
                           ) : (
-                            <button
-                              onClick={() => archiveVulnerableSU(v.id)}
-                              className="p-1 text-neutral-500 hover:text-purple-700 hover:bg-[#edebe9] rounded"
-                              title="Archive"
-                            >
-                              <Archive className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-
-                          {canDelete && (
-                            <button
-                              onClick={() => deleteVulnerableSU(v.id)}
-                              className="p-1 text-neutral-400 hover:text-[#a4262c] hover:bg-red-50 rounded"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </th>
+                    );
+                  })}
+                  <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#edebe9]">
+                {paginatedData.length === 0 ? (
+                  <tr>
+                    <td colSpan={visibleVulnerableColumns.length + 1} className="text-center py-12 text-[#605e5c]">
+                      No vulnerable resident records found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedData.map(v => {
+                    const canEdit = canEditRecord(v.site);
+                    const canDelete = canDeleteRecord();
+
+                    return (
+                      <tr key={v.id} className="hover:bg-[#fafafa] transition-colors">
+                        {visibleVulnerableColumns.map(col => (
+                          <td key={String(col.key)} className="p-2.5 whitespace-nowrap">
+                            {renderColumnCell(col, v)}
+                          </td>
+                        ))}
+                        <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setViewRecord(v)}
+                              className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
+                              title="View Details"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            {canEdit && (
+                              <button
+                                onClick={() => setEditingRecord(v)}
+                                className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#edebe9] rounded"
+                                title="Edit Record"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {v.status === 'Archived' ? (
+                              <button
+                                onClick={() => restoreVulnerableSU(v.id)}
+                                className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded font-semibold text-[11px] flex items-center gap-0.5"
+                                title="Restore"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span className="hidden xl:inline">Restore</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => archiveVulnerableSU(v.id)}
+                                className="p-1 text-neutral-500 hover:text-purple-700 hover:bg-[#edebe9] rounded"
+                                title="Archive"
+                              >
+                                <Archive className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {canDelete && (
+                              <button
+                                onClick={() => deleteVulnerableSU(v.id)}
+                                className="p-1 text-neutral-400 hover:text-[#a4262c] hover:bg-red-50 rounded"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination */}
         <Pagination

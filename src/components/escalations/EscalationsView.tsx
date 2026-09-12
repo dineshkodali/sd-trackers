@@ -14,6 +14,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { EscalationRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
+import { CompactRecordCard, CompactRecordList } from '../common/CompactRecordCards';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -54,7 +55,8 @@ export const EscalationsView: React.FC = () => {
     settings,
     currentUserRole,
     currentUserName,
-    authProfile
+    authProfile,
+    isMobileCompactView
   } = useApp();
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Lead Officer');
@@ -487,88 +489,129 @@ export const EscalationsView: React.FC = () => {
 
       {/* Main Table Panel */}
       <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left text-xs border-collapse min-w-[1250px]">
-            <thead>
-              <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                {visibleColumns.map(col => {
-                  const isSorted = sortKey === col.key;
-                  return (
-                    <th 
-                      key={String(col.key)} 
-                      className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                      onClick={() => handleSort(String(col.key))}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>{col.label}</span>
-                        {isSorted ? (
-                          sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#0078d4]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0078d4]" />
-                        ) : (
-                          <ArrowUpDown className="w-3 h-3 text-[#a19f9d]" />
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-                <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edebe9] text-[#323130]">
-              {paginatedData.length === 0 ? (
-                <tr>
-                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
-                    <AlertOctagon className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
-                    <p className="font-semibold text-sm text-[#242424]">No escalation records found</p>
-                    <p className="text-xs text-[#605e5c] mt-0.5">Click 'Log Urgent Escalation' to record a new critical safeguarding issue.</p>
-                  </td>
+        {isMobileCompactView ? (
+          <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
+            <CompactRecordList
+              data={paginatedData}
+              emptyMessage="No escalation records found matching current filters."
+              renderCard={(item, idx) => {
+                const canEdit = canEditRecord(getSiteName(item));
+                const canDelete = canDeleteRecord();
+                const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+                return (
+                  <CompactRecordCard
+                    key={item.id}
+                    id={item.id}
+                    srNo={srNo}
+                    title={getSuName(item) || 'Critical Incident'}
+                    subtitle={getRef(item) ? `Port/NASS Ref: ${getRef(item)}` : undefined}
+                    site={getSiteName(item)}
+                    statusBadge={renderColumnCell({ key: 'status' } as any, item)}
+                    fields={[
+                      { label: 'Incident Type', value: item.incidentType },
+                      { label: 'Urgency', value: item.urgency },
+                      { label: 'Date', value: getDate(item) },
+                      { label: 'Reported By', value: item.personReporting }
+                    ]}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onView={() => setViewRecord(item)}
+                    onEdit={canEdit ? () => setEditingRecord(item) : undefined}
+                    onDelete={canDelete ? () => {
+                      if (window.confirm(`Are you sure you want to delete escalation for ${getSuName(item)}?`)) {
+                        deleteEscalation(item.id);
+                      }
+                    } : undefined}
+                  />
+                );
+              }}
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-left text-xs border-collapse min-w-[1250px]">
+              <thead>
+                <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
+                  {visibleColumns.map(col => {
+                    const isSorted = sortKey === col.key;
+                    return (
+                      <th 
+                        key={String(col.key)} 
+                        className="p-2.5 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                        onClick={() => handleSort(String(col.key))}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{col.label}</span>
+                          {isSorted ? (
+                            sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#0078d4]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0078d4]" />
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 text-[#a19f9d]" />
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
+                  <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
                 </tr>
-              ) : (
-                paginatedData.map(item => (
-                  <tr key={item.id} className="hover:bg-[#f3f8fd] transition-colors">
-                    {visibleColumns.map(col => (
-                      <td key={String(col.key)} className="p-2.5">
-                        {renderColumnCell(col, item)}
-                      </td>
-                    ))}
-                    <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => setViewRecord(item)}
-                          className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
-                          title="View Escalation Dossier"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        {canEditRecord(getSiteName(item)) && (
-                          <button
-                            onClick={() => setEditingRecord(item)}
-                            className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
-                            title="Edit Escalation"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {canDeleteRecord() && (
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete escalation for ${getSuName(item)}?`)) {
-                                deleteEscalation(item.id);
-                              }
-                            }}
-                            className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
-                            title="Delete Escalation"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-[#edebe9] text-[#323130]">
+                {paginatedData.length === 0 ? (
+                  <tr>
+                    <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
+                      <AlertOctagon className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
+                      <p className="font-semibold text-sm text-[#242424]">No escalation records found</p>
+                      <p className="text-xs text-[#605e5c] mt-0.5">Click 'Log Urgent Escalation' to record a new critical safeguarding issue.</p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  paginatedData.map(item => (
+                    <tr key={item.id} className="hover:bg-[#f3f8fd] transition-colors">
+                      {visibleColumns.map(col => (
+                        <td key={String(col.key)} className="p-2.5">
+                          {renderColumnCell(col, item)}
+                        </td>
+                      ))}
+                      <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setViewRecord(item)}
+                            className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
+                            title="View Escalation Dossier"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          {canEditRecord(getSiteName(item)) && (
+                            <button
+                              onClick={() => setEditingRecord(item)}
+                              className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
+                              title="Edit Escalation"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canDeleteRecord() && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to delete escalation for ${getSuName(item)}?`)) {
+                                  deleteEscalation(item.id);
+                                }
+                              }}
+                              className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
+                              title="Delete Escalation"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination */}
         <Pagination

@@ -35,6 +35,7 @@ import { useApp } from '../../context/AppContext';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';
 import { MAINTENANCE_CRITERIA_LIST, MaintenanceCriteria } from '../../data/maintenanceCriteria';
 import { Pagination } from '../common/Pagination';
+import { CompactRecordCard, CompactRecordList } from '../common/CompactRecordCards';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -86,7 +87,8 @@ export const MaintenanceTrackerView: React.FC = () => {
     setGlobalSearchFilter,
     currentUserName,
     currentUserRole,
-    authProfile
+    authProfile,
+    isMobileCompactView
   } = useApp();
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
@@ -1044,113 +1046,164 @@ export const MaintenanceTrackerView: React.FC = () => {
 
       {/* Main Data Table */}
       <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
-                {visibleMaintenanceColumns.map(col => {
-                  const isSorted = sortField === col.key;
-                  return (
-                    <th
-                      key={String(col.key)}
-                      onClick={() => handleSort(col.key as any)}
-                      className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors"
-                      title={`Sort by ${col.label}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>{col.label}</span>
-                        {col.isCustom && (
-                          <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
-                            Custom
-                          </span>
-                        )}
-                        {isSorted ? (
-                          sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
-                        ) : (
-                          <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-                <th className="py-2.5 px-3 text-right whitespace-nowrap w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edebe9] text-[#242424]">
-              {paginatedRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={visibleMaintenanceColumns.length + 1} className="py-8 text-center text-[#605e5c]">
-                    <Wrench className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
-                    <p className="font-semibold">No maintenance tickets found matching current filters.</p>
-                    <p className="text-[11px] text-neutral-400 mt-0.5">Try resetting search filters or click "Log Maintenance Defect" to report an issue.</p>
-                  </td>
-                </tr>
-              ) : (
-                paginatedRecords.map(item => {
-                  const isCat1 = item.priority === 'CAT 1';
-                  const isClosed = item.defectStatus === 'Completed' || item.action === 'Closed';
+        {isMobileCompactView ? (
+          <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
+            <CompactRecordList
+              data={paginatedRecords}
+              emptyMessage="No maintenance tickets found matching current filters."
+              renderCard={(item, idx) => {
+                const isCat1 = item.priority === 'CAT 1';
+                const isClosed = item.defectStatus === 'Completed' || item.action === 'Closed';
+                const canEdit = canEditRecord(item.site);
+                const canDelete = canDeleteRecord();
+                const srNo = (currentPage - 1) * pageSize + idx + 1;
 
-                  return (
-                    <tr
-                      key={item.id}
-                      className={`hover:bg-[#f3f2f1]/60 transition-colors ${isCat1 && !isClosed ? 'bg-red-50/20' : ''}`}
-                    >
-                      {visibleMaintenanceColumns.map(col => (
-                        <td key={String(col.key)} className="py-2.5 px-3 whitespace-nowrap">
-                          {renderColumnCell(col, item)}
-                        </td>
-                      ))}
-
-                      {/* Row Actions */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                        <div className="flex items-center justify-end gap-1">
-                          {!isClosed && canEditRecord(item.site) && (
-                            <button
-                              onClick={() => handleQuickClose(item)}
-                              title="Mark Completed & Closed"
-                              className="p-1 text-emerald-700 hover:bg-emerald-50 rounded"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                            </button>
+                return (
+                  <CompactRecordCard
+                    key={item.id}
+                    id={item.id}
+                    srNo={srNo}
+                    title={item.description || 'Maintenance Defect'}
+                    subtitle={item.criteriaCode ? `HO Code: ${item.criteriaCode}` : undefined}
+                    site={item.site}
+                    statusBadge={renderColumnCell({ key: 'defectStatus' } as any, item)}
+                    fields={[
+                      { label: 'Priority', value: renderColumnCell({ key: 'priority' } as any, item) },
+                      { label: 'Room / Unit', value: item.room },
+                      { label: 'Report Date', value: item.date },
+                      { label: 'Due Date', value: item.closeDueDate }
+                    ]}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onView={() => setViewRecord(item)}
+                    onEdit={canEdit ? () => setEditingRecord({ ...item, raisedBy: getRaisedBy(item) }) : undefined}
+                    onDelete={canDelete ? () => deleteMaintenanceRecord(item.id) : undefined}
+                    extraActions={
+                      !isClosed && canEdit ? (
+                        <button
+                          onClick={() => handleQuickClose(item)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-[11px] rounded transition-colors cursor-pointer"
+                          title="Quick Close Defect"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Close</span>
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                );
+              }}
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
+                  {visibleMaintenanceColumns.map(col => {
+                    const isSorted = sortField === col.key;
+                    return (
+                      <th
+                        key={String(col.key)}
+                        onClick={() => handleSort(col.key as any)}
+                        className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:bg-[#edebe9] transition-colors"
+                        title={`Sort by ${col.label}`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>{col.label}</span>
+                          {col.isCustom && (
+                            <span className="text-[9px] px-1 py-0.2 bg-teal-50 text-teal-700 border border-teal-200 rounded font-normal">
+                              Custom
+                            </span>
                           )}
-                          <button
-                            onClick={() => setViewRecord(item)}
-                            title="View Full Defect Details"
-                            className="p-1 text-neutral-600 hover:text-neutral-900 hover:bg-[#edebe9] rounded"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-
-                          {canEditRecord(item.site) && (
-                            <button
-                              onClick={() => setEditingRecord({
-                                ...item,
-                                raisedBy: getRaisedBy(item)
-                              })}
-                              title="Update Progress & Defect"
-                              className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                          )}
-                          {canDeleteRecord() && (
-                            <button
-                              onClick={() => deleteMaintenanceRecord(item.id)}
-                              title="Delete Record"
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          {isSorted ? (
+                            sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </th>
+                    );
+                  })}
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#edebe9] text-[#242424]">
+                {paginatedRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={visibleMaintenanceColumns.length + 1} className="py-8 text-center text-[#605e5c]">
+                      <Wrench className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
+                      <p className="font-semibold">No maintenance tickets found matching current filters.</p>
+                      <p className="text-[11px] text-neutral-400 mt-0.5">Try resetting search filters or click "Log Maintenance Defect" to report an issue.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedRecords.map(item => {
+                    const isCat1 = item.priority === 'CAT 1';
+                    const isClosed = item.defectStatus === 'Completed' || item.action === 'Closed';
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`hover:bg-[#f3f2f1]/60 transition-colors ${isCat1 && !isClosed ? 'bg-red-50/20' : ''}`}
+                      >
+                        {visibleMaintenanceColumns.map(col => (
+                          <td key={String(col.key)} className="py-2.5 px-3 whitespace-nowrap">
+                            {renderColumnCell(col, item)}
+                          </td>
+                        ))}
+
+                        {/* Row Actions */}
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                          <div className="flex items-center justify-end gap-1">
+                            {!isClosed && canEditRecord(item.site) && (
+                              <button
+                                onClick={() => handleQuickClose(item)}
+                                title="Mark Completed & Closed"
+                                className="p-1 text-emerald-700 hover:bg-emerald-50 rounded"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setViewRecord(item)}
+                              title="View Full Defect Details"
+                              className="p-1 text-neutral-600 hover:text-neutral-900 hover:bg-[#edebe9] rounded"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            {canEditRecord(item.site) && (
+                              <button
+                                onClick={() => setEditingRecord({
+                                  ...item,
+                                  raisedBy: getRaisedBy(item)
+                                })}
+                                title="Update Progress & Defect"
+                                className="p-1 text-[#0d9488] hover:bg-[#edebe9] rounded"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canDeleteRecord() && (
+                              <button
+                                onClick={() => deleteMaintenanceRecord(item.id)}
+                                title="Delete Record"
+                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination bar */}
         {sortedRecords.length > 0 && (

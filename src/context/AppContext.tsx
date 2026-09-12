@@ -166,6 +166,10 @@ interface AppContextType {
   globalSearchFilter: string;
   setGlobalSearchFilter: (query: string) => void;
   navigateToPageWithSearch: (page: string, searchFilter?: string) => void;
+  isMobileSidebarOpen: boolean;
+  setIsMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isMobileCompactView: boolean;
+  setIsMobileCompactView: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Confirmation Modal
   confirmModal: ConfirmationRequest | null;
@@ -497,7 +501,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return getInitialAssignedSite();
   });
-  const [activePage, setActivePage] = useState<string>('dashboard');
+  const [activePage, setActivePageRaw] = useState<string>('dashboard');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [isMobileCompactView, setIsMobileCompactView] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
+  const setActivePage = useCallback((page: string) => {
+    setActivePageRaw(page);
+    setIsMobileSidebarOpen(false); // Automatically close mobile drawer when navigating
+  }, []);
+
   const [globalSearchFilter, setGlobalSearchFilter] = useState<string>('');
   const [selectedSite, setSelectedSite] = useState<string>('all');
   // Configuration starts at the built-in defaults and is replaced by the live
@@ -3762,6 +3779,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setGlobalSearchFilter(searchFilter);
         }
       },
+      isMobileSidebarOpen,
+      setIsMobileSidebarOpen,
+      isMobileCompactView,
+      setIsMobileCompactView,
       confirmModal,
       requestConfirmation,
       closeConfirmation,

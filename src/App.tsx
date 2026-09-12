@@ -58,8 +58,6 @@ function AppLayout() {
     currentUserRole,
     rolePermissions
   } = useApp();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isQuickJumpOpen, setIsQuickJumpOpen] = useState(false);
 
   useEffect(() => {
@@ -210,7 +208,7 @@ function AppLayout() {
         <Sidebar />
 
         {/* Viewport Content Area - Dedicated scrolling container */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-[1700px] mx-auto w-full h-full">
+        <main className="flex-1 overflow-y-auto p-2.5 sm:p-4 md:p-6 lg:p-8 max-w-[1700px] mx-auto w-full h-full">
           <LiveDataBanner />
           {renderActiveView()}
         </main>
