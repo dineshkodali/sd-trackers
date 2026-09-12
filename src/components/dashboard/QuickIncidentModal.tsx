@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Siren, 
   X, 
@@ -49,6 +49,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
   const { 
     allowedSites, 
     assignedSite, 
+    sites,
     canAccessAllSites, 
     addEscalation, 
     setActivePage,
@@ -63,19 +64,46 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
   const todayStr = now.toISOString().slice(0, 10);
   const timeStr = now.toTimeString().slice(0, 5);
 
-  const defaultSite = canAccessAllSites() ? (allowedSites[0] || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') : (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+  const userAssignedHotel = useMemo(() => {
+    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+      return assignedSite;
+    }
+    if (authProfile?.assignedSite && authProfile.assignedSite !== 'All Sites' && authProfile.assignedSite !== 'all') {
+      return authProfile.assignedSite;
+    }
+    const pAny = authProfile as any;
+    if (pAny?.assigned_site && pAny.assigned_site !== 'All Sites' && pAny.assigned_site !== 'all') {
+      return pAny.assigned_site;
+    }
+    if (pAny?.hotel && pAny.hotel !== 'All Sites' && pAny.hotel !== 'all') {
+      return pAny.hotel;
+    }
+    if (allowedSites && allowedSites.length > 0 && allowedSites[0] !== 'All Sites' && allowedSites[0] !== 'all') {
+      return allowedSites[0];
+    }
+    const firstReal = sites?.find(s => {
+      const name = typeof s === 'string' ? s : s?.name;
+      return name && name !== 'All Sites' && name !== 'all';
+    });
+    if (firstReal) {
+      return typeof firstReal === 'string' ? firstReal : firstReal.name;
+    }
+    return '';
+  }, [assignedSite, authProfile, allowedSites, sites]);
+
+  const defaultSite = canAccessAllSites() ? (allowedSites[0] || userAssignedHotel) : userAssignedHotel;
 
   const [site, setSite] = useState<string>(defaultSite);
 
   useEffect(() => {
     if (isOpen) {
       if (!canAccessAllSites()) {
-        setSite(assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+        setSite(userAssignedHotel);
       } else if (!site) {
         setSite(defaultSite);
       }
     }
-  }, [isOpen, canAccessAllSites, assignedSite, defaultSite]);
+  }, [isOpen, canAccessAllSites, userAssignedHotel, defaultSite]);
   const [suName, setSuName] = useState<string>('');
   const [suPortNassRef, setSuPortNassRef] = useState<string>('');
   const [roomNumber, setRoomNumber] = useState<string>('');
@@ -262,11 +290,16 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
       return;
     }
 
+    if (currentUserRole !== 'Super Admin' && dateOfIncident < todayStr) {
+      setErrorMsg('Incident date cannot be in the past (must be today or later). Only Super Admin can log incidents for past dates.');
+      return;
+    }
+
     const fullNotes = roomNumber 
       ? `[Room: ${roomNumber}] [Time: ${timeOfIncident}] ${incidentNotes.trim()}`
       : `[Time: ${timeOfIncident}] ${incidentNotes.trim()}`;
 
-    const effectiveSite = !canAccessAllSites() ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') : (site || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+    const effectiveSite = !canAccessAllSites() ? userAssignedHotel : (site || userAssignedHotel);
 
     // Dispatch escalation via AppContext
     addEscalation({
@@ -479,7 +512,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                   <div className="relative">
                     <input
                       type="text"
-                      value={assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)'}
+                      value={userAssignedHotel}
                       readOnly
                       disabled
                       className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
@@ -594,14 +627,24 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
               </div>
 
               <div>
-                <label className="font-semibold text-neutral-700 block mb-1">
-                  Date & Time of Incident
+                <label className="font-semibold text-neutral-700 mb-1 flex items-center justify-between">
+                  <span>Date & Time of Incident</span>
+                  {currentUserRole !== 'Super Admin' ? (
+                    <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium">
+                      Today or Later
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-medium">
+                      Super Admin: All Dates
+                    </span>
+                  )}
                 </label>
                 <div className="flex gap-1.5">
                   <input
                     id="incident-date"
                     type="date"
                     value={dateOfIncident}
+                    min={currentUserRole !== 'Super Admin' ? todayStr : undefined}
                     onChange={(e) => setDateOfIncident(e.target.value)}
                     className="w-2/3 p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
                   />
@@ -613,6 +656,15 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                     className="w-1/3 p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
                   />
                 </div>
+                {currentUserRole !== 'Super Admin' ? (
+                  <p className="text-[10px] text-neutral-500 mt-1">
+                    Date must be today or later. Only Super Admin can file incidents for past dates.
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-purple-700 mt-1">
+                    Super Admin: Past dates permitted.
+                  </p>
+                )}
               </div>
 
               <div>

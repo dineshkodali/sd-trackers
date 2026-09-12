@@ -331,3 +331,206 @@ test('universal attachments with multiple formats and loggedBy persist and round
   assert.equal(back.attachments[3].name, 'signed_dossier.pdf');
   assert.equal(back.loggedBy, 'Lead Officer John Doe');
 });
+
+test('strict date rule: non-super admin blocked from past dates, super admin allowed, DOB exempted', () => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const pastDate = '2020-01-01';
+  const futureDate = '2030-01-01';
+
+  const isDob = (key: string, label: string) => {
+    const k = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const l = label.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return k === 'dob' || k === 'sudob' || k === 'dateofbirth' || k === 'birthdate' || l.includes('dob') || l.includes('birth');
+  };
+
+  const validateDate = (role: string, key: string, label: string, dateVal: string, isEditing: boolean, initialVal?: string): string | null => {
+    const isSuperAdmin = role === 'Super Admin';
+    if (isDob(key, label)) return null; // DOB is exempt from past date restriction
+    if (isSuperAdmin) return null; // Super Admin can select any past date
+
+    if (!isEditing && dateVal < todayStr) {
+      return `${label} cannot be in the past (must be today or later). Only Super Admin can select past dates.`;
+    }
+    if (isEditing && dateVal < todayStr && dateVal !== initialVal) {
+      return `${label} cannot be changed to a past date. Only Super Admin can select past dates.`;
+    }
+    return null;
+  };
+
+  // Regular users (e.g. Duty Officer / Staff) cannot pick past dates for appointments or logs
+  assert.ok(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', pastDate, false));
+  assert.ok(validateDate('Duty Officer', 'dateOfIncident', 'Incident Date', pastDate, false));
+  assert.ok(validateDate('Staff Member', 'date', 'Date Left', pastDate, false));
+
+  // Regular users CAN pick today or future dates
+  assert.equal(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', todayStr, false), null);
+  assert.equal(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', futureDate, false), null);
+
+  // DOB fields (dob, suDob, Date of Birth) are exempted from past date restrictions for ALL users
+  assert.equal(validateDate('Duty Worker', 'dob', 'Date of Birth', '1995-05-15', false), null);
+  assert.equal(validateDate('Duty Worker', 'suDob', 'SU DOB', '1988-12-01', false), null);
+  assert.equal(validateDate('Staff', 'dateOfBirth', 'Resident DOB', '2000-01-01', false), null);
+
+  // Super Admin can log ANY past date for operational forms, appointments, and incident logs
+  assert.equal(validateDate('Super Admin', 'appointmentDate', 'Appointment Date', pastDate, false), null);
+  assert.equal(validateDate('Super Admin', 'dateOfIncident', 'Incident Date', pastDate, false), null);
+  assert.equal(validateDate('Super Admin', 'date', 'Date Left', pastDate, false), null);
+
+  // Edit mode: preserving existing historical past date is permitted for regular users, but changing to older past date is blocked
+  assert.equal(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', pastDate, true, pastDate), null);
+  assert.ok(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', '2019-01-01', true, pastDate));
+});
+
+test('column classification guards: reviewBySGTeam is textarea, officer is not site, and assigned hotel reflects assigned property', () => {
+  const isLoggedByColumn = (col: { key: string; label?: string; type?: string }): boolean => {
+    if (col.type === 'textarea' || col.type === 'date' || col.type === 'number' || col.type === 'currency' || col.type === 'checkbox' || col.type === 'select') {
+      return false;
+    }
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (
+      key.includes('officerleadinghotel') ||
+      key.includes('laofficer') ||
+      key.includes('allocatedworker') ||
+      key.includes('review') ||
+      key.includes('contractor') ||
+      key.includes('client') ||
+      key.includes('lead') ||
+      label.includes('officerleadinghotel') ||
+      label.includes('laofficer') ||
+      label.includes('allocatedworker') ||
+      label.includes('review') ||
+      label.includes('contractor') ||
+      label.includes('client')
+    ) {
+      return false;
+    }
+
+    return (
+      key === 'loggedby' ||
+      key === 'raisedby' ||
+      key === 'reportedby' ||
+      key === 'submittedby' ||
+      key === 'personreporting' ||
+      key === 'staffreporting' ||
+      key === 'auditedby' ||
+      key === 'uploadedby' ||
+      label === 'loggedby' ||
+      label === 'raisedby' ||
+      label === 'reportedby' ||
+      label === 'submittedby' ||
+      label === 'personreporting' ||
+      label === 'staffreporting' ||
+      label === 'auditedby' ||
+      label === 'uploadedby'
+    );
+  };
+
+  const isSiteColumn = (col: { key: string; label?: string; type?: string }): boolean => {
+    if (isLoggedByColumn(col)) return false;
+    if (col.type === 'textarea' || col.type === 'date' || col.type === 'number' || col.type === 'currency' || col.type === 'checkbox') {
+      return false;
+    }
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (
+      key.includes('review') ||
+      key.includes('team') ||
+      key.includes('officer') ||
+      key.includes('staff') ||
+      key.includes('worker') ||
+      key.includes('damage') ||
+      key.includes('left') ||
+      key.includes('depart') ||
+      key.includes('contact') ||
+      key.includes('website') ||
+      key.includes('address') ||
+      label.includes('review') ||
+      label.includes('team') ||
+      label.includes('officer') ||
+      label.includes('staff') ||
+      label.includes('worker') ||
+      label.includes('damage') ||
+      label.includes('left') ||
+      label.includes('depart') ||
+      label.includes('contact') ||
+      label.includes('website') ||
+      label.includes('address')
+    ) {
+      return false;
+    }
+
+    if (
+      key === 'site' ||
+      key === 'sitename' ||
+      key === 'hotel' ||
+      key === 'hotelname' ||
+      key === 'property' ||
+      key === 'propertyname' ||
+      key === 'assignedhotel'
+    ) {
+      return true;
+    }
+
+    return (
+      label === 'site' ||
+      label === 'sitename' ||
+      label === 'property' ||
+      label === 'propertyname' ||
+      label === 'hotel' ||
+      label === 'hotelname' ||
+      label === 'hotelsite' ||
+      label === 'sitehotel' ||
+      label === 'propertysite' ||
+      label === 'siteproperty' ||
+      label === 'propertyhotel' ||
+      label === 'hotelproperty' ||
+      label === 'contractedproperty'
+    );
+  };
+
+  // 1. "Review by SG Team / Site Team" must NEVER be classified as site or logged-by
+  const reviewCol = { key: 'reviewBySGTeam', label: 'Review by SG Team / Site Team', type: 'textarea' };
+  assert.equal(isSiteColumn(reviewCol), false);
+  assert.equal(isLoggedByColumn(reviewCol), false);
+
+  // 2. "Duty Officer (Site)" must NEVER be classified as site or logged-by
+  const officerCol = { key: 'officerLeadingHotel', label: 'Duty Officer (Site)', type: 'text' };
+  assert.equal(isSiteColumn(officerCol), false);
+  assert.equal(isLoggedByColumn(officerCol), false);
+
+  // 3. "Date Left Property" must NEVER be classified as site
+  const dateLeftCol = { key: 'dateLeftProperty', label: 'Date Left Property', type: 'text' };
+  assert.equal(isSiteColumn(dateLeftCol), false);
+
+  // 4. Genuine property column is correctly recognized as site column
+  const siteCol = { key: 'site', label: 'Property / Site', type: 'select' };
+  assert.equal(isSiteColumn(siteCol), true);
+  assert.equal(isLoggedByColumn(siteCol), false);
+
+  // 5. Genuine logged by column is correctly recognized
+  const loggedByCol = { key: 'raisedBy', label: 'Raised By', type: 'text' };
+  assert.equal(isLoggedByColumn(loggedByCol), true);
+  assert.equal(isSiteColumn(loggedByCol), false);
+
+  // 6. Assigned hotel resolution dynamically matches user's assigned property, never hardcoded Stansted
+  const resolveUserAssignedHotel = (ctx: any) => {
+    if (ctx?.assignedSite && ctx.assignedSite !== 'All Sites' && ctx.assignedSite !== 'all') {
+      return ctx.assignedSite;
+    }
+    if (ctx?.authProfile?.assignedSite && ctx.authProfile.assignedSite !== 'All Sites' && ctx.authProfile.assignedSite !== 'all') {
+      return ctx.authProfile.assignedSite;
+    }
+    if (ctx?.allowedSites && ctx.allowedSites.length > 0 && ctx.allowedSites[0] !== 'All Sites' && ctx.allowedSites[0] !== 'all') {
+      return ctx.allowedSites[0];
+    }
+    return '';
+  };
+
+  assert.equal(resolveUserAssignedHotel({ assignedSite: 'Brit Hotel' }), 'Brit Hotel');
+  assert.equal(resolveUserAssignedHotel({ assignedSite: 'Holiday Inn Lambeth' }), 'Holiday Inn Lambeth');
+  assert.equal(resolveUserAssignedHotel({ assignedSite: 'All Sites', allowedSites: ['Victoria House'] }), 'Victoria House');
+});
+

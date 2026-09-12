@@ -15,16 +15,26 @@ import {
 
 export const resolveSiteOptions = (ctx: any) => {
   if (ctx?.allowedSites && Array.isArray(ctx.allowedSites) && ctx.allowedSites.length > 0) {
-    return ctx.allowedSites;
+    return ctx.allowedSites.filter((s: string) => s && s !== 'All Sites' && s !== 'all');
   }
   if (ctx?.sites && Array.isArray(ctx.sites) && ctx.sites.length > 0) {
     return ctx.sites.map((s: any) => typeof s === 'string' ? s : s?.name).filter(Boolean);
   }
-  return ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth', 'Victoria House'];
+  return ['Brit Hotel', 'Holiday Inn Lambeth', 'Victoria House', 'Stansted Hotel (Ibis Budget Bisop Stortford)'];
 };
 
 export const resolveSiteDefault = (ctx: any) => {
-  return ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)';
+  if (ctx?.assignedSite && ctx.assignedSite !== 'All Sites' && ctx.assignedSite !== 'all') {
+    return ctx.assignedSite;
+  }
+  if (ctx?.allowedSites && ctx.allowedSites.length > 0 && ctx.allowedSites[0] !== 'All Sites' && ctx.allowedSites[0] !== 'all') {
+    return ctx.allowedSites[0];
+  }
+  if (ctx?.sites && ctx.sites.length > 0) {
+    const first = typeof ctx.sites[0] === 'string' ? ctx.sites[0] : ctx.sites[0]?.name;
+    if (first && first !== 'All Sites') return first;
+  }
+  return '';
 };
 
 export const ESCALATIONS_TABLE_COLUMNS: TableColumnConfig<EscalationRecord>[] = [

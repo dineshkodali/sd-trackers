@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, AlertCircle, Loader2, Lock, Building2, UserCheck } from 'lucide-react';
+import { X, AlertCircle, Loader2, Lock, Building2, UserCheck, Calendar } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
 import { useApp } from '../../context/AppContext';
 import { AttachmentsSection } from './AttachmentsSection';
@@ -40,19 +40,56 @@ export function DynamicRecordFormModal<T = any>({
     currentUserRole
   } = useApp();
 
-  const userAssignedHotel = assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)';
+  const userAssignedHotel = useMemo(() => {
+    // 1. Direct assignedSite from AppContext if set and not "All Sites"
+    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+      return assignedSite;
+    }
+    // 2. From authProfile
+    if (authProfile?.assignedSite && authProfile.assignedSite !== 'All Sites' && authProfile.assignedSite !== 'all') {
+      return authProfile.assignedSite;
+    }
+    const profileAny = authProfile as any;
+    if (profileAny?.assigned_site && profileAny.assigned_site !== 'All Sites' && profileAny.assigned_site !== 'all') {
+      return profileAny.assigned_site;
+    }
+    if (profileAny?.hotel && profileAny.hotel !== 'All Sites' && profileAny.hotel !== 'all') {
+      return profileAny.hotel;
+    }
+    // 3. From allowedSites
+    if (allowedSites && allowedSites.length > 0 && allowedSites[0] !== 'All Sites' && allowedSites[0] !== 'all') {
+      return allowedSites[0];
+    }
+    // 4. Currently selected site in filter bar (if not 'all')
+    if (selectedSite && selectedSite !== 'all') {
+      return selectedSite;
+    }
+    // 5. First real site name from sites list
+    const firstRealSite = sites?.find(s => {
+      const name = typeof s === 'string' ? s : s?.name;
+      return name && name !== 'All Sites' && name !== 'all';
+    });
+    if (firstRealSite) {
+      return typeof firstRealSite === 'string' ? firstRealSite : firstRealSite.name;
+    }
+    return '';
+  }, [assignedSite, authProfile, allowedSites, selectedSite, sites]);
 
   const loggedInUserName = useMemo(() => {
     return authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (Staff)` : 'Duty Officer');
   }, [authProfile, currentUserName, currentUserRole]);
 
+  const isSuperAdmin = currentUserRole === 'Super Admin';
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const isEditing = Boolean(isEdit || (initialValues as any)?.id);
+
   const allSiteNames = useMemo(() => {
-    const fromAllowed = (allowedSites || []).filter(Boolean);
+    const fromAllowed = (allowedSites || []).filter(s => Boolean(s && s !== 'All Sites' && s !== 'all'));
     const fromSites = (sites || [])
       .map(s => (typeof s === 'string' ? s : s?.name))
-      .filter((n): n is string => Boolean(n && typeof n === 'string' && n.trim() !== ''));
-    const combined = Array.from(new Set([...fromAllowed, ...fromSites, userAssignedHotel]));
-    return combined.length > 0 ? combined : [userAssignedHotel];
+      .filter((n): n is string => Boolean(n && typeof n === 'string' && n.trim() !== '' && n !== 'All Sites' && n !== 'all'));
+    const combined = Array.from(new Set([...fromAllowed, ...fromSites, ...(userAssignedHotel ? [userAssignedHotel] : [])]));
+    return combined.length > 0 ? combined : (userAssignedHotel ? [userAssignedHotel] : ['Brit Hotel']);
   }, [allowedSites, sites, userAssignedHotel]);
 
   const effectiveContext = useMemo(() => ({
@@ -64,23 +101,33 @@ export function DynamicRecordFormModal<T = any>({
     ...contextData
   }), [userAssignedHotel, allSiteNames, sites, selectedSite, canAccessAllSites, contextData]);
 
-  const isSiteColumn = (col: TableColumnConfig<T>): boolean => {
-    const key = String(col.key).toLowerCase();
-    const label = String(col.label || '').toLowerCase();
-    return (
-      key === 'site' ||
-      key === 'sitename' ||
-      key === 'hotelname' ||
-      key === 'property' ||
-      label.includes('hotel') ||
-      label.includes('property') ||
-      (label.includes('site') && !label.includes('website'))
-    );
-  };
-
   const isLoggedByColumn = (col: TableColumnConfig<T>): boolean => {
+    // Non-text fields cannot be logged-by fields
+    if (col.type === 'textarea' || col.type === 'date' || col.type === 'number' || col.type === 'currency' || col.type === 'checkbox' || col.type === 'select') {
+      return false;
+    }
     const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
     const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Explicit exclusions: These are NOT logged-by fields!
+    if (
+      key.includes('officerleadinghotel') ||
+      key.includes('laofficer') ||
+      key.includes('allocatedworker') ||
+      key.includes('review') ||
+      key.includes('contractor') ||
+      key.includes('client') ||
+      key.includes('lead') ||
+      label.includes('officerleadinghotel') ||
+      label.includes('laofficer') ||
+      label.includes('allocatedworker') ||
+      label.includes('review') ||
+      label.includes('contractor') ||
+      label.includes('client')
+    ) {
+      return false;
+    }
+
     return (
       key === 'loggedby' ||
       key === 'raisedby' ||
@@ -89,7 +136,7 @@ export function DynamicRecordFormModal<T = any>({
       key === 'personreporting' ||
       key === 'staffreporting' ||
       key === 'auditedby' ||
-      key === 'officerleadinghotel' ||
+      key === 'uploadedby' ||
       label === 'loggedby' ||
       label === 'raisedby' ||
       label === 'reportedby' ||
@@ -97,7 +144,91 @@ export function DynamicRecordFormModal<T = any>({
       label === 'personreporting' ||
       label === 'staffreporting' ||
       label === 'auditedby' ||
-      label === 'officerleadinghotel'
+      label === 'uploadedby'
+    );
+  };
+
+  const isSiteColumn = (col: TableColumnConfig<T>): boolean => {
+    // If it's a logged-by field, it can NEVER be a site column
+    if (isLoggedByColumn(col)) {
+      return false;
+    }
+    // Textareas, dates, numbers, currency, checkboxes can NEVER be a site column
+    if (col.type === 'textarea' || col.type === 'date' || col.type === 'number' || col.type === 'currency' || col.type === 'checkbox') {
+      return false;
+    }
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Exclude any columns that merely mention site/hotel/property in notes, reviews, officers, dates, etc.
+    if (
+      key.includes('review') ||
+      key.includes('team') ||
+      key.includes('officer') ||
+      key.includes('staff') ||
+      key.includes('worker') ||
+      key.includes('damage') ||
+      key.includes('left') ||
+      key.includes('depart') ||
+      key.includes('contact') ||
+      key.includes('website') ||
+      key.includes('address') ||
+      label.includes('review') ||
+      label.includes('team') ||
+      label.includes('officer') ||
+      label.includes('staff') ||
+      label.includes('worker') ||
+      label.includes('damage') ||
+      label.includes('left') ||
+      label.includes('depart') ||
+      label.includes('contact') ||
+      label.includes('website') ||
+      label.includes('address')
+    ) {
+      return false;
+    }
+
+    // Exact key matches for property/hotel
+    if (
+      key === 'site' ||
+      key === 'sitename' ||
+      key === 'hotel' ||
+      key === 'hotelname' ||
+      key === 'property' ||
+      key === 'propertyname' ||
+      key === 'assignedhotel'
+    ) {
+      return true;
+    }
+
+    // Exact label matches for facility/hotel/property
+    return (
+      label === 'site' ||
+      label === 'sitename' ||
+      label === 'property' ||
+      label === 'propertyname' ||
+      label === 'hotel' ||
+      label === 'hotelname' ||
+      label === 'hotelsite' ||
+      label === 'sitehotel' ||
+      label === 'propertysite' ||
+      label === 'siteproperty' ||
+      label === 'propertyhotel' ||
+      label === 'hotelproperty' ||
+      label === 'contractedproperty'
+    );
+  };
+
+  const isDobColumn = (col: TableColumnConfig<T>): boolean => {
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (
+      key === 'dob' ||
+      key === 'sudob' ||
+      key === 'dateofbirth' ||
+      key === 'birthdate' ||
+      label.includes('dob') ||
+      label.includes('birth')
     );
   };
 
@@ -184,9 +315,27 @@ export function DynamicRecordFormModal<T = any>({
       } else if (isLoggedBy) {
         initial[key] = (initialValues && (initialValues as any)[key]) || loggedInUserName;
       } else if (initialValues && initialValues[col.key as keyof T] !== undefined) {
-        initial[key] = initialValues[col.key as keyof T];
+        const val = initialValues[col.key as keyof T];
+        if (col.type === 'date' && !isEditing && !isDobColumn(col) && !isSuperAdmin) {
+          if (val && typeof val === 'string' && val.slice(0, 10) >= todayStr) {
+            initial[key] = val.slice(0, 10);
+          } else {
+            initial[key] = todayStr;
+          }
+        } else {
+          initial[key] = val;
+        }
       } else if (col.defaultValue !== undefined) {
-        initial[key] = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
+        const resolved = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
+        if (col.type === 'date' && !isEditing && !isDobColumn(col) && !isSuperAdmin) {
+          if (resolved && typeof resolved === 'string' && resolved.slice(0, 10) >= todayStr) {
+            initial[key] = resolved.slice(0, 10);
+          } else {
+            initial[key] = todayStr;
+          }
+        } else {
+          initial[key] = resolved;
+        }
       } else {
         switch (col.type) {
           case 'number':
@@ -197,7 +346,7 @@ export function DynamicRecordFormModal<T = any>({
             initial[key] = false;
             break;
           case 'date':
-            initial[key] = new Date().toISOString().slice(0, 10);
+            initial[key] = isDobColumn(col) ? '' : todayStr;
             break;
           default:
             initial[key] = '';
@@ -223,10 +372,10 @@ export function DynamicRecordFormModal<T = any>({
     setFormData(initial);
     setErrors({});
     setSubmitError(null);
-  }, [isOpen, initialValues, assignedSite, selectedSite, canAccessAllSites, userAssignedHotel, allSiteNames, effectiveContext, formColumns, loggedInUserName]);
+  }, [isOpen, initialValues, assignedSite, selectedSite, canAccessAllSites, userAssignedHotel, allSiteNames, effectiveContext, formColumns, loggedInUserName, isEditing, isSuperAdmin, todayStr]);
 
   const handleClearOrRevert = () => {
-    if (isEdit && initialValues) {
+    if (isEditing && initialValues) {
       // Revert to original record values
       const initial: Record<string, any> = { ...initialValues };
       if (!canAccessAllSites()) {
@@ -246,8 +395,15 @@ export function DynamicRecordFormModal<T = any>({
           blank[key] = !canAccessAllSites()
             ? userAssignedHotel
             : (selectedSite && selectedSite !== 'all' ? selectedSite : (assignedSite || allSiteNames[0] || userAssignedHotel));
+        } else if (isLoggedByColumn(col)) {
+          blank[key] = loggedInUserName;
         } else if (col.defaultValue !== undefined) {
-          blank[key] = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
+          const resolved = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
+          if (col.type === 'date' && !isDobColumn(col) && !isSuperAdmin) {
+            blank[key] = (resolved && typeof resolved === 'string' && resolved.slice(0, 10) >= todayStr) ? resolved.slice(0, 10) : todayStr;
+          } else {
+            blank[key] = resolved;
+          }
         } else {
           switch (col.type) {
             case 'number':
@@ -258,13 +414,15 @@ export function DynamicRecordFormModal<T = any>({
               blank[key] = false;
               break;
             case 'date':
-              blank[key] = new Date().toISOString().slice(0, 10);
+              blank[key] = isDobColumn(col) ? '' : todayStr;
               break;
             default:
               blank[key] = '';
           }
         }
       });
+      blank.attachments = [];
+      blank.loggedBy = loggedInUserName;
       setFormData(blank);
     }
     setErrors({});
@@ -306,12 +464,29 @@ export function DynamicRecordFormModal<T = any>({
     formColumns.forEach(col => {
       const key = String(col.key);
       const isSite = isSiteColumn(col);
+      const val = isSite && !canAccessAllSites() 
+        ? userAssignedHotel 
+        : (formData[key] ?? (isSite ? userAssignedHotel : ''));
+
       if (col.required) {
-        const val = isSite && !canAccessAllSites() 
-          ? userAssignedHotel 
-          : (formData[key] ?? (isSite ? userAssignedHotel : ''));
         if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
           newErrors[key] = `${col.label} is required`;
+          return;
+        }
+      }
+
+      // Strict Date Rule: Non-Super Admin cannot choose past dates for operational logs/bookings
+      if (col.type === 'date' && !isSuperAdmin && !isDobColumn(col) && val) {
+        const dateVal = String(val).trim().slice(0, 10);
+        if (dateVal) {
+          if (!isEditing && dateVal < todayStr) {
+            newErrors[key] = `${col.label} cannot be in the past (must be today or later). Only Super Admin can select past dates.`;
+          } else if (isEditing && dateVal < todayStr) {
+            const initialDateVal = (initialValues as any)?.[key] ? String((initialValues as any)[key]).trim().slice(0, 10) : '';
+            if (dateVal !== initialDateVal) {
+              newErrors[key] = `${col.label} cannot be changed to a past date. Only Super Admin can select past dates.`;
+            }
+          }
         }
       }
     });
@@ -431,6 +606,16 @@ export function DynamicRecordFormModal<T = any>({
                           <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
                             <Lock className="w-2.5 h-2.5 text-teal-600" /> Assigned Property (Locked)
                           </span>
+                        ) : col.type === 'date' && !isDobColumn(col) ? (
+                          !isSuperAdmin ? (
+                            <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                              <Calendar className="w-2.5 h-2.5 text-teal-600" /> Today or Later
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                              <Calendar className="w-2.5 h-2.5 text-purple-600" /> Super Admin: All Dates
+                            </span>
+                          )
                         ) : isReadOnly ? (
                           <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5">
                             <Lock className="w-2.5 h-2.5 text-amber-600" /> Auto
@@ -523,16 +708,39 @@ export function DynamicRecordFormModal<T = any>({
                           } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}
                         />
                       ) : col.type === 'date' ? (
-                        <input
-                          type="date"
-                          value={value}
-                          readOnly={isReadOnly}
-                          disabled={isSubmitting}
-                          onChange={e => handleChange(key, e.target.value)}
-                          className={`w-full p-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors ${
-                            errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
-                          } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}
-                        />
+                        <div className="space-y-1">
+                          <input
+                            type="date"
+                            value={value}
+                            readOnly={isReadOnly}
+                            disabled={isSubmitting}
+                            min={
+                              !isSuperAdmin && !isDobColumn(col)
+                                ? (isEditing && (initialValues as any)?.[key] && String((initialValues as any)[key]).slice(0, 10) < todayStr
+                                    ? String((initialValues as any)[key]).slice(0, 10)
+                                    : todayStr)
+                                : col.min
+                            }
+                            max={isDobColumn(col) ? todayStr : col.max}
+                            onChange={e => handleChange(key, e.target.value)}
+                            className={`w-full p-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors ${
+                              errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
+                            } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}
+                          />
+                          {!isDobColumn(col) && (
+                            <div className="flex items-center justify-between text-[11px] pt-0.5">
+                              {!isSuperAdmin ? (
+                                <span className="text-teal-700 font-medium flex items-center gap-1">
+                                  <span>&bull;</span> Date must be today or later
+                                </span>
+                              ) : (
+                                <span className="text-purple-700 font-medium flex items-center gap-1">
+                                  <span>&bull;</span> Super Admin: Past dates allowed
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       ) : col.type === 'checkbox' ? (
                         <div className="flex items-center gap-2 pt-2">
                           <input
@@ -586,9 +794,9 @@ export function DynamicRecordFormModal<T = any>({
               onClick={handleClearOrRevert}
               disabled={isSubmitting}
               className="px-3 py-1.5 text-xs text-neutral-600 hover:text-neutral-900 border border-neutral-300 rounded-xs hover:bg-neutral-100 transition-colors"
-              title={isEdit ? "Revert unsaved changes to original values" : "Clear all fields to defaults"}
+              title={isEditing ? "Revert unsaved changes to original values" : "Clear all fields to defaults"}
             >
-              {isEdit ? 'Revert Changes' : 'Clear Form'}
+              {isEditing ? 'Revert Changes' : 'Clear Form'}
             </button>
             <div className="flex items-center gap-2">
               <button
@@ -605,7 +813,7 @@ export function DynamicRecordFormModal<T = any>({
                 className="flex items-center gap-1.5 px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
               >
                 {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>{submitLabel || (isEdit ? 'Save Changes' : 'Create Record')}</span>
+                <span>{submitLabel || (isEditing ? 'Save Changes' : 'Create Record')}</span>
               </button>
             </div>
           </div>

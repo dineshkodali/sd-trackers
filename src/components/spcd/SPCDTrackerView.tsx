@@ -281,6 +281,11 @@ export const SPCDTrackerView: React.FC = () => {
   const handleConfirmDepart = (e: React.FormEvent) => {
     e.preventDefault();
     if (!departingRecord) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (currentUserRole !== 'Super Admin' && departureDate < todayStr) {
+      alert('Date Left / Dispersal Date cannot be in the past (must be today or later). Only Super Admin can record past dates.');
+      return;
+    }
     archiveSPCDRecord(departingRecord.id, departureDate, departureReason);
     setDepartingRecord(null);
   };
@@ -911,16 +916,35 @@ export const SPCDTrackerView: React.FC = () => {
               </p>
 
               <div>
-                <label className="block font-semibold text-neutral-700 mb-1">
-                  Date Left / Dispersal Date *
+                <label className="block font-semibold text-neutral-700 mb-1 flex items-center justify-between">
+                  <span>Date Left / Dispersal Date *</span>
+                  {currentUserRole !== 'Super Admin' ? (
+                    <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium">
+                      Today or Later
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-medium">
+                      Super Admin: All Dates
+                    </span>
+                  )}
                 </label>
                 <input
                   type="date"
                   required
                   value={departureDate}
+                  min={currentUserRole !== 'Super Admin' ? new Date().toISOString().slice(0, 10) : undefined}
                   onChange={e => setDepartureDate(e.target.value)}
                   className="w-full px-2.5 py-1.5 bg-white border border-[#8a8886] rounded-xs font-mono text-neutral-800"
                 />
+                {currentUserRole !== 'Super Admin' ? (
+                  <p className="text-[10px] text-neutral-500 mt-1">
+                    Date must be today or later. Only Super Admin can record past dates.
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-purple-700 mt-1">
+                    Super Admin: Past dates permitted.
+                  </p>
+                )}
               </div>
 
               <div>

@@ -154,10 +154,38 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     canEditRecord,
     canAccessAllSites,
     assignedSite,
+    sites,
     authProfile,
     currentUserRole,
     currentUserName
   } = useApp();
+
+  const userAssignedHotel = useMemo(() => {
+    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+      return assignedSite;
+    }
+    if (authProfile?.assignedSite && authProfile.assignedSite !== 'All Sites' && authProfile.assignedSite !== 'all') {
+      return authProfile.assignedSite;
+    }
+    const pAny = authProfile as any;
+    if (pAny?.assigned_site && pAny.assigned_site !== 'All Sites' && pAny.assigned_site !== 'all') {
+      return pAny.assigned_site;
+    }
+    if (pAny?.hotel && pAny.hotel !== 'All Sites' && pAny.hotel !== 'all') {
+      return pAny.hotel;
+    }
+    if (allowedSites && allowedSites.length > 0 && allowedSites[0] !== 'All Sites' && allowedSites[0] !== 'all') {
+      return allowedSites[0];
+    }
+    const firstReal = sites?.find(s => {
+      const name = typeof s === 'string' ? s : s?.name;
+      return name && name !== 'All Sites' && name !== 'all';
+    });
+    if (firstReal) {
+      return typeof firstReal === 'string' ? firstReal : firstReal.name;
+    }
+    return '';
+  }, [assignedSite, authProfile, allowedSites, sites]);
 
   const loggedInUserName = useMemo(() => {
     return authProfile?.name || authProfile?.email || currentUserName || currentUserRole;
@@ -165,7 +193,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : userAssignedHotel);
   const [vendorFilter, setVendorFilter] = useState<FoodVendorName>('A&M');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -214,8 +242,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
 
   const [formData, setFormData] = useState({
     site: !canAccessAllSites() 
-      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') 
-      : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)')),
+      ? userAssignedHotel 
+      : (siteFilter !== 'all' ? siteFilter : (userAssignedHotel || allowedSites[0] || '')),
     vendor: 'A&M' as FoodVendorName,
     weekRange: initialWeekInfo.weekRange,
     startDate: todayBounds.start,
@@ -281,8 +309,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     const bounds = getWeekBounds(todayStr);
     const currentWk = formatWeekRangeFromDates(bounds.start, bounds.end);
     const effectiveSite = !canAccessAllSites()
-      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)')
-      : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)'));
+      ? userAssignedHotel
+      : (siteFilter !== 'all' ? siteFilter : (userAssignedHotel || allowedSites[0] || ''));
     setFormData({
       site: effectiveSite,
       vendor: 'A&M',
@@ -501,8 +529,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     e.preventDefault();
 
     const effectiveSite = !canAccessAllSites()
-      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)')
-      : (formData.site || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+      ? userAssignedHotel
+      : (formData.site || userAssignedHotel || allowedSites[0] || '');
 
     const payloadToValidate = {
       site: effectiveSite,
@@ -521,6 +549,18 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
       const firstErr = Object.values(valResult.errors)[0];
       alert(`Validation Error: ${firstErr}`);
       return;
+    }
+
+    const isSuperAdmin = currentUserRole === 'Super Admin';
+    if (!isSuperAdmin) {
+      if (!editingLog && formData.startDate < todayStr) {
+        alert('Date From cannot be in the past (must be today or later). Only Super Admin can log records for past dates.');
+        return;
+      }
+      if (editingLog && formData.startDate < todayStr && formData.startDate !== editingLog.startDate) {
+        alert('Date From cannot be changed to a past date. Only Super Admin can select past dates.');
+        return;
+      }
     }
 
     const payload = {
@@ -1216,7 +1256,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                     <div className="relative">
                       <input
                         type="text"
-                        value={assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)'}
+                        value={userAssignedHotel}
                         readOnly
                         disabled
                         className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
@@ -1252,17 +1292,38 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
               <div className="p-3 bg-[#faf9f8] rounded border border-[#edebe9] space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="font-semibold text-[#605e5c] block mb-1 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#0d9488]" />
-                      <span>Date From *</span>
+                    <label className="font-semibold text-[#605e5c] mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-[#0d9488]" />
+                        <span>Date From *</span>
+                      </span>
+                      {currentUserRole !== 'Super Admin' ? (
+                        <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium">
+                          Today or Later
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1 py-0.2 rounded font-medium">
+                          Super Admin: All Dates
+                        </span>
+                      )}
                     </label>
                     <input
                       type="date"
                       value={formData.startDate}
+                      min={currentUserRole !== 'Super Admin' ? (editingLog?.startDate && editingLog.startDate < todayStr ? editingLog.startDate : todayStr) : undefined}
                       onChange={e => handleStartDateChange(e.target.value)}
                       className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-medium"
                       required
                     />
+                    {currentUserRole !== 'Super Admin' ? (
+                      <p className="text-[10px] text-neutral-500 mt-0.5">
+                        Date must be today or later. Only Super Admin can select past dates.
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-purple-700 mt-0.5">
+                        Super Admin: Past dates permitted.
+                      </p>
+                    )}
                   </div>
 
                   <div>

@@ -12,6 +12,30 @@ import {
   DocumentRecord 
 } from '../types';
 
+export const resolveConfigSiteOptions = (ctx: any): string[] => {
+  if (ctx?.allowedSites && Array.isArray(ctx.allowedSites) && ctx.allowedSites.length > 0) {
+    return ctx.allowedSites.filter((s: string) => s && s !== 'All Sites' && s !== 'all');
+  }
+  if (ctx?.sites && Array.isArray(ctx.sites) && ctx.sites.length > 0) {
+    return ctx.sites.map((s: any) => typeof s === 'string' ? s : s?.name).filter(Boolean);
+  }
+  return ['Brit Hotel', 'Holiday Inn Lambeth', 'Parmiter PDA', 'Stansted Hotel (Ibis Budget Bisop Stortford)'];
+};
+
+export const resolveConfigSiteDefault = (ctx: any): string => {
+  if (ctx?.assignedSite && ctx.assignedSite !== 'All Sites' && ctx.assignedSite !== 'all') {
+    return ctx.assignedSite;
+  }
+  if (ctx?.allowedSites && ctx.allowedSites.length > 0 && ctx.allowedSites[0] !== 'All Sites' && ctx.allowedSites[0] !== 'all') {
+    return ctx.allowedSites[0];
+  }
+  if (ctx?.sites && ctx.sites.length > 0) {
+    const first = typeof ctx.sites[0] === 'string' ? ctx.sites[0] : ctx.sites[0]?.name;
+    if (first && first !== 'All Sites') return first;
+  }
+  return '';
+};
+
 /**
  * 1. MAINTENANCE & DEFECTS TRACKER CONFIGURATION
  * Single source of truth for table headers, Add form, View dossier, and Edit form.
@@ -65,8 +89,8 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     label: 'Property / Site',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth', 'Parmiter PDA']),
-    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
+    options: resolveConfigSiteOptions,
+    defaultValue: resolveConfigSiteDefault,
     section: 'Location & Reporting'
   },
   {
@@ -172,8 +196,8 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     label: 'Property / Site',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth']),
-    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
+    options: resolveConfigSiteOptions,
+    defaultValue: resolveConfigSiteDefault,
     section: 'Property & Council'
   },
   {
@@ -341,8 +365,8 @@ export const vulnerableTableConfig: TableColumnConfig<VulnerableSU>[] = [
     label: 'Property / Site',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth']),
-    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
+    options: resolveConfigSiteOptions,
+    defaultValue: resolveConfigSiteDefault,
     section: 'Service User Identification'
   },
   {
@@ -487,8 +511,8 @@ export const challengingTableConfig: TableColumnConfig<ChallengingSU>[] = [
     label: 'Property / Site',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth']),
-    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
+    options: resolveConfigSiteOptions,
+    defaultValue: resolveConfigSiteDefault,
     section: 'Service User'
   },
   {
@@ -663,8 +687,8 @@ export const spcdTableConfig: TableColumnConfig<SPCDRecord>[] = [
     label: 'Site Name',
     type: 'select',
     required: true,
-    options: (ctx) => (ctx?.allowedSites && ctx.allowedSites.length > 0 ? ctx.allowedSites : ['Stansted Hotel (Ibis Budget Bisop Stortford)', 'Brit Hotel', 'Holiday Inn Lambeth']),
-    defaultValue: (ctx) => ctx?.assignedSite || ctx?.allowedSites?.[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)',
+    options: resolveConfigSiteOptions,
+    defaultValue: resolveConfigSiteDefault,
     section: 'Service User & Location'
   },
   {

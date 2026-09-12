@@ -25,8 +25,31 @@ export function DynamicRecordViewModal<T = any>({
   if (!isOpen || !record) return null;
 
   const isLoggedByColumn = (col: TableColumnConfig<T>): boolean => {
+    if (col.type === 'textarea' || col.type === 'date' || col.type === 'number' || col.type === 'currency' || col.type === 'checkbox' || col.type === 'select') {
+      return false;
+    }
     const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
     const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Exclude fields that represent external officers, lead officers, reviewers, contractors, or clients
+    if (
+      key.includes('officerleadinghotel') ||
+      key.includes('laofficer') ||
+      key.includes('allocatedworker') ||
+      key.includes('review') ||
+      key.includes('contractor') ||
+      key.includes('client') ||
+      key.includes('lead') ||
+      label.includes('officerleadinghotel') ||
+      label.includes('laofficer') ||
+      label.includes('allocatedworker') ||
+      label.includes('review') ||
+      label.includes('contractor') ||
+      label.includes('client')
+    ) {
+      return false;
+    }
+
     return (
       key === 'loggedby' ||
       key === 'raisedby' ||
@@ -35,7 +58,7 @@ export function DynamicRecordViewModal<T = any>({
       key === 'personreporting' ||
       key === 'staffreporting' ||
       key === 'auditedby' ||
-      key === 'officerleadinghotel' ||
+      key === 'uploadedby' ||
       label === 'loggedby' ||
       label === 'raisedby' ||
       label === 'reportedby' ||
@@ -43,7 +66,7 @@ export function DynamicRecordViewModal<T = any>({
       label === 'personreporting' ||
       label === 'staffreporting' ||
       label === 'auditedby' ||
-      label === 'officerleadinghotel'
+      label === 'uploadedby'
     );
   };
 

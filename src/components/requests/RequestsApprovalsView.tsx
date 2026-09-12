@@ -48,8 +48,37 @@ export const RequestsApprovalsView: React.FC = () => {
     currentUserName,
     assignedSite,
     allowedSites,
+    sites,
+    authProfile,
     canAccessAllSites
   } = useApp();
+
+  const userAssignedHotel = React.useMemo(() => {
+    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+      return assignedSite;
+    }
+    if (authProfile?.assignedSite && authProfile.assignedSite !== 'All Sites' && authProfile.assignedSite !== 'all') {
+      return authProfile.assignedSite;
+    }
+    const pAny = authProfile as any;
+    if (pAny?.assigned_site && pAny.assigned_site !== 'All Sites' && pAny.assigned_site !== 'all') {
+      return pAny.assigned_site;
+    }
+    if (pAny?.hotel && pAny.hotel !== 'All Sites' && pAny.hotel !== 'all') {
+      return pAny.hotel;
+    }
+    if (allowedSites && allowedSites.length > 0 && allowedSites[0] !== 'All Sites' && allowedSites[0] !== 'all') {
+      return allowedSites[0];
+    }
+    const firstReal = sites?.find(s => {
+      const name = typeof s === 'string' ? s : s?.name;
+      return name && name !== 'All Sites' && name !== 'all';
+    });
+    if (firstReal) {
+      return typeof firstReal === 'string' ? firstReal : firstReal.name;
+    }
+    return '';
+  }, [assignedSite, authProfile, allowedSites, sites]);
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [moduleFilter, setModuleFilter] = useState<string>('all');
@@ -59,8 +88,8 @@ export const RequestsApprovalsView: React.FC = () => {
 
   const initialForm = {
     site: !canAccessAllSites() 
-      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)') 
-      : (assignedSite || allowedSites[0] || 'Stansted Hotel (Ibis Budget Bisop Stortford)'),
+      ? userAssignedHotel 
+      : (userAssignedHotel || allowedSites[0] || ''),
     module: 'Referrals' as DataChangeRequest['module'],
     recordTitle: '',
     recordId: '',
@@ -74,10 +103,10 @@ export const RequestsApprovalsView: React.FC = () => {
   React.useEffect(() => {
     if (isNewModalOpen) {
       if (!canAccessAllSites()) {
-        setFormData(prev => ({ ...prev, site: assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)' }));
+        setFormData(prev => ({ ...prev, site: userAssignedHotel }));
       }
     }
-  }, [isNewModalOpen, canAccessAllSites, assignedSite]);
+  }, [isNewModalOpen, canAccessAllSites, userAssignedHotel]);
 
   const [reviewModalRequest, setReviewModalRequest] = useState<DataChangeRequest | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
@@ -103,8 +132,8 @@ export const RequestsApprovalsView: React.FC = () => {
     if (!formData.recordTitle || !formData.reason) return;
 
     const effectiveSite = !canAccessAllSites()
-      ? (assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)')
-      : (formData.site || assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)');
+      ? userAssignedHotel
+      : (formData.site || userAssignedHotel || allowedSites[0] || '');
 
     addDataChangeRequest({
       requestedBy: currentUserName,
@@ -473,7 +502,7 @@ export const RequestsApprovalsView: React.FC = () => {
                     <div className="relative">
                       <input
                         type="text"
-                        value={assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)'}
+                        value={userAssignedHotel}
                         readOnly
                         disabled
                         className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
