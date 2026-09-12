@@ -26,14 +26,20 @@ from a single origin, backed by PostgreSQL on Supabase.
 │   ├── mailer.ts             SMTP transport
 │   └── urlHelper.ts          Dynamic origin resolution
 │
-├── db/                       Database
+├── db/                       Database schemas & migrations
 │   ├── schema.sql            Full schema, RLS policies, triggers
 │   └── migrations/           Incremental migrations
 │
-├── public/                   Static assets
-├── QA Testing & Results/     Test suite, reports, test plan  (see its README)
+├── deploy/                   Deployment configurations (Nginx, Docker)
+├── docs/                     System architecture, design tokens, Amplify guide
+├── public/                   Static web assets
+├── QA Testing & Results/     Playwright test suite, reports, pentest specs
+├── scripts/                  Database, sync, and reporting utility scripts
 │
-├── index.html                Vite entry point
+├── amplify.yml               AWS Amplify CI/CD hosting pipeline
+├── Dockerfile                Multi-stage production container build
+├── docker-compose.yml        Local and VPS orchestration
+├── index.html                Vite SPA entry point
 ├── vite.config.ts            Frontend build config
 ├── tsconfig.json             TypeScript config
 └── package.json
