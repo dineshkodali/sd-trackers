@@ -219,19 +219,29 @@ export function DynamicRecordViewModal<T = any>({
 
           {/* Universal Proof & Document Attachments Dossier */}
           {(() => {
+            let rawAttachments: any[] = [];
             const hasExplicitArray = Array.isArray((record as any)?.attachments);
-            const rawAttachments = hasExplicitArray ? (record as any).attachments : [];
+            if (hasExplicitArray) {
+              rawAttachments = (record as any).attachments;
+            } else if (typeof (record as any)?.attachments === 'string' && (record as any).attachments.trim().startsWith('[')) {
+              try {
+                rawAttachments = JSON.parse((record as any).attachments);
+              } catch {
+                rawAttachments = [];
+              }
+            }
             const singleUrl = (record as any)?.attachmentUrl || (record as any)?.attachment_url || (record as any)?.fileUrl || (record as any)?.file_url;
+            const isValidHttpUrl = typeof singleUrl === 'string' && singleUrl.trim() && (singleUrl.startsWith('http://') || singleUrl.startsWith('https://')) && !singleUrl.includes('null') && !singleUrl.includes('undefined');
             // Only fallback to singleUrl if the record does NOT have an explicit attachments array (e.g. legacy table row)
             // AND singleUrl is a valid http link (never a lingering data: URI)
             const effectiveAttachments = rawAttachments.length > 0 
               ? rawAttachments 
-              : (!hasExplicitArray && singleUrl && typeof singleUrl === 'string' && singleUrl.trim() && !singleUrl.startsWith('data:')
+              : (!hasExplicitArray && isValidHttpUrl
                   ? [{
                       id: 'primary-doc',
                       name: (singleUrl.startsWith('http') ? singleUrl.split('/').pop()?.split('?')[0] : '') || 'Attached Document',
                       size: 0,
-                      type: 'application/octet-stream',
+                      type: singleUrl.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
                       url: singleUrl,
                       uploadedAt: (record as any)?.updatedAt || (record as any)?.createdAt || new Date().toISOString()
                     }]

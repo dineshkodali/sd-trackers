@@ -132,7 +132,8 @@ export const PublicTransportTrackerView: React.FC = () => {
       modeOfTransport: data.modeOfTransport || 'Bus',
       exceptionalCircumstances: data.exceptionalCircumstances || '',
       status: (data.status as any) || 'Approved',
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsCreateModalOpen(false);
   };
@@ -141,7 +142,8 @@ export const PublicTransportTrackerView: React.FC = () => {
     if (!editingRecord) return;
     updatePublicTransportRecord(editingRecord.id, {
       ...editingRecord,
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     });
     setEditingRecord(null);
   };
@@ -505,7 +507,8 @@ export const PublicTransportTrackerView: React.FC = () => {
           distanceMiles: 5.0,
           modeOfTransport: 'Bus',
           exceptionalCircumstances: '',
-          status: 'Approved'
+          status: 'Approved',
+          attachments: []
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Authorize Transport"

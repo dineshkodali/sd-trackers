@@ -245,7 +245,17 @@ export function DynamicRecordFormModal<T = any>({
     const activeCols = columns.filter(col => {
       if (col.isSystemMetadata) return false;
       const k = String(col.key).toLowerCase();
-      if (k === 'attachments' || k === 'attachmenturl' || k === 'fileurl' || k === 'attachment_url' || k === 'file_url') {
+      if (
+        k === 'attachments' ||
+        k === 'attachmenturl' ||
+        k === 'fileurl' ||
+        k === 'attachment_url' ||
+        k === 'file_url' ||
+        k === 'storagepath' ||
+        k === 'storage_path' ||
+        k === 'filepath' ||
+        k === 'file_path'
+      ) {
         return false;
       }
       return true;
@@ -361,8 +371,34 @@ export function DynamicRecordFormModal<T = any>({
       }
     });
 
-    // Ensure attachments array exists
-    initial.attachments = Array.isArray((initialValues as any)?.attachments) ? (initialValues as any).attachments : [];
+    // Ensure attachments array exists and normalize JSON string or legacy singleUrl
+    let initialAtts: any[] = [];
+    const rawAtts = (initialValues as any)?.attachments;
+    if (Array.isArray(rawAtts)) {
+      initialAtts = rawAtts;
+    } else if (typeof rawAtts === 'string' && rawAtts.trim().startsWith('[')) {
+      try {
+        initialAtts = JSON.parse(rawAtts);
+      } catch {
+        initialAtts = [];
+      }
+    } else {
+      // Legacy fallback: if record only had attachmentUrl / fileUrl that is a valid http link, populate it as an initial attachment so the user can see and delete it!
+      const legacyUrl = (initialValues as any)?.attachmentUrl || (initialValues as any)?.attachment_url || (initialValues as any)?.fileUrl || (initialValues as any)?.file_url;
+      if (typeof legacyUrl === 'string' && legacyUrl.trim() && (legacyUrl.startsWith('http://') || legacyUrl.startsWith('https://')) && !legacyUrl.includes('null') && !legacyUrl.includes('undefined')) {
+        initialAtts = [{
+          id: 'att-legacy',
+          name: (initialValues as any)?.documentTitle || (initialValues as any)?.title || (initialValues as any)?.name || legacyUrl.split('/').pop()?.split('?')[0] || 'Attached Document',
+          size: 0,
+          type: legacyUrl.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+          url: legacyUrl,
+          dataUrl: legacyUrl,
+          uploadedBy: (initialValues as any)?.uploadedBy || (initialValues as any)?.loggedBy || loggedInUserName,
+          uploadedAt: (initialValues as any)?.updatedAt || (initialValues as any)?.createdAt || todayStr
+        }];
+      }
+    }
+    initial.attachments = initialAtts;
     // Ensure standard loggedBy exists
     if (!initial.loggedBy) {
       initial.loggedBy = loggedInUserName;
@@ -549,6 +585,10 @@ export function DynamicRecordFormModal<T = any>({
         processed.attachment_url = '';
         processed.fileUrl = '';
         processed.file_url = '';
+        processed.storagePath = '';
+        processed.storage_path = '';
+        processed.filePath = '';
+        processed.file_path = '';
       }
 
       formColumns.forEach(col => {

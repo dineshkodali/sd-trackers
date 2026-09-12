@@ -32,14 +32,15 @@ export const TableAttachmentCell: React.FC<TableAttachmentCellProps> = ({
   }
 
   // Only check standalone attachmentUrl / fileUrl if attachments array was NOT explicitly provided (e.g. legacy table row)
-  // and ensure it is not a stale/orphaned data: URI
+  // and ensure it is a valid http(s) link (never a stale data: URI or 'null'/'undefined')
   const fallbackUrl = attachmentUrl || fileUrl;
-  if (!isExplicitArray && items.length === 0 && fallbackUrl && typeof fallbackUrl === 'string' && fallbackUrl.trim() && !fallbackUrl.startsWith('data:')) {
+  const isValidHttp = typeof fallbackUrl === 'string' && fallbackUrl.trim() && (fallbackUrl.startsWith('http://') || fallbackUrl.startsWith('https://')) && !fallbackUrl.includes('null') && !fallbackUrl.includes('undefined');
+  if (!isExplicitArray && items.length === 0 && isValidHttp) {
     items = [{
       id: 'att-fallback',
       name: recordTitle ? `${recordTitle} Document` : 'Attached File',
       size: 0,
-      type: fallbackUrl.startsWith('data:image') ? 'image/png' : 'application/pdf',
+      type: fallbackUrl.endsWith('.pdf') ? 'application/pdf' : (fallbackUrl.startsWith('data:image') ? 'image/png' : 'application/octet-stream'),
       dataUrl: fallbackUrl,
       url: fallbackUrl,
       uploadedBy: 'Officer',

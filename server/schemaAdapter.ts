@@ -852,7 +852,22 @@ export function toDatabaseRow(
       dbRow.title = record.documentTitle || record.title || 'Document';
       dbRow.category = record.category || 'General';
       dbRow.site = record.site || 'All Sites';
-      dbRow.file_url = record.fileUrl || record.storagePath || '';
+      const atts = Array.isArray(record.attachments) ? record.attachments : [];
+      dbRow.attachments = atts;
+      if (atts.length > 0) {
+        const primary = atts[0];
+        const link = primary?.url || primary?.dataUrl || record.fileUrl || '';
+        dbRow.file_url = link;
+        dbRow.attachment_url = link;
+      } else if (record.attachments !== undefined) {
+        dbRow.file_url = null;
+        dbRow.attachment_url = null;
+        if (record.fileUrl) record.fileUrl = '';
+        if (record.attachmentUrl) record.attachmentUrl = '';
+        if (record.storagePath) record.storagePath = '';
+      } else {
+        dbRow.file_url = record.fileUrl || record.storagePath || null;
+      }
       dbRow.file_size = typeof record.fileSize === 'string'
         ? record.fileSize
         : `${Math.round(toNum(record.fileSizeKb, toNum(record.fileSizeBytes, 1024) / 1024))} KB`;
@@ -944,7 +959,12 @@ export function toDatabaseRow(
 
   // Universal file attachments and primary generated link mapping
   if (record.attachments !== undefined) {
-    const rawAtts = Array.isArray(record.attachments) ? record.attachments : [];
+    let rawAtts: any[] = [];
+    if (Array.isArray(record.attachments)) {
+      rawAtts = record.attachments;
+    } else if (typeof record.attachments === 'string' && record.attachments.trim().startsWith('[')) {
+      try { rawAtts = JSON.parse(record.attachments); } catch { rawAtts = []; }
+    }
     dbRow.attachments = rawAtts;
     if (rawAtts.length > 0) {
       const primaryAtt = rawAtts[0];
@@ -954,6 +974,13 @@ export function toDatabaseRow(
     } else {
       dbRow.attachment_url = null;
       dbRow.file_url = null;
+      // Also scrub the in-memory record so sanitizeRecord writes clean fields into the data column
+      if (record.attachmentUrl) record.attachmentUrl = '';
+      if (record.attachment_url) record.attachment_url = '';
+      if (record.fileUrl) record.fileUrl = '';
+      if (record.file_url) record.file_url = '';
+      if (record.storagePath) record.storagePath = '';
+      if (record.storage_path) record.storage_path = '';
     }
   } else if (record.attachmentUrl || record.attachment_url || record.fileUrl || record.file_url) {
     const link = record.attachmentUrl || record.attachment_url || record.fileUrl || record.file_url;
@@ -1025,7 +1052,17 @@ function categorical(value: any, whenTrue: string, whenFalse: string, fallback: 
 function sanitizeRowAttachments(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj;
 
-  const atts = obj.attachments;
+  let atts = obj.attachments;
+  if (typeof atts === 'string' && atts.trim().startsWith('[')) {
+    try {
+      atts = JSON.parse(atts);
+      obj.attachments = atts;
+    } catch {
+      obj.attachments = [];
+      atts = obj.attachments;
+    }
+  }
+
   if (Array.isArray(atts)) {
     if (atts.length === 0) {
       // Explicit empty: erase any residual URL strings
@@ -1033,6 +1070,8 @@ function sanitizeRowAttachments(obj: any): any {
       obj.attachment_url = '';
       obj.fileUrl = '';
       obj.file_url = '';
+      obj.storagePath = '';
+      obj.storage_path = '';
     } else {
       // Sync primary URL fields to the first attachment
       const primary = atts[0];
@@ -1044,11 +1083,18 @@ function sanitizeRowAttachments(obj: any): any {
         obj.file_url = link;
       }
     }
+  } else {
+    // If attachments is null/undefined, ensure it defaults to empty array
+    obj.attachments = [];
+    if (typeof obj.attachmentUrl === 'string' && obj.attachmentUrl.startsWith('data:')) obj.attachmentUrl = '';
+    if (typeof obj.attachment_url === 'string' && obj.attachment_url.startsWith('data:')) obj.attachment_url = '';
+    if (typeof obj.fileUrl === 'string' && obj.fileUrl.startsWith('data:')) obj.fileUrl = '';
+    if (typeof obj.file_url === 'string' && obj.file_url.startsWith('data:')) obj.file_url = '';
   }
 
-  // Guard against stale data: URIs that survived in URL-only fields
-  for (const key of ['attachmentUrl', 'attachment_url', 'fileUrl', 'file_url'] as const) {
-    if (typeof obj[key] === 'string' && obj[key].startsWith('data:')) {
+  // Guard against stale data: URIs or 'null'/'undefined' string values
+  for (const key of ['attachmentUrl', 'attachment_url', 'fileUrl', 'file_url', 'storagePath', 'storage_path'] as const) {
+    if (typeof obj[key] === 'string' && (obj[key].startsWith('data:') || obj[key] === 'null' || obj[key] === 'undefined')) {
       obj[key] = '';
     }
   }
@@ -1070,13 +1116,19 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         for (const [field, column] of FIELD_SPECS[tableName]) {
           if (row[column] !== undefined && row[column] !== null) typed[field] = row[column];
         }
-        return {
+        let atts = typed.attachments !== undefined ? typed.attachments : fromData.attachments;
+        if (typeof atts === 'string' && atts.trim().startsWith('[')) {
+          try { atts = JSON.parse(atts); } catch { atts = []; }
+        }
+        const combined = {
           ...fromData,
           ...typed,
+          attachments: Array.isArray(atts) ? atts : [],
           id: row.id,
           createdAt: fromData.createdAt ?? row.created_at,
           updatedAt: row.updated_at ?? fromData.updatedAt
         };
+        return sanitizeRowAttachments(combined);
       }
       if (row.attachments && (!fromData.attachments || fromData.attachments.length === 0)) {
         try {
@@ -1097,6 +1149,11 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     for (const [field, column] of FIELD_SPECS[tableName]) {
       if (row[column] !== undefined && row[column] !== null) obj[field] = row[column];
     }
+    let atts = obj.attachments;
+    if (typeof atts === 'string' && atts.trim().startsWith('[')) {
+      try { atts = JSON.parse(atts); } catch { atts = []; }
+    }
+    obj.attachments = Array.isArray(atts) ? atts : [];
     obj.createdAt = row.created_at;
     obj.updatedAt = row.updated_at;
     return sanitizeRowAttachments(obj);
@@ -1497,7 +1554,11 @@ export function fromDatabaseRow(tableName: string, row: any): any {
 
     case 'documents': {
       const sizeKb = parseInt(String(row.file_size || '').replace(/[^0-9]/g, ''), 10);
-      return {
+      let atts = row.attachments;
+      if (typeof atts === 'string' && atts.trim().startsWith('[')) {
+        try { atts = JSON.parse(atts); } catch { atts = []; }
+      }
+      return sanitizeRowAttachments({
         id: row.id,
         site: row.site,
         documentTitle: row.title,
@@ -1514,9 +1575,10 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         refNumber: '',
         fileFormat: 'PDF',
         confidentiality: 'Official',
+        attachments: Array.isArray(atts) ? atts : [],
         createdAt: row.created_at,
         updatedAt: row.updated_at
-      };
+      });
     }
 
     case 'profiles': {

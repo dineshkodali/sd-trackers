@@ -131,7 +131,8 @@ export const DocumentsView: React.FC = () => {
       uploadedBy: data.uploadedBy || 'Regional SG Officer',
       uploadDate: data.uploadDate || new Date().toISOString().slice(0, 10),
       notes: data.notes || '',
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsUploadModalOpen(false);
   };
@@ -140,7 +141,8 @@ export const DocumentsView: React.FC = () => {
     if (!editingRecord) return;
     updateDocument(editingRecord.id, {
       ...editingRecord,
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     });
     setEditingRecord(null);
   };
@@ -485,7 +487,8 @@ export const DocumentsView: React.FC = () => {
           confidentiality: 'Restricted',
           uploadedBy: 'Regional SG Officer',
           uploadDate: new Date().toISOString().slice(0, 10),
-          notes: ''
+          notes: '',
+          attachments: []
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Upload Document"

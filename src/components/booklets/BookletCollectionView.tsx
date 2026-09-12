@@ -124,7 +124,8 @@ export const BookletCollectionView: React.FC = () => {
       bookletsReceived: Number(data.bookletsReceived) || 0,
       status: (data.status as any) || 'Pending Collection',
       notes: data.notes || '',
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsCreateModalOpen(false);
   };
@@ -133,7 +134,8 @@ export const BookletCollectionView: React.FC = () => {
     if (!editingRecord) return;
     updateBookletRecord(editingRecord.id, {
       ...editingRecord,
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     });
     setEditingRecord(null);
   };
@@ -467,7 +469,8 @@ export const BookletCollectionView: React.FC = () => {
           collectedBooklets: 0,
           bookletsReceived: 0,
           status: 'Pending Collection',
-          notes: ''
+          notes: '',
+          attachments: []
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Register Consignment"

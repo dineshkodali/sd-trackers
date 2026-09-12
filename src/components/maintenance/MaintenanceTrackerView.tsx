@@ -1235,7 +1235,8 @@ export const MaintenanceTrackerView: React.FC = () => {
           defectStatus: 'In Process',
           action: 'Open',
           site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
-          raisedBy: loggedInUserName
+          raisedBy: loggedInUserName,
+          attachments: []
         }}
         onSave={(data) => {
           const today = data.date || new Date().toISOString().slice(0, 10);
@@ -1250,7 +1251,8 @@ export const MaintenanceTrackerView: React.FC = () => {
             priority: data.priority || 'CAT 2',
             defectStatus: data.defectStatus || 'Pending',
             action: data.action || 'Pending',
-            description: data.description || ''
+            description: data.description || '',
+            attachments: Array.isArray(data.attachments) ? data.attachments : []
           } as any);
           clearFormDraft(DRAFT_KEY_MAINTENANCE_CREATE);
           setIsCreateModalOpen(false);
@@ -1274,7 +1276,8 @@ export const MaintenanceTrackerView: React.FC = () => {
           updateMaintenanceRecord(editingRecord.id, {
             ...editingRecord,
             ...data,
-            actualClosedDate
+            actualClosedDate,
+            attachments: Array.isArray(data.attachments) ? data.attachments : []
           });
           clearFormDraft(getDraftKeyMaintenanceEdit(editingRecord.id));
           setEditingRecord(null);

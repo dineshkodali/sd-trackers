@@ -139,7 +139,8 @@ export const SDComplianceTrackerView: React.FC = () => {
       siteName: !canAccessAllSites() 
         ? assignedSite 
         : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsCreateModalOpen(false);
   };
@@ -148,7 +149,8 @@ export const SDComplianceTrackerView: React.FC = () => {
     if (!editingRecord) return;
     updateComplianceRecord(editingRecord.id, {
       ...editingRecord,
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     });
     setEditingRecord(null);
   };
@@ -519,7 +521,8 @@ export const SDComplianceTrackerView: React.FC = () => {
           status: 'Compliant',
           actionTaken: '',
           previousContractor: '',
-          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))
+          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          attachments: []
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Register Certificate"

@@ -129,7 +129,8 @@ export const GPAppointmentsView: React.FC = () => {
         ? assignedSite 
         : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
       suName: data.suName || '',
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsCreateModalOpen(false);
   };
@@ -138,7 +139,8 @@ export const GPAppointmentsView: React.FC = () => {
     if (!editingRecord) return;
     updateGPAppointmentRecord(editingRecord.id, {
       ...editingRecord,
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     });
     setEditingRecord(null);
   };
@@ -490,7 +492,8 @@ export const GPAppointmentsView: React.FC = () => {
           comments: '',
           status: 'Scheduled',
           siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
-          suName: ''
+          suName: '',
+          attachments: []
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Schedule Consultation"

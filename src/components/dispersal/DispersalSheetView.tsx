@@ -154,7 +154,8 @@ export const DispersalSheetView: React.FC = () => {
       secondDateLeftProperty: data.secondDateLeftProperty || '',
       secondIncidentWarningCompleted: data.secondIncidentWarningCompleted || 'No need',
       reasonFailedToTravelSecond: data.reasonFailedToTravelSecond || '',
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsCreateModalOpen(false);
   };
@@ -163,7 +164,8 @@ export const DispersalSheetView: React.FC = () => {
     if (!editingRecord) return;
     updateDispersalRecord(editingRecord.id, {
       ...editingRecord,
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     });
     setEditingRecord(null);
   };
@@ -529,7 +531,8 @@ export const DispersalSheetView: React.FC = () => {
           dateLeftProperty: '',
           incidentWarningCompleted: 'No need',
           reasonFailedToTravel: '',
-          secondDispersalDate: ''
+          secondDispersalDate: '',
+          attachments: []
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Save Dispersal Record"

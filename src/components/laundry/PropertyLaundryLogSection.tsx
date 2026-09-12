@@ -658,6 +658,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
       site: effectiveSite,
       dirtyLaundrySent: Number(formData.dirtyLaundrySent || 0),
       cleanLaundryReturned: Number(formData.cleanLaundryReturned || 0),
+      attachments: Array.isArray((formData as any).attachments) ? (formData as any).attachments : [],
       attachmentUrl: primaryLink,
       attachment_url: primaryLink,
       fileUrl: primaryLink,

@@ -177,8 +177,8 @@ export const SDVCSDirectoryView: React.FC = () => {
       email: data.email || '',
       address: data.address || '',
       notes: data.notes || '',
-      attachments: (data as any).attachments || [],
-      ...data
+      ...data,
+      attachments: Array.isArray((data as any).attachments) ? (data as any).attachments : []
     } as any);
     setIsAddModalOpen(false);
   };
@@ -187,7 +187,8 @@ export const SDVCSDirectoryView: React.FC = () => {
     if (!editingAgency) return;
     updateVCSAgency(editingAgency.id, {
       ...editingAgency,
-      ...data
+      ...data,
+      attachments: Array.isArray((data as any).attachments) ? (data as any).attachments : []
     });
     setEditingAgency(null);
   };
@@ -639,7 +640,8 @@ export const SDVCSDirectoryView: React.FC = () => {
           contactNumber: '',
           email: '',
           address: '',
-          notes: ''
+          notes: '',
+          attachments: []
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Register Agency"

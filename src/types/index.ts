@@ -260,8 +260,18 @@ export interface DocumentRecord {
   fileSizeKb: number;
   confidentiality: 'Restricted' | 'Confidential' | 'Official';
   uploadedBy: string;
-  uploadDate: string;
+  uploadDate?: string;
+  uploadedDate?: string;
   notes?: string;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
+  storagePath?: string;
+  storage_path?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuditLog {
@@ -316,6 +326,11 @@ export interface MaintenanceRecord {
   progress: string;
   actualClosedDate?: string;
   notes?: string;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
 }
 
@@ -337,6 +352,11 @@ export interface SPCDRecord {
   isArchived: boolean;
   dateLeft?: string;
   reasonForLeaving?: string;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -453,6 +473,11 @@ export interface PublicTransportRecord {
   modeOfTransport: string; // Mode of Transport (e.g., Bus, Train, Tube, Taxi, Walking)
   exceptionalCircumstances: string; // Exceptional Circumstances
   status?: 'Approved' | 'Pending' | 'Completed' | 'Cancelled';
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -471,6 +496,11 @@ export interface SDComplianceRecord {
   actionTaken: string; // Action Taken
   previousContractor: string; // Previous Contractor
   siteName?: string; // Associated Hotel / Site
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -487,6 +517,11 @@ export interface GPAppointmentRecord {
   status: 'Scheduled' | 'Attended' | 'Did Not Attend (DNA)' | 'Cancelled' | 'Rescheduled'; // Status
   siteName?: string;
   suName?: string;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -505,6 +540,11 @@ export interface RFAWelfareCheckRecord {
   vulnerability: string; // Vulnerability
   actionTaken: string; // Action Taken
   mhTicket: string; // MH ticket
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -534,6 +574,11 @@ export interface DispersalRecord {
   secondDateLeftProperty: string; // 2nd Date left property (MM/DD/YYYY)
   secondIncidentWarningCompleted: 'Yes' | 'No need' | 'No'; // 2ndIncident/Warning completed (Yes /No need)
   reasonFailedToTravelSecond: string; // Reason for failed to travel 2nd Insistance
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -550,6 +595,11 @@ export interface BookletCollectionRecord {
   bookletsReceived: number; // Booklets received
   status?: 'Pending Collection' | 'Partially Collected' | 'Collected' | 'Received at Site';
   notes?: string;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   lastUpdated: string;
 }
 
@@ -566,6 +616,11 @@ export interface SDVCSAgency {
   address?: string;
   notes?: string;
   isVerified?: boolean;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
 }
 

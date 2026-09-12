@@ -138,7 +138,8 @@ export const RFAWelfareChecksView: React.FC = () => {
       vulnerability: data.vulnerability || '',
       actionTaken: data.actionTaken || '',
       mhTicket: data.mhTicket || `MH-${Math.floor(10000 + Math.random() * 90000)}`,
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsCreateModalOpen(false);
   };
@@ -147,7 +148,8 @@ export const RFAWelfareChecksView: React.FC = () => {
     if (!editingRecord) return;
     updateRFAWelfareRecord(editingRecord.id, {
       ...editingRecord,
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     });
     setEditingRecord(null);
   };
@@ -504,7 +506,8 @@ export const RFAWelfareChecksView: React.FC = () => {
           portOrNassRef: '',
           vulnerability: '',
           actionTaken: '',
-          mhTicket: `MH-${Math.floor(10000 + Math.random() * 90000)}`
+          mhTicket: `MH-${Math.floor(10000 + Math.random() * 90000)}`,
+          attachments: []
         }}
         onSubmit={handleCreateSubmit}
         submitLabel="Save Welfare Check"

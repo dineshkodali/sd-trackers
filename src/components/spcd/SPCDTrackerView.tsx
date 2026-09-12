@@ -843,7 +843,8 @@ export const SPCDTrackerView: React.FC = () => {
           siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           staffReporting: loggedInUserName,
           suDob: '1990-01-01',
-          sgReview: 'Pending Safeguarding Lead Review'
+          sgReview: 'Pending Safeguarding Lead Review',
+          attachments: []
         }}
         onSave={(data) => {
           const reporter = data.staffReporting || loggedInUserName;
@@ -863,7 +864,8 @@ export const SPCDTrackerView: React.FC = () => {
             followUpNotes: data.followUpNotes || '',
             updates: data.updates || '',
             sgReview: data.sgReview || 'Pending Safeguarding Lead Review',
-            isArchived: false
+            isArchived: false,
+            attachments: Array.isArray(data.attachments) ? data.attachments : []
           } as any);
           setIsCreateModalOpen(false);
         }}
@@ -885,7 +887,8 @@ export const SPCDTrackerView: React.FC = () => {
             ...data,
             site: data.siteName || editingRecord.siteName,
             staffReporting: reporter,
-            raisedBy: reporter
+            raisedBy: reporter,
+            attachments: Array.isArray(data.attachments) ? data.attachments : []
           });
           setEditingRecord(null);
         }}

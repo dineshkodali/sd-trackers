@@ -695,3 +695,60 @@ test('RBAC notification filtering: staff restricted to site/personal, manager to
   assert.ok(adminFeed.length >= staffFeed.length, 'Admin feed is superset of staff feed');
 });
 
+test('attachment deletion across all pages/tables completely clears file URLs and prevents phantom DOC badges', () => {
+  const tablesToVerify = [
+    { table: 'documents', record: { id: 'doc-1', documentTitle: 'Risk Doc', site: 'Stansted', fileFormat: 'PDF', fileSizeKb: 500 } },
+    { table: 'compliance_records', record: { id: 'comp-1', srNo: 1, complianceType: 'FRA', siteName: 'Stansted' } },
+    { table: 'public_transport_records', record: { id: 'pt-1', approvalUrn: 'URN-123', suNames: 'John Doe', siteName: 'Stansted' } },
+    { table: 'vcs_agencies', record: { id: 'vcs-1', hotelName: 'Stansted', agencyName: 'Red Cross' } },
+    { table: 'gp_appointments', record: { id: 'gp-1', siteName: 'Stansted', roomNo: '101' } },
+    { table: 'rfa_welfare_checks', record: { id: 'welf-1', siteName: 'Stansted', roomOrFlatNo: '102' } },
+    { table: 'dispersal_records', record: { id: 'disp-1', sno: 1, siteName: 'Stansted' } },
+    { table: 'booklet_collections', record: { id: 'bk-1', hotelName: 'Stansted', agentName: 'Ready' } },
+    { table: 'challenging_behavior', record: { id: 'chal-1', name: 'John Doe', site: 'Stansted' } },
+    { table: 'referrals', record: { id: 'ref-1', suName: 'Jane Doe', site: 'Stansted' } },
+    { table: 'maintenance_records', record: { id: 'maint-1', site: 'Stansted', location: 'Room 201' } },
+    { table: 'spcd_records', record: { id: 'spcd-1', siteName: 'Stansted', suName: 'Mark Smith' } }
+  ];
+
+  for (const { table, record } of tablesToVerify) {
+    // 1. Initially create record with an attachment
+    const withAttachment = {
+      ...record,
+      attachments: [{
+        id: 'att-1',
+        name: 'certificate.pdf',
+        size: 1024,
+        type: 'application/pdf',
+        url: 'https://storage.supabase.co/bucket/certificate.pdf',
+        dataUrl: 'https://storage.supabase.co/bucket/certificate.pdf'
+      }]
+    };
+
+    const rowWithAtt = toDatabaseRow(table, withAttachment);
+    assert.ok(rowWithAtt.attachment_url || rowWithAtt.file_url || table === 'sites', `${table} must have file link when attachment exists`);
+    assert.equal(rowWithAtt.attachments?.length, 1, `${table} row.attachments must hold 1 attachment`);
+
+    // 2. Now user deletes attachment (attachments becomes [])
+    const deletedAttachmentRecord = {
+      ...record,
+      attachments: [],
+      attachmentUrl: '',
+      fileUrl: ''
+    };
+
+    const rowAfterDelete = toDatabaseRow(table, deletedAttachmentRecord);
+    assert.equal(rowAfterDelete.attachment_url, null, `${table} row.attachment_url must be null after deletion`);
+    assert.equal(rowAfterDelete.file_url, null, `${table} row.file_url must be null after deletion`);
+    assert.deepEqual(rowAfterDelete.attachments, [], `${table} row.attachments must be empty array`);
+
+    // 3. Read back with fromDatabaseRow
+    const readBack = fromDatabaseRow(table, rowAfterDelete);
+    assert.ok(Array.isArray(readBack.attachments), `${table} attachments must be an array`);
+    assert.equal(readBack.attachments.length, 0, `${table} attachments length must be 0 after deletion`);
+    assert.equal(readBack.attachmentUrl, '', `${table} attachmentUrl must be empty string after deletion`);
+    assert.equal(readBack.fileUrl, '', `${table} fileUrl must be empty string after deletion`);
+  }
+});
+
+
