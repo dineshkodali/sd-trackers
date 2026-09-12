@@ -12,6 +12,8 @@ import configRouter from './routes/config.js';
 import authRouter from './routes/auth.js';
 import dbRouter from './routes/db.js';
 import smtpRouter from './routes/smtp.js';
+import statusRouter from './routes/status.js';
+import { statusMonitor } from './status/monitor.js';
 import { runDatabaseMigrations } from './migrate.js';
 import { seedReferenceData } from './seed.js';
 import { invalidateLiveSchema } from './liveSchema.js';
@@ -105,9 +107,11 @@ async function startServer() {
       if (seed.errors.length) console.warn('[Seed] Errors:', seed.errors.join('; '));
       const pending = seed.skipped.filter(s => s.includes('migration pending'));
       if (pending.length) console.warn('[Seed] Waiting for migration:', pending.join(', '));
+      statusMonitor.setStartupResult({ migrationApplied: res.success, seedErrors: seed.errors.length });
     })
     .catch((err) => {
       console.error('[Migration Error]', err);
+      statusMonitor.setStartupResult({ migrationApplied: false, seedErrors: 1 });
     });
 
   // Trust reverse proxies (Nginx, Apache, Caddy, Cloudflare, Docker, AWS ALB)
@@ -216,6 +220,18 @@ async function startServer() {
   // The SMTP routes send mail through the organisation's account and edit
   // notification rules; they were previously reachable anonymously.
   app.use('/api/smtp', requireAuth, smtpRouter);
+  // Public status monitoring endpoint (real-time health probes & incidents)
+  app.use('/api/status', statusRouter);
+
+  // Process error monitoring - immediate reflection on status page
+  process.on('uncaughtException', (err) => {
+    console.error('[Process Error: uncaughtException]', err);
+    statusMonitor.recordProcessError('uncaughtException', err.message);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('[Process Error: unhandledRejection]', reason);
+    statusMonitor.recordProcessError('unhandledRejection', String(reason));
+  });
 
   // Vite middleware for development / Static files for production
   if (process.env.NODE_ENV !== 'production') {
@@ -246,6 +262,9 @@ async function startServer() {
     }
     console.log(`  ➜  Bound to:  ${HOST}:${PORT}`);
     console.log(`  ======================================================\n`);
+
+    // Start background status probe monitoring immediately
+    statusMonitor.start(local);
 
     if (process.env.OPEN_BROWSER !== 'false') {
       openBrowser(local);

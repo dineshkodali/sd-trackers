@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SDTracker Real-Time Status &bull; SDCommercial</title>
+  <meta name="description" content="Real-time operational status, system telemetry, and incident monitoring for SDTracker WebCRM." />
+
+  <!-- Google Fonts: Poppins & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Accessible Live Announcer -->
+  <div id="status-live-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Top Accent Bar -->
+  <div class="top-brand-accent" aria-hidden="true"></div>
+
+  <!-- Compact Header -->
+  <header class="portal-header">
+    <div class="container header-content">
+      <div class="brand-wrapper">
+        <div class="brand-emblem" aria-hidden="true">
+          <div class="emblem-slice-left">S</div>
+          <div class="emblem-slice-right">D</div>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">
+            <span class="sd-wordmark">SD</span> <span class="comm-wordmark">COMMERCIAL</span> <span class="tracker-wordmark">Tracker</span>
+          </h1>
+          <span class="brand-sub">Real-Time Operations &amp; Systems Status</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div id="live-connection-badge" class="live-pulse-badge" title="Continuous Realtime Polling Active">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span>Live (3s)</span>
+        </div>
+
+        <button type="button" id="btn-refresh-status" class="btn-compact-action" onclick="window.refreshStatus()" title="Force Immediate Check">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          <span>Refresh</span>
+        </button>
+
+        <button type="button" class="btn-compact-action" onclick="window.toggleDemoModal(true)" title="Open Simulation Controls">
+          <span>⚙️ Demo</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Compact Dashboard -->
+  <main>
+    <div class="container compact-dashboard">
+
+      <!-- 1. Compact Overall Status Banner -->
+      <section aria-labelledby="banner-headline">
+        <div id="main-status-banner" class="main-status-banner state-operational">
+          <div class="main-status-left">
+            <div id="banner-indicator-dot" class="banner-indicator-dot" aria-hidden="true"></div>
+            <div>
+              <h2 id="banner-headline" class="banner-headline">All Systems Operational</h2>
+              <p id="banner-subtext" class="banner-subtext">Operating normally across all municipal properties and tenant workflows.</p>
+            </div>
+          </div>
+          <div class="main-status-right">
+            <div class="banner-telemetry-chip">
+              <span>Avg Latency</span>
+              <strong id="banner-latency-value">16 ms</strong>
+            </div>
+            <div class="banner-telemetry-chip">
+              <span>90d Availability</span>
+              <strong>99.97%</strong>
+            </div>
+            <div class="banner-telemetry-chip">
+              <span>Last Checked</span>
+              <span id="last-updated-timestamp" class="last-updated-text">Checking...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Core 5-Pillar Process Telemetry (Backend, Frontend, APIs, DB, Flows) -->
+      <section aria-label="System Infrastructure Telemetry">
+        <div id="telemetry-strip-container" class="telemetry-strip">
+          <!-- Populated dynamically by status.js -->
+        </div>
+      </section>
+
+      <!-- 3. Compact Services Matrix (2-Column Grid) -->
+      <section class="compact-card" aria-labelledby="services-section-title">
+        <div class="card-header-compact">
+          <h2 id="services-section-title" class="card-title-compact">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+              <line x1="6" y1="6" x2="6.01" y2="6"></line>
+              <line x1="6" y1="18" x2="6.01" y2="18"></line>
+            </svg>
+            SDTracker Services
+          </h2>
+
+          <div class="status-legend-chips" aria-label="Status Legend">
+            <div class="legend-item"><span class="legend-dot dot-op" aria-hidden="true"></span><span>Operational</span></div>
+            <div class="legend-item"><span class="legend-dot dot-deg" aria-hidden="true"></span><span>Degraded</span></div>
+            <div class="legend-item"><span class="legend-dot dot-part" aria-hidden="true"></span><span>Partial</span></div>
+            <div class="legend-item"><span class="legend-dot dot-out" aria-hidden="true"></span><span>Outage</span></div>
+            <div class="legend-item"><span class="legend-dot dot-maint" aria-hidden="true"></span><span>Maintenance</span></div>
+          </div>
+        </div>
+
+        <div id="services-list-container" class="services-grid-compact">
+          <!-- Populated dynamically by status.js -->
+        </div>
+      </section>
+
+      <!-- 4. Compact Tabbed Controller for Details (Incidents, Uptime, Maintenance, History, Alerts) -->
+      <section class="compact-card" aria-label="Incident, Uptime & Maintenance Details">
+        <div class="tabs-container" role="tablist" aria-label="Status Detail Navigation">
+          <button
+            type="button"
+            class="tab-btn active"
+            data-tab="tab-incidents"
+            role="tab"
+            aria-selected="true"
+            aria-controls="tab-incidents"
+            onclick="window.switchDetailTab('tab-incidents')"
+          >
+            <span>Live Incidents</span>
+            <span id="tab-incidents-count" class="tab-badge-count">0</span>
+          </button>
+
+          <button
+            type="button"
+            class="tab-btn"
+            data-tab="tab-uptime"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-uptime"
+            onclick="window.switchDetailTab('tab-uptime')"
+          >
+            <span>90-Day Uptime</span>
+          </button>
+
+          <button
+            type="button"
+            class="tab-btn"
+            data-tab="tab-maintenance"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-maintenance"
+            onclick="window.switchDetailTab('tab-maintenance')"
+          >
+            <span>Maintenance</span>
+            <span id="tab-maint-count" class="tab-badge-count">0</span>
+          </button>
+
+          <button
+            type="button"
+            class="tab-btn"
+            data-tab="tab-history"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-history"
+            onclick="window.switchDetailTab('tab-history')"
+          >
+            <span>Incident History</span>
+          </button>
+
+          <button
+            type="button"
+            class="tab-btn"
+            data-tab="tab-subscribe"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-subscribe"
+            onclick="window.switchDetailTab('tab-subscribe')"
+          >
+            <span>Subscribe</span>
+          </button>
+        </div>
+
+        <!-- Tab 1: Current Incidents -->
+        <div id="tab-incidents" class="tab-content-panel active" role="tabpanel">
+          <div id="current-incidents-container">
+            <!-- Populated dynamically by status.js -->
+          </div>
+        </div>
+
+        <!-- Tab 2: 90-Day Uptime -->
+        <div id="tab-uptime" class="tab-content-panel" role="tabpanel">
+          <div class="uptime-stats-grid">
+            <div class="uptime-stat-card">
+              <span class="uptime-stat-label">Today</span>
+              <span id="uptime-today" class="uptime-stat-value">100%</span>
+            </div>
+            <div class="uptime-stat-card">
+              <span class="uptime-stat-label">7 Days</span>
+              <span id="uptime-7d" class="uptime-stat-value">99.98%</span>
+            </div>
+            <div class="uptime-stat-card">
+              <span class="uptime-stat-label">30 Days</span>
+              <span id="uptime-30d" class="uptime-stat-value">99.95%</span>
+            </div>
+            <div class="uptime-stat-card">
+              <span class="uptime-stat-label">90 Days</span>
+              <span id="uptime-90d" class="uptime-stat-value">99.97%</span>
+            </div>
+          </div>
+
+          <div class="uptime-history-wrap">
+            <div class="uptime-history-header">
+              <span class="uptime-history-title">Daily Availability (Last 90 Days)</span>
+              <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--status-operational-text);">99.97% Overall</span>
+            </div>
+            <div id="uptime-bars-container" class="uptime-bars-container" role="region" aria-label="Daily uptime breakdown">
+              <!-- Populated dynamically by status.js -->
+            </div>
+            <div class="uptime-axis-labels">
+              <span>90 days ago</span>
+              <span>45 days ago</span>
+              <span>Today (100%)</span>
+            </div>
+            <div id="uptime-tooltip" class="uptime-tooltip" role="tooltip" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Planned Maintenance -->
+        <div id="tab-maintenance" class="tab-content-panel" role="tabpanel">
+          <div id="maintenance-container">
+            <!-- Populated dynamically by status.js -->
+          </div>
+        </div>
+
+        <!-- Tab 4: Past Incidents -->
+        <div id="tab-history" class="tab-content-panel" role="tabpanel">
+          <div id="past-incidents-container" class="past-incidents-list">
+            <!-- Populated dynamically by status.js -->
+          </div>
+        </div>
+
+        <!-- Tab 5: Subscribe to Updates -->
+        <div id="tab-subscribe" class="tab-content-panel" role="tabpanel">
+          <div class="subscribe-box-compact">
+            <p style="font-size: 12.5px; color: var(--text-secondary);">
+              Receive automated email dispatches whenever SDTracker experiences service degradation or scheduled maintenance.
+            </p>
+            <form id="subscribe-form" class="subscribe-form-compact" novalidate>
+              <input
+                type="email"
+                id="subscribe-email"
+                class="subscribe-input"
+                placeholder="Enter corporate email..."
+                required
+                aria-label="Email address for alerts"
+              />
+              <button type="submit" class="subscribe-btn">Subscribe to Alerts</button>
+            </form>
+            <div id="subscribe-feedback" class="subscribe-feedback" role="alert"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Compact Footer -->
+  <footer class="portal-footer">
+    <div class="container footer-content">
+      <div>
+        <span class="footer-title">SDTracker Status &bull; SDCommercial</span>
+        <span class="footer-desc">&mdash; Realtime Operations, Incident Watchdog &amp; Systems Governance. &copy; 2026</span>
+      </div>
+      <ul class="footer-links" aria-label="Portal references">
+        <li><a href="#" aria-label="Support desk">Support</a></li>
+        <li><a href="#" aria-label="Privacy policy">Privacy</a></li>
+        <li><a href="#" aria-label="Emergency contacts">Contact</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <!-- Demo Controls Floating Toggle & Modal -->
+  <button
+    type="button"
+    class="demo-controls-toggle-btn"
+    onclick="window.toggleDemoModal(true)"
+    aria-label="Open Demo Controls"
+    title="Open interactive testing scenarios"
+  >
+    <span class="demo-badge-dot"></span>
+    <span>Demo Controls</span>
+  </button>
+
+  <div id="demo-modal-overlay" class="demo-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="demo-modal-title">
+    <div class="demo-modal">
+      <div class="demo-modal-header">
+        <div id="demo-modal-title" class="demo-modal-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          Realtime Simulation &amp; Error Testing
+        </div>
+        <button type="button" class="demo-close-btn" onclick="window.toggleDemoModal(false)" aria-label="Close demo controls">&times;</button>
+      </div>
+
+      <div class="demo-modal-body">
+        <p class="demo-instruction">
+          Simulate instantaneous infrastructure failures across backend, database, API, and background flows. Effects apply immediately to banners, telemetry, and cards.
+        </p>
+
+        <div class="demo-btn-grid">
+          <button type="button" class="demo-action-btn btn-all-green" onclick="window.demoSimulate('all_operational')">
+            <span>●</span>
+            <span>Set All Operational</span>
+          </button>
+          <button type="button" class="demo-action-btn" onclick="window.demoSimulate('degraded_database')">
+            <span style="color: var(--status-degraded);">●</span>
+            <span>Simulate Degraded DB</span>
+          </button>
+          <button type="button" class="demo-action-btn" onclick="window.demoSimulate('api_partial_outage')">
+            <span style="color: var(--status-partial);">●</span>
+            <span>Simulate API Outage</span>
+          </button>
+          <button type="button" class="demo-action-btn" onclick="window.demoSimulate('major_outage')">
+            <span style="color: var(--status-outage);">●</span>
+            <span>Simulate Major Outage</span>
+          </button>
+          <button type="button" class="demo-action-btn" onclick="window.demoSimulate('maintenance')">
+            <span style="color: var(--status-maintenance);">●</span>
+            <span>Simulate Maintenance</span>
+          </button>
+          <button type="button" class="demo-action-btn" onclick="window.demoSimulate('clear_incidents')">
+            <span>✓</span>
+            <span>Clear Incidents</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="status.js"></script>
+</body>
+</html>
