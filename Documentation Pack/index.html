@@ -786,7 +786,7 @@
 
     /* Print Styles */
     @media print {
-      .top-brand-bar, header.portal-header, .tab-bar-wrapper, footer.portal-footer, .btn-print, .rfc-form, .btn-brand-primary {
+      .top-brand-bar, header.portal-header, .tab-bar-wrapper, footer.portal-footer, .btn-print, .rfc-form, .btn-brand-primary, #toast-box, .toast-notification {
         display: none !important;
       }
       .tab-content {
@@ -796,6 +796,8 @@
       body {
         background: #ffffff;
       }
+    }
+
     /* Brand Kit Interactive Styling */
     .color-swatch-grid {
       display: grid;
@@ -897,7 +899,7 @@
       border-radius: var(--radius-xs);
       font-size: 13px;
       font-weight: 600;
-      display: flex;
+      display: none;
       align-items: center;
       gap: 8px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.25);
@@ -909,6 +911,7 @@
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .toast-notification.show {
+      display: flex;
       opacity: 1;
       transform: translateY(0);
     }
@@ -1982,6 +1985,6 @@ Reviewed at the weekly sprint review (Every Tuesday).`;
   </script>
 
   <!-- Interactive Toast Notification Element -->
-  <div id="toast-box" class="toast-notification">✓ Copied to clipboard!</div>
+  <div id="toast-box" class="toast-notification" aria-live="polite"></div>
 </body>
 </html>
