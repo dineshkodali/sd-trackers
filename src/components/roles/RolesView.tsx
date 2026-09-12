@@ -722,7 +722,7 @@ export const RolesView: React.FC = () => {
             </span>
           </div>
           <div className="text-[11px] font-medium text-[#323130]">
-            System Profile: <span className="text-[#0d9488] font-bold">RBAC Enterprise v2.4</span>
+            System Profile: <span className="text-[#0d9488] font-bold">RBAC Enterprise</span>
           </div>
         </div>
 

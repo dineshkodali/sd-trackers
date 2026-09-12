@@ -662,11 +662,34 @@ export const Header: React.FC = () => {
                     <span>Supabase Diagnostics</span>
                     <Activity className="w-3 h-3 text-[#0d9488]" />
                   </button>
+
+                  <a
+                    href="/docs/index.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowProfile(false)}
+                    className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between text-xs cursor-pointer no-underline"
+                    title="Open SDTracker Support, SLA & Brand Kit Portal in a new window"
+                  >
+                    <span className="font-semibold text-[#0d9488]">Support &amp; Brand Kit</span>
+                    <ExternalLink className="w-3 h-3 text-[#0d9488]" />
+                  </a>
                 </div>
               ) : (
                 <div className="pt-2 border-t border-[#edebe9] mt-2 text-[11px] text-[#605e5c]">
                   <span>Operational Role: <strong className="text-neutral-800">{currentUserRole}</strong></span>
                   <p className="text-[10px] text-neutral-500 mt-0.5">Admin & property management is restricted to Super Admins and Admins.</p>
+                  <a
+                    href="/docs/index.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowProfile(false)}
+                    className="w-full mt-2 text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between text-xs cursor-pointer no-underline"
+                    title="Open SDTracker Support, SLA & Brand Kit Portal in a new window"
+                  >
+                    <span className="font-semibold text-[#0d9488]">Support &amp; Brand Kit</span>
+                    <ExternalLink className="w-3 h-3 text-[#0d9488]" />
+                  </a>
                 </div>
               )}
 

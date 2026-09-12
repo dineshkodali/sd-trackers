@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SDTracker WebCRM — Service, Support & Change Management Portal</title>
+  <!-- Google Fonts: Poppins (Brand Kit Standard) & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* SD Commercial Brand Kit Tokens */
+      --brand-teal: #0d9488;
+      --brand-teal-dark: #115e59;
+      --brand-teal-deep: #134e4a;
+      --brand-teal-light: #f0fdfa;
+      --brand-teal-hover: #0f766e;
+      --brand-teal-border: #99f6e4;
+      --brand-teal-glow: rgba(13, 148, 136, 0.18);
+
+      /* Microsoft Fluent Design & Surface Neutrals */
+      --fluent-black: #242424;
+      --fluent-dark: #323130;
+      --fluent-muted: #605e5c;
+      --fluent-subtle: #8a8886;
+      --fluent-border: #e1dfdd;
+      --fluent-border-light: #edebe9;
+      --fluent-bg-subtle: #f8fafc;
+      --fluent-bg-hover: #f3f2f1;
+      --surface: #ffffff;
+
+      /* SLA Status Colors */
+      --p1-red: #dc2626;
+      --p1-bg: #fef2f2;
+      --p1-border: #fca5a5;
+      
+      --p2-orange: #ea580c;
+      --p2-bg: #fff7ed;
+      --p2-border: #fdba74;
+      
+      --p3-yellow: #d97706;
+      --p3-bg: #fefce8;
+      --p3-border: #fde047;
+      
+      --p4-green: #059669;
+      --p4-bg: #f0fdf4;
+      --p4-border: #86efac;
+
+      --radius-xs: 4px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scrollbar-width: thin;
+      scrollbar-color: #d1d5db transparent;
+    }
+
+    /* Brand Slim Scrollbars */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #d1d5db;
+      border-radius: 9999px;
+      transition: background-color 0.2s ease-in-out;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: var(--brand-teal);
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: var(--fluent-black);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Brand Accent Line */
+    .top-brand-bar {
+      height: 4px;
+      background: linear-gradient(90deg, var(--brand-teal) 0%, var(--brand-teal-dark) 100%);
+      position: sticky;
+      top: 0;
+      z-index: 110;
+    }
+
+    /* Main Brand Header */
+    header.portal-header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--fluent-border);
+      padding: 16px 36px;
+      position: sticky;
+      top: 4px;
+      z-index: 100;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .header-container {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    /* SD Commercial Logo Component (Pixel-perfect match to Logo.tsx) */
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      text-decoration: none;
+    }
+
+    .sd-logo-emblem {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-xs);
+      box-shadow: var(--shadow-xs);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .sd-emblem-s {
+      position: absolute;
+      inset: 0;
+      background-color: var(--brand-teal);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 17px;
+      letter-spacing: -0.5px;
+      clip-path: polygon(0 0, 70% 0, 40% 100%, 0 100%);
+    }
+
+    .sd-emblem-d {
+      position: absolute;
+      inset: 0;
+      background-color: var(--brand-teal-dark);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 17px;
+      letter-spacing: -0.5px;
+      padding-left: 10px;
+      clip-path: polygon(70% 0, 100% 0, 100% 100%, 40% 100%);
+    }
+
+    .sd-emblem-text {
+      position: relative;
+      z-index: 10;
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
+
+    .brand-title-wrap {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-main-title {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      line-height: 1.1;
+    }
+
+    .brand-sd {
+      font-weight: 900;
+      color: var(--brand-teal-dark);
+      font-size: 19px;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-comm {
+      font-weight: 800;
+      color: var(--brand-teal);
+      font-size: 15px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .brand-tracker {
+      font-weight: 700;
+      color: var(--fluent-black);
+      font-size: 15px;
+      margin-left: 4px;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--fluent-muted);
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      margin-top: 3px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--brand-teal-light);
+      color: var(--brand-teal-hover);
+      border: 1px solid var(--brand-teal-border);
+      padding: 5px 12px;
+      border-radius: var(--radius-xs);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--brand-teal);
+      border-radius: 50%;
+      animation: brandPulse 2s infinite;
+    }
+
+    @keyframes brandPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .btn-print {
+      background: #ffffff;
+      color: var(--fluent-dark);
+      border: 1px solid var(--fluent-border);
+      padding: 7px 14px;
+      border-radius: var(--radius-xs);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .btn-print:hover {
+      background: var(--fluent-bg-hover);
+      border-color: #d1d5db;
+      color: var(--brand-teal-dark);
+    }
+
+    /* Brand Tab Navigation Bar */
+    .tab-bar-wrapper {
+      background: #ffffff;
+      border-bottom: 1px solid var(--fluent-border);
+      position: sticky;
+      top: 80px;
+      z-index: 90;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    .tab-bar {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      gap: 2px;
+      overflow-x: auto;
+      padding: 0 24px;
+      scrollbar-width: none;
+    }
+
+    .tab-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 14px 16px;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--fluent-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      border-bottom: 3px solid transparent;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .tab-btn:hover {
+      color: var(--brand-teal-dark);
+      background-color: var(--fluent-bg-subtle);
+    }
+
+    .tab-btn.active {
+      color: var(--brand-teal-dark);
+      border-bottom-color: var(--brand-teal);
+      background: var(--brand-teal-light);
+    }
+
+    .tab-badge {
+      background: var(--fluent-border);
+      color: var(--fluent-dark);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 9999px;
+      font-weight: 700;
+    }
+
+    .tab-btn.active .tab-badge {
+      background: var(--brand-teal);
+      color: #ffffff;
+    }
+
+    /* Main Content Area */
+    main.content-area {
+      max-width: 1300px;
+      width: 100%;
+      margin: 28px auto;
+      padding: 0 24px 60px;
+      flex: 1;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Section Cards with Brand Accent */
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--fluent-border);
+      border-radius: var(--radius-sm);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .section-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--fluent-black);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-desc {
+      color: var(--fluent-muted);
+      font-size: 13.5px;
+      margin-bottom: 22px;
+    }
+
+    /* Quick KPI Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--fluent-bg-subtle);
+      border: 1px solid var(--fluent-border);
+      padding: 16px 20px;
+      border-radius: var(--radius-xs);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-card .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--fluent-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-card .value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--fluent-black);
+    }
+
+    .stat-card .subtext {
+      font-size: 11.5px;
+      color: var(--fluent-subtle);
+      margin-top: 3px;
+    }
+
+    /* Clean Brand Table */
+    .data-table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--fluent-border);
+      border-radius: var(--radius-xs);
+      margin: 16px 0;
+    }
+
+    table.portal-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13.5px;
+    }
+
+    table.portal-table th {
+      background: #f8fafc;
+      color: var(--fluent-dark);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--fluent-border);
+      white-space: nowrap;
+      font-size: 12.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    table.portal-table td {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--fluent-border);
+      color: var(--fluent-black);
+      vertical-align: middle;
+    }
+
+    table.portal-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.portal-table tr:hover td {
+      background: var(--fluent-bg-subtle);
+    }
+
+    /* SLA Priority Badges */
+    .p-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: var(--radius-xs);
+      white-space: nowrap;
+    }
+
+    .p-pill.p1 {
+      background: var(--p1-bg);
+      color: var(--p1-red);
+      border: 1px solid var(--p1-border);
+    }
+
+    .p-pill.p2 {
+      background: var(--p2-bg);
+      color: var(--p2-orange);
+      border: 1px solid var(--p2-border);
+    }
+
+    .p-pill.p3 {
+      background: var(--p3-bg);
+      color: var(--p3-yellow);
+      border: 1px solid var(--p3-border);
+    }
+
+    .p-pill.p4 {
+      background: var(--p4-bg);
+      color: var(--p4-green);
+      border: 1px solid var(--p4-border);
+    }
+
+    /* Change Stepper Pipeline */
+    .stepper-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .step-item {
+      flex: 1;
+      min-width: 125px;
+      background: var(--fluent-bg-subtle);
+      border: 1px solid var(--fluent-border);
+      border-radius: var(--radius-xs);
+      padding: 12px 10px;
+      text-align: center;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .step-item:hover {
+      border-color: var(--brand-teal);
+      background: var(--brand-teal-light);
+      transform: translateY(-2px);
+    }
+
+    .step-number {
+      width: 24px;
+      height: 24px;
+      background: var(--brand-teal);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+    }
+
+    .step-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--fluent-black);
+    }
+
+    /* Interactive RFC Generator Form */
+    .rfc-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 16px;
+      background: var(--fluent-bg-subtle);
+      border: 1px solid var(--fluent-border);
+      padding: 22px;
+      border-radius: var(--radius-xs);
+      margin-top: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-group label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--fluent-dark);
+    }
+
+    .form-control {
+      padding: 9px 12px;
+      border: 1px solid var(--fluent-border);
+      border-radius: var(--radius-xs);
+      font-family: inherit;
+      font-size: 13.5px;
+      background: #ffffff;
+      color: var(--fluent-black);
+      transition: border-color 0.2s ease;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--brand-teal);
+      box-shadow: 0 0 0 3px var(--brand-teal-glow);
+    }
+
+    .rfc-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .btn-brand-primary {
+      background: var(--brand-teal);
+      color: #ffffff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: var(--radius-xs);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 13.5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s ease;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .btn-brand-primary:hover {
+      background: var(--brand-teal-hover);
+    }
+
+    .copy-output-box {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: var(--radius-xs);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      white-space: pre-wrap;
+      margin-top: 12px;
+      border: 1px solid #334155;
+      display: none;
+    }
+
+    /* Accordion / Troubleshooting */
+    .accordion-item {
+      border: 1px solid var(--fluent-border);
+      border-radius: var(--radius-xs);
+      margin-bottom: 10px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .accordion-header {
+      padding: 15px 18px;
+      background: var(--fluent-bg-subtle);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-size: 14px;
+      user-select: none;
+      transition: background 0.2s ease;
+    }
+
+    .accordion-header:hover {
+      background: var(--fluent-bg-hover);
+      color: var(--brand-teal-dark);
+    }
+
+    .accordion-header .icon {
+      font-size: 14px;
+      color: var(--fluent-muted);
+      transition: transform 0.2s ease;
+    }
+
+    .accordion-item.open .accordion-header .icon {
+      transform: rotate(180deg);
+      color: var(--brand-teal);
+    }
+
+    .accordion-content {
+      padding: 18px;
+      display: none;
+      font-size: 13.5px;
+      color: var(--fluent-black);
+      border-top: 1px solid var(--fluent-border);
+      line-height: 1.6;
+    }
+
+    .accordion-item.open .accordion-content {
+      display: block;
+    }
+
+    /* Callout Notices */
+    .callout {
+      padding: 14px 18px;
+      border-radius: var(--radius-xs);
+      margin: 18px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 13.5px;
+    }
+
+    .callout.info {
+      background: var(--brand-teal-light);
+      border: 1px solid var(--brand-teal-border);
+      color: var(--brand-teal-deep);
+    }
+
+    .callout.warning {
+      background: var(--p2-bg);
+      border: 1px solid var(--p2-border);
+      color: #9a3412;
+    }
+
+    .callout.critical {
+      background: var(--p1-bg);
+      border: 1px solid var(--p1-border);
+      color: #991b1b;
+    }
+
+    /* Checklist */
+    .checklist {
+      list-style: none;
+      margin: 14px 0;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--fluent-border-light);
+      font-size: 13.5px;
+    }
+
+    .checklist-item:last-child {
+      border-bottom: none;
+    }
+
+    .check-icon {
+      color: var(--brand-teal);
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    /* Footer */
+    footer.portal-footer {
+      background: #ffffff;
+      color: var(--fluent-muted);
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 12.5px;
+      border-top: 1px solid var(--fluent-border);
+      margin-top: auto;
+    }
+
+    footer.portal-footer a {
+      color: var(--brand-teal-hover);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    footer.portal-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      header.portal-header {
+        padding: 14px 18px;
+      }
+      .tab-bar-wrapper {
+        top: 75px;
+      }
+      main.content-area {
+        padding: 0 16px 40px;
+      }
+      .section-card {
+        padding: 20px 18px;
+      }
+    }
+
+    /* Print Styles */
+    @media print {
+      .top-brand-bar, header.portal-header, .tab-bar-wrapper, footer.portal-footer, .btn-print, .rfc-form, .btn-brand-primary {
+        display: none !important;
+      }
+      .tab-content {
+        display: block !important;
+        margin-bottom: 30px;
+      }
+      body {
+        background: #ffffff;
+      }
+    /* Brand Kit Interactive Styling */
+    .color-swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      margin: 16px 0 28px;
+    }
+    .swatch-card {
+      background: #ffffff;
+      border: 1px solid var(--fluent-border);
+      border-radius: var(--radius-xs);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-xs);
+      position: relative;
+    }
+    .swatch-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+      border-color: var(--brand-teal);
+    }
+    .swatch-preview {
+      height: 64px;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 6px 10px;
+    }
+    .swatch-copy-hint {
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(0,0,0,0.5);
+      color: #ffffff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .swatch-card:hover .swatch-copy-hint {
+      opacity: 1;
+    }
+    .swatch-details {
+      padding: 10px 12px;
+      background: #ffffff;
+    }
+    .swatch-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--fluent-black);
+      margin-bottom: 2px;
+    }
+    .swatch-hex {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--brand-teal-hover);
+    }
+    .swatch-role {
+      font-size: 10.5px;
+      color: var(--fluent-muted);
+      margin-top: 4px;
+    }
+    .logo-inspect-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 18px;
+      margin: 20px 0;
+    }
+    .logo-preview-box {
+      border: 1px solid var(--fluent-border);
+      border-radius: var(--radius-xs);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+    .type-specimen-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+    .type-specimen-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--fluent-border);
+      vertical-align: middle;
+    }
+    .toast-notification {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: var(--radius-xs);
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      border: 1px solid #334155;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .toast-notification.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Brand Accent Line (Brand Kit) -->
+  <div class="top-brand-bar"></div>
+
+  <!-- Main Brand Header -->
+  <header class="portal-header">
+    <div class="header-container">
+      <div class="brand-group">
+        <!-- Exact SD Emblem (Dual-tone Teal #0d9488 & #115e59) -->
+        <div class="sd-logo-emblem" title="SD Commercial">
+          <div class="sd-emblem-s">S</div>
+          <div class="sd-emblem-d">D</div>
+          <span class="sd-emblem-text">SD</span>
+        </div>
+        <div class="brand-title-wrap">
+          <div class="brand-main-title">
+            <span class="brand-sd">SD</span>
+            <span class="brand-comm">COMMERCIAL</span>
+            <span class="brand-tracker">Tracker</span>
+          </div>
+          <span class="brand-subtitle">Operations & Compliance Portal • Service & Support Guide</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="badge-status">
+          <span class="badge-pulse-dot"></span>
+          Production Ready
+        </span>
+        <button class="btn-print" onclick="window.print()" title="Print or Save as PDF">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+          Print / PDF
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Tab Bar Switcher -->
+  <nav class="tab-bar-wrapper">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab(event, 'tab-overview')">
+        <span>📖 Service Overview</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-brandkit')">
+        <span>🎨 WebCRM Brand Kit</span>
+        <span class="tab-badge" style="background: var(--brand-teal); color: #fff;">UI Tokens</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-support')">
+        <span>🛠️ Support & Incidents</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-sla')">
+        <span>⏱️ Priority & SLAs</span>
+        <span class="tab-badge">P1 – P4</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-changes')">
+        <span>🔄 Changes & RFCs</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-escalation')">
+        <span>🚨 Escalation</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-maintenance')">
+        <span>📅 Maintenance</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-workarounds')">
+        <span>💡 Quick Workarounds</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-contacts')">
+        <span>📞 Contacts</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab(event, 'tab-readiness')">
+        <span>🚀 Ship Readiness</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="content-area">
+
+    <!-- TAB 1: SERVICE OVERVIEW -->
+    <section id="tab-overview" class="tab-content active">
+      <div class="section-card">
+        <h2 class="section-title">1. SDTracker Service Overview</h2>
+        <p class="section-desc">What SDTracker is, who operates it, and how it powers daily commercial operations.</p>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="label">Target Uptime</span>
+            <span class="value" style="color: var(--brand-teal);">99.9%</span>
+            <span class="subtext">24/7/365 Hotel Operations</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">P1 Response Target</span>
+            <span class="value" style="color: var(--p1-red);">30 Mins</span>
+            <span class="subtext">Dedicated Emergency Hotline</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">P1 Target Resolution</span>
+            <span class="value" style="color: var(--brand-teal-dark);">4 Hours</span>
+            <span class="subtext">Emergency hotfix or failover</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">Release Window</span>
+            <span class="value" style="color: var(--brand-teal);">Tues 02:00</span>
+            <span class="subtext">Zero-downtime off-peak</span>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 20px 0 10px; color: var(--fluent-black);">What is SDTracker WebCRM?</h3>
+        <p style="color: var(--fluent-muted); font-size: 13.5px; margin-bottom: 16px;">
+          SDTracker WebCRM is the unified operations management platform for SD Commercial properties, hotels, and accommodation facilities. It replaces disjointed paper sheets and spreadsheets with a single, real-time audit, maintenance, and compliance pipeline.
+        </p>
+
+        <h3 style="font-size: 15px; margin: 20px 0 10px; color: var(--fluent-black);">The 14 Operational Modules Covered:</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-top: 10px;">
+          <div style="background: var(--fluent-bg-subtle); padding: 10px 14px; border-radius: var(--radius-xs); font-size: 13px; border: 1px solid var(--fluent-border);">📊 <strong>KPI Dashboard:</strong> Real-time occupancy & welfare</div>
+          <div style="background: var(--fluent-bg-subtle); padding: 10px 14px; border-radius: var(--radius-xs); font-size: 13px; border: 1px solid var(--fluent-border);">📋 <strong>Daily Audits:</strong> Shift handover & H&S checklists</div>
+          <div style="background: var(--fluent-bg-subtle); padding: 10px 14px; border-radius: var(--radius-xs); font-size: 13px; border: 1px solid var(--fluent-border);">🛠️ <strong>Maintenance:</strong> Cat 1–4 defects & vendor dispatches</div>
+          <div style="background: var(--fluent-bg-subtle); padding: 10px 14px; border-radius: var(--radius-xs); font-size: 13px; border: 1px solid var(--fluent-border);">🛡️ <strong>Safeguarding:</strong> Incident reports & authority referrals</div>
+          <div style="background: var(--fluent-bg-subtle); padding: 10px 14px; border-radius: var(--radius-xs); font-size: 13px; border: 1px solid var(--fluent-border);">👥 <strong>Staff Directory:</strong> Shifts, contacts & DBS compliance</div>
+          <div style="background: var(--fluent-bg-subtle); padding: 10px 14px; border-radius: var(--radius-xs); font-size: 13px; border: 1px solid var(--fluent-border);">🏢 <strong>Commercial Welfare:</strong> Local authority metrics</div>
+          <div style="background: var(--fluent-bg-subtle); padding: 10px 14px; border-radius: var(--radius-xs); font-size: 13px; border: 1px solid var(--fluent-border);">📅 <strong>Compliance Tracker:</strong> Fire safety, legionella & gas</div>
+          <div style="background: var(--fluent-bg-subtle); padding: 10px 14px; border-radius: var(--radius-xs); font-size: 13px; border: 1px solid var(--fluent-border);">📑 <strong>Report Generator:</strong> Instant council audit exports</div>
+        </div>
+
+        <div class="callout info" style="margin-top: 24px;">
+          <div style="font-size: 18px;">ℹ️</div>
+          <div>
+            <strong>Operational Governance:</strong> This portal defines the exact service level agreements (SLAs), how defects are resolved, and how property managers submit enhancement requests.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: SUPPORT & INCIDENTS -->
+    <section id="tab-support" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">2. Support & Incident Process</h2>
+        <p class="section-desc">How to report problems, what support covers, and what happens after a ticket is logged.</p>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px;">What SDTracker Support Covers:</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 24px;">
+          <div style="background: #ffffff; border: 1px solid var(--fluent-border); padding: 14px; border-radius: var(--radius-xs);">
+            <strong style="color: var(--brand-teal-dark);">✓ Application Access & Login:</strong>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Password resets, MFA lockouts, property assignment corrections, and multi-site permissions.</p>
+          </div>
+          <div style="background: #ffffff; border: 1px solid var(--fluent-border); padding: 14px; border-radius: var(--radius-xs);">
+            <strong style="color: var(--brand-teal-dark);">✓ Application Errors or Failures:</strong>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Screen crashes, red alert banners, form submission errors, and unresponsive modules.</p>
+          </div>
+          <div style="background: #ffffff; border: 1px solid var(--fluent-border); padding: 14px; border-radius: var(--radius-xs);">
+            <strong style="color: var(--brand-teal-dark);">✓ Data & Display Issues:</strong>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Missing audit records, table filter discrepancies, calculation errors, or broken date ranges.</p>
+          </div>
+          <div style="background: #ffffff; border: 1px solid var(--fluent-border); padding: 14px; border-radius: var(--radius-xs);">
+            <strong style="color: var(--brand-teal-dark);">✓ Performance & Attachments:</strong>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Slow page loads, photo upload errors, digital signature capture glitches, or PDF export timeouts.</p>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px;">What Happens After an Issue is Reported?</h3>
+        <div class="stepper-container">
+          <div class="step-item">
+            <div class="step-number">1</div>
+            <div class="step-title">Report Logged</div>
+            <p style="font-size: 11px; color: var(--fluent-muted); margin-top: 4px;">Email or in-app ticket</p>
+          </div>
+          <div class="step-item">
+            <div class="step-number">2</div>
+            <div class="step-title">Auto Ticket ID</div>
+            <p style="font-size: 11px; color: var(--fluent-muted); margin-top: 4px;">Sent in &lt; 15 mins</p>
+          </div>
+          <div class="step-item">
+            <div class="step-number">3</div>
+            <div class="step-title">Triage & Priority</div>
+            <p style="font-size: 11px; color: var(--fluent-muted); margin-top: 4px;">P1 / P2 / P3 / P4 set</p>
+          </div>
+          <div class="step-item">
+            <div class="step-number">4</div>
+            <div class="step-title">Fix / Workaround</div>
+            <p style="font-size: 11px; color: var(--fluent-muted); margin-top: 4px;">Service restored fast</p>
+          </div>
+          <div class="step-item">
+            <div class="step-number">5</div>
+            <div class="step-title">Manager Verified</div>
+            <p style="font-size: 11px; color: var(--fluent-muted); margin-top: 4px;">You confirm on site</p>
+          </div>
+          <div class="step-item">
+            <div class="step-number">6</div>
+            <div class="step-title">Formal Closure</div>
+            <p style="font-size: 11px; color: var(--fluent-muted); margin-top: 4px;">Post-incident record</p>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <div style="font-size: 18px;">⚠️</div>
+          <div>
+            <strong>When reporting an issue, always include:</strong> Property name, module name, steps to reproduce, and a mobile photo or screenshot of any red error alert.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: SLA & PRIORITY MATRIX -->
+    <section id="tab-sla" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">3. SLA & Priority Matrix</h2>
+        <p class="section-desc">Binding response and resolution targets agreed for SDTracker operations.</p>
+
+        <div class="data-table-wrapper">
+          <table class="portal-table">
+            <thead>
+              <tr>
+                <th>Priority Level</th>
+                <th>Business Impact Definition</th>
+                <th>Examples</th>
+                <th>Initial Response Target</th>
+                <th>Target Resolution / Workaround</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <span class="p-pill p1">🔴 P1 Critical</span>
+                </td>
+                <td>
+                  <strong>SDTracker Unavailable:</strong> Application down for all or majority of users, or critical hotel operation halted.
+                </td>
+                <td style="font-size: 12.5px; color: var(--fluent-muted);">
+                  • Entire login page 500 error<br>
+                  • Database unreachable<br>
+                  • Audits cannot save across any property
+                </td>
+                <td>
+                  <strong style="color: var(--p1-red);">30 Minutes</strong><br>
+                  <span style="font-size: 11px; color: var(--fluent-muted);">24/7/365 coverage</span>
+                </td>
+                <td>
+                  <strong style="color: var(--p1-red);">4 Hours</strong><br>
+                  <span style="font-size: 11px; color: var(--fluent-muted);">Hotfix or failover</span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="p-pill p2">🟠 P2 High</span>
+                </td>
+                <td>
+                  <strong>Major Function Unavailable:</strong> Significant business or statutory impact with no simple workaround.
+                </td>
+                <td style="font-size: 12.5px; color: var(--fluent-muted);">
+                  • Daily Audit cannot submit on a site<br>
+                  • Rota missing for active shift<br>
+                  • PDF compliance exports failing
+                </td>
+                <td>
+                  <strong style="color: var(--p2-orange);">1 Hour</strong><br>
+                  <span style="font-size: 11px; color: var(--fluent-muted);">Business hours</span>
+                </td>
+                <td>
+                  <strong style="color: var(--p2-orange);">8 Business Hours</strong><br>
+                  <span style="font-size: 11px; color: var(--fluent-muted);">Workaround or patch</span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="p-pill p3">🟡 P3 Medium</span>
+                </td>
+                <td>
+                  <strong>Moderate Issue:</strong> Affecting individual users or non-critical functionality; practical workaround exists.
+                </td>
+                <td style="font-size: 12.5px; color: var(--fluent-muted);">
+                  • Search filter acting sluggish<br>
+                  • Chart visual layout glitch<br>
+                  • Single user cannot see photo attachment
+                </td>
+                <td>
+                  <strong style="color: var(--fluent-black);">4 Business Hours</strong>
+                </td>
+                <td>
+                  <strong style="color: var(--fluent-black);">3 Business Days</strong>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="p-pill p4">🟢 P4 Low</span>
+                </td>
+                <td>
+                  <strong>Minor / Cosmetic:</strong> Minor question, cosmetic defect, or low-impact general request.
+                </td>
+                <td style="font-size: 12.5px; color: var(--fluent-muted);">
+                  • Typo in label or header<br>
+                  • Request to reorder columns<br>
+                  • General "how-to" usage question
+                </td>
+                <td>
+                  <strong style="color: var(--fluent-black);">1 Business Day</strong>
+                </td>
+                <td>
+                  <strong style="color: var(--fluent-black);">5 to 10 Business Days</strong>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout info">
+          <div style="font-size: 18px;">💡</div>
+          <div>
+            <strong>Target Times Context:</strong> Resolution times are targets and may depend on issue complexity and third-party infrastructure. Workarounds that restore business continuity are deployed immediately while permanent fixes are verified.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: CHANGES & RFCS -->
+    <section id="tab-changes" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">4. Change & Enhancement Process</h2>
+        <p class="section-desc">How managers submit feature requests and how they are reviewed, tested, and released.</p>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px;">Change Categories</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 24px;">
+          <div style="background: var(--fluent-bg-subtle); border: 1px solid var(--fluent-border); padding: 14px; border-radius: var(--radius-xs);">
+            <strong>🐛 Bug:</strong>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Existing functionality not working as documented.</p>
+          </div>
+          <div style="background: var(--fluent-bg-subtle); border: 1px solid var(--fluent-border); padding: 14px; border-radius: var(--radius-xs);">
+            <strong>🔧 Change:</strong>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Modifying an existing field, dropdown, or rule.</p>
+          </div>
+          <div style="background: var(--fluent-bg-subtle); border: 1px solid var(--fluent-border); padding: 14px; border-radius: var(--radius-xs);">
+            <strong>✨ Enhancement:</strong>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Adding brand new capabilities, dashboards, or reports.</p>
+          </div>
+          <div style="background: var(--fluent-bg-subtle); border: 1px solid var(--fluent-border); padding: 14px; border-radius: var(--radius-xs);">
+            <strong>📋 Process Change:</strong>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Changing how an operational workflow operates.</p>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin-bottom: 8px;">The 9-Stage Change Pipeline</h3>
+        <p style="font-size: 13px; color: var(--fluent-muted); margin-bottom: 12px;">Every change is reviewed, tested, and approved before production release to protect existing workflows:</p>
+        
+        <div class="stepper-container">
+          <div class="step-item"><div class="step-number">1</div><div class="step-title">Request</div></div>
+          <div class="step-item"><div class="step-number">2</div><div class="step-title">Review</div></div>
+          <div class="step-item"><div class="step-number">3</div><div class="step-title">Impact</div></div>
+          <div class="step-item"><div class="step-number">4</div><div class="step-title">Approval</div></div>
+          <div class="step-item"><div class="step-number">5</div><div class="step-title">Build</div></div>
+          <div class="step-item"><div class="step-number">6</div><div class="step-title">Testing</div></div>
+          <div class="step-item"><div class="step-number">7</div><div class="step-title">UAT</div></div>
+          <div class="step-item"><div class="step-number">8</div><div class="step-title">Release</div></div>
+          <div class="step-item"><div class="step-number">9</div><div class="step-title">Verify</div></div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 26px 0 8px;">Interactive Change Request (RFC) Generator</h3>
+        <p style="font-size: 13px; color: var(--fluent-muted);">Fill in this quick form to generate a properly structured RFC for the product team:</p>
+        
+        <div class="rfc-form">
+          <div class="form-group">
+            <label>Requestor Name & Role:</label>
+            <input type="text" id="rfc-name" class="form-control" placeholder="e.g. Sarah Jenkins (General Manager)" />
+          </div>
+          <div class="form-group">
+            <label>Property Affected:</label>
+            <input type="text" id="rfc-property" class="form-control" placeholder="e.g. Crown Plaza Manchester or All Sites" />
+          </div>
+          <div class="form-group">
+            <label>Change Category:</label>
+            <select id="rfc-category" class="form-control">
+              <option value="Change">Change (Modify existing feature)</option>
+              <option value="Enhancement">Enhancement (New feature / report)</option>
+              <option value="Process Change">Process Change (Workflow logic change)</option>
+              <option value="Bug">Bug (Feature broken)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Business Priority:</label>
+            <select id="rfc-priority" class="form-control">
+              <option value="Medium">Medium (Standard Sprint)</option>
+              <option value="High">High (Major Operational Need)</option>
+              <option value="Urgent / Compliance">Urgent / Statutory Compliance</option>
+              <option value="Low">Low (Quality of Life)</option>
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label>What needs to change?</label>
+            <input type="text" id="rfc-what" class="form-control" placeholder="Clearly describe what you want to add, change, or remove" />
+          </div>
+          <div class="form-group full-width">
+            <label>Why is the change required? (Business benefit / reason):</label>
+            <textarea id="rfc-why" rows="2" class="form-control" placeholder="What operational problem does this solve? (Time saved, council compliance, error reduction)"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Required By Date:</label>
+            <input type="date" id="rfc-date" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>Who will be affected?</label>
+            <input type="text" id="rfc-who" class="form-control" placeholder="e.g. Night shift managers, Head Office, All users" />
+          </div>
+          <div class="rfc-actions">
+            <button type="button" class="btn-brand-primary" onclick="generateRFC()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+              Generate & Copy RFC
+            </button>
+            <span id="copy-status" style="font-size: 13px; color: var(--brand-teal); font-weight: 600; display: none;">✓ Copied to clipboard!</span>
+          </div>
+          <div id="rfc-output" class="copy-output-box full-width"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: ESCALATION -->
+    <section id="tab-escalation" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">5. Escalation Process</h2>
+        <p class="section-desc">Who to contact if an issue is not progressing within agreed SLAs.</p>
+
+        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
+          <div style="background: #ffffff; border-left: 4px solid var(--brand-teal); padding: 16px 20px; border-radius: var(--radius-xs); box-shadow: var(--shadow-xs); border-top: 1px solid var(--fluent-border); border-right: 1px solid var(--fluent-border); border-bottom: 1px solid var(--fluent-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: var(--brand-teal-dark); font-size: 15px;">Level 1 – Application Support Desk</strong>
+              <span style="font-size: 11.5px; background: var(--fluent-bg-subtle); padding: 2px 8px; border-radius: var(--radius-xs); border: 1px solid var(--fluent-border);">First Line</span>
+            </div>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Initial point of contact. Triage, password resets, common navigation guidance, site assignments.</p>
+            <p style="font-size: 12px; font-weight: 600; margin-top: 6px; color: var(--fluent-black);">Channel: <code>sdtracker-support@sdcommercial.com</code> / In-App Ticket</p>
+          </div>
+
+          <div style="background: #ffffff; border-left: 4px solid #0f766e; padding: 16px 20px; border-radius: var(--radius-xs); box-shadow: var(--shadow-xs); border-top: 1px solid var(--fluent-border); border-right: 1px solid var(--fluent-border); border-bottom: 1px solid var(--fluent-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: #0f766e; font-size: 15px;">Level 2 – Technical & Application Team</strong>
+              <span style="font-size: 11.5px; background: var(--fluent-bg-subtle); padding: 2px 8px; border-radius: var(--radius-xs); border: 1px solid var(--fluent-border);">Escalated at 1h</span>
+            </div>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Senior application engineers. Schema adjustments, database queries, deep log diagnosis, and software bug patches.</p>
+            <p style="font-size: 12px; font-weight: 600; margin-top: 6px; color: var(--fluent-black);">Lead: Operations IT Lead (+44 20 8000 0112)</p>
+          </div>
+
+          <div style="background: #ffffff; border-left: 4px solid #d97706; padding: 16px 20px; border-radius: var(--radius-xs); box-shadow: var(--shadow-xs); border-top: 1px solid var(--fluent-border); border-right: 1px solid var(--fluent-border); border-bottom: 1px solid var(--fluent-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: #b45309; font-size: 15px;">Level 3 – Development / Infrastructure Specialists</strong>
+              <span style="font-size: 11.5px; background: var(--fluent-bg-subtle); padding: 2px 8px; border-radius: var(--radius-xs); border: 1px solid var(--fluent-border);">Escalated at 2h</span>
+            </div>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Platform architect, Supabase cloud specialists, cloud server engineers. Unscheduled downtime, database locks, security incidents.</p>
+            <p style="font-size: 12px; font-weight: 600; margin-top: 6px; color: var(--fluent-black);">Channel: Emergency On-Call Engineer (+44 20 8000 0111)</p>
+          </div>
+
+          <div style="background: #ffffff; border-left: 4px solid var(--p1-red); padding: 16px 20px; border-radius: var(--radius-xs); box-shadow: var(--shadow-xs); border-top: 1px solid var(--fluent-border); border-right: 1px solid var(--fluent-border); border-bottom: 1px solid var(--fluent-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: var(--p1-red); font-size: 15px;">Level 4 – Management Escalation</strong>
+              <span style="font-size: 11.5px; background: var(--p1-bg); color: var(--p1-red); padding: 2px 8px; border-radius: var(--radius-xs); border: 1px solid var(--p1-border); font-weight: 700;">Executive</span>
+            </div>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Head of Operations & IT Director. Activated if a P1 incident exceeds 2 hours or if statutory compliance deadlines are jeopardized.</p>
+            <p style="font-size: 12px; font-weight: 600; margin-top: 6px; color: var(--fluent-black);">Email: <code>exec-escalations@sdcommercial.com</code></p>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 20px 0 10px;">Emergency Issues Lifecycle:</h3>
+        <p style="font-size: 13px; color: var(--fluent-muted); margin-bottom: 14px;">
+          For critical production incidents, the team executes an immediate containment hotfix:
+        </p>
+        <div style="background: var(--fluent-bg-subtle); padding: 14px 18px; border-radius: var(--radius-xs); font-family: 'JetBrains Mono', monospace; font-size: 12.5px; border: 1px solid var(--fluent-border); color: #1e293b;">
+          Incident Triggered ➔ Immediate Containment Fix ➔ Service Restoration ➔ Root Cause Review ➔ Permanent Patch ➔ Incident Closure Report
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: MAINTENANCE & RELEASES -->
+    <section id="tab-maintenance" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">6. Maintenance & Release Policy</h2>
+        <p class="section-desc">How updates are scheduled, communicated in advance, and verified with zero surprises.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+          <div style="background: var(--fluent-bg-subtle); border: 1px solid var(--fluent-border); padding: 18px; border-radius: var(--radius-xs);">
+            <strong style="color: var(--brand-teal-dark);">📅 Weekly Maintenance Window:</strong>
+            <p style="font-size: 14px; margin-top: 6px; color: var(--fluent-black);"><strong>Every Tuesday, 02:00 – 03:00 GMT</strong></p>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Scheduled during minimal hotel activity. All migrations and optimizations run during this hour.</p>
+          </div>
+          <div style="background: var(--fluent-bg-subtle); border: 1px solid var(--fluent-border); padding: 18px; border-radius: var(--radius-xs);">
+            <strong style="color: var(--brand-teal-dark);">📢 Advance Notice Guarantee:</strong>
+            <p style="font-size: 14px; margin-top: 6px; color: var(--fluent-black);"><strong>Minimum 48 Hours Prior</strong></p>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Managers receive email notice with expected duration, changes, and confirmation when complete.</p>
+          </div>
+          <div style="background: var(--fluent-bg-subtle); border: 1px solid var(--fluent-border); padding: 18px; border-radius: var(--radius-xs);">
+            <strong style="color: var(--brand-teal-dark);">🛡️ Zero Data Loss Guarantee:</strong>
+            <p style="font-size: 14px; margin-top: 6px; color: var(--fluent-black);"><strong>Local Browser Draft Cache</strong></p>
+            <p style="font-size: 13px; color: var(--fluent-muted); margin-top: 4px;">Forms being filled during a deployment are preserved safely in browser memory until re-submission.</p>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin-bottom: 12px;">What Maintenance Communications Include:</h3>
+        <ul class="checklist">
+          <li class="checklist-item"><span class="check-icon">✓</span> Exact Date, Time and expected duration (e.g. 15 minutes)</li>
+          <li class="checklist-item"><span class="check-icon">✓</span> Clear bullet points of what is changing or being improved</li>
+          <li class="checklist-item"><span class="check-icon">✓</span> Expected user impact (e.g. "Read-only access for 10 minutes")</li>
+          <li class="checklist-item"><span class="check-icon">✓</span> Any simple user action required (e.g. "Press Ctrl+Shift+R to refresh cache")</li>
+          <li class="checklist-item"><span class="check-icon">✓</span> Post-maintenance completion confirmation email</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- TAB 7: KNOWN ISSUES & WORKAROUNDS -->
+    <section id="tab-workarounds" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">7. Known Issues & Quick Workarounds</h2>
+        <p class="section-desc">Try these instant checks before raising a support ticket to continue working without delay.</p>
+
+        <div class="accordion-item open">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>1. New buttons or updated screens missing after an announced update</span>
+            <span class="icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <strong>Cause:</strong> Your browser has cached older JavaScript bundle files.<br>
+            <strong>Instant Workaround:</strong> Perform a hard refresh:
+            <ul style="margin: 8px 0 8px 20px;">
+              <li><strong>Windows:</strong> Press <code>Ctrl + Shift + R</code> or <code>Ctrl + F5</code></li>
+              <li><strong>Mac:</strong> Press <code>Cmd + Shift + R</code></li>
+              <li><strong>Mobile Safari/Chrome:</strong> Close tab, clear history for the last hour, and reopen.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>2. Dashboard or records appear blank or missing</span>
+            <span class="icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <strong>Cause:</strong> Top navigation site switcher is scoped to a different property or your date filter range has no data.<br>
+            <strong>Instant Workaround:</strong>
+            <ul style="margin: 8px 0 8px 20px;">
+              <li>Check the <strong>Property Selector</strong> dropdown in the top header and switch to your hotel location.</li>
+              <li>Check your date filter and click <strong>"Reset to This Month"</strong>.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>3. Mobile photo upload failed during a room audit</span>
+            <span class="icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <strong>Cause:</strong> Basement, lift, or plant room Wi-Fi dead spot temporarily interrupted upload.<br>
+            <strong>Instant Workaround:</strong> Your draft is preserved automatically in local browser storage. Walk to a strong Wi-Fi area and tap <strong>"Retry Upload"</strong> or re-submit the audit.
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>4. Staff member cannot log in with error "User Not Active"</span>
+            <span class="icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <strong>Cause:</strong> Account status in Staff Directory is set to 'Inactive' or pending manager verification.<br>
+            <strong>Instant Workaround:</strong> Ask a Site Manager or Operations Admin to check the Staff Directory, locate the staff record, and toggle status to <strong>Active</strong>.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 8: SUPPORT CONTACTS -->
+    <section id="tab-contacts" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">8. Support & Escalation Contacts</h2>
+        <p class="section-desc">Key directory for all SDTracker assistance and management escalation.</p>
+
+        <div class="data-table-wrapper">
+          <table class="portal-table">
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Contact Name</th>
+                <th>Email Channel</th>
+                <th>Telephone</th>
+                <th>Coverage Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Standard Support Helpdesk</strong></td>
+                <td>SDTracker Desk</td>
+                <td><a href="mailto:sdtracker-support@sdcommercial.com">sdtracker-support@sdcommercial.com</a></td>
+                <td>In-App Ticket</td>
+                <td>Mon – Fri, 08:00 – 18:00 GMT</td>
+              </tr>
+              <tr>
+                <td><strong style="color: var(--p1-red);">Emergency Outages (P1)</strong></td>
+                <td>Incident Duty Lead</td>
+                <td><a href="mailto:helpdesk-p1@sdcommercial.com">helpdesk-p1@sdcommercial.com</a></td>
+                <td><strong>+44 (0) 20 8000 0111</strong></td>
+                <td><span class="p-pill p1">24/7 / 365</span></td>
+              </tr>
+              <tr>
+                <td><strong>Product & Enhancements</strong></td>
+                <td>Product Team</td>
+                <td><a href="mailto:product@sdcommercial.com">product@sdcommercial.com</a></td>
+                <td>—</td>
+                <td>Weekly Review (Tuesdays)</td>
+              </tr>
+              <tr>
+                <td><strong>Application Owner</strong></td>
+                <td>Operations IT Lead</td>
+                <td><a href="mailto:lead-ops@sdcommercial.com">lead-ops@sdcommercial.com</a></td>
+                <td>+44 (0) 20 8000 0112</td>
+                <td>Mon – Fri, 09:00 – 17:00 GMT</td>
+              </tr>
+              <tr>
+                <td><strong>Executive Escalation</strong></td>
+                <td>Head of Operations</td>
+                <td><a href="mailto:exec-escalations@sdcommercial.com">exec-escalations@sdcommercial.com</a></td>
+                <td>+44 (0) 20 8000 0100</td>
+                <td>For breached P1 incidents</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 9: SHIP READINESS & DEVOPS -->
+    <section id="tab-readiness" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">9. Production Readiness & Environment Specs</h2>
+        <p class="section-desc">Technical verification checklist, test validation, and environment controls.</p>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="label">Unit & Schema Tests</span>
+            <span class="value" style="color: var(--brand-teal);">49 / 49 PASS</span>
+            <span class="subtext">npm run test:unit</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">TypeScript Lint</span>
+            <span class="value" style="color: var(--brand-teal);">0 Errors</span>
+            <span class="subtext">npm run lint</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">Backend Health Probe</span>
+            <span class="value" style="color: var(--brand-teal-dark);">/api/health</span>
+            <span class="subtext">Active express healthcheck</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">Tenant Isolation</span>
+            <span class="value" style="color: var(--brand-teal);">Enforced</span>
+            <span class="subtext">Supabase RLS on all tables</span>
+          </div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 24px 0 12px;">Production Pre-Ship Verification:</h3>
+        <ul class="checklist">
+          <li class="checklist-item"><span class="check-icon">✓</span> <strong>Environment Variables Protected:</strong> Only public keys (<code>VITE_SUPABASE_URL</code>) exposed to client; service role keys kept server-side.</li>
+          <li class="checklist-item"><span class="check-icon">✓</span> <strong>Database Schema Migrations:</strong> Core tables, dual schema adapters, and attachment sanitation verified.</li>
+          <li class="checklist-item"><span class="check-icon">✓</span> <strong>Automated Database Backups:</strong> Daily snapshots and Point-in-Time Recovery (PITR) configured on Supabase.</li>
+          <li class="checklist-item"><span class="check-icon">✓</span> <strong>Cross-Property Data Isolation (RLS):</strong> Row Level Security prevents any site manager from viewing unauthorized properties.</li>
+          <li class="checklist-item"><span class="check-icon">✓</span> <strong>Instant Rollback Mechanism:</strong> Zero-downtime blue/green deployment with &lt; 5 minute one-click revert capability.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- TAB: WEBCRM BRAND KIT & DESIGN SYSTEM -->
+    <section id="tab-brandkit" class="tab-content">
+      <div class="section-card">
+        <h2 class="section-title">🎨 SDTracker WebCRM — Brand Kit & Visual Design System</h2>
+        <p class="section-desc">Official design tokens, logo geometry, typography standards, and Microsoft Fluent UI components used across the CRM.</p>
+
+        <!-- 1. Logo & Emblem Architecture -->
+        <h3 style="font-size: 16px; margin: 10px 0 6px; color: var(--fluent-black);">1. Official SD Commercial Logo & Emblem</h3>
+        <p style="font-size: 13px; color: var(--fluent-muted); margin-bottom: 14px;">The SD Commercial identity features a dual-tone precision-cut polygon emblem representing structural safety, safeguarding integrity, and modern hospitality operations.</p>
+
+        <div class="logo-inspect-panel">
+          <!-- Light Theme Variant -->
+          <div class="logo-preview-box" style="background: #ffffff;">
+            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--fluent-muted); letter-spacing: 0.5px;">Light Surface Variant (App Header / Reports)</span>
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="sd-logo-emblem" style="width: 52px; height: 52px;">
+                <div class="sd-emblem-s" style="font-size: 21px;">S</div>
+                <div class="sd-emblem-d" style="font-size: 21px; padding-left: 12px;">D</div>
+                <span class="sd-emblem-text" style="font-size: 18px;">SD</span>
+              </div>
+              <div>
+                <div style="display: flex; align-items: baseline; gap: 6px;">
+                  <span style="font-weight: 900; color: var(--brand-teal-dark); font-size: 22px;">SD</span>
+                  <span style="font-weight: 800; color: var(--brand-teal); font-size: 17px; letter-spacing: 1.5px;">COMMERCIAL</span>
+                  <span style="font-weight: 700; color: var(--fluent-black); font-size: 17px;">Tracker</span>
+                </div>
+                <span style="font-size: 11.5px; color: var(--fluent-muted); font-weight: 500;">Operations & Compliance Portal</span>
+              </div>
+            </div>
+            <div style="font-size: 11.5px; color: var(--fluent-subtle); text-align: center; margin-top: 6px;">
+              White Surface • Minimum Width: 120px • Safe Padding: 16px
+            </div>
+          </div>
+
+          <!-- Dark Slate Variant -->
+          <div class="logo-preview-box" style="background: #0f172a; border-color: #1e293b;">
+            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px;">Dark Theme Variant (Login Portal / Splash)</span>
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="sd-logo-emblem" style="width: 52px; height: 52px;">
+                <div class="sd-emblem-s" style="font-size: 21px;">S</div>
+                <div class="sd-emblem-d" style="font-size: 21px; padding-left: 12px;">D</div>
+                <span class="sd-emblem-text" style="font-size: 18px;">SD</span>
+              </div>
+              <div>
+                <div style="display: flex; align-items: baseline; gap: 6px;">
+                  <span style="font-weight: 900; color: #2dd4bf; font-size: 22px;">SD</span>
+                  <span style="font-weight: 800; color: #38bdf8; font-size: 17px; letter-spacing: 1.5px;">COMMERCIAL</span>
+                  <span style="font-weight: 700; color: #ffffff; font-size: 17px;">Tracker</span>
+                </div>
+                <span style="font-size: 11.5px; color: #94a3b8; font-weight: 500;">Operations & Compliance Portal</span>
+              </div>
+            </div>
+            <div style="font-size: 11.5px; color: #64748b; text-align: center; margin-top: 6px;">
+              Slate-900 Surface • High-contrast light text on dark backgrounds
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Interactive Color Palette -->
+        <h3 style="font-size: 16px; margin: 28px 0 4px; color: var(--fluent-black);">2. Primary Brand Color Tokens (Click Swatch to Copy HEX)</h3>
+        <p style="font-size: 13px; color: var(--fluent-muted);">The official SD Commercial color hierarchy across light backgrounds and interactive states:</p>
+
+        <div class="color-swatch-grid">
+          <!-- Teal Primary -->
+          <div class="swatch-card" onclick="copyColor('#0d9488', 'Brand Teal Primary')">
+            <div class="swatch-preview" style="background: #0d9488;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--brand-teal</div>
+              <div class="swatch-hex">#0d9488</div>
+              <div class="swatch-role">Primary Action, Active Tabs, Logo S</div>
+            </div>
+          </div>
+
+          <!-- Dark Teal -->
+          <div class="swatch-card" onclick="copyColor('#115e59', 'Brand Teal Dark')">
+            <div class="swatch-preview" style="background: #115e59;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--brand-teal-dark</div>
+              <div class="swatch-hex">#115e59</div>
+              <div class="swatch-role">Logo D slice, Deep headers, Wordmark</div>
+            </div>
+          </div>
+
+          <!-- Deep Teal -->
+          <div class="swatch-card" onclick="copyColor('#134e4a', 'Brand Teal Deep')">
+            <div class="swatch-preview" style="background: #134e4a;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--brand-teal-deep</div>
+              <div class="swatch-hex">#134e4a</div>
+              <div class="swatch-role">High contrast text on light teal</div>
+            </div>
+          </div>
+
+          <!-- Teal Light Tint -->
+          <div class="swatch-card" onclick="copyColor('#f0fdfa', 'Brand Teal Light Tint')">
+            <div class="swatch-preview" style="background: #f0fdfa; border-bottom: 1px solid #e1dfdd;">
+              <span class="swatch-copy-hint" style="background: rgba(0,0,0,0.6);">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--brand-teal-light</div>
+              <div class="swatch-hex">#f0fdfa</div>
+              <div class="swatch-role">Active tab fill, selected rows</div>
+            </div>
+          </div>
+
+          <!-- Teal Border -->
+          <div class="swatch-card" onclick="copyColor('#99f6e4', 'Brand Teal Border')">
+            <div class="swatch-preview" style="background: #99f6e4;">
+              <span class="swatch-copy-hint" style="background: rgba(0,0,0,0.6);">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--brand-teal-border</div>
+              <div class="swatch-hex">#99f6e4</div>
+              <div class="swatch-role">Assigned site tags, subtle card rings</div>
+            </div>
+          </div>
+
+          <!-- Teal Hover -->
+          <div class="swatch-card" onclick="copyColor('#0f766e', 'Brand Teal Hover')">
+            <div class="swatch-preview" style="background: #0f766e;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--brand-teal-hover</div>
+              <div class="swatch-hex">#0f766e</div>
+              <div class="swatch-role">Button hover states, active links</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Neutral & Status Colors -->
+        <h3 style="font-size: 16px; margin: 20px 0 4px; color: var(--fluent-black);">3. Microsoft Fluent Neutrals & Operational Severity Tiers</h3>
+        <p style="font-size: 13px; color: var(--fluent-muted);">Standardized tones for high readability, table grids, and incident severity indicators:</p>
+
+        <div class="color-swatch-grid">
+          <!-- Fluent Dark -->
+          <div class="swatch-card" onclick="copyColor('#242424', 'Fluent Black Text')">
+            <div class="swatch-preview" style="background: #242424;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--fluent-black</div>
+              <div class="swatch-hex">#242424</div>
+              <div class="swatch-role">Primary body text, card titles</div>
+            </div>
+          </div>
+
+          <!-- Fluent Border -->
+          <div class="swatch-card" onclick="copyColor('#e1dfdd', 'Fluent Divider Border')">
+            <div class="swatch-preview" style="background: #e1dfdd;">
+              <span class="swatch-copy-hint" style="background: rgba(0,0,0,0.6);">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--fluent-border</div>
+              <div class="swatch-hex">#e1dfdd</div>
+              <div class="swatch-role">Standard borders, table grids</div>
+            </div>
+          </div>
+
+          <!-- P1 Red -->
+          <div class="swatch-card" onclick="copyColor('#dc2626', 'P1 Critical Red')">
+            <div class="swatch-preview" style="background: #dc2626;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--p1-red</div>
+              <div class="swatch-hex">#dc2626</div>
+              <div class="swatch-role">P1 Critical, CAT 1 Defect, Outages</div>
+            </div>
+          </div>
+
+          <!-- P2 Orange -->
+          <div class="swatch-card" onclick="copyColor('#ea580c', 'P2 High Orange')">
+            <div class="swatch-preview" style="background: #ea580c;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--p2-orange</div>
+              <div class="swatch-hex">#ea580c</div>
+              <div class="swatch-role">P2 High, CAT 2 Urgent, Warnings</div>
+            </div>
+          </div>
+
+          <!-- P3 Yellow -->
+          <div class="swatch-card" onclick="copyColor('#d97706', 'P3 Medium Amber')">
+            <div class="swatch-preview" style="background: #d97706;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--p3-yellow</div>
+              <div class="swatch-hex">#d97706</div>
+              <div class="swatch-role">P3 Medium, In Progress, Review</div>
+            </div>
+          </div>
+
+          <!-- P4 Green -->
+          <div class="swatch-card" onclick="copyColor('#059669', 'P4 Low Emerald')">
+            <div class="swatch-preview" style="background: #059669;">
+              <span class="swatch-copy-hint">Copy HEX</span>
+            </div>
+            <div class="swatch-details">
+              <div class="swatch-name">--p4-green</div>
+              <div class="swatch-hex">#059669</div>
+              <div class="swatch-role">P4 Low, Compliant, Completed</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Typography Showcase -->
+        <h3 style="font-size: 16px; margin: 28px 0 4px; color: var(--fluent-black);">4. Typography Hierarchy (Poppins &amp; JetBrains Mono)</h3>
+        <p style="font-size: 13px; color: var(--fluent-muted);">Standardized font weights and scales for clean dashboard interfaces:</p>
+
+        <div class="data-table-wrapper">
+          <table class="type-specimen-table">
+            <thead>
+              <tr style="background: #f8fafc;">
+                <th style="padding: 12px 16px; font-size: 12px; text-transform: uppercase; color: var(--fluent-muted);">Level / Application</th>
+                <th style="padding: 12px 16px; font-size: 12px; text-transform: uppercase; color: var(--fluent-muted);">Scale &amp; Weight</th>
+                <th style="padding: 12px 16px; font-size: 12px; text-transform: uppercase; color: var(--fluent-muted);">Live Specimen</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Page Display Header</strong></td>
+                <td><code>26px / 800 ExtraBold</code></td>
+                <td><span style="font-size: 26px; font-weight: 800; color: var(--fluent-black);">Commercial Property Dashboard</span></td>
+              </tr>
+              <tr>
+                <td><strong>Card Section Header</strong></td>
+                <td><code>18px / 700 Bold</code></td>
+                <td><span style="font-size: 18px; font-weight: 700; color: var(--fluent-black);">Daily Health &amp; Safety Audit Checklist</span></td>
+              </tr>
+              <tr>
+                <td><strong>Modal &amp; Subsection Title</strong></td>
+                <td><code>15px / 600 SemiBold</code></td>
+                <td><span style="font-size: 15px; font-weight: 600; color: var(--brand-teal-dark);">Fire Safety &amp; Evacuation Inspection</span></td>
+              </tr>
+              <tr>
+                <td><strong>Standard Body Text</strong></td>
+                <td><code>13.5px / 400 Regular</code></td>
+                <td><span style="font-size: 13.5px; font-weight: 400; color: var(--fluent-black);">All shift inspections submitted prior to 10:00 GMT are verified.</span></td>
+              </tr>
+              <tr>
+                <td><strong>Input Field Label</strong></td>
+                <td><code>12px / 600 SemiBold</code></td>
+                <td><span style="font-size: 12px; font-weight: 600; color: var(--fluent-dark); text-transform: uppercase; letter-spacing: 0.5px;">Assigned Property Location</span></td>
+              </tr>
+              <tr>
+                <td><strong>Reference &amp; Code (Monospace)</strong></td>
+                <td><code>12.5px / 500 Medium</code></td>
+                <td><code style="font-family: 'JetBrains Mono', monospace; background: #f1f5f9; padding: 3px 8px; border-radius: 4px; color: #0f766e;">SD-REF-2026-MAN-0982</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 5. Live UI Component Showcase -->
+        <h3 style="font-size: 16px; margin: 28px 0 8px; color: var(--fluent-black);">5. Interactive WebCRM UI Component Kit</h3>
+        <p style="font-size: 13px; color: var(--fluent-muted); margin-bottom: 14px;">Pre-built Microsoft Fluent Design tokens and button states ready for production views:</p>
+
+        <div style="background: var(--fluent-bg-subtle); border: 1px solid var(--fluent-border); border-radius: var(--radius-xs); padding: 22px; display: flex; flex-direction: column; gap: 18px;">
+          <!-- Buttons row -->
+          <div>
+            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--fluent-muted); display: block; margin-bottom: 8px;">Action Buttons</span>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="btn-brand-primary" onclick="triggerToast('Primary Button Clicked')">Primary Action</button>
+              <button class="btn-print" onclick="triggerToast('Secondary Action Clicked')">Secondary Outline</button>
+              <button style="background: #fdf3f2; color: #dc2626; border: 1px solid #fca5a5; padding: 7px 14px; border-radius: var(--radius-xs); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;" onclick="triggerToast('Destructive Action Triggered')">Destructive Action</button>
+            </div>
+          </div>
+
+          <!-- Status Pills row -->
+          <div>
+            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--fluent-muted); display: block; margin-bottom: 8px;">Status Pills &amp; Severity Badges</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <span class="p-pill p1">🔴 P1 Critical</span>
+              <span class="p-pill p2">🟠 P2 High</span>
+              <span class="p-pill p3">🟡 P3 Medium</span>
+              <span class="p-pill p4">🟢 P4 Low</span>
+              <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 3px 10px; border-radius: 4px;">🔵 Information</span>
+              <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; background: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4; padding: 3px 10px; border-radius: 4px;">🛡️ Compliant Active</span>
+            </div>
+          </div>
+
+          <!-- Micro Form Inputs -->
+          <div>
+            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--fluent-muted); display: block; margin-bottom: 8px;">Fluent Input Field with Brand Glow</span>
+            <div style="max-width: 380px;">
+              <input type="text" class="form-control" placeholder="Type here to test focus glow (#0d9488)..." value="Crown Plaza Manchester — Shift Report" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Portal Footer -->
+  <footer class="portal-footer">
+    <p>SD Commercial Tracker WebCRM &mdash; Operations, Service &amp; Support Governance Pack</p>
+    <p style="margin-top: 6px; font-size: 11.5px; color: var(--fluent-subtle);">
+      Documentation maintained by SD Commercial IT &amp; Operations &bull; Emergency Hotline: +44 (0) 20 8000 0111
+    </p>
+  </footer>
+
+  <script>
+    function switchTab(evt, tabId) {
+      // Remove active class from all buttons
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      tabBtns.forEach(btn => btn.classList.remove('active'));
+
+      // Remove active class from all tab contents
+      const contents = document.querySelectorAll('.tab-content');
+      contents.forEach(content => content.classList.remove('active'));
+
+      // Add active to clicked button and target tab
+      evt.currentTarget.classList.add('active');
+      const target = document.getElementById(tabId);
+      if (target) {
+        target.classList.add('active');
+      }
+
+      // Smooth scroll to top of content
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+
+    function toggleAccordion(header) {
+      const item = header.parentElement;
+      item.classList.toggle('open');
+    }
+
+    function generateRFC() {
+      const name = document.getElementById('rfc-name').value || '[Not specified]';
+      const property = document.getElementById('rfc-property').value || '[Not specified]';
+      const category = document.getElementById('rfc-category').value;
+      const priority = document.getElementById('rfc-priority').value;
+      const what = document.getElementById('rfc-what').value || '[Not specified]';
+      const why = document.getElementById('rfc-why').value || '[Not specified]';
+      const date = document.getElementById('rfc-date').value || '[Flexible / Next Sprint]';
+      const who = document.getElementById('rfc-who').value || '[Not specified]';
+
+      const rfcText = 
+`=================================================================
+SD COMMERCIAL TRACKER — CHANGE & ENHANCEMENT REQUEST (RFC)
+=================================================================
+1. Requestor Name & Role: ${name}
+2. Property Affected:     ${property}
+3. Change Category:       ${category}
+4. Business Priority:     ${priority}
+5. Target Implementation: ${date}
+6. Users / Teams Impacted:${who}
+-----------------------------------------------------------------
+7. What needs to change?
+${what}
+
+8. Why is the change required? (Business benefit / justification)
+${why}
+=================================================================
+Instructions: Email this RFC to: product@sdcommercial.com
+Reviewed at the weekly sprint review (Every Tuesday).`;
+
+      const outputBox = document.getElementById('rfc-output');
+      outputBox.innerText = rfcText;
+      outputBox.style.display = 'block';
+
+      // Copy to clipboard
+      navigator.clipboard.writeText(rfcText).then(() => {
+        const status = document.getElementById('copy-status');
+        status.style.display = 'inline';
+        setTimeout(() => {
+          status.style.display = 'none';
+        }, 4000);
+      }).catch(err => {
+        console.error('Failed to copy', err);
+      });
+    }
+
+    // Brand Kit Color Copy & Toast Helper
+    function copyColor(hexCode, label) {
+      navigator.clipboard.writeText(hexCode).then(() => {
+        triggerToast(`Copied ${hexCode} (${label}) to clipboard!`);
+      }).catch(err => {
+        console.error('Failed to copy color', err);
+      });
+    }
+
+    function triggerToast(message) {
+      const toast = document.getElementById('toast-box');
+      if (!toast) return;
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+  </script>
+
+  <!-- Interactive Toast Notification Element -->
+  <div id="toast-box" class="toast-notification">✓ Copied to clipboard!</div>
+</body>
+</html>

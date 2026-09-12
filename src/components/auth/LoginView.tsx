@@ -227,7 +227,6 @@ export const LoginView: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>Supabase Cloud Auth Active</span>
             </div>
-            <span className="text-slate-500">v2.4 LTS</span>
           </div>
         </div>
 
