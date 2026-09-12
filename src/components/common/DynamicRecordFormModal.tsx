@@ -240,9 +240,16 @@ export function DynamicRecordFormModal<T = any>({
   const prevOpenRef = useRef<boolean>(false);
   const prevRecordIdRef = useRef<string | null>(null);
 
-  // Filter out internal system metadata fields and guarantee a locked Logged By field
+  // Filter out internal system metadata fields, dedicated file attachment columns (managed by AttachmentsSection), and guarantee a locked Logged By field
   const formColumns = useMemo(() => {
-    const activeCols = columns.filter(col => !col.isSystemMetadata);
+    const activeCols = columns.filter(col => {
+      if (col.isSystemMetadata) return false;
+      const k = String(col.key).toLowerCase();
+      if (k === 'attachments' || k === 'attachmenturl' || k === 'fileurl' || k === 'attachment_url' || k === 'file_url') {
+        return false;
+      }
+      return true;
+    });
     const hasLoggedBy = activeCols.some(isLoggedByColumn);
     if (!hasLoggedBy) {
       const injectedLoggedByCol: TableColumnConfig<T> = {
@@ -369,6 +376,19 @@ export function DynamicRecordFormModal<T = any>({
       if ((initialValues as any).srNo) initial.srNo = (initialValues as any).srNo;
     }
 
+    // Guard: Review notes or advice fields must NEVER contain hotel/property names. Keep them empty ('') if erroneously set to a hotel.
+    formColumns.forEach(col => {
+      const k = String(col.key);
+      const val = initial[k];
+      if (
+        (k === 'reviewBySGTeam' || k.toLowerCase().includes('review') || k.toLowerCase().includes('advice')) &&
+        typeof val === 'string' &&
+        (val.toLowerCase().includes('hotel') || val.toLowerCase().includes('stansted') || val.toLowerCase().includes('ibis') || allSiteNames.includes(val))
+      ) {
+        initial[k] = '';
+      }
+    });
+
     setFormData(initial);
     setErrors({});
     setSubmitError(null);
@@ -385,6 +405,17 @@ export function DynamicRecordFormModal<T = any>({
           }
         });
       }
+      formColumns.forEach(col => {
+        const k = String(col.key);
+        const val = initial[k];
+        if (
+          (k === 'reviewBySGTeam' || k.toLowerCase().includes('review') || k.toLowerCase().includes('advice')) &&
+          typeof val === 'string' &&
+          (val.toLowerCase().includes('hotel') || val.toLowerCase().includes('stansted') || val.toLowerCase().includes('ibis') || allSiteNames.includes(val))
+        ) {
+          initial[k] = '';
+        }
+      });
       setFormData(initial);
     } else {
       // Clear/Reset to blank defaults
@@ -505,6 +536,20 @@ export function DynamicRecordFormModal<T = any>({
       const processed: Record<string, any> = { ...(initialValues || {}), ...formData };
       processed.attachments = Array.isArray(formData.attachments) ? formData.attachments : [];
       processed.loggedBy = formData.loggedBy || loggedInUserName;
+
+      const primaryAtt = processed.attachments.length > 0 ? processed.attachments[0] : null;
+      if (primaryAtt) {
+        const primaryLink = primaryAtt.url || primaryAtt.dataUrl || '';
+        processed.attachmentUrl = primaryLink;
+        processed.attachment_url = primaryLink;
+        processed.fileUrl = primaryLink;
+        processed.file_url = primaryLink;
+      } else {
+        processed.attachmentUrl = '';
+        processed.attachment_url = '';
+        processed.fileUrl = '';
+        processed.file_url = '';
+      }
 
       formColumns.forEach(col => {
         const key = String(col.key);

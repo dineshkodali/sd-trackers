@@ -16,6 +16,7 @@ export interface RecordAttachment {
   size: number;
   type: string;
   dataUrl?: string;
+  url?: string;
   uploadedBy: string;
   uploadedAt: string;
 }
@@ -232,6 +233,10 @@ export interface EscalationRecord {
   status: 'Active' | 'Under Investigation' | 'Awaiting Multi-Agency Review' | 'Resolved';
   urgency?: RiskLevel;
   attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
   createdAt: string;
   // Backward compatibility fields
   incidentTitle?: string;

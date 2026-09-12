@@ -96,15 +96,12 @@ export interface ConfirmationRequest {
   onCancel?: () => void;
 }
 
-export interface NotificationItem {
-  id: string;
-  title: string;
-  description: string;
-  time: string;
-  type: 'urgent' | 'info' | 'sync' | 'success';
-  read: boolean;
-  linkPage?: string;
-}
+export type { NotificationItem, NotificationType, NotificationActionType, NotificationCategory } from '../services/inAppNotificationService';
+import { 
+  NotificationItem, 
+  deriveInAppNotifications, 
+  filterNotificationsForRole 
+} from '../services/inAppNotificationService';
 
 export interface BatchRetentionModuleStat {
   id: string;
@@ -180,6 +177,7 @@ interface AppContextType {
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: () => void;
   clearAllNotifications: () => void;
 
   // Fast Loading State
@@ -570,7 +568,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     missingTables: []
   });
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [extraNotifications, setExtraNotifications] = useState<NotificationItem[]>([]);
+  const setNotifications = setExtraNotifications;
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('sd_read_notifications');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const [clearedBeforeTimestamp, setClearedBeforeTimestamp] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('sd_cleared_notifs_time');
+      return saved ? Number(saved) : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   const currentUserName = useMemo(() => {
     if (authProfile?.name && authProfile.name.trim() !== '') return authProfile.name;
@@ -644,14 +659,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reportPersistFailure = useCallback((label: string, error?: string) => {
     const message = error || 'The live database did not accept the change';
     console.error(`[Live DB] ${label} failed: ${message}`);
-    setNotifications(prev => [
+    setExtraNotifications(prev => [
       {
         id: 'notif-err-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         title: `${label} was NOT saved`,
         description: `${message}. Your change has been reverted - please try again.`,
         time: 'Just now',
+        timestamp: new Date().toISOString(),
         type: 'urgent',
-        read: false
+        read: false,
+        action: 'SECURITY',
+        category: 'critical_security'
       },
       ...prev
     ]);
@@ -1645,13 +1663,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [reportPersistFailure, appendLocalAudit]);
 
-  // Notifications
+  // Synthesize notifications from live audit logs, escalations, change requests, and system events
+  const allDerivedNotifications = useMemo(() => {
+    return deriveInAppNotifications({
+      auditLogs,
+      escalations,
+      dataChangeRequests,
+      extraNotifications,
+      readNotificationIds,
+      clearedBeforeTimestamp
+    });
+  }, [auditLogs, escalations, dataChangeRequests, extraNotifications, readNotificationIds, clearedBeforeTimestamp]);
+
+  // RBAC filtered notifications according to current user's role and assigned site
+  const notifications = useMemo(() => {
+    return filterNotificationsForRole({
+      notifications: allDerivedNotifications,
+      userRole: currentUserRole,
+      assignedSite,
+      allowedSites,
+      currentUserName,
+      userEmail: authProfile?.email,
+      authProfileId: authProfile?.id
+    });
+  }, [allDerivedNotifications, currentUserRole, assignedSite, allowedSites, currentUserName, authProfile]);
+
   const markNotificationAsRead = useCallback((id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setReadNotificationIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem('sd_read_notifications', JSON.stringify(Array.from(next).slice(-500)));
+      } catch (e) {
+        console.warn('Could not save read notification state:', e);
+      }
+      return next;
+    });
   }, []);
 
+  const markAllNotificationsAsRead = useCallback(() => {
+    setReadNotificationIds(prev => {
+      const next = new Set(prev);
+      notifications.forEach(n => next.add(n.id));
+      try {
+        localStorage.setItem('sd_read_notifications', JSON.stringify(Array.from(next).slice(-500)));
+      } catch (e) {
+        console.warn('Could not save read notification state:', e);
+      }
+      return next;
+    });
+  }, [notifications]);
+
   const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
+    const now = Date.now();
+    setClearedBeforeTimestamp(now);
+    setExtraNotifications([]);
+    try {
+      localStorage.setItem('sd_cleared_notifs_time', String(now));
+    } catch (e) {
+      console.warn('Could not save cleared notification state:', e);
+    }
   }, []);
 
   const unreadNotificationCount = useMemo(() => {
@@ -3795,6 +3866,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       notifications,
       unreadNotificationCount,
       markNotificationAsRead,
+      markAllNotificationsAsRead,
       clearAllNotifications,
       isFastCacheActive: settings.enableFastCache,
       lastOperationDurationMs,

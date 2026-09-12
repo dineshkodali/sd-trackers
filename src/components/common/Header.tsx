@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Bell, 
   User, 
@@ -7,17 +7,26 @@ import {
   Building2, 
   ChevronDown, 
   Check, 
-  ExternalLink,
-  Lock,
-  RefreshCw,
-  LogIn,
-  LogOut,
-  Activity,
-  Menu,
-  X
+  ExternalLink, 
+  Lock, 
+  RefreshCw, 
+  LogIn, 
+  LogOut, 
+  Activity, 
+  Menu, 
+  X,
+  CheckCheck,
+  AlertCircle,
+  Clock,
+  ShieldAlert,
+  UserCheck,
+  Filter,
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
+import { isStaffLevel, isSiteMatch } from '../../services/inAppNotificationService';
 import { NetworkStatusIndicator } from './NetworkStatusIndicator';
 import { Logo } from './Logo';
 
@@ -28,10 +37,12 @@ export const Header: React.FC = () => {
     currentUserName,
     assignedSite,
     setAssignedSite,
+    allowedSites,
     sites,
     notifications,
     unreadNotificationCount,
     markNotificationAsRead,
+    markAllNotificationsAsRead,
     clearAllNotifications,
     setActivePage,
     activePage,
@@ -83,6 +94,82 @@ export const Header: React.FC = () => {
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const isStaff = isStaffLevel(currentUserRole);
+  const [notifTab, setNotifTab] = useState<'all' | 'site' | 'urgent' | 'requests'>(
+    isStaffLevel(currentUserRole) ? 'site' : 'all'
+  );
+
+  useEffect(() => {
+    if (isStaffLevel(currentUserRole) && notifTab === 'all') {
+      setNotifTab('site');
+    }
+  }, [currentUserRole, notifTab]);
+
+  const getRoleFeedTitle = (role: RoleType) => {
+    switch (role) {
+      case 'Super Admin': return 'Enterprise System Feed';
+      case 'Admin': return 'Operations Activity Stream';
+      case 'Regional Manager': return 'Regional Multi-Site Oversight';
+      case 'Site Manager':
+      case 'General Manager': return 'Site Operations & Defect Feed';
+      default: return 'Frontline Property Feed';
+    }
+  };
+
+  const getRoleFeedSubtitle = (role: RoleType, site: string, allowed: string[] = []) => {
+    switch (role) {
+      case 'Super Admin': return 'All properties, security events & RBAC governance';
+      case 'Admin': return 'Cross-site operational records & approvals';
+      case 'Regional Manager': return `${allowed?.length || 0} regional properties under oversight`;
+      case 'Site Manager':
+      case 'General Manager': return `Managed Site: ${site && site !== 'All Sites' ? site : 'Assigned Property'}`;
+      default: return `Assigned Site: ${site && site !== 'All Sites' ? site : 'Frontline Property'}`;
+    }
+  };
+
+  const getActionBadgeClass = (action?: string, type?: string) => {
+    if (type === 'urgent') return 'bg-rose-100 text-rose-800 border-rose-200';
+    if (type === 'security') return 'bg-purple-100 text-purple-800 border-purple-200';
+    if (action === 'CREATE') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    if (action === 'DELETE') return 'bg-red-100 text-red-800 border-red-200';
+    if (action === 'UPDATE') return 'bg-blue-100 text-blue-800 border-blue-200';
+    if (action === 'REQUEST') return 'bg-amber-100 text-amber-800 border-amber-200';
+    return 'bg-neutral-100 text-neutral-800 border-neutral-200';
+  };
+
+  const getActionLabel = (action?: string, type?: string) => {
+    if (type === 'urgent') return 'URGENT';
+    if (type === 'security') return 'SECURITY';
+    if (action === 'CREATE') return 'CREATED';
+    if (action === 'DELETE') return 'DELETED';
+    if (action === 'UPDATE') return 'UPDATED';
+    if (action === 'REQUEST') return 'APPROVAL';
+    return 'INFO';
+  };
+
+  const tabFilteredNotifications = useMemo(() => {
+    let list = notifications;
+    if (isStaff && assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+      list = list.filter(n => {
+        if (n.category === 'profile_personal') return true;
+        return n.site && isSiteMatch(assignedSite, n.site);
+      });
+    }
+
+    if (notifTab === 'urgent') {
+      return list.filter(n => n.type === 'urgent' || n.type === 'security' || n.category === 'critical_security');
+    }
+    if (notifTab === 'requests') {
+      return list.filter(n => n.category === 'approval_workflow' || n.category === 'profile_personal' || n.module === 'Requests' || n.module === 'Users');
+    }
+    if (notifTab === 'site') {
+      if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+        return list.filter(n => n.site && isSiteMatch(assignedSite, n.site));
+      }
+      return list.filter(n => n.category === 'site_activity' || Boolean(n.site));
+    }
+    return list;
+  }, [notifications, notifTab, assignedSite, isStaff]);
 
   const roleMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -283,33 +370,110 @@ export const Header: React.FC = () => {
           {showNotifications && (
             <div 
               id="notifications-flyout"
-              className="absolute right-0 mt-1 w-80 sm:w-96 bg-white border border-[#e1dfdd] shadow-xl rounded-xs z-40 overflow-hidden"
+              className="absolute right-0 mt-1 w-80 sm:w-[420px] bg-white border border-[#e1dfdd] shadow-2xl rounded-xs z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]"
             >
-              <div className="p-3 bg-[#f8f9fa] border-b border-[#e1dfdd] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-[#0d9488]" />
-                  <span className="text-xs font-semibold text-[#242424]">Notifications</span>
-                  <span className="text-[11px] bg-[#f0fdfa] text-[#0f766e] font-bold px-1.5 py-0.2 rounded">
-                    {notifications.length}
-                  </span>
+              {/* Role-Customized Header */}
+              <div className="p-3.5 bg-[#f8f9fa] border-b border-[#e1dfdd] flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Bell className="w-4 h-4 text-[#0d9488]" />
+                    <span className="text-xs font-bold text-[#242424]">
+                      {getRoleFeedTitle(currentUserRole)}
+                    </span>
+                    {unreadNotificationCount > 0 && (
+                      <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 font-bold px-1.5 py-0.2 rounded-full">
+                        {unreadNotificationCount} new
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[#605e5c] mt-0.5 truncate">
+                    {getRoleFeedSubtitle(currentUserRole, assignedSite, allowedSites)}
+                  </p>
                 </div>
-                {notifications.length > 0 && (
-                  <button 
-                    onClick={clearAllNotifications}
-                    className="text-[11px] text-[#0d9488] hover:underline"
-                  >
-                    Clear all
-                  </button>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {unreadNotificationCount > 0 && (
+                    <button 
+                      onClick={markAllNotificationsAsRead}
+                      className="text-[11px] text-[#0d9488] hover:text-[#0f766e] font-semibold flex items-center gap-0.5"
+                      title="Mark all as read"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" />
+                      <span>Read all</span>
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button 
+                      onClick={clearAllNotifications}
+                      className="text-[11px] text-neutral-400 hover:text-red-600 transition-colors"
+                      title="Clear notifications"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="max-h-72 overflow-y-auto divide-y divide-[#edebe9]">
-                {!notifications || notifications.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-[#605e5c]">
-                    No new notifications
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#f3f2f1] bg-[#faf9f8] overflow-x-auto">
+                {!isStaff && (
+                  <button
+                    onClick={() => setNotifTab('all')}
+                    className={`px-2.5 py-1 rounded-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 ${
+                      notifTab === 'all' ? 'bg-[#0d9488] text-white' : 'text-neutral-600 hover:bg-neutral-100'
+                    }`}
+                  >
+                    <span>All</span>
+                    <span className={`text-[10px] px-1 rounded-full ${notifTab === 'all' ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-700'}`}>
+                      {notifications.length}
+                    </span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setNotifTab('site')}
+                  className={`px-2.5 py-1 rounded-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 ${
+                    notifTab === 'site' ? 'bg-[#0d9488] text-white' : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
+                  title={isStaff ? `Notifications strictly for ${assignedSite || 'your assigned site'}` : 'Site Activity'}
+                >
+                  <Building2 className="w-3 h-3" />
+                  <span>{isStaff ? (assignedSite && assignedSite !== 'All Sites' ? assignedSite : 'My Assigned Property') : 'My Site'}</span>
+                </button>
+                <button
+                  onClick={() => setNotifTab('urgent')}
+                  className={`px-2.5 py-1 rounded-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 ${
+                    notifTab === 'urgent' ? 'bg-[#0d9488] text-white' : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
+                >
+                  <ShieldAlert className="w-3 h-3" />
+                  <span>Urgent & Alerts</span>
+                </button>
+                <button
+                  onClick={() => setNotifTab('requests')}
+                  className={`px-2.5 py-1 rounded-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 ${
+                    notifTab === 'requests' ? 'bg-[#0d9488] text-white' : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
+                >
+                  <UserCheck className="w-3 h-3" />
+                  <span>Requests</span>
+                </button>
+              </div>
+
+              {/* Notifications List */}
+              <div className="max-h-80 overflow-y-auto divide-y divide-[#f3f2f1] text-xs">
+                {tabFilteredNotifications.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-[#605e5c] space-y-1">
+                    <Sparkles className="w-5 h-5 mx-auto text-neutral-300" />
+                    <p className="font-semibold text-neutral-700">All caught up!</p>
+                    <p className="text-[11px] text-neutral-400">
+                      {notifTab === 'site' 
+                        ? `No recent activity recorded for ${assignedSite && assignedSite !== 'All Sites' ? assignedSite : 'your site'}.`
+                        : notifTab === 'urgent'
+                        ? 'No urgent incidents or critical alerts.'
+                        : 'No new notifications for your assigned role.'}
+                    </p>
                   </div>
                 ) : (
-                  (notifications || []).map(notif => (
+                  tabFilteredNotifications.map(notif => (
                     <div 
                       key={notif.id}
                       onClick={() => {
@@ -319,20 +483,81 @@ export const Header: React.FC = () => {
                           setShowNotifications(false);
                         }
                       }}
-                      className={`p-3 text-xs cursor-pointer hover:bg-[#f3f8fd] transition-colors ${
-                        !notif.read ? 'bg-[#f0f6ff]/50' : ''
+                      className={`p-3 cursor-pointer hover:bg-[#f3f8fd] transition-colors relative ${
+                        !notif.read ? 'bg-[#f0fdfa]/40' : ''
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className={`font-semibold ${!notif.read ? 'text-[#0f766e]' : 'text-[#242424]'}`}>
-                          {notif.title}
-                        </span>
-                        <span className="text-[10px] text-[#8a8886] shrink-0">{notif.time}</span>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Action Badge */}
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${getActionBadgeClass(notif.action, notif.type)}`}>
+                            {getActionLabel(notif.action, notif.type)}
+                          </span>
+                          {/* Site Pill */}
+                          {notif.site && notif.site !== 'All Sites' && notif.site !== 'System' && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-teal-50 border border-teal-200 text-teal-900 flex items-center gap-0.5">
+                              <Building2 className="w-2.5 h-2.5 text-teal-600 inline" />
+                              <span className="truncate max-w-[120px]">{notif.site}</span>
+                            </span>
+                          )}
+                          {/* Module Pill */}
+                          {notif.module && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-100 border border-neutral-200 text-neutral-700">
+                              {notif.module}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-[#8a8886] shrink-0 font-medium">{notif.time}</span>
                       </div>
-                      <p className="text-[11px] text-[#605e5c] mt-0.5 leading-snug">{notif.description}</p>
+
+                      <div className="flex items-start gap-2">
+                        {!notif.read && (
+                          <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0 mt-1" title="Unread notification" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <h5 className={`font-semibold text-xs leading-snug truncate ${!notif.read ? 'text-[#0f766e]' : 'text-[#242424]'}`}>
+                              {notif.title}
+                            </h5>
+                            {notif.linkPage && (
+                              <ArrowRight className="w-3 h-3 text-neutral-400 shrink-0 group-hover:text-teal-600" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#605e5c] mt-0.5 leading-relaxed line-clamp-2">
+                            {notif.description}
+                          </p>
+                          {notif.performedByUser && (
+                            <div className="mt-1 text-[10px] text-neutral-400 flex items-center gap-1">
+                              <span>By:</span>
+                              <span className="font-medium text-neutral-600">{notif.performedByUser}</span>
+                              {notif.performedByRole && (
+                                <span className="text-neutral-400">({notif.performedByRole})</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))
                 )}
+              </div>
+
+              {/* Flyout Footer */}
+              <div className="px-3.5 py-2 bg-[#f8f9fa] border-t border-[#e1dfdd] flex items-center justify-between text-[10px] text-neutral-500">
+                <span className="flex items-center gap-1">
+                  <Shield className="w-3 h-3 text-teal-600" />
+                  <span>Role: <strong>{currentUserRole}</strong></span>
+                </span>
+                <button
+                  onClick={() => {
+                    setActivePage('audit');
+                    setShowNotifications(false);
+                  }}
+                  className="text-[#0d9488] hover:underline font-semibold flex items-center gap-0.5"
+                >
+                  <span>Full Activity Log</span>
+                  <ArrowRight className="w-2.5 h-2.5" />
+                </button>
               </div>
             </div>
           )}

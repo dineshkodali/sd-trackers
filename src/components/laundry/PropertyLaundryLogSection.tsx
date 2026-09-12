@@ -651,11 +651,17 @@ export const PropertyLaundryLogSection: React.FC = () => {
 
     // The two attested counts are held as '' until the operator types a figure,
     // so normalise them to numbers before they leave the form.
+    const primaryAtt = (formData as any).attachments && (formData as any).attachments.length > 0 ? (formData as any).attachments[0] : null;
+    const primaryLink = primaryAtt?.url || primaryAtt?.dataUrl || '';
     const normalised = {
       ...formData,
       site: effectiveSite,
       dirtyLaundrySent: Number(formData.dirtyLaundrySent || 0),
       cleanLaundryReturned: Number(formData.cleanLaundryReturned || 0),
+      attachmentUrl: primaryLink,
+      attachment_url: primaryLink,
+      fileUrl: primaryLink,
+      file_url: primaryLink
     };
 
     if (editingLog) {

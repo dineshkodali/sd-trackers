@@ -150,7 +150,8 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     laOfficerLeading: '',
     notesActionTaken: '',
     sgReview: '',
-    urgency: 'Medium' as RiskLevel
+    urgency: 'Medium' as RiskLevel,
+    attachments: [] as RecordAttachment[]
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -784,7 +785,8 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
           status: 'Open',
           methodOfReferral: 'Encrypted Email',
           referralType: 'Safeguarding Adult',
-          urgency: 'Medium'
+          urgency: 'Medium',
+          attachments: []
         }}
         onSave={(data) => {
           const currentOfficer = (data as any).raisedBy || (data as any).officerLeadingHotel || loggedInUserName;
@@ -808,7 +810,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
             laOfficerLeading: data.laOfficerLeading || '',
             notesActionTaken: data.notesActionTaken || '',
             sgReview: data.sgReview || '',
-            attachments: [],
+            attachments: Array.isArray(data.attachments) ? data.attachments : [],
             ...data
           });
           setIsCreateModalOpen(false);

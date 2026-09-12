@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { CompactRecordCard, CompactRecordList, CompactRecordField } from './CompactRecordCards';
+import { TableAttachmentCell } from './TableAttachmentCell';
 
 interface DynamicDataTableProps<T = any> {
   columns: TableColumnConfig<T>[];
@@ -46,10 +47,34 @@ export function DynamicDataTable<T = any>({
   minWidth = '1200px'
 }: DynamicDataTableProps<T>) {
   // Only display columns configured as visible in table
-  const tableColumns = columns.filter(col => col.visibleInTable !== false && !col.isSystemMetadata);
+  const baseColumns = columns.filter(col => col.visibleInTable !== false && !col.isSystemMetadata);
+  const hasAttachmentsCol = baseColumns.some(c => c.key === 'attachments');
+  const hasAnyAttachments = data.some(r => ((r as any)?.attachments && (r as any).attachments.length > 0) || (r as any)?.attachmentUrl || (r as any)?.attachment_url || (r as any)?.fileUrl);
+
+  const tableColumns = hasAttachmentsCol || !hasAnyAttachments
+    ? baseColumns
+    : [
+        ...baseColumns,
+        {
+          key: 'attachments',
+          label: 'Attached Files',
+          type: 'text',
+          visibleInTable: true
+        } as TableColumnConfig<T>
+      ];
 
   const renderCellContent = (col: TableColumnConfig<T>, record: T) => {
     const value = (record as any)[col.key];
+
+    if (col.key === 'attachments' || col.key === 'attachmentUrl' || col.key === 'fileUrl') {
+      return (
+        <TableAttachmentCell 
+          attachments={(record as any)?.attachments || value} 
+          attachmentUrl={(record as any)?.attachmentUrl || (record as any)?.attachment_url || (record as any)?.fileUrl} 
+          recordTitle={(record as any)?.title || (record as any)?.suName || (record as any)?.name} 
+        />
+      );
+    }
 
     if (col.renderCell) {
       return col.renderCell(value, record);

@@ -36,6 +36,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['modeOfTransport', 'mode_of_transport', 'text'],
     ['exceptionalCircumstances', 'exceptional_circumstances', 'text'],
     ['status', 'status', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
   ],
   compliance_records: [
     ['srNo', 'sr_no', 'int'],
@@ -49,6 +52,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['actionTaken', 'action_taken', 'text'],
     ['previousContractor', 'previous_contractor', 'text'],
     ['siteName', 'site_name', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
   ],
   gp_appointments: [
     ['roomNo', 'room_no', 'text'],
@@ -60,6 +66,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['status', 'status', 'text'],
     ['siteName', 'site_name', 'text'],
     ['suName', 'su_name', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
   ],
   rfa_welfare_checks: [
     ['date', 'date', 'text'],
@@ -73,6 +82,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['vulnerability', 'vulnerability', 'text'],
     ['actionTaken', 'action_taken', 'text'],
     ['mhTicket', 'mh_ticket', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
   ],
   dispersal_records: [
     ['sno', 'sno', 'int'],
@@ -96,6 +108,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['secondDateLeftProperty', 'second_date_left_property', 'text'],
     ['secondIncidentWarningCompleted', 'second_incident_warning_completed', 'text'],
     ['reasonFailedToTravelSecond', 'reason_failed_to_travel_second', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
   ],
   booklet_collections: [
     ['hotelName', 'hotel_name', 'text'],
@@ -108,6 +123,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['status', 'status', 'text'],
     ['notes', 'notes', 'text'],
     ['lastUpdated', 'last_updated', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
   ],
   vcs_agencies: [
     ['hotelName', 'hotel_name', 'text'],
@@ -120,6 +138,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['address', 'address', 'text'],
     ['notes', 'notes', 'text'],
     ['isVerified', 'is_verified', 'bool'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
   ],
   field_options: [
     ['category', 'category', 'text'],
@@ -170,57 +191,63 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   referrals: new Set([
     'id', 'site', 'su_name', 'su_port_reference', 'port_ref', 'room_number',
     'date_referred', 'referral_type', 'reason', 'status', 'priority',
-    'actions_taken', 'assigned_to', 'notes', 'follow_up_date', 'data',
-    'created_by', 'created_at', 'updated_at'
+    'actions_taken', 'assigned_to', 'notes', 'follow_up_date', 'attachments',
+    'attachment_url', 'file_url', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   vulnerable_residents: new Set([
     'id', 'site', 'su_name', 'su_port_reference', 'room_or_flat_no',
     'vulnerability_category', 'risk_level', 'description', 'care_plan',
     'emergency_contact', 'medical_notes', 'status', 'last_review_date',
-    'next_review_date', 'flagged_by', 'data', 'created_by', 'created_at', 'updated_at'
+    'next_review_date', 'flagged_by', 'attachments', 'attachment_url',
+    'file_url', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   challenging_behavior: new Set([
     'id', 'site', 'name', 'port_ref', 'room_or_flat_no',
     'date_of_incident', 'type_of_issue', 'risk_to_others', 'description',
     'police_involved', 'police_cad_number', 'warning_issued', 'warning_level',
-    'actions_taken', 'status', 'logged_by', 'data', 'created_by', 'created_at', 'updated_at'
+    'actions_taken', 'status', 'logged_by', 'attachments', 'attachment_url',
+    'file_url', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   maintenance_records: new Set([
     'id', 'site', 'room_or_area', 'defect_status', 'description',
     'contractor', 'contractor_quote', 'priority', 'reported_date',
     'completion_date', 'sign_off_status', 'notes', 'category', 'reported_by',
-    'data', 'created_by', 'created_at', 'updated_at'
+    'attachments', 'attachment_url', 'file_url', 'data',
+    'created_by', 'created_at', 'updated_at'
   ]),
   spcd_records: new Set([
     'id', 'site_name', 'su_name', 'su_port_reference', 'check_type',
     'status', 'declaration_date', 'officer_name', 'verified', 'comments',
-    'expires_date', 'data', 'created_by', 'created_at', 'updated_at'
+    'expires_date', 'attachments', 'attachment_url', 'file_url', 'data',
+    'created_by', 'created_at', 'updated_at'
   ]),
   sites: new Set([
     'id', 'name', 'pid', 'address', 'city', 'total_rooms', 'active_residents',
-    'status', 'manager_name', 'manager_email', 'manager_phone', 'data',
-    'created_by', 'created_at', 'updated_at'
+    'status', 'manager_name', 'manager_email', 'manager_phone', 'attachments',
+    'attachment_url', 'file_url', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   laundry_logs: new Set([
     'id', 'site_id', 'site', 'room_no', 'resident_name', 'ref', 'date', 'tokens_issued',
     'bag_count', 'dirty_laundry_sent', 'clean_laundry_returned', 'discrepancies',
     'discrepancy_count', 'remarks_actions_taken', 'status', 'staff_initials',
-    'notes', 'data', 'created_by', 'created_at', 'updated_at'
+    'notes', 'attachments', 'attachment_url', 'file_url', 'data',
+    'created_by', 'created_at', 'updated_at'
   ]),
   hot_food_logs: new Set([
     'id', 'site_id', 'site', 'date', 'meal_type', 'vendor_name', 'supplier_name',
     'meals_delivered', 'temperature_c', 'quality_check', 'staff_name',
-    'staff_signoff', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
+    'staff_signoff', 'notes', 'attachments', 'attachment_url', 'file_url', 'data',
+    'created_by', 'created_at', 'updated_at'
   ]),
   escalations: new Set([
     'id', 'site', 'title', 'category', 'severity', 'status', 'description',
-    'reported_by', 'assigned_to', 'resolution_notes', 'data',
-    'created_by', 'created_at', 'updated_at'
+    'reported_by', 'assigned_to', 'resolution_notes', 'attachments',
+    'attachment_url', 'file_url', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   documents: new Set([
     'id', 'title', 'category', 'site', 'file_url', 'file_size',
-    'uploaded_by', 'uploaded_date', 'version', 'data',
-    'created_by', 'created_at', 'updated_at'
+    'uploaded_by', 'uploaded_date', 'version', 'attachments', 'attachment_url',
+    'data', 'created_by', 'created_at', 'updated_at'
   ]),
   audit_trails: new Set([
     'id', 'timestamp', 'user', 'user_id', 'role', 'action', 'details',
@@ -237,7 +264,8 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   ]),
   data_change_requests: new Set([
     'id', 'module', 'action_type', 'requested_by', 'site', 'status',
-    'payload', 'reason', 'data', 'created_by', 'created_at', 'updated_at'
+    'payload', 'reason', 'attachments', 'attachment_url', 'file_url', 'data',
+    'created_by', 'created_at', 'updated_at'
   ]),
   property_user_assignments: new Set([
     'id', 'user_id', 'user_email', 'user_name', 'group_id', 'group_name',
@@ -400,7 +428,8 @@ export function toDatabaseRow(
         'dateReferred', 'checkInDate', 'date', 'referralType', 'type', 'reason',
         'status', 'priority', 'actionsTaken', 'assignedTo', 'allocatedWorker',
         'followUpDate', 'notes', 'createdAt', 'updatedAt',
-        'createdBy', 'created_at', 'updated_at', 'created_by'
+        'createdBy', 'created_at', 'updated_at', 'created_by',
+        'attachments', 'attachmentUrl', 'attachment_url', 'fileUrl', 'file_url'
       ]);
       const extraFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
@@ -408,6 +437,11 @@ export function toDatabaseRow(
           extraFields[k] = v;
         }
       }
+      extraFields.attachments = Array.isArray(record.attachments) ? record.attachments : [];
+      const refPrimaryAtt = extraFields.attachments.length > 0 ? extraFields.attachments[0] : null;
+      const refLink = refPrimaryAtt?.url || refPrimaryAtt?.dataUrl || record.attachmentUrl || record.attachment_url || record.fileUrl || '';
+      extraFields.attachmentUrl = refLink;
+      extraFields.fileUrl = refLink;
       extraFields.userNotes = typeof record.notes === 'string' ? record.notes : '';
       dbRow.notes = JSON.stringify(extraFields);
       break;
@@ -436,13 +470,30 @@ export function toDatabaseRow(
         'emergencyContact', 'medicalNotes', 'status', 'lastReviewDate', 'lastAssessmentDate',
         'nextReviewDate', 'reviewDate', 'flaggedBy', 'allocatedWorker', 'allocatedStaff',
         'raisedBy', 'notes', 'createdAt', 'updatedAt', 'createdBy', 'created_at', 'updated_at',
-        'created_by'
+        'created_by',
+        'attachments', 'attachmentUrl', 'attachment_url', 'fileUrl', 'file_url'
       ]);
       const customVulnFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
         if (!knownVulnKeys.has(k) && v !== undefined && typeof v !== 'function' && !TRANSIENT_KEYS.has(k)) {
           customVulnFields[k] = v;
         }
+      }
+
+      // Sync attachments into the envelope so they survive round-trip
+      const vulnAtts = Array.isArray(record.attachments) ? record.attachments : [];
+      customVulnFields.attachments = vulnAtts;
+      if (vulnAtts.length > 0) {
+        const vulnPrimary = vulnAtts[0];
+        const vulnLink = vulnPrimary?.url || vulnPrimary?.dataUrl || '';
+        customVulnFields.attachmentUrl = vulnLink;
+        customVulnFields.fileUrl = vulnLink;
+      } else {
+        // Explicit clear: remove stale URLs from the envelope
+        delete customVulnFields.attachmentUrl;
+        delete customVulnFields.attachment_url;
+        delete customVulnFields.fileUrl;
+        delete customVulnFields.file_url;
       }
 
       if (Object.keys(customVulnFields).length > 0 || (record.medicalNotes && typeof record.medicalNotes !== 'string')) {
@@ -481,12 +532,41 @@ export function toDatabaseRow(
         'triggerFactors', 'policeInvolved', 'policeCalled', 'policeCadNumber', 'warningIssued',
         'warningLevel', 'warningFlag', 'actionTaken', 'actionsTaken', 'deEscalationProtocol',
         'status', 'loggedBy', 'reportedBy', 'staffName', 'notes', 'createdAt',
-        'updatedAt', 'createdBy', 'created_at', 'updated_at', 'created_by'
+        'updatedAt', 'createdBy', 'created_at', 'updated_at', 'created_by',
+        'attachments', 'attachmentUrl', 'attachment_url', 'fileUrl', 'file_url'
       ]);
       const customChallengingFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
         if (!knownChallengingKeys.has(k) && v !== undefined && typeof v !== 'function' && !TRANSIENT_KEYS.has(k)) {
           customChallengingFields[k] = v;
+        }
+      }
+
+      // Sync attachments in actions_taken envelope
+      const chalAtts = Array.isArray(record.attachments) ? record.attachments : [];
+      customChallengingFields.attachments = chalAtts;
+      if (chalAtts.length > 0) {
+        const chalPrimary = chalAtts[0];
+        const chalLink = chalPrimary?.url || chalPrimary?.dataUrl || record.attachmentUrl || record.fileUrl || '';
+        customChallengingFields.attachmentUrl = chalLink;
+        customChallengingFields.fileUrl = chalLink;
+      } else {
+        delete customChallengingFields.attachmentUrl;
+        delete customChallengingFields.attachment_url;
+        delete customChallengingFields.fileUrl;
+        delete customChallengingFields.file_url;
+      }
+
+      // Guard: Ensure reviewBySGTeam is never mistakenly saved with hotel/property name
+      if (customChallengingFields.reviewBySGTeam) {
+        const rev = String(customChallengingFields.reviewBySGTeam);
+        if (
+          rev.toLowerCase().includes('hotel') ||
+          rev.toLowerCase().includes('stansted') ||
+          rev.toLowerCase().includes('ibis') ||
+          rev === dbRow.site
+        ) {
+          customChallengingFields.reviewBySGTeam = '';
         }
       }
 
@@ -524,13 +604,29 @@ export function toDatabaseRow(
         'signOffStatus', 'action', 'criteriaCode', 'issueCategory', 'category', 'raisedBy',
         'reportedBy', 'loggedBy', 'notes', 'userNotes', 'progress', 'priorityTimeScale',
         'closeDueDate', 'actualCost', 'updatedAt', 'createdBy', 'created_at', 'updated_at',
-        'created_by'
+        'created_by',
+        'attachments', 'attachmentUrl', 'attachment_url', 'fileUrl', 'file_url'
       ]);
       const customMaintFields: Record<string, any> = {};
       for (const [k, v] of Object.entries(record)) {
         if (!knownMaintKeys.has(k) && v !== undefined && typeof v !== 'function' && !TRANSIENT_KEYS.has(k)) {
           customMaintFields[k] = v;
         }
+      }
+
+      // Sync attachments into envelope
+      const maintAtts = Array.isArray(record.attachments) ? record.attachments : [];
+      customMaintFields.attachments = maintAtts;
+      if (maintAtts.length > 0) {
+        const maintPrimary = maintAtts[0];
+        const maintLink = maintPrimary?.url || maintPrimary?.dataUrl || '';
+        customMaintFields.attachmentUrl = maintLink;
+        customMaintFields.fileUrl = maintLink;
+      } else {
+        delete customMaintFields.attachmentUrl;
+        delete customMaintFields.attachment_url;
+        delete customMaintFields.fileUrl;
+        delete customMaintFields.file_url;
       }
 
       const extraMaint = {
@@ -560,6 +656,11 @@ export function toDatabaseRow(
       const isArchived = record.isArchived === true || record.isArchived === 'true';
       const dateLeft = record.dateLeft || record.expiresDate || null;
 
+      const spcdAtts = Array.isArray(record.attachments) ? record.attachments : [];
+      const spcdPrimaryLink = spcdAtts.length > 0
+        ? (spcdAtts[0]?.url || spcdAtts[0]?.dataUrl || '')
+        : '';
+
       const fullPayload = {
         ...sanitizeRecord(record),
         date,
@@ -578,7 +679,10 @@ export function toDatabaseRow(
         sgReview,
         isArchived,
         dateLeft,
-        reasonForLeaving: record.reasonForLeaving || null
+        reasonForLeaving: record.reasonForLeaving || null,
+        attachments: spcdAtts,
+        attachmentUrl: spcdPrimaryLink,
+        fileUrl: spcdPrimaryLink
       };
 
       dbRow.site_name = siteName;
@@ -707,6 +811,10 @@ export function toDatabaseRow(
       const reportedAuthorities = record.reportedAuthorities || record.assignedTo || record.escalatedTo || '';
       const actionTaken = record.actionTaken || record.resolutionNotes || record.immediateAction || '';
 
+      const escAtts = Array.isArray(record.attachments) ? record.attachments : [];
+      const escPrimaryLink = escAtts.length > 0
+        ? (escAtts[0]?.url || escAtts[0]?.dataUrl || '')
+        : '';
       const fullPayload = {
         ...sanitizeRecord(record),
         suName,
@@ -720,7 +828,12 @@ export function toDatabaseRow(
         actionTaken,
         urgency,
         status,
-        attachments: Array.isArray(record.attachments) ? record.attachments : []
+        attachments: escAtts,
+        // Sync primary URL fields (clear stale data: URIs when no attachments)
+        attachmentUrl: escPrimaryLink,
+        attachment_url: escPrimaryLink,
+        fileUrl: escPrimaryLink,
+        file_url: escPrimaryLink
       };
 
       dbRow.site = record.site || record.assignedSite || record.siteName || 'All Sites';
@@ -829,6 +942,25 @@ export function toDatabaseRow(
     }
   }
 
+  // Universal file attachments and primary generated link mapping
+  if (record.attachments !== undefined) {
+    const rawAtts = Array.isArray(record.attachments) ? record.attachments : [];
+    dbRow.attachments = rawAtts;
+    if (rawAtts.length > 0) {
+      const primaryAtt = rawAtts[0];
+      const genLink = primaryAtt?.url || primaryAtt?.dataUrl || record.attachmentUrl || record.attachment_url || record.fileUrl || null;
+      dbRow.attachment_url = genLink;
+      dbRow.file_url = genLink;
+    } else {
+      dbRow.attachment_url = null;
+      dbRow.file_url = null;
+    }
+  } else if (record.attachmentUrl || record.attachment_url || record.fileUrl || record.file_url) {
+    const link = record.attachmentUrl || record.attachment_url || record.fileUrl || record.file_url;
+    dbRow.attachment_url = link;
+    if (!dbRow.file_url) dbRow.file_url = link;
+  }
+
   // Full-fidelity copy of the application record.
   if (DATA_TABLES.has(tableName)) {
     dbRow.data = sanitizeRecord(record);
@@ -880,6 +1012,51 @@ function categorical(value: any, whenTrue: string, whenFalse: string, fallback: 
 }
 
 /**
+ * Sanitize attachment fields on a converted record.
+ *
+ * When `attachments` is explicitly an empty array, clear any stale
+ * `attachmentUrl` / `fileUrl` strings so the frontend never synthesizes
+ * a phantom "DOC" badge from a lingering `data:` base64 URI or an
+ * orphaned URL.
+ *
+ * When `attachments` has items, sync the primary URL fields to the first
+ * attachment's link.
+ */
+function sanitizeRowAttachments(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  const atts = obj.attachments;
+  if (Array.isArray(atts)) {
+    if (atts.length === 0) {
+      // Explicit empty: erase any residual URL strings
+      obj.attachmentUrl = '';
+      obj.attachment_url = '';
+      obj.fileUrl = '';
+      obj.file_url = '';
+    } else {
+      // Sync primary URL fields to the first attachment
+      const primary = atts[0];
+      const link = primary?.url || primary?.dataUrl || '';
+      if (link) {
+        obj.attachmentUrl = link;
+        obj.attachment_url = link;
+        obj.fileUrl = link;
+        obj.file_url = link;
+      }
+    }
+  }
+
+  // Guard against stale data: URIs that survived in URL-only fields
+  for (const key of ['attachmentUrl', 'attachment_url', 'fileUrl', 'file_url'] as const) {
+    if (typeof obj[key] === 'string' && obj[key].startsWith('data:')) {
+      obj[key] = '';
+    }
+  }
+
+  return obj;
+}
+
+/**
  * Converts a database row back into the rich frontend model.
  */
 export function fromDatabaseRow(tableName: string, row: any): any {
@@ -901,7 +1078,17 @@ export function fromDatabaseRow(tableName: string, row: any): any {
           updatedAt: row.updated_at ?? fromData.updatedAt
         };
       }
-      return fromData;
+      if (row.attachments && (!fromData.attachments || fromData.attachments.length === 0)) {
+        try {
+          fromData.attachments = typeof row.attachments === 'string' ? JSON.parse(row.attachments) : row.attachments;
+        } catch {
+          fromData.attachments = row.attachments;
+        }
+      }
+      if (row.attachment_url && !fromData.attachmentUrl) {
+        fromData.attachmentUrl = row.attachment_url;
+      }
+      return sanitizeRowAttachments(fromData);
     }
   }
 
@@ -912,13 +1099,13 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     }
     obj.createdAt = row.created_at;
     obj.updatedAt = row.updated_at;
-    return obj;
+    return sanitizeRowAttachments(obj);
   }
 
   switch (tableName) {
     case 'referrals': {
       const extra = parseJsonObject(row.notes);
-      return {
+      const result = {
         ...extra,
         id: row.id,
         site: row.site,
@@ -948,15 +1135,17 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         raisedBy: extra.raisedBy || extra.officerLeadingHotel || '',
         sgReview: extra.sgReview || '',
         notes: extra.userNotes !== undefined ? extra.userNotes : (row.notes && !String(row.notes).startsWith('{') ? row.notes : ''),
+        attachments: Array.isArray(extra.attachments) ? extra.attachments : (Array.isArray(row.attachments) ? row.attachments : []),
         createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by
       };
+      return sanitizeRowAttachments(result);
     }
 
     case 'vulnerable_residents': {
       const extra = parseJsonObject(row.medical_notes);
-      return {
+      const result = {
         ...extra,
         id: row.id,
         site: row.site,
@@ -985,16 +1174,18 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         raisedBy: row.flagged_by || '',
         group: extra.group || 'Single Adult',
         gender: extra.gender || 'Prefer not to say',
+        attachments: Array.isArray(extra.attachments) ? extra.attachments : [],
         createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by
       };
+      return sanitizeRowAttachments(result);
     }
 
     case 'challenging_behavior': {
       const extra = parseJsonObject(row.actions_taken);
       const plainAction = extra._text !== undefined ? extra._text : (row.actions_taken && !String(row.actions_taken).startsWith('{') ? row.actions_taken : '');
-      return {
+      const result = {
         ...extra,
         id: row.id,
         date: extra.date || row.date_of_incident || '',
@@ -1029,16 +1220,25 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         adviceGivenBySGTeam: extra.adviceGivenBySGTeam || '',
         followUpNotes: extra.followUpNotes || '',
         comments: extra.comments || '',
-        reviewBySGTeam: extra.reviewBySGTeam || '',
+        reviewBySGTeam: (
+          typeof extra.reviewBySGTeam === 'string' && (
+            extra.reviewBySGTeam.toLowerCase().includes('hotel') ||
+            extra.reviewBySGTeam.toLowerCase().includes('stansted') ||
+            extra.reviewBySGTeam.toLowerCase().includes('ibis') ||
+            extra.reviewBySGTeam === row.site
+          )
+        ) ? '' : (extra.reviewBySGTeam || ''),
+        attachments: Array.isArray(extra.attachments) ? extra.attachments : (Array.isArray(row.attachments) ? row.attachments : []),
         createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by
       };
+      return sanitizeRowAttachments(result);
     }
 
     case 'maintenance_records': {
       const extra = parseJsonObject(row.notes);
-      return {
+      const result = {
         ...extra,
         id: row.id,
         date: row.reported_date || row.created_at?.split('T')[0] || '',
@@ -1070,10 +1270,12 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         raisedBy: row.reported_by || '',
         reportedBy: row.reported_by || '',
         notes: extra.userNotes !== undefined ? extra.userNotes : (row.notes && !String(row.notes).startsWith('{') ? row.notes : ''),
+        attachments: Array.isArray(extra.attachments) ? extra.attachments : [],
         createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by
       };
+      return sanitizeRowAttachments(result);
     }
 
     case 'spcd_records': {
@@ -1085,7 +1287,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
       const briefDescriptionActionTaken = extra.briefDescriptionActionTaken || (typeof row.comments === 'string' && !row.comments.trim().startsWith('{') ? row.comments : '');
       const sgReview = extra.sgReview || (row.status !== 'Archived' ? row.status : 'Pending Safeguarding Lead Review') || 'Pending Safeguarding Lead Review';
 
-      return {
+      const result = {
         ...extra,
         id: row.id,
         date,
@@ -1106,6 +1308,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         isArchived: extra.isArchived !== undefined ? extra.isArchived : (row.status === 'Archived'),
         dateLeft: extra.dateLeft || row.expires_date || undefined,
         reasonForLeaving: extra.reasonForLeaving || undefined,
+        attachments: Array.isArray(extra.attachments) ? extra.attachments : [],
         createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at,
         createdBy: row.created_by,
@@ -1116,6 +1319,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         comments: typeof row.comments === 'string' && !row.comments.startsWith('{') ? row.comments : briefDescriptionActionTaken,
         observations: briefDescriptionActionTaken
       };
+      return sanitizeRowAttachments(result);
     }
 
     case 'sites': {
@@ -1254,7 +1458,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
       const urgency = extra.urgency || row.severity || 'High';
       const dateOfIncident = extra.dateOfIncident || (row.created_at ? row.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10));
 
-      return {
+      const result = {
         ...extra,
         id: row.id,
         site: row.site,
@@ -1288,6 +1492,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         createdAt: extra.createdAt || row.created_at,
         updatedAt: row.updated_at
       };
+      return sanitizeRowAttachments(result);
     }
 
     case 'documents': {

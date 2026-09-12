@@ -34,13 +34,17 @@ export const ConfirmationModal: React.FC = () => {
   };
 
   const handleConfirm = () => {
-    onConfirm();
+    try {
+      onConfirm();
+    } finally {
+      closeConfirmation();
+    }
   };
 
   return (
     <div 
       id="confirmation-modal-backdrop" 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4 animate-in fade-in duration-150"
       onClick={handleCancel}
     >
       <div 

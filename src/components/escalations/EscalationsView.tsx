@@ -182,8 +182,8 @@ export const EscalationsView: React.FC = () => {
       refNumber: data.suPortNassRef || '',
       dateTime: data.dateOfIncident || nowIso.slice(0, 10),
       reportedBy: data.personReporting || loggedInUserName,
-      attachments: [],
-      ...data
+      ...data,
+      attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
 
     setIsCreateModalOpen(false);

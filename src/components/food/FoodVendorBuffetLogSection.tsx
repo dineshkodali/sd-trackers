@@ -563,12 +563,18 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
       }
     }
 
+    const primaryAtt = formData.attachments && formData.attachments.length > 0 ? formData.attachments[0] : null;
+    const primaryLink = primaryAtt?.url || primaryAtt?.dataUrl || '';
     const payload = {
       ...formData,
       site: effectiveSite,
       loggedBy: formData.lastUpdatedBy || loggedInUserName,
       lastUpdatedBy: formData.lastUpdatedBy || loggedInUserName,
-      attachments: formData.attachments || []
+      attachments: formData.attachments || [],
+      attachmentUrl: primaryLink,
+      attachment_url: primaryLink,
+      fileUrl: primaryLink,
+      file_url: primaryLink
     };
 
     if (editingLog) {

@@ -754,9 +754,26 @@ BEGIN
 END $$;
 
 -- A signed-in user may read exactly one row: their own profile.
-CREATE POLICY "profiles_select_own" ON public.profiles
-  FOR SELECT TO authenticated
-  USING (auth.uid() = id);
+-- Ensure all operational tables have dedicated attachments and generated file link columns
+DO $$
+DECLARE
+  operational_tables TEXT[] := ARRAY[
+    'referrals', 'vulnerable_residents', 'challenging_behavior', 'maintenance_records',
+    'spcd_records', 'sites', 'laundry_logs', 'hot_food_logs', 'escalations', 'documents',
+    'data_change_requests', 'public_transport_records', 'compliance_records', 'gp_appointments',
+    'rfa_welfare_checks', 'dispersal_records', 'booklet_collections', 'vcs_agencies'
+  ];
+  t TEXT;
+BEGIN
+  FOREACH t IN ARRAY operational_tables
+  LOOP
+    IF to_regclass('public.' || t) IS NOT NULL THEN
+      EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT ''[]''::jsonb', t);
+      EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS attachment_url TEXT', t);
+      EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS file_url TEXT', t);
+    END IF;
+  END LOOP;
+END $$;
 
 -- =====================================================================
 -- PART 8: SCHEMA VERSION MARKER

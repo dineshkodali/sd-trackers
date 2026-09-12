@@ -1,4 +1,6 @@
+import React from 'react';
 import { TableColumnConfig } from '../types/tableSchema';
+import { TableAttachmentCell } from '../components/common/TableAttachmentCell';
 import { 
   EscalationRecord, 
   GPAppointmentRecord, 
@@ -12,6 +14,12 @@ import {
   PropertyLaundryLog,
   PropertyFoodVendorBuffetLog
 } from '../types';
+
+export const renderSchemaAttachmentCell = (val: any, row: any) =>
+  React.createElement(TableAttachmentCell, {
+    attachments: row?.attachments || (Array.isArray(val) ? val : undefined),
+    attachmentUrl: row?.attachmentUrl || row?.attachment_url || row?.fileUrl || row?.file_url || (typeof val === 'string' ? val : undefined)
+  });
 
 export const resolveSiteOptions = (ctx: any) => {
   if (ctx?.allowedSites && Array.isArray(ctx.allowedSites) && ctx.allowedSites.length > 0) {
@@ -92,7 +100,8 @@ export const ESCALATIONS_TABLE_COLUMNS: TableColumnConfig<EscalationRecord>[] = 
     section: 'Action & Multi-Agency'
   },
   { key: 'actionTaken', label: 'Action Taken', type: 'textarea', colSpan: 2, section: 'Action & Multi-Agency' },
-  { key: 'incidentNotes', label: 'Incident Notes', type: 'textarea', colSpan: 2, section: 'Incident Details' }
+  { key: 'incidentNotes', label: 'Incident Notes', type: 'textarea', colSpan: 2, section: 'Incident Details' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const GP_APPOINTMENTS_TABLE_COLUMNS: TableColumnConfig<GPAppointmentRecord>[] = [
@@ -117,7 +126,8 @@ export const GP_APPOINTMENTS_TABLE_COLUMNS: TableColumnConfig<GPAppointmentRecor
     },
     section: 'Consultation Details'
   },
-  { key: 'comments', label: 'Comments / Clinic Notes', type: 'textarea', colSpan: 2, section: 'Consultation Details' }
+  { key: 'comments', label: 'Comments / Clinic Notes', type: 'textarea', colSpan: 2, section: 'Consultation Details' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const RFA_WELFARE_TABLE_COLUMNS: TableColumnConfig<RFAWelfareCheckRecord>[] = [
@@ -143,7 +153,8 @@ export const RFA_WELFARE_TABLE_COLUMNS: TableColumnConfig<RFAWelfareCheckRecord>
   { key: 'portOrNassRef', label: 'Port / NASS Ref', type: 'text', section: 'Resident Details' },
   { key: 'vulnerability', label: 'Vulnerability / Issue', type: 'text', section: 'Check Details' },
   { key: 'actionTaken', label: 'Action Taken', type: 'textarea', colSpan: 2, section: 'Check Details' },
-  { key: 'mhTicket', label: 'MH Ticket Ref', type: 'text', section: 'Check Details' }
+  { key: 'mhTicket', label: 'MH Ticket Ref', type: 'text', section: 'Check Details' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const PUBLIC_TRANSPORT_TABLE_COLUMNS: TableColumnConfig<PublicTransportRecord>[] = [
@@ -183,7 +194,8 @@ export const PUBLIC_TRANSPORT_TABLE_COLUMNS: TableColumnConfig<PublicTransportRe
     },
     section: 'Approval' 
   },
-  { key: 'exceptionalCircumstances', label: 'Exceptional Circumstances', type: 'textarea', colSpan: 2, section: 'Approval' }
+  { key: 'exceptionalCircumstances', label: 'Exceptional Circumstances', type: 'textarea', colSpan: 2, section: 'Approval' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
@@ -227,7 +239,8 @@ export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
     section: 'Compliance Check' 
   },
   { key: 'reasonFailedToTravel', label: 'Reason Failed to Travel', type: 'textarea', colSpan: 2, section: 'Exceptions' },
-  { key: 'secondDispersalDate', label: '2nd Dispersal Date', type: 'text', section: '2nd Dispersal Cycle' }
+  { key: 'secondDispersalDate', label: '2nd Dispersal Date', type: 'text', section: '2nd Dispersal Cycle' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const SD_COMPLIANCE_TABLE_COLUMNS: TableColumnConfig<SDComplianceRecord>[] = [
@@ -272,7 +285,8 @@ export const SD_COMPLIANCE_TABLE_COLUMNS: TableColumnConfig<SDComplianceRecord>[
     section: 'Validity & Schedule'
   },
   { key: 'actionTaken', label: 'Action Taken', type: 'textarea', colSpan: 2, section: 'Validity & Schedule' },
-  { key: 'previousContractor', label: 'Previous Contractor', type: 'text', section: 'Contractor Information' }
+  { key: 'previousContractor', label: 'Previous Contractor', type: 'text', section: 'Contractor Information' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const BOOKLETS_TABLE_COLUMNS: TableColumnConfig<BookletCollectionRecord>[] = [
@@ -295,7 +309,8 @@ export const BOOKLETS_TABLE_COLUMNS: TableColumnConfig<BookletCollectionRecord>[
     },
     section: 'Quantities'
   },
-  { key: 'notes', label: 'Notes', type: 'textarea', colSpan: 2, section: 'Booklet Details' }
+  { key: 'notes', label: 'Notes', type: 'textarea', colSpan: 2, section: 'Booklet Details' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const VCS_AGENCIES_TABLE_COLUMNS: TableColumnConfig<SDVCSAgency>[] = [
@@ -322,7 +337,8 @@ export const VCS_AGENCIES_TABLE_COLUMNS: TableColumnConfig<SDVCSAgency>[] = [
   { key: 'contactNumber', label: 'Contact Number', type: 'text', section: 'Contact Details' },
   { key: 'email', label: 'Email Address', type: 'text', section: 'Contact Details' },
   { key: 'address', label: 'Address', type: 'text', section: 'Contact Details' },
-  { key: 'notes', label: 'Notes', type: 'textarea', colSpan: 2, section: 'Services & Support' }
+  { key: 'notes', label: 'Notes', type: 'textarea', colSpan: 2, section: 'Services & Support' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
@@ -366,7 +382,8 @@ export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
   },
   { key: 'uploadedBy', label: 'Uploaded By', type: 'text', section: 'Audit' },
   { key: 'uploadDate', label: 'Upload Date', type: 'date', section: 'Audit' },
-  { key: 'notes', label: 'Notes', type: 'textarea', colSpan: 2, section: 'Document Info' }
+  { key: 'notes', label: 'Notes', type: 'textarea', colSpan: 2, section: 'Document Info' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const PROPERTY_LAUNDRY_TABLE_COLUMNS: TableColumnConfig<PropertyLaundryLog>[] = [
@@ -402,7 +419,8 @@ export const PROPERTY_LAUNDRY_TABLE_COLUMNS: TableColumnConfig<PropertyLaundryLo
   { key: 'remarksActionsTaken', label: 'Remarks / Actions Taken', type: 'textarea', colSpan: 2, section: 'Variance & Reconciliations' },
   { key: 'loggedBy', label: 'Staff / Auditor', type: 'text', section: 'Audit Information' },
   { key: 'startDate', label: 'Date From', type: 'date', section: 'Period Dates' },
-  { key: 'endDate', label: 'Date To', type: 'date', section: 'Period Dates' }
+  { key: 'endDate', label: 'Date To', type: 'date', section: 'Period Dates' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 
 export const FOOD_VENDOR_BUFFET_TABLE_COLUMNS: TableColumnConfig<PropertyFoodVendorBuffetLog>[] = [
@@ -426,6 +444,7 @@ export const FOOD_VENDOR_BUFFET_TABLE_COLUMNS: TableColumnConfig<PropertyFoodVen
   { key: 'startDate', label: 'Date From', type: 'date', required: true, section: 'Schedule Details' },
   { key: 'endDate', label: 'Date To', type: 'date', required: true, section: 'Schedule Details' },
   { key: 'notes', label: 'Compliance & Quality Notes', type: 'textarea', colSpan: 2, section: 'Audit & Compliance' },
-  { key: 'lastUpdatedBy', label: 'Audited By', type: 'text', section: 'Audit & Compliance' }
+  { key: 'lastUpdatedBy', label: 'Audited By', type: 'text', section: 'Audit & Compliance' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
 

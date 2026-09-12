@@ -1,3 +1,4 @@
+import React from 'react';
 import { TableColumnConfig } from '../types/tableSchema';
 import { 
   MaintenanceRecord, 
@@ -11,6 +12,14 @@ import {
   EscalationRecord, 
   DocumentRecord 
 } from '../types';
+import { TableAttachmentCell } from '../components/common/TableAttachmentCell';
+
+export const renderAttachmentCell = (val: any, record: any) =>
+  React.createElement(TableAttachmentCell, {
+    attachments: record?.attachments || val,
+    attachmentUrl: record?.attachmentUrl || record?.attachment_url || record?.fileUrl,
+    recordTitle: record?.title || record?.suName || record?.residentName || record?.name
+  });
 
 export const resolveConfigSiteOptions = (ctx: any): string[] => {
   if (ctx?.allowedSites && Array.isArray(ctx.allowedSites) && ctx.allowedSites.length > 0) {
@@ -181,6 +190,14 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     placeholder: 'Action notes, parts ordered, contractor communication...',
     section: 'Status & Progression'
   },
+  {
+    key: 'attachments',
+    label: 'Attached Files',
+    type: 'text',
+    section: 'Status & Progression',
+    visibleInTable: true,
+    renderCell: renderAttachmentCell
+  },
   // System metadata fields (filtered out from Add/Edit/View by default)
   { key: 'id', label: 'ID', isSystemMetadata: true },
   { key: 'createdAt', label: 'Created At', isSystemMetadata: true },
@@ -348,6 +365,14 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     placeholder: 'Review comments, outcomes, follow-up dates...',
     section: 'Case Notes & Review'
   },
+  {
+    key: 'attachments',
+    label: 'Attached Files',
+    type: 'text',
+    section: 'Case Notes & Review',
+    visibleInTable: true,
+    renderCell: renderAttachmentCell
+  },
   // System metadata
   { key: 'id', label: 'ID', isSystemMetadata: true },
   { key: 'srNo', label: 'Sr. No', isSystemMetadata: true },
@@ -487,6 +512,14 @@ export const vulnerableTableConfig: TableColumnConfig<VulnerableSU>[] = [
     colSpan: 2,
     placeholder: 'Safeguarding review updates, outcomes, observations...',
     section: 'Notes & Updates'
+  },
+  {
+    key: 'attachments',
+    label: 'Attached Files',
+    type: 'text',
+    section: 'Notes & Updates',
+    visibleInTable: true,
+    renderCell: renderAttachmentCell
   },
   // System metadata
   { key: 'id', label: 'ID', isSystemMetadata: true },
@@ -664,6 +697,14 @@ export const challengingTableConfig: TableColumnConfig<ChallengingSU>[] = [
     placeholder: 'Safeguarding review summary and final signoff...',
     section: 'Actions & Review'
   },
+  {
+    key: 'attachments',
+    label: 'Attached Files',
+    type: 'text',
+    section: 'Actions & Review',
+    visibleInTable: true,
+    renderCell: renderAttachmentCell
+  },
   // System metadata
   { key: 'id', label: 'ID', isSystemMetadata: true },
   { key: 'createdAt', label: 'Created At', isSystemMetadata: true },
@@ -765,6 +806,14 @@ export const spcdTableConfig: TableColumnConfig<SPCDRecord>[] = [
     },
     section: 'Case Details'
   },
+  {
+    key: 'attachments',
+    label: 'Attached Files',
+    type: 'text',
+    section: 'Case Details',
+    visibleInTable: true,
+    renderCell: renderAttachmentCell
+  },
   // System metadata
   { key: 'id', label: 'ID', isSystemMetadata: true },
   { key: 'createdAt', label: 'Created At', isSystemMetadata: true },
@@ -825,6 +874,13 @@ export const sitesTableConfig: TableColumnConfig<SiteInfo>[] = [
       'Active': 'bg-emerald-100 text-emerald-800',
       'Under Maintenance': 'bg-amber-100 text-amber-800'
     }
+  },
+  {
+    key: 'attachments',
+    label: 'Attached Files',
+    type: 'text',
+    visibleInTable: true,
+    renderCell: renderAttachmentCell
   },
   // System metadata
   { key: 'id', label: 'ID', isSystemMetadata: true },

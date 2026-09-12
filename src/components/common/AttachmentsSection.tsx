@@ -11,7 +11,10 @@ import {
   File, 
   FileSpreadsheet,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  Check,
+  Link as LinkIcon
 } from 'lucide-react';
 import { RecordAttachment } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -33,7 +36,7 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
   entityName = 'Record',
   allowUpload = true
 }) => {
-  const { currentUserRole, currentUserName, canManageFiles, requestConfirmation } = useApp();
+  const { currentUserRole, currentUserName, canManageFiles, requestConfirmation, closeConfirmation } = useApp();
   const [previewFile, setPreviewFile] = useState<RecordAttachment | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,19 +49,28 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
   const handleProcessFiles = (files: FileList | null) => {
     if (!files || files.length === 0 || !onChange) return;
 
-    Array.from(files).forEach(file => {
+    const filesArr = Array.from(files);
+    let pendingCount = filesArr.length;
+    const added: RecordAttachment[] = [];
+
+    filesArr.forEach(file => {
       const reader = new FileReader();
       reader.onload = () => {
-        const newAttachment: RecordAttachment = {
+        const fileContent = reader.result as string;
+        added.push({
           id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           name: file.name,
           size: file.size,
           type: file.type || 'application/octet-stream',
-          dataUrl: reader.result as string,
+          dataUrl: fileContent,
+          url: fileContent,
           uploadedBy: currentUserName || currentUserRole,
           uploadedAt: new Date().toISOString()
-        };
-        onChange([...attachments, newAttachment]);
+        });
+        pendingCount -= 1;
+        if (pendingCount === 0) {
+          onChange([...attachments, ...added]);
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -69,6 +81,27 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
     setDragOver(false);
     if (!canUpload) return;
     handleProcessFiles(e.dataTransfer.files);
+  };
+
+  const [copiedAttId, setCopiedAttId] = useState<string | null>(null);
+
+  const handleCopyLink = async (att: RecordAttachment) => {
+    const link = att.url || att.dataUrl;
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedAttId(att.id);
+      setTimeout(() => setCopiedAttId(null), 2200);
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedAttId(att.id);
+      setTimeout(() => setCopiedAttId(null), 2200);
+    }
   };
 
   const handleDownload = (att: RecordAttachment) => {
@@ -90,6 +123,10 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
       isDanger: true,
       onConfirm: () => {
         onChange(attachments.filter(a => a.id !== attId));
+        if (previewFile?.id === attId) {
+          setPreviewFile(null);
+        }
+        closeConfirmation();
       }
     });
   };
@@ -214,10 +251,34 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
                     <p className="text-[10px] text-[#605e5c]">
                       {formatFileSize(att.size)} • {att.uploadedBy} • {att.uploadedAt ? att.uploadedAt.slice(0, 10) : ''}
                     </p>
+                    {/* Accessible File Link Row */}
+                    <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                      <span className="text-neutral-400 flex items-center gap-0.5">
+                        <LinkIcon className="w-2.5 h-2.5" /> Link:
+                      </span>
+                      <span className="font-mono text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded truncate max-w-[150px] sm:max-w-[200px]" title={att.url || att.dataUrl}>
+                        {att.url || (att.dataUrl ? `${att.dataUrl.slice(0, 28)}...` : 'No link generated')}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0 ml-2">
+                  {/* Copy Link */}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyLink(att)}
+                    className={`p-1.5 rounded transition-colors ${
+                      copiedAttId === att.id 
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                        : 'text-neutral-600 hover:bg-[#edebe9]'
+                    }`}
+                    title={copiedAttId === att.id ? "File link copied!" : "Copy accessible file link"}
+                    aria-label="Copy file link"
+                  >
+                    {copiedAttId === att.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+
                   {/* View on Same Page */}
                   <button
                     type="button"
@@ -242,8 +303,12 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
                   {canDelete && (
                     <button
                       type="button"
-                      onClick={() => handleDelete(att.id, att.name)}
-                      className="p-1.5 text-[#a4262c] hover:bg-red-50 rounded"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDelete(att.id, att.name);
+                      }}
+                      className="p-1.5 text-[#a4262c] hover:bg-red-50 rounded transition-colors"
                       title="Delete File"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

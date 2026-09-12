@@ -322,6 +322,10 @@ test('universal attachments with multiple formats and loggedBy persist and round
   };
 
   const row = toDatabaseRow('challenging_behavior', rec);
+  assert.ok(row.attachments, 'row.attachments column must be populated for database table');
+  assert.equal(row.attachment_url, 'data:image/jpeg;base64,abc', 'row.attachment_url must hold accessible link');
+  assert.equal(row.file_url, 'data:image/jpeg;base64,abc', 'row.file_url must hold accessible link');
+
   const back = fromDatabaseRow('challenging_behavior', row);
 
   assert.equal(back.attachments.length, 4);
@@ -532,5 +536,162 @@ test('column classification guards: reviewBySGTeam is textarea, officer is not s
   assert.equal(resolveUserAssignedHotel({ assignedSite: 'Brit Hotel' }), 'Brit Hotel');
   assert.equal(resolveUserAssignedHotel({ assignedSite: 'Holiday Inn Lambeth' }), 'Holiday Inn Lambeth');
   assert.equal(resolveUserAssignedHotel({ assignedSite: 'All Sites', allowedSites: ['Victoria House'] }), 'Victoria House');
+});
+
+test('RBAC notification filtering: staff restricted to site/personal, manager to managed site, RM to regional, admin to enterprise', async () => {
+  const { filterNotificationsForRole, deriveInAppNotifications } = await import('../src/services/inAppNotificationService.ts');
+
+  const mockAuditLogs: any[] = [
+    {
+      id: 'audit-1',
+      timestamp: '2026-09-12T10:00:00Z',
+      action: 'CREATE',
+      module: 'maintenance',
+      user: 'john.doe',
+      role: 'Staff',
+      details: 'Logged boiler repair at Stansted Hotel',
+      site: 'Stansted Hotel',
+      recordId: 'maint-101'
+    },
+    {
+      id: 'audit-2',
+      timestamp: '2026-09-12T10:15:00Z',
+      action: 'UPDATE',
+      module: 'referrals',
+      user: 'alice.smith',
+      role: 'Staff',
+      details: 'Updated resident details at Victoria House',
+      site: 'Victoria House',
+      recordId: 'ref-202'
+    },
+    {
+      id: 'audit-3',
+      timestamp: '2026-09-12T10:30:00Z',
+      action: 'UPDATE',
+      module: 'users',
+      user: 'john.doe',
+      role: 'Staff',
+      details: 'Updated personal profile settings for john.doe',
+      site: undefined,
+      recordId: 'john.doe'
+    },
+    {
+      id: 'audit-4',
+      timestamp: '2026-09-12T11:00:00Z',
+      action: 'SECURITY',
+      module: 'auth',
+      user: 'system',
+      role: 'System',
+      details: 'Failed login attempts exceeded lockout threshold',
+      site: undefined,
+      recordId: 'sec-999'
+    }
+  ];
+
+  const mockEscalations: any[] = [
+    {
+      id: 'esc-1',
+      date: '2026-09-12',
+      time: '11:15',
+      incidentType: 'Severe Water Leak',
+      priority: 'Emergency',
+      assignedHotel: 'Stansted Hotel',
+      loggedBy: 'duty.officer',
+      status: 'Open'
+    },
+    {
+      id: 'esc-2',
+      date: '2026-09-12',
+      time: '11:30',
+      incidentType: 'Power Outage',
+      priority: 'Emergency',
+      assignedHotel: 'Victoria House',
+      loggedBy: 'duty.worker',
+      status: 'Open'
+    }
+  ];
+
+  const mockRequests: any[] = [
+    {
+      id: 'req-1',
+      requestedBy: 'john.doe',
+      module: 'referrals',
+      site: 'Stansted Hotel',
+      status: 'Pending',
+      timestamp: '2026-09-12T12:00:00Z'
+    },
+    {
+      id: 'req-2',
+      requestedBy: 'alice.smith',
+      module: 'referrals',
+      site: 'Victoria House',
+      status: 'Pending',
+      timestamp: '2026-09-12T12:15:00Z'
+    }
+  ];
+
+  const derived = deriveInAppNotifications({
+    auditLogs: mockAuditLogs,
+    escalations: mockEscalations,
+    dataChangeRequests: mockRequests,
+    extraNotifications: []
+  });
+
+  // 1. Staff User at Stansted Hotel (john.doe)
+  const staffUser: any = {
+    username: 'john.doe',
+    role: 'Staff',
+    assignedSite: 'Stansted Hotel',
+    allowedSites: ['Stansted Hotel']
+  };
+  const staffFeed = filterNotificationsForRole(derived, staffUser);
+
+  // Staff should see Stansted items and their own profile update
+  assert.ok(staffFeed.some(n => n.site === 'Stansted Hotel' && n.module === 'maintenance'), 'Staff sees Stansted maintenance');
+  assert.ok(staffFeed.some(n => n.site === 'Stansted Hotel' && n.action === 'URGENT'), 'Staff sees Stansted emergency');
+  assert.ok(staffFeed.some(n => n.module === 'users' && n.performedByUser === 'john.doe'), 'Staff sees own profile update');
+
+  // Staff MUST NOT see Victoria House items or security events
+  assert.ok(!staffFeed.some(n => n.site === 'Victoria House'), 'Staff NEVER sees Victoria House records');
+  assert.ok(!staffFeed.some(n => n.action === 'SECURITY'), 'Staff NEVER sees system security events');
+
+  // 2. Site Manager at Stansted Hotel (manager.stansted)
+  const siteManagerUser: any = {
+    username: 'manager.stansted',
+    role: 'Site Manager',
+    assignedSite: 'Stansted Hotel',
+    allowedSites: ['Stansted Hotel']
+  };
+  const managerFeed = filterNotificationsForRole(derived, siteManagerUser);
+
+  assert.ok(managerFeed.some(n => n.site === 'Stansted Hotel' && n.module === 'maintenance'), 'Manager sees Stansted maintenance');
+  assert.ok(managerFeed.some(n => n.site === 'Stansted Hotel' && n.category === 'approval_workflow'), 'Manager sees pending requests for their site');
+  assert.ok(!managerFeed.some(n => n.site === 'Victoria House'), 'Manager NEVER sees Victoria House records');
+
+  // 3. Regional Manager overseeing both Stansted Hotel and Victoria House
+  const rmUser: any = {
+    username: 'rm.south',
+    role: 'Regional Manager',
+    assignedSite: 'All Sites',
+    allowedSites: ['Stansted Hotel', 'Victoria House']
+  };
+  const rmFeed = filterNotificationsForRole(derived, rmUser);
+
+  assert.ok(rmFeed.some(n => n.site === 'Stansted Hotel'), 'RM sees Stansted records');
+  assert.ok(rmFeed.some(n => n.site === 'Victoria House'), 'RM sees Victoria House records');
+
+  // 4. Super Admin (sees everything across the enterprise including security audits)
+  const superAdminUser: any = {
+    username: 'super.admin',
+    role: 'Super Admin',
+    assignedSite: 'All Sites',
+    allowedSites: ['All Sites']
+  };
+  const adminFeed = filterNotificationsForRole(derived, superAdminUser);
+
+  assert.ok(adminFeed.some(n => n.site === 'Stansted Hotel'), 'Admin sees Stansted');
+  assert.ok(adminFeed.some(n => n.site === 'Victoria House'), 'Admin sees Victoria House');
+  assert.ok(adminFeed.some(n => n.action === 'SECURITY'), 'Admin sees security audit logs');
+  assert.ok(adminFeed.length >= staffFeed.length, 'Admin feed is superset of staff feed');
 });
 

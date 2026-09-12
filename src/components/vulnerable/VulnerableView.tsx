@@ -734,7 +734,8 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
           status: 'Open',
           group: 'Single Adult',
           gender: 'Male',
-          raisedBy: loggedInUserName
+          raisedBy: loggedInUserName,
+          attachments: []
         }}
         onSave={(data) => {
           const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
@@ -754,7 +755,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
             raisedBy: data.raisedBy || loggedInUserName,
             allocatedWorker: data.allocatedWorker || '',
             status: data.status || 'Open',
-            attachments: []
+            attachments: Array.isArray(data.attachments) ? data.attachments : []
           });
           setIsCreateModalOpen(false);
         }}

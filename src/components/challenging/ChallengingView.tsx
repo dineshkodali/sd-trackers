@@ -514,9 +514,17 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
     }
 
     if (col.key === 'reviewBySGTeam') {
+      const reviewText = c.reviewBySGTeam;
+      const isBogusHotel = reviewText && (
+        reviewText.toLowerCase().includes('hotel') ||
+        reviewText.toLowerCase().includes('stansted') ||
+        reviewText.toLowerCase().includes('ibis') ||
+        reviewText === c.site
+      );
+      const displayVal = isBogusHotel ? '—' : (reviewText || '—');
       return (
-        <span className="text-[#605e5c] text-[11px] max-w-[260px] truncate block" title={c.reviewBySGTeam}>
-          {c.reviewBySGTeam || '—'}
+        <span className="text-[#605e5c] text-[11px] max-w-[260px] truncate block" title={displayVal}>
+          {displayVal}
         </span>
       );
     }
@@ -802,7 +810,11 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
           group: 'Single Adult',
           gender: 'Male',
           followUpRequired: 'Yes',
-          raisedBy: loggedInUserName
+          raisedBy: loggedInUserName,
+          reviewBySGTeam: '',
+          comments: '',
+          adviceGivenBySGTeam: '',
+          followUpNotes: ''
         }}
         onSave={(data) => {
           const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
@@ -828,7 +840,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
             comments: data.comments || '',
             reviewBySGTeam: data.reviewBySGTeam || '',
             status: data.status || 'Open',
-            attachments: []
+            attachments: Array.isArray(data.attachments) ? data.attachments : []
           } as any);
           setIsCreateModalOpen(false);
         }}
@@ -840,13 +852,32 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
         onClose={() => setEditingRecord(null)}
         title={`Edit Incident: ${editingRecord?.name || ''}`}
         columns={challengingColumns}
-        initialValues={editingRecord || undefined}
+        initialValues={editingRecord ? {
+          ...editingRecord,
+          reviewBySGTeam: (
+            editingRecord.reviewBySGTeam && (
+              editingRecord.reviewBySGTeam.toLowerCase().includes('hotel') ||
+              editingRecord.reviewBySGTeam.toLowerCase().includes('stansted') ||
+              editingRecord.reviewBySGTeam.toLowerCase().includes('ibis') ||
+              editingRecord.reviewBySGTeam === editingRecord.site
+            )
+          ) ? '' : (editingRecord.reviewBySGTeam || '')
+        } : undefined}
         isEdit={true}
         onSave={(data) => {
           if (!editingRecord) return;
+          const cleanReview = (
+            data.reviewBySGTeam && (
+              data.reviewBySGTeam.toLowerCase().includes('hotel') ||
+              data.reviewBySGTeam.toLowerCase().includes('stansted') ||
+              data.reviewBySGTeam.toLowerCase().includes('ibis') ||
+              data.reviewBySGTeam === (data.site || editingRecord.site)
+            )
+          ) ? '' : (data.reviewBySGTeam || '');
           updateChallengingSU(editingRecord.id, {
             ...editingRecord,
             ...data,
+            reviewBySGTeam: cleanReview,
             raisedBy: data.raisedBy || editingRecord.raisedBy || loggedInUserName,
             loggedBy: data.raisedBy || editingRecord.loggedBy || loggedInUserName
           });
@@ -860,7 +891,17 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
         onClose={() => setViewRecord(null)}
         title={`Challenging Service User Incident: ${viewRecord?.name || ''}`}
         columns={challengingColumns}
-        record={viewRecord}
+        record={viewRecord ? {
+          ...viewRecord,
+          reviewBySGTeam: (
+            viewRecord.reviewBySGTeam && (
+              viewRecord.reviewBySGTeam.toLowerCase().includes('hotel') ||
+              viewRecord.reviewBySGTeam.toLowerCase().includes('stansted') ||
+              viewRecord.reviewBySGTeam.toLowerCase().includes('ibis') ||
+              viewRecord.reviewBySGTeam === viewRecord.site
+            )
+          ) ? '' : (viewRecord.reviewBySGTeam || '')
+        } : null}
         onEdit={viewRecord && canEditRecord(viewRecord.site) && !isArchive ? () => {
           const rec = viewRecord;
           setViewRecord(null);

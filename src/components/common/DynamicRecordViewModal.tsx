@@ -70,10 +70,17 @@ export function DynamicRecordViewModal<T = any>({
     );
   };
 
-  // Filter out internal system metadata fields unless explicitly configured to show in view
+  // Filter out internal system metadata fields and file attachment columns (which are rendered in the dedicated AttachmentsSection)
   const viewColumns = useMemo(() => {
     const activeCols = columns
-      .filter(col => !col.isSystemMetadata && col.visibleInView !== false)
+      .filter(col => {
+        if (col.isSystemMetadata || col.visibleInView === false) return false;
+        const k = String(col.key).toLowerCase();
+        if (k === 'attachments' || k === 'attachmenturl' || k === 'fileurl' || k === 'attachment_url' || k === 'file_url') {
+          return false;
+        }
+        return true;
+      })
       .map(col => isLoggedByColumn(col) ? { ...col, label: 'Logged By' } : col);
 
     const hasLoggedBy = activeCols.some(isLoggedByColumn);
@@ -211,11 +218,33 @@ export function DynamicRecordViewModal<T = any>({
           ))}
 
           {/* Universal Proof & Document Attachments Dossier */}
-          <AttachmentsSection
-            attachments={Array.isArray((record as any)?.attachments) ? (record as any).attachments : []}
-            readOnly={true}
-            entityName={title}
-          />
+          {(() => {
+            const hasExplicitArray = Array.isArray((record as any)?.attachments);
+            const rawAttachments = hasExplicitArray ? (record as any).attachments : [];
+            const singleUrl = (record as any)?.attachmentUrl || (record as any)?.attachment_url || (record as any)?.fileUrl || (record as any)?.file_url;
+            // Only fallback to singleUrl if the record does NOT have an explicit attachments array (e.g. legacy table row)
+            // AND singleUrl is a valid http link (never a lingering data: URI)
+            const effectiveAttachments = rawAttachments.length > 0 
+              ? rawAttachments 
+              : (!hasExplicitArray && singleUrl && typeof singleUrl === 'string' && singleUrl.trim() && !singleUrl.startsWith('data:')
+                  ? [{
+                      id: 'primary-doc',
+                      name: (singleUrl.startsWith('http') ? singleUrl.split('/').pop()?.split('?')[0] : '') || 'Attached Document',
+                      size: 0,
+                      type: 'application/octet-stream',
+                      url: singleUrl,
+                      uploadedAt: (record as any)?.updatedAt || (record as any)?.createdAt || new Date().toISOString()
+                    }]
+                  : []);
+
+            return (
+              <AttachmentsSection
+                attachments={effectiveAttachments}
+                readOnly={true}
+                entityName={title}
+              />
+            );
+          })()}
         </div>
 
         {/* Footer */}
