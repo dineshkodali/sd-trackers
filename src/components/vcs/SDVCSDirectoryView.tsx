@@ -56,7 +56,8 @@ export const SDVCSDirectoryView: React.FC = () => {
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
-    currentUserRole
+    currentUserRole,
+    sites
   } = useApp();
 
   // Table Schema Hook
@@ -93,14 +94,42 @@ export const SDVCSDirectoryView: React.FC = () => {
     'Statutory / Council'
   ];
 
+  // Dynamically assemble all known hotel names across clusters, sites and records
+  const hotelFilterOptions = useMemo(() => {
+    const set = new Set<string>();
+    SD_VCS_HOTEL_NAMES.forEach(h => set.add(h));
+    (sites || []).forEach(s => {
+      const name = typeof s === 'string' ? s : s?.name;
+      if (name) set.add(name);
+    });
+    vcsAgencies.forEach(a => {
+      if (a.hotelName) set.add(a.hotelName);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [sites, vcsAgencies]);
+
+  // Robust property matching between cluster shorthands and full site names
+  const matchesPropertyName = (recordHotel?: string, filterHotel?: string): boolean => {
+    if (!filterHotel || filterHotel === 'all') return true;
+    if (!recordHotel) return false;
+    const r = recordHotel.toLowerCase().trim();
+    const f = filterHotel.toLowerCase().trim();
+    if (r === f) return true;
+    if (r.includes(f) || f.includes(r)) return true;
+    const clean = (s: string) => s.replace(/^(hotel|ibis|mercure|ramada|holiday inn|express|styles|london|manchester|birmingham)\s+/i, '').replace(/[^a-z0-9]/g, '');
+    const cleanR = clean(r);
+    const cleanF = clean(f);
+    return cleanR.length > 2 && cleanF.length > 2 && (cleanR.includes(cleanF) || cleanF.includes(cleanR));
+  };
+
   const filteredAgencies = useMemo(() => {
     return vcsAgencies.filter(a => {
-      const matchesProperty = selectedProperty === 'all' || a.hotelName.toLowerCase() === selectedProperty.toLowerCase();
+      const matchesProperty = matchesPropertyName(a.hotelName, selectedProperty);
       const matchesCategory = selectedCategory === 'all' || selectedCategory === 'All Categories' || a.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchesQuery = !q || 
-        a.agencyName.toLowerCase().includes(q) ||
-        a.hotelName.toLowerCase().includes(q) ||
+        (a.agencyName && a.agencyName.toLowerCase().includes(q)) ||
+        (a.hotelName && a.hotelName.toLowerCase().includes(q)) ||
         (a.servicesProvided && a.servicesProvided.toLowerCase().includes(q)) ||
         (a.category && a.category.toLowerCase().includes(q)) ||
         (a.contactPerson && a.contactPerson.toLowerCase().includes(q)) ||
@@ -148,6 +177,7 @@ export const SDVCSDirectoryView: React.FC = () => {
       email: data.email || '',
       address: data.address || '',
       notes: data.notes || '',
+      attachments: (data as any).attachments || [],
       ...data
     } as any);
     setIsAddModalOpen(false);
@@ -381,8 +411,8 @@ export const SDVCSDirectoryView: React.FC = () => {
               onChange={e => { setSelectedProperty(e.target.value); setCurrentPage(1); }}
               className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
             >
-              <option value="all">All Properties (16 Clusters)</option>
-              {SD_VCS_HOTEL_NAMES.map(h => (
+              <option value="all">All Properties ({hotelFilterOptions.length} Clusters)</option>
+              {hotelFilterOptions.map(h => (
                 <option key={h} value={h}>{h}</option>
               ))}
             </select>
@@ -623,6 +653,7 @@ export const SDVCSDirectoryView: React.FC = () => {
           title={`Edit Agency - ${editingAgency.agencyName}`}
           columns={columns}
           initialValues={editingAgency}
+          isEdit={true}
           onSubmit={handleEditSubmit}
           submitLabel="Save Changes"
         />

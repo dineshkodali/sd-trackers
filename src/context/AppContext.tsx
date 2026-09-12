@@ -678,6 +678,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reportPersistFailure(label, res.error);
       return false;
     }
+    if ((res as any).record) {
+      setter(prev => prev.map(r => r.id === record.id ? { ...record, ...(res as any).record } : r));
+    }
     if (audit) appendLocalAudit(audit, record.id);
     return true;
   }, [reportPersistFailure, appendLocalAudit]);
@@ -690,6 +693,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setter(prev => prev.map(r => (r.id === previous.id ? previous : r)));
       reportPersistFailure(label, res.error);
       return false;
+    }
+    if ((res as any).record) {
+      setter(prev => prev.map(r => r.id === previous.id ? { ...r, ...(res as any).record } : r));
     }
     if (audit) appendLocalAudit(audit, previous.id);
     return true;

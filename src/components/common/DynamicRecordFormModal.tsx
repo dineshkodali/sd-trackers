@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, AlertCircle, Loader2, Lock, Building2 } from 'lucide-react';
+import { X, AlertCircle, Loader2, Lock, Building2, UserCheck } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
 import { useApp } from '../../context/AppContext';
+import { AttachmentsSection } from './AttachmentsSection';
 
 interface DynamicRecordFormModalProps<T = any> {
   isOpen: boolean;
@@ -33,10 +34,17 @@ export function DynamicRecordFormModal<T = any>({
     allowedSites,
     canAccessAllSites,
     selectedSite,
-    sites
+    sites,
+    authProfile,
+    currentUserName,
+    currentUserRole
   } = useApp();
 
   const userAssignedHotel = assignedSite || 'Stansted Hotel (Ibis Budget Bisop Stortford)';
+
+  const loggedInUserName = useMemo(() => {
+    return authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (Staff)` : 'Duty Officer');
+  }, [authProfile, currentUserName, currentUserRole]);
 
   const allSiteNames = useMemo(() => {
     const fromAllowed = (allowedSites || []).filter(Boolean);
@@ -70,6 +78,29 @@ export function DynamicRecordFormModal<T = any>({
     );
   };
 
+  const isLoggedByColumn = (col: TableColumnConfig<T>): boolean => {
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (
+      key === 'loggedby' ||
+      key === 'raisedby' ||
+      key === 'reportedby' ||
+      key === 'submittedby' ||
+      key === 'personreporting' ||
+      key === 'staffreporting' ||
+      key === 'auditedby' ||
+      key === 'officerleadinghotel' ||
+      label === 'loggedby' ||
+      label === 'raisedby' ||
+      label === 'reportedby' ||
+      label === 'submittedby' ||
+      label === 'personreporting' ||
+      label === 'staffreporting' ||
+      label === 'auditedby' ||
+      label === 'officerleadinghotel'
+    );
+  };
+
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -78,10 +109,24 @@ export function DynamicRecordFormModal<T = any>({
   const prevOpenRef = useRef<boolean>(false);
   const prevRecordIdRef = useRef<string | null>(null);
 
-  // Filter out internal system metadata fields
+  // Filter out internal system metadata fields and guarantee a locked Logged By field
   const formColumns = useMemo(() => {
-    return columns.filter(col => !col.isSystemMetadata);
-  }, [columns]);
+    const activeCols = columns.filter(col => !col.isSystemMetadata);
+    const hasLoggedBy = activeCols.some(isLoggedByColumn);
+    if (!hasLoggedBy) {
+      const injectedLoggedByCol: TableColumnConfig<T> = {
+        key: 'loggedBy' as any,
+        label: 'Logged By',
+        type: 'text',
+        section: 'Audit & Accountability',
+        editable: false,
+        required: false,
+        placeholder: loggedInUserName
+      };
+      return [...activeCols, injectedLoggedByCol];
+    }
+    return activeCols;
+  }, [columns, loggedInUserName]);
 
   // Group columns by section if specified
   const sections = useMemo(() => {
@@ -117,6 +162,7 @@ export function DynamicRecordFormModal<T = any>({
     formColumns.forEach(col => {
       const key = String(col.key);
       const isSite = isSiteColumn(col);
+      const isLoggedBy = isLoggedByColumn(col);
 
       if (isSite) {
         if (!canAccessAllSites()) {
@@ -135,6 +181,8 @@ export function DynamicRecordFormModal<T = any>({
             initial[key] = allSiteNames[0] || userAssignedHotel;
           }
         }
+      } else if (isLoggedBy) {
+        initial[key] = (initialValues && (initialValues as any)[key]) || loggedInUserName;
       } else if (initialValues && initialValues[col.key as keyof T] !== undefined) {
         initial[key] = initialValues[col.key as keyof T];
       } else if (col.defaultValue !== undefined) {
@@ -157,6 +205,13 @@ export function DynamicRecordFormModal<T = any>({
       }
     });
 
+    // Ensure attachments array exists
+    initial.attachments = Array.isArray((initialValues as any)?.attachments) ? (initialValues as any).attachments : [];
+    // Ensure standard loggedBy exists
+    if (!initial.loggedBy) {
+      initial.loggedBy = loggedInUserName;
+    }
+
     // If editing, preserve the record ID and system metadata
     if (initialValues) {
       if ((initialValues as any).id) initial.id = (initialValues as any).id;
@@ -168,7 +223,7 @@ export function DynamicRecordFormModal<T = any>({
     setFormData(initial);
     setErrors({});
     setSubmitError(null);
-  }, [isOpen, initialValues, assignedSite, selectedSite, canAccessAllSites, userAssignedHotel, allSiteNames, effectiveContext]);
+  }, [isOpen, initialValues, assignedSite, selectedSite, canAccessAllSites, userAssignedHotel, allSiteNames, effectiveContext, formColumns, loggedInUserName]);
 
   const handleClearOrRevert = () => {
     if (isEdit && initialValues) {
@@ -273,6 +328,9 @@ export function DynamicRecordFormModal<T = any>({
     try {
       // Coerce number and currency fields and keep initial extra fields
       const processed: Record<string, any> = { ...(initialValues || {}), ...formData };
+      processed.attachments = Array.isArray(formData.attachments) ? formData.attachments : [];
+      processed.loggedBy = formData.loggedBy || loggedInUserName;
+
       formColumns.forEach(col => {
         const key = String(col.key);
         if (isSiteColumn(col)) {
@@ -281,6 +339,9 @@ export function DynamicRecordFormModal<T = any>({
           } else if (!processed[key]) {
             processed[key] = selectedSite && selectedSite !== 'all' ? selectedSite : (assignedSite || allSiteNames[0] || userAssignedHotel);
           }
+        }
+        if (isLoggedByColumn(col)) {
+          processed[key] = formData[key] || loggedInUserName;
         }
         if (col.type === 'number' || col.type === 'currency') {
           const val = processed[key];
@@ -344,9 +405,11 @@ export function DynamicRecordFormModal<T = any>({
                   const key = String(col.key);
                   const isFullWidth = col.colSpan === 2 || col.type === 'textarea';
                   const isSite = isSiteColumn(col);
+                  const isLoggedBy = isLoggedByColumn(col);
+                  const displayLabel = isLoggedBy ? 'Logged By' : col.label;
                   const isLockedForStaff = isSite && !canAccessAllSites();
-                  const isReadOnly = col.editable === false || isLockedForStaff;
-                  const value = isLockedForStaff ? userAssignedHotel : (formData[key] ?? '');
+                  const isReadOnly = col.editable === false || isLockedForStaff || isLoggedBy;
+                  const value = isLockedForStaff ? userAssignedHotel : (isLoggedBy ? (formData[key] || loggedInUserName) : (formData[key] ?? ''));
                   const options = col.type === 'select' || isSite ? resolveOptions(col) : [];
 
                   return (
@@ -357,9 +420,14 @@ export function DynamicRecordFormModal<T = any>({
                       <label className="font-semibold text-[#605e5c] flex items-center justify-between">
                         <span className="flex items-center gap-1">
                           {isSite && <Building2 className="w-3.5 h-3.5 text-teal-600 inline" />}
-                          <span>{col.label} {col.required && <span className="text-red-500">*</span>}</span>
+                          {isLoggedBy && <UserCheck className="w-3.5 h-3.5 text-teal-600 inline" />}
+                          <span>{displayLabel} {col.required && <span className="text-red-500">*</span>}</span>
                         </span>
-                        {isLockedForStaff ? (
+                        {isLoggedBy ? (
+                          <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked to Logged-in User
+                          </span>
+                        ) : isLockedForStaff ? (
                           <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
                             <Lock className="w-2.5 h-2.5 text-teal-600" /> Assigned Property (Locked)
                           </span>
@@ -371,7 +439,19 @@ export function DynamicRecordFormModal<T = any>({
                       </label>
 
                       {/* Select input */}
-                      {isLockedForStaff ? (
+                      {isLoggedBy ? (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={value}
+                            readOnly
+                            disabled
+                            className="w-full p-2 pr-8 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
+                            title="Locked to logged-in user for accountability and audit logs."
+                          />
+                          <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                        </div>
+                      ) : isLockedForStaff ? (
                         <div className="relative">
                           <input
                             type="text"
@@ -490,6 +570,14 @@ export function DynamicRecordFormModal<T = any>({
               </div>
             </div>
           ))}
+
+          {/* Universal Proof & Document Attachments Section */}
+          <AttachmentsSection
+            attachments={formData.attachments || []}
+            onChange={atts => setFormData(prev => ({ ...prev, attachments: atts }))}
+            allowUpload={true}
+            entityName={title}
+          />
 
           {/* Footer actions */}
           <div className="pt-4 border-t border-[#edebe9] flex items-center justify-between">

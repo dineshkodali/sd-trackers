@@ -33,6 +33,7 @@ import { WeekSwitcher } from '../common/WeekSwitcher';
 import { validateFoodLog } from '../../utils/validationSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { AttachmentsSection } from '../common/AttachmentsSection';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { FOOD_VENDOR_BUFFET_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableColumnConfig } from '../../types/tableSchema';
@@ -225,7 +226,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     // had not made, saved verbatim unless they noticed and overwrote it (BUG-012).
     // Notes must start empty so any claim recorded is one someone actually wrote.
     notes: '',
-    lastUpdatedBy: loggedInUserName
+    lastUpdatedBy: loggedInUserName,
+    attachments: [] as any[]
   });
 
   useEffect(() => {
@@ -289,7 +291,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
       endDate: bounds.end,
       dailyCounts: defaultDailyCounts(),
       notes: 'Delivery temperature verified >68°C. Halal certified.',
-      lastUpdatedBy: loggedInUserName
+      lastUpdatedBy: loggedInUserName,
+      attachments: [] as any[]
     });
     setIsModalOpen(true);
   };
@@ -314,7 +317,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
         SUN: log.dailyCounts.SUN || defaultDailyCounts().SUN,
       } : defaultDailyCounts(),
       notes: log.notes || '',
-      lastUpdatedBy: loggedInUserName
+      lastUpdatedBy: loggedInUserName,
+      attachments: (log as any).attachments || []
     });
     setIsModalOpen(true);
   };
@@ -522,7 +526,9 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     const payload = {
       ...formData,
       site: effectiveSite,
-      lastUpdatedBy: formData.lastUpdatedBy || loggedInUserName
+      loggedBy: formData.lastUpdatedBy || loggedInUserName,
+      lastUpdatedBy: formData.lastUpdatedBy || loggedInUserName,
+      attachments: formData.attachments || []
     };
 
     if (editingLog) {
@@ -881,7 +887,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                   endDate: activeWeekBounds.end,
                   dailyCounts: defaultDailyCounts(),
                   notes: 'Hot holding temperature logged on arrival at >68°C. Halal certified supply.',
-                  lastUpdatedBy: loggedInUserName
+                  lastUpdatedBy: loggedInUserName,
+                  attachments: []
                 });
                 setIsModalOpen(true);
               }}
@@ -1337,21 +1344,35 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-semibold text-[#605e5c] block mb-1 flex items-center justify-between">
-                  <span>Audited / Logged By *</span>
-                  <span className="text-[10px] text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded font-normal flex items-center gap-1">
-                    <UserCheck className="w-3 h-3 text-blue-600" />
-                    Defaults to logged-in user
+                <label className="font-semibold text-[#605e5c] mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <UserCheck className="w-3.5 h-3.5 text-teal-600 inline" />
+                    <span>Logged By</span>
+                  </span>
+                  <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked to Logged-in User
                   </span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.lastUpdatedBy}
-                  readOnly
-                  disabled
-                  className="w-full p-2 border border-[#8a8886] rounded-xs text-[#323130] bg-[#f3f2f1] font-semibold cursor-not-allowed opacity-90"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.lastUpdatedBy}
+                    readOnly
+                    disabled
+                    className="w-full p-2 pr-8 border border-teal-200 rounded-xs text-[#323130] bg-teal-50/50 font-semibold cursor-not-allowed opacity-90 text-xs"
+                    title="Locked to logged-in user for audit trail and accountability."
+                  />
+                  <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                </div>
               </div>
+
+              {/* Universal Proof & Document Attachments */}
+              <AttachmentsSection
+                attachments={formData.attachments || []}
+                onChange={atts => setFormData(prev => ({ ...prev, attachments: atts }))}
+                allowUpload={true}
+                entityName="Food Buffet Log"
+              />
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edebe9]">
                 <button

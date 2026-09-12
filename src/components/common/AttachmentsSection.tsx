@@ -9,6 +9,7 @@ import {
   Eye, 
   X, 
   File, 
+  FileSpreadsheet,
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
@@ -21,6 +22,7 @@ interface AttachmentsSectionProps {
   readOnly?: boolean;
   title?: string;
   entityName?: string;
+  allowUpload?: boolean;
 }
 
 export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
@@ -28,18 +30,18 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
   onChange,
   readOnly = false,
   title = 'Proof & Document Attachments',
-  entityName = 'Record'
+  entityName = 'Record',
+  allowUpload = true
 }) => {
   const { currentUserRole, currentUserName, canManageFiles, requestConfirmation } = useApp();
   const [previewFile, setPreviewFile] = useState<RecordAttachment | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // File permissions: Admins (Super Admin, Admin) and Regional Managers have full CRUD.
-  // Others can view and download.
   const hasFullCrud = canManageFiles();
-  const canUpload = !readOnly && hasFullCrud && !!onChange;
-  const canDelete = !readOnly && hasFullCrud && !!onChange;
+  // If allowUpload is true (e.g. form modals), users can attach and manage files in the active form.
+  const canUpload = !readOnly && !!onChange && (allowUpload || hasFullCrud);
+  const canDelete = !readOnly && !!onChange && (allowUpload || hasFullCrud);
 
   const handleProcessFiles = (files: FileList | null) => {
     if (!files || files.length === 0 || !onChange) return;
@@ -104,6 +106,15 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
     return type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(name);
   };
 
+  const getFileBadge = (type: string, name: string) => {
+    const lower = name.toLowerCase();
+    if (isImage(type, name)) return { label: 'IMAGE', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+    if (lower.endsWith('.pdf') || type.includes('pdf')) return { label: 'PDF', color: 'bg-red-50 text-red-700 border-red-200' };
+    if (lower.endsWith('.xlsx') || lower.endsWith('.xls') || type.includes('spreadsheet') || type.includes('excel')) return { label: 'EXCEL', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    if (lower.endsWith('.docx') || lower.endsWith('.doc') || type.includes('word')) return { label: 'WORD', color: 'bg-blue-50 text-blue-700 border-blue-200' };
+    return { label: 'DOC', color: 'bg-neutral-50 text-neutral-700 border-neutral-200' };
+  };
+
   return (
     <div className="space-y-3 bg-white border border-[#e1dfdd] rounded-xs p-4 shadow-xs">
       <div className="flex items-center justify-between border-b border-[#edebe9] pb-2.5">
@@ -118,7 +129,7 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
           {hasFullCrud ? (
             <span className="text-emerald-700 font-medium">Full File Management (Admins & RMs)</span>
           ) : (
-            <span className="text-neutral-500">View & Download Permitted</span>
+            <span className="text-neutral-500">File Attachment Permitted</span>
           )}
         </div>
       </div>
@@ -138,16 +149,17 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
             ref={fileInputRef}
             type="file"
             multiple
+            accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.ms-excel"
             className="hidden"
             onChange={e => handleProcessFiles(e.target.files)}
           />
           <div className="flex flex-col items-center justify-center gap-1">
             <UploadCloud className="w-5 h-5 text-[#0d9488]" />
             <div className="text-xs font-medium text-[#242424]">
-              Click or drag & drop proof documents, incident photos, or assessments
+              Click or drag & drop files (single or multiple)
             </div>
-            <div className="text-[10px] text-neutral-400">
-              Supports images (PNG, JPG), PDF dossiers, Word, Excel, and scan files
+            <div className="text-[10px] text-neutral-500 font-medium">
+              Accepts: PDF (.pdf), Word (.docx), Excel (.xlsx), Images (.png, .jpeg)
             </div>
           </div>
         </div>
@@ -162,6 +174,7 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {attachments.map(att => {
             const isImg = isImage(att.type, att.name);
+            const badge = getFileBadge(att.type, att.name);
             return (
               <div
                 key={att.id}
@@ -176,17 +189,30 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
                         <ImageIcon className="w-4 h-4 text-neutral-500" />
                       )}
                     </div>
+                  ) : badge.label === 'PDF' ? (
+                    <div className="w-8 h-8 rounded shrink-0 bg-red-50 text-red-700 flex items-center justify-center border border-red-200">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                  ) : badge.label === 'EXCEL' ? (
+                    <div className="w-8 h-8 rounded shrink-0 bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
+                      <FileSpreadsheet className="w-4 h-4" />
+                    </div>
                   ) : (
-                    <div className="w-8 h-8 rounded shrink-0 bg-[#f0fdfa] text-[#0f766e] flex items-center justify-center border border-[#99f6e4]">
+                    <div className="w-8 h-8 rounded shrink-0 bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-200">
                       <FileText className="w-4 h-4" />
                     </div>
                   )}
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-[#242424] truncate" title={att.name}>
-                      {att.name}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold text-[#242424] truncate" title={att.name}>
+                        {att.name}
+                      </p>
+                      <span className={`text-[9px] font-bold px-1 py-0.2 rounded border ${badge.color}`}>
+                        {badge.label}
+                      </span>
+                    </div>
                     <p className="text-[10px] text-[#605e5c]">
-                      {formatFileSize(att.size)} • {att.uploadedBy} • {att.uploadedAt.slice(0, 10)}
+                      {formatFileSize(att.size)} • {att.uploadedBy} • {att.uploadedAt ? att.uploadedAt.slice(0, 10) : ''}
                     </p>
                   </div>
                 </div>

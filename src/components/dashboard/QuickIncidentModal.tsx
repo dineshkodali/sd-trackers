@@ -17,8 +17,9 @@ import {
   Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { RiskLevel, EscalationRecord } from '../../types';
+import { RiskLevel, EscalationRecord, RecordAttachment } from '../../types';
 import { saveFormDraft, loadFormDraft, clearFormDraft, formatDraftTime } from '../../utils/autoSave';
+import { AttachmentsSection } from '../common/AttachmentsSection';
 
 interface QuickIncidentModalProps {
   isOpen: boolean;
@@ -94,6 +95,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
   const [incidentNotes, setIncidentNotes] = useState<string>('');
   const [actionTaken, setActionTaken] = useState<string>('');
   const [status, setStatus] = useState<EscalationRecord['status']>('Active');
+  const [attachments, setAttachments] = useState<RecordAttachment[]>([]);
 
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -281,10 +283,12 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
       actionTaken: actionTaken.trim(),
       status,
       urgency,
+      attachments,
+      loggedBy: personReporting || loggedInUserName,
       // Backward compatibility fields
       incidentTitle: incidentType,
       refNumber: suPortNassRef.trim() || 'Pending Ref',
-      reportedBy: personReporting,
+      reportedBy: personReporting || loggedInUserName,
       dateTime: `${dateOfIncident} ${timeOfIncident}`,
       incidentSummary: fullNotes,
       immediateAction: actionTaken.trim(),
@@ -613,9 +617,9 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
 
               <div>
                 <label className="font-semibold text-neutral-700 mb-1 flex items-center justify-between">
-                  <span>Submitted By</span>
-                  <span className="text-[10px] text-neutral-500 font-normal flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-neutral-400" /> Logged-in User (Locked)
+                  <span>Logged By</span>
+                  <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked to Logged-in User
                   </span>
                 </label>
                 <div className="relative">
@@ -624,10 +628,10 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                     type="text"
                     value={personReporting || loggedInUserName}
                     readOnly
-                    className="w-full p-2 pr-8 border border-neutral-300 rounded-xs bg-[#f8fafc] text-neutral-900 font-medium cursor-not-allowed"
-                    title="Submitted by is locked to the authenticated user for accountability."
+                    className="w-full p-2 pr-8 border border-teal-200 rounded-xs bg-teal-50/50 text-neutral-900 font-medium cursor-not-allowed text-xs"
+                    title="Logged by is locked to the authenticated user for compliance and accountability."
                   />
-                  <Lock className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
             </div>
@@ -697,6 +701,14 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                 required
               />
             </div>
+
+            {/* Universal Proof & Document Attachments */}
+            <AttachmentsSection
+              attachments={attachments}
+              onChange={setAttachments}
+              allowUpload={true}
+              entityName="Quick Incident"
+            />
 
             {/* Footer Buttons */}
             <div className="pt-3 border-t border-neutral-200 flex flex-wrap items-center justify-between gap-2">

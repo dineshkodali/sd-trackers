@@ -887,7 +887,22 @@ export function fromDatabaseRow(tableName: string, row: any): any {
 
   if (DATA_TABLES.has(tableName)) {
     const fromData = fromDataColumn(row);
-    if (fromData) return fromData;
+    if (fromData) {
+      if (FIELD_SPECS[tableName]) {
+        const typed: Record<string, any> = {};
+        for (const [field, column] of FIELD_SPECS[tableName]) {
+          if (row[column] !== undefined && row[column] !== null) typed[field] = row[column];
+        }
+        return {
+          ...fromData,
+          ...typed,
+          id: row.id,
+          createdAt: fromData.createdAt ?? row.created_at,
+          updatedAt: row.updated_at ?? fromData.updatedAt
+        };
+      }
+      return fromData;
+    }
   }
 
   if (FIELD_SPECS[tableName]) {

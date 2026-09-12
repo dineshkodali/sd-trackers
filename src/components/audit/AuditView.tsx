@@ -38,7 +38,7 @@ type FilterTab = 'all' | 'accountability' | 'properties' | 'users' | 'casework';
 
 const auditExportColumns: ExportColumnOption[] = [
   { id: 'timestamp', label: 'Timestamp' },
-  { id: 'performedByUser', label: 'User Name' },
+  { id: 'performedByUser', label: 'Logged By / User' },
   { id: 'performedByRole', label: 'User Role' },
   { id: 'module', label: 'Module' },
   { id: 'action', label: 'Action Type' },
@@ -636,9 +636,9 @@ export const AuditView: React.FC = () => {
                     {sortField === 'timestamp' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
                   </div>
                 </th>
-                <th onClick={() => handleSort('performedByUser')} className="p-2.5 w-36 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by User / Actor">
+                <th onClick={() => handleSort('performedByUser')} className="p-2.5 w-36 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Logged By / Actor">
                   <div className="flex items-center gap-1">
-                    <span>User / Actor</span>
+                    <span>Logged By</span>
                     {sortField === 'performedByUser' ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
                   </div>
                 </th>

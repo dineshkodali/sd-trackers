@@ -17,10 +17,11 @@ import {
   ArrowDown,
   SlidersHorizontal,
   Eye,
-  Lock
+  Lock,
+  UserCheck
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { PropertyLaundryLog } from '../../types';
+import { PropertyLaundryLog, RecordAttachment } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
@@ -30,6 +31,7 @@ import { WeekSwitcher } from '../common/WeekSwitcher';
 import { validateLaundryLog } from '../../utils/validationSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
+import { AttachmentsSection } from '../common/AttachmentsSection';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { PROPERTY_LAUNDRY_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableColumnConfig } from '../../types/tableSchema';
@@ -227,7 +229,8 @@ export const PropertyLaundryLogSection: React.FC = () => {
     hasDiscrepancy: false,
     discrepancyDetails: '',
     remarksActionsTaken: '',
-    loggedBy: defaultAuditor
+    loggedBy: defaultAuditor,
+    attachments: [] as RecordAttachment[]
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -355,7 +358,8 @@ export const PropertyLaundryLogSection: React.FC = () => {
       hasDiscrepancy: log.hasDiscrepancy,
       discrepancyDetails: log.discrepancyDetails || '',
       remarksActionsTaken: log.remarksActionsTaken || '',
-      loggedBy: log.loggedBy
+      loggedBy: log.loggedBy,
+      attachments: (log as any).attachments || []
     });
     setIsCreateModalOpen(true);
   };
@@ -1194,15 +1198,35 @@ export const PropertyLaundryLogSection: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">Logged / Audited By (Locked to Current User)</label>
-                <input
-                  type="text"
-                  value={formData.loggedBy}
-                  readOnly
-                  disabled
-                  className="w-full p-2 border border-[#8a8886] rounded-xs text-[#323130] bg-[#f3f2f1] font-semibold cursor-not-allowed opacity-90"
-                />
+                <label className="font-semibold text-[#605e5c] mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <UserCheck className="w-3.5 h-3.5 text-teal-600 inline" />
+                    <span>Logged By</span>
+                  </span>
+                  <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked to Logged-in User
+                  </span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.loggedBy}
+                    readOnly
+                    disabled
+                    className="w-full p-2 pr-8 border border-teal-200 rounded-xs text-[#323130] bg-teal-50/50 font-semibold cursor-not-allowed opacity-90 text-xs"
+                    title="Locked to logged-in user for audit trail and accountability."
+                  />
+                  <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                </div>
               </div>
+
+              {/* Universal Proof & Document Attachments */}
+              <AttachmentsSection
+                attachments={(formData as any).attachments || []}
+                onChange={atts => setFormData(prev => ({ ...prev, attachments: atts }))}
+                allowUpload={true}
+                entityName="Laundry Log"
+              />
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edebe9]">
                 <button

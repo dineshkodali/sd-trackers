@@ -260,3 +260,74 @@ test('shared tables stay distinguishable after a round trip', () => {
   assert.ok(roundTrip('hot_food_logs', RECORDS.food_vendor_buffet_logs.record).back.dailyCounts, 'buffet log keeps dailyCounts');
   assert.equal(roundTrip('hot_food_logs', RECORDS.food.record).back.dailyCounts, undefined, 'delivery has no dailyCounts');
 });
+
+test('vcs_agencies typed columns overlay over data column so DB changes reflect immediately', () => {
+  const initialAgency = {
+    id: 'vcs-1',
+    hotelName: 'Seven Kings',
+    agencyName: 'Red Cross Welfare',
+    category: 'Charity & Welfare',
+    servicesProvided: 'Food parcel support',
+    contactPerson: 'Sarah Jenkins',
+    contactNumber: '020 8123 4567',
+    email: 'sarah@redcross.org.uk',
+    address: 'High Road, Ilford',
+    notes: 'Weekly visits on Wednesday',
+    attachments: [
+      {
+        id: 'att-1',
+        name: 'MoU_Agreement.pdf',
+        size: 1048576,
+        type: 'application/pdf',
+        dataUrl: 'data:application/pdf;base64,JVBERi0xLjQK...',
+        uploadedBy: 'Admin User',
+        uploadedAt: '2026-09-12T10:00:00Z'
+      }
+    ],
+    loggedBy: 'Duty Officer'
+  };
+
+  const dbRow = toDatabaseRow('vcs_agencies', initialAgency);
+  assert.equal(dbRow.agency_name, 'Red Cross Welfare');
+
+  // Simulate external or SQL update directly in database columns
+  dbRow.agency_name = 'British Red Cross Emergency Team';
+  dbRow.hotel_name = 'Ibis Styles - Seven Kings';
+  dbRow.services_provided = 'Emergency housing & nutrition packs';
+
+  const readBack = fromDatabaseRow('vcs_agencies', dbRow);
+  assert.equal(readBack.agencyName, 'British Red Cross Emergency Team');
+  assert.equal(readBack.hotelName, 'Ibis Styles - Seven Kings');
+  assert.equal(readBack.servicesProvided, 'Emergency housing & nutrition packs');
+  assert.equal(readBack.attachments.length, 1);
+  assert.equal(readBack.attachments[0].name, 'MoU_Agreement.pdf');
+  assert.equal(readBack.loggedBy, 'Duty Officer');
+});
+
+test('universal attachments with multiple formats and loggedBy persist and round-trip cleanly', () => {
+  const sampleAttachments = [
+    { id: 'a1', name: 'incident_photo.jpeg', size: 50000, type: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,abc', uploadedBy: 'Officer', uploadedAt: '2026-09-12' },
+    { id: 'a2', name: 'report.docx', size: 85000, type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', dataUrl: 'data:application/docx;base64,def', uploadedBy: 'Officer', uploadedAt: '2026-09-12' },
+    { id: 'a3', name: 'counts.xlsx', size: 34000, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', dataUrl: 'data:application/xlsx;base64,ghi', uploadedBy: 'Officer', uploadedAt: '2026-09-12' },
+    { id: 'a4', name: 'signed_dossier.pdf', size: 120000, type: 'application/pdf', dataUrl: 'data:application/pdf;base64,jkl', uploadedBy: 'Officer', uploadedAt: '2026-09-12' }
+  ];
+
+  const rec = {
+    id: 'chal-99',
+    site: 'Brit Hotel',
+    residentName: 'Resident A',
+    behaviorType: 'Verbal',
+    attachments: sampleAttachments,
+    loggedBy: 'Lead Officer John Doe'
+  };
+
+  const row = toDatabaseRow('challenging_behavior', rec);
+  const back = fromDatabaseRow('challenging_behavior', row);
+
+  assert.equal(back.attachments.length, 4);
+  assert.equal(back.attachments[0].name, 'incident_photo.jpeg');
+  assert.equal(back.attachments[1].name, 'report.docx');
+  assert.equal(back.attachments[2].name, 'counts.xlsx');
+  assert.equal(back.attachments[3].name, 'signed_dossier.pdf');
+  assert.equal(back.loggedBy, 'Lead Officer John Doe');
+});

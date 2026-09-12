@@ -223,6 +223,7 @@ export interface EscalationRecord {
   site: string; // for site isolation and filtering
   personReporting: string;
   submittedBy?: string;
+  loggedBy?: string;
   incidentType: string;
   wlIssued: 'Yes' | 'No' | 'Warning Letter Issued' | 'Notice to Quit' | 'N/A';
   reportedAuthorities: string;

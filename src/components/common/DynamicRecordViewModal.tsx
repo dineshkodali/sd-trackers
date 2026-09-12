@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { X, Edit3, ShieldCheck } from 'lucide-react';
+import { X, Edit3, ShieldCheck, UserCheck } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
+import { AttachmentsSection } from './AttachmentsSection';
 
 interface DynamicRecordViewModalProps<T = any> {
   isOpen: boolean;
@@ -23,10 +24,46 @@ export function DynamicRecordViewModal<T = any>({
 }: DynamicRecordViewModalProps<T>) {
   if (!isOpen || !record) return null;
 
+  const isLoggedByColumn = (col: TableColumnConfig<T>): boolean => {
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (
+      key === 'loggedby' ||
+      key === 'raisedby' ||
+      key === 'reportedby' ||
+      key === 'submittedby' ||
+      key === 'personreporting' ||
+      key === 'staffreporting' ||
+      key === 'auditedby' ||
+      key === 'officerleadinghotel' ||
+      label === 'loggedby' ||
+      label === 'raisedby' ||
+      label === 'reportedby' ||
+      label === 'submittedby' ||
+      label === 'personreporting' ||
+      label === 'staffreporting' ||
+      label === 'auditedby' ||
+      label === 'officerleadinghotel'
+    );
+  };
+
   // Filter out internal system metadata fields unless explicitly configured to show in view
   const viewColumns = useMemo(() => {
-    return columns.filter(col => !col.isSystemMetadata && col.visibleInView !== false);
-  }, [columns]);
+    const activeCols = columns
+      .filter(col => !col.isSystemMetadata && col.visibleInView !== false)
+      .map(col => isLoggedByColumn(col) ? { ...col, label: 'Logged By' } : col);
+
+    const hasLoggedBy = activeCols.some(isLoggedByColumn);
+    if (!hasLoggedBy && (record as any)?.loggedBy) {
+      const injectedLoggedByCol: TableColumnConfig<T> = {
+        key: 'loggedBy' as any,
+        label: 'Logged By',
+        section: 'Audit & Accountability'
+      };
+      return [...activeCols, injectedLoggedByCol];
+    }
+    return activeCols;
+  }, [columns, record]);
 
   // Group columns by section if specified
   const sections = useMemo(() => {
@@ -149,6 +186,13 @@ export function DynamicRecordViewModal<T = any>({
               </div>
             </div>
           ))}
+
+          {/* Universal Proof & Document Attachments Dossier */}
+          <AttachmentsSection
+            attachments={Array.isArray((record as any)?.attachments) ? (record as any).attachments : []}
+            readOnly={true}
+            entityName={title}
+          />
         </div>
 
         {/* Footer */}
