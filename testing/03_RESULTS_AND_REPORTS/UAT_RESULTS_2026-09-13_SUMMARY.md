@@ -1,8 +1,8 @@
 # SDTracker User Acceptance Testing (UAT) Report — 2026-09-13
 
-**Execution Date**: 13/09/2026, 23:04:26  
+**Execution Date**: 13/09/2026, 23:26:22  
 **Pass Rate**: 100% (15/15 Test Cases Passed)  
-**Total Duration**: 2.83 seconds  
+**Total Duration**: 1.79 seconds  
 **Target URL**: http://localhost:3020  
 
 ---
@@ -26,15 +26,15 @@
 
 | Test ID | Category | Title | Persona | Priority | Steps | Status | Duration |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| **UAT-INFRA-01** | Infrastructure & Health | Operational Status Monitor & Service Reliability | Super Admin | Critical | 2 | **PASS** | 52ms |
-| **UAT-DATA-01** | Data Architecture | PostgreSQL Relational Schema & 31-Page Storage Coverage | Super Admin | Critical | 1 | **PASS** | 2749ms |
+| **UAT-INFRA-01** | Infrastructure & Health | Operational Status Monitor & Service Reliability | Super Admin | Critical | 2 | **PASS** | 54ms |
+| **UAT-DATA-01** | Data Architecture | PostgreSQL Relational Schema & 31-Page Storage Coverage | Super Admin | Critical | 1 | **PASS** | 1713ms |
 | **UAT-COL-01** | Dynamic Columns | Custom Table Columns Dual-Layer Persistence (QA-01) | Super Admin | High | 2 | **PASS** | 0ms |
-| **UAT-LAUNDRY-01** | Laundry Support | Site Manager Laundry Record Creation & Operational Cycle (QA-02) | Site Manager | High | 2 | **PASS** | 0ms |
+| **UAT-LAUNDRY-01** | Laundry Support | Site Manager Laundry Record Creation & Operational Cycle (QA-02) | Site Manager | High | 2 | **PASS** | 1ms |
 | **UAT-MEALS-01** | Hot Meals Tracker | 4-Vendor Buffet Matrix Initial Persistence & Rendering (QA-03, QA-04) | Site Manager | High | 2 | **PASS** | 0ms |
 | **UAT-VCS-01** | VCS Directory | Voluntary & Community Sector Partner Directory Data Availability (QA-05) | Welfare Officer | High | 2 | **PASS** | 10ms |
 | **UAT-PDF-01** | Reporting & Exports | PDF Export Engine Adaptive Layout & Column Scaling (QA-06) | Admin | Medium | 2 | **PASS** | 0ms |
 | **UAT-PERF-01** | Performance | High-Frequency Tracker Update Latency & Wire Optimization (QA-07) | Site Manager | Medium | 2 | **PASS** | 0ms |
-| **UAT-BOOKLET-01** | Booklet Inventory | Booklet Consignment Creation Discoverability & Highlighting (QA-08) | Site Manager | Low | 2 | **PASS** | 12ms |
+| **UAT-BOOKLET-01** | Booklet Inventory | Booklet Consignment Creation Discoverability & Highlighting (QA-08) | Site Manager | Low | 2 | **PASS** | 10ms |
 | **UAT-RBAC-01** | Security & Access Control | Role-Based Access Control & Permission Segregation | Super Admin | Critical | 2 | **PASS** | 0ms |
 | **UAT-SG-01** | Safeguarding | SG Referrals Full Lifecycle & Multi-Agency Dispatch | Welfare Officer | High | 2 | **PASS** | 0ms |
 | **UAT-VULN-01** | Safeguarding & Residents | Vulnerable & Challenging Residents Management | Welfare Officer | High | 2 | **PASS** | 0ms |

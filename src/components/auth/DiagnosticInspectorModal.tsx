@@ -84,7 +84,7 @@ ${events.slice(0, 15).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] [
       const duration = Math.round(performance.now() - startTime);
 
       const summary = `Diagnostic Check Passed in ${duration}ms:
-- Supabase: ${statusRes.configured ? 'Configured & Online' : 'Local Fallback'}
+- Database & Auth: ${statusRes.configured ? 'Configured & Online' : 'Local Fallback'}
 - Database Status: ${dbStatus.mode} (Connected: ${dbStatus.connected})
 - Session Check: ${meRes.success ? `Authenticated as ${meRes.user?.email}` : (meRes.error || 'Unauthenticated')}
 - Active Token Expiry: ${parsedToken.statusDescription}`;
@@ -113,13 +113,13 @@ ${events.slice(0, 15).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] [
             </div>
             <div>
               <h2 className="text-sm font-bold text-[#201f1e] flex items-center gap-2">
-                Authentication & Supabase Diagnostic Inspector
+                Authentication &amp; Session Diagnostic Inspector
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono px-2 py-0.5 rounded font-semibold">
                   LIVE STREAM
                 </span>
               </h2>
               <p className="text-xs text-[#605e5c]">
-                Real-time tracking of Supabase session status, JWT token expiration, and database profile retrieval
+                Real-time tracking of session status, JWT token expiration, and database profile retrieval
               </p>
             </div>
           </div>
@@ -212,8 +212,8 @@ ${events.slice(0, 15).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] [
             <div className="flex items-center gap-2">
               <Server className="w-4 h-4 text-[#0078d4]" />
               <div>
-                <span className="font-bold text-[#201f1e] block">Live Health & Token Validator</span>
-                <span className="text-[11px] text-[#605e5c]">Runs an instantaneous live query on Supabase, auth session, and profile endpoints</span>
+                <span className="font-bold text-[#201f1e] block">Live Health &amp; Token Validator</span>
+                <span className="text-[11px] text-[#605e5c]">Runs an instantaneous live query on cloud database, auth session, and profile endpoints</span>
               </div>
             </div>
             <button

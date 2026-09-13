@@ -344,7 +344,7 @@ export async function directGetDbStatus(): Promise<{
 }> {
   const supabase = getBrowserSupabaseClient();
   if (!supabase) {
-    return { connected: false, live: false, mode: 'offline', error: 'Supabase client is not initialized' };
+    return { connected: false, live: false, mode: 'offline', error: 'Database client is not initialized' };
   }
 
   try {
@@ -355,7 +355,7 @@ export async function directGetDbStatus(): Promise<{
           connected: true,
           live: true,
           mode: 'supabase-cloud',
-          message: 'Connected to Supabase Cloud, but tables need to be created. Please run db/schema.sql and db/enable-direct-supabase-rls.sql in the Supabase SQL Editor.'
+          message: 'Connected to Cloud Database, but tables need to be created. Please initialize database schema.'
         };
       }
       return { connected: false, live: false, mode: 'offline', error: error.message };
@@ -365,7 +365,7 @@ export async function directGetDbStatus(): Promise<{
       connected: true,
       live: true,
       mode: 'supabase-cloud',
-      message: `Connected directly to Supabase Cloud (${count ?? 0} sites verified).`
+      message: `Connected directly to Cloud Database (${count ?? 0} sites verified).`
     };
   } catch (err: any) {
     return { connected: false, live: false, mode: 'offline', error: err?.message || String(err) };

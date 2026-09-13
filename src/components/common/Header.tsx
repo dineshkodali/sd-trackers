@@ -271,16 +271,6 @@ export const Header: React.FC = () => {
         {/* Network Connectivity Status Indicator */}
         <NetworkStatusIndicator />
 
-        {/* Supabase Security & Diagnostics button */}
-        <button
-          id="btn-open-diagnostics"
-          onClick={() => setDiagnosticModalOpen(true)}
-          className="hidden md:flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-1.5 rounded-xs transition-colors cursor-pointer"
-          title="Supabase Session Status, Token Expiration & Diagnostics"
-        >
-          <Activity className="w-3.5 h-3.5 text-emerald-700" />
-          <span>Diagnostics</span>
-        </button>
 
         {/* Super Admin Role Preview Switcher */}
         {isSuperAdminUser ? (
@@ -659,7 +649,7 @@ export const Header: React.FC = () => {
                     }}
                     className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between text-xs cursor-pointer"
                   >
-                    <span>Supabase Diagnostics</span>
+                    <span>System Diagnostics</span>
                     <Activity className="w-3 h-3 text-[#0d9488]" />
                   </button>
 

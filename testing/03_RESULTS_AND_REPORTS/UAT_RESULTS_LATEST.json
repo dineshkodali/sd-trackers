@@ -1,6 +1,6 @@
 {
-  "runId": "UAT-1789337066266",
-  "runDate": "13/09/2026, 23:04:26",
+  "runId": "UAT-1789338382880",
+  "runDate": "13/09/2026, 23:26:22",
   "dateKey": "2026-09-13",
   "environment": {
     "appUrl": "http://localhost:3020",
@@ -15,7 +15,7 @@
     "failed": 0,
     "skipped": 0,
     "passRatePercent": 100,
-    "totalDurationMs": 2828
+    "totalDurationMs": 1791
   },
   "remedyAudit": {
     "qa01DynamicColumns": "PASS",
@@ -45,7 +45,7 @@
           "expectedResult": "HTTP 200 returned with all 8 core services monitored (web, auth, database, api, files, notifications, reporting, jobs)",
           "actualResult": "HTTP 200 with 8 services active",
           "status": "PASS",
-          "durationMs": 52,
+          "durationMs": 54,
           "notes": "Operational state: web:operational, auth:operational, database:operational, api:operational, files:operational, notifications:operational, reporting:operational, jobs:operational"
         },
         {
@@ -58,7 +58,7 @@
         }
       ],
       "overallStatus": "PASS",
-      "totalDurationMs": 52
+      "totalDurationMs": 54
     },
     {
       "id": "UAT-DATA-01",
@@ -77,12 +77,12 @@
           "expectedResult": "All 29 tables reachable with 31/31 operational pages fully connected",
           "actualResult": "29/29 tables online (31/31 pages connected)",
           "status": "PASS",
-          "durationMs": 2749,
+          "durationMs": 1713,
           "notes": "Tables cover safeguarding, facilities, welfare, healthcare, catering, compliance, and governance."
         }
       ],
       "overallStatus": "PASS",
-      "totalDurationMs": 2749
+      "totalDurationMs": 1713
     },
     {
       "id": "UAT-COL-01",
@@ -135,7 +135,7 @@
           "expectedResult": "Active cycle start date is current Monday (2026-09-07) which allows logging throughout week",
           "actualResult": "Resolved Monday: 2026-09-07, Today: 2026-09-13",
           "status": "PASS",
-          "durationMs": 0
+          "durationMs": 1
         },
         {
           "stepNumber": 2,
@@ -148,7 +148,7 @@
         }
       ],
       "overallStatus": "PASS",
-      "totalDurationMs": 0
+      "totalDurationMs": 1
     },
     {
       "id": "UAT-MEALS-01",
@@ -299,7 +299,7 @@
           "expectedResult": "New record appears at the top of the table even if alphabetical sorting would place it elsewhere",
           "actualResult": "Record pinned to row 1 successfully",
           "status": "PASS",
-          "durationMs": 12
+          "durationMs": 10
         },
         {
           "stepNumber": 2,
@@ -312,7 +312,7 @@
         }
       ],
       "overallStatus": "PASS",
-      "totalDurationMs": 12
+      "totalDurationMs": 10
     },
     {
       "id": "UAT-RBAC-01",

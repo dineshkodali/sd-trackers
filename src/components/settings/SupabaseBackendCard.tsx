@@ -87,13 +87,13 @@ export const SupabaseBackendCard: React.FC = () => {
           <Database className="w-5 h-5 text-[#0d9488]" />
           <div>
             <h3 className="font-semibold text-xs text-[#242424] flex items-center gap-2">
-              Supabase Database &amp; SMTP Email Backend
+              Cloud Database &amp; SMTP Email Infrastructure
               <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
                 isSupabaseConfigured 
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
                   : 'bg-amber-100 text-amber-800 border border-amber-200'
               }`}>
-                {isSupabaseConfigured ? 'Supabase Connected' : 'Awaiting .env Keys'}
+                {isSupabaseConfigured ? 'Database Connected' : 'Awaiting .env Keys'}
               </span>
             </h3>
             <p className="text-[11px] text-[#605e5c]">
@@ -133,7 +133,7 @@ export const SupabaseBackendCard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Database className="w-4 h-4 text-[#0d9488]" />
-                  <span className="font-semibold text-neutral-800 text-xs">Supabase PostgreSQL</span>
+                  <span className="font-semibold text-neutral-800 text-xs">Cloud Relational Database</span>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1 ${
                   isSupabaseConfigured 
@@ -147,8 +147,8 @@ export const SupabaseBackendCard: React.FC = () => {
 
               <div className="space-y-1 text-[11px] text-[#605e5c]">
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
-                  <span>Supabase URL:</span>
-                  <span className="font-mono text-neutral-800">{config?.services?.supabase?.url || 'https://kxikojvpcypr...'}</span>
+                  <span>Database Endpoint:</span>
+                  <span className="font-mono text-neutral-800">{config?.services?.supabase?.url ? 'Cloud Endpoint Active' : 'Configured in .env'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Service Role Key:</span>
@@ -162,7 +162,7 @@ export const SupabaseBackendCard: React.FC = () => {
                   <span>Storage Mode:</span>
                   <span className={`font-semibold ${dbStatus?.mode === 'supabase-cloud' || isSupabaseConfigured ? 'text-[#0d9488]' : 'text-red-700'}`}>
                     {dbStatus?.mode === 'supabase-cloud' || isSupabaseConfigured
-                      ? 'Supabase Cloud PostgreSQL (Live)'
+                      ? 'Cloud PostgreSQL Database (Active & Live)'
                       : 'Unreachable'}
                   </span>
                 </div>
@@ -211,22 +211,22 @@ export const SupabaseBackendCard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-[#0d9488]" />
-                  <span className="font-semibold text-neutral-800 text-xs">Supabase Authentication</span>
+                  <span className="font-semibold text-neutral-800 text-xs">Cloud Identity &amp; Access</span>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-teal-50 text-[#0d9488] border border-teal-200 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-[#0d9488]" />
-                  Supabase Auth
+                  Active &amp; Verified
                 </span>
               </div>
 
               <div className="space-y-1 text-[11px] text-[#605e5c]">
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Auth Engine:</span>
-                  <span className="font-mono text-neutral-800 font-semibold">Supabase Auth (Native)</span>
+                  <span className="font-mono text-neutral-800 font-semibold">Native Identity Service</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Password Recovery:</span>
-                  <span className="text-emerald-700 font-medium">Active (Supabase Magic Link)</span>
+                  <span className="text-emerald-700 font-medium">Active (Secure Email Magic Link)</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Session Security:</span>
@@ -245,7 +245,7 @@ export const SupabaseBackendCard: React.FC = () => {
 
             <div className="pt-2 border-t border-[#edebe9]">
               <div className="p-2 bg-emerald-50/70 border border-emerald-200 rounded-xs text-[10px] text-emerald-900 leading-relaxed">
-                Logins, password recovery emails, and credential verification are powered directly by Supabase Auth with zero external third-party dependencies.
+                Logins, password recovery emails, and credential verification are powered securely by the cloud identity service with zero external third-party dependencies.
               </div>
             </div>
           </div>
@@ -289,7 +289,7 @@ export const SupabaseBackendCard: React.FC = () => {
                 </div>
                 <div className="flex justify-between py-1">
                   <span>Auth Recovery:</span>
-                  <span className="text-emerald-700 font-semibold">Supabase Auth Native</span>
+                  <span className="text-emerald-700 font-semibold">Native Identity Service</span>
                 </div>
               </div>
             </div>

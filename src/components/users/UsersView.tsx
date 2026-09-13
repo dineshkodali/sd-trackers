@@ -234,7 +234,7 @@ export const UsersView: React.FC = () => {
         return;
       }
 
-      setCreateSuccessNotice(`User "${newUserFormData.name}" successfully created with role "${newUserFormData.role}" in Supabase!`);
+      setCreateSuccessNotice(`User "${newUserFormData.name}" successfully created with role "${newUserFormData.role}"!`);
       await syncFromDatabase();
       setTimeout(() => {
         setIsCreatingUser(false);
@@ -481,7 +481,7 @@ export const UsersView: React.FC = () => {
     const headers = activeCols.map(c => colMap[c].label);
     const rows = dataToExport.map(u => activeCols.map(c => colMap[c].getValue(u)));
 
-    const title = 'Supabase Users & Property Assignments';
+    const title = 'Staff Users & Property Assignments';
     const filename = `Users-Assignments-${scope}-${new Date().toISOString().slice(0, 10)}`;
 
     if (format === 'csv') {
@@ -528,14 +528,14 @@ export const UsersView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">Supabase Users &amp; Role Assignments</h1>
+            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">Staff Accounts &amp; Role Assignments</h1>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4]">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Supabase Managed</span>
+              <span>Directory Managed</span>
             </span>
           </div>
           <p className="text-xs text-[#605e5c] mt-0.5">
-            User logins and credentials are managed in Supabase. Assign operational roles and hotel property access below.
+            User logins and credentials are authenticated securely. Assign operational roles and hotel property access below.
           </p>
         </div>
 
@@ -548,7 +548,7 @@ export const UsersView: React.FC = () => {
                   setIsAddUserModalOpen(true);
                 }}
                 className="flex items-center gap-1.5 px-3 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-2xs transition-colors"
-                title="Create a new user account in Supabase Auth"
+                title="Create a new staff user account"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Add User</span>
@@ -559,10 +559,10 @@ export const UsersView: React.FC = () => {
               onClick={handleRefreshSupabase}
               disabled={isRefreshing}
               className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs text-xs font-semibold shadow-2xs transition-colors disabled:opacity-60"
-              title="Pull latest users and permissions from Supabase"
+              title="Pull latest users and permissions from live database"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#0d9488] ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>{isRefreshing ? 'Syncing...' : 'Refresh from Supabase'}</span>
+              <span>{isRefreshing ? 'Syncing...' : 'Sync Database'}</span>
             </button>
 
             <ExportDropdown
@@ -603,7 +603,7 @@ export const UsersView: React.FC = () => {
           <Building2 className="w-4 h-4 text-[#0d9488] shrink-0 mt-0.5" />
           <div>
             <span className="font-semibold text-[#1e293b]">User Management Notice: </span>
-            User logins and accounts are authenticated through Supabase. Use <strong>+ Add User</strong> to register new team members, or click <strong>Assign Role</strong> on any user in the table to modify operational roles (Staff, Employee, Site Manager, Admin, etc.) and assigned hotel properties.
+            User logins and accounts are authenticated securely through the enterprise directory. Use <strong>+ Add User</strong> to register new team members, or click <strong>Assign Role</strong> on any user in the table to modify operational roles (Staff, Employee, Site Manager, Admin, etc.) and assigned hotel properties.
           </div>
         </div>
 
@@ -618,7 +618,7 @@ export const UsersView: React.FC = () => {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Supabase Users ({displayedUsers.length})</span>
+          <span>Staff Accounts ({displayedUsers.length})</span>
         </button>
 
         <button
@@ -685,7 +685,7 @@ export const UsersView: React.FC = () => {
                 <tr className="border-b border-[#edebe9] text-[#605e5c] font-semibold bg-[#faf9f8] select-none whitespace-nowrap">
                   <th onClick={() => handleUserSort('name')} className="p-3 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Name">
                     <div className="flex items-center gap-1">
-                      <span>User &amp; Supabase Email</span>
+                      <span>User &amp; Email</span>
                       {userSortField === 'name' ? (userSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
                     </div>
                   </th>
@@ -720,7 +720,7 @@ export const UsersView: React.FC = () => {
                 {sortedUsers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-neutral-400 italic">
-                      No users found in Supabase matching your search or filters.
+                      No users found matching your search or filters.
                     </td>
                   </tr>
                 ) : (
@@ -730,7 +730,7 @@ export const UsersView: React.FC = () => {
                         <div className="font-bold text-[#242424] flex items-center gap-1.5">
                           <span>{u.name}</span>
                           <span className="text-[10px] bg-neutral-100 text-neutral-600 px-1.5 py-0.2 rounded font-mono">
-                            Supabase Auth
+                            Active Account
                           </span>
                         </div>
                         <div className="text-[11px] text-[#605e5c]">{u.email}</div>
@@ -907,7 +907,7 @@ export const UsersView: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="font-bold text-[#1e293b] text-sm">{assigningUser.name}</div>
                   <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-mono font-semibold">
-                    Supabase User
+                    Verified Staff
                   </span>
                 </div>
                 <div className="text-[#64748b] text-[11px]">Email: {assigningUser.email}</div>
@@ -1049,7 +1049,7 @@ export const UsersView: React.FC = () => {
                   {isSavingAssignment ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Saving in Supabase...</span>
+                      <span>Saving...</span>
                     </>
                   ) : (
                     <span>Save Role &amp; Access</span>
@@ -1068,7 +1068,7 @@ export const UsersView: React.FC = () => {
             <div className="px-5 py-3.5 bg-[#f8f9fa] border-b border-[#e1dfdd] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-4 h-4 text-[#0d9488]" />
-                <h3 className="text-sm font-semibold text-[#242424]">Add New Supabase User</h3>
+                <h3 className="text-sm font-semibold text-[#242424]">Add New Staff User</h3>
               </div>
               <button 
                 onClick={() => setIsAddUserModalOpen(false)} 
@@ -1178,7 +1178,7 @@ export const UsersView: React.FC = () => {
                   {isCreatingUser ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Creating in Supabase...</span>
+                      <span>Creating User...</span>
                     </>
                   ) : (
                     <span>Create User</span>

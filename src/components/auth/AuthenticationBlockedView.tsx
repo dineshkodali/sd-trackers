@@ -171,7 +171,7 @@ ${events.slice(0, 5).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] ${
                   {blockedInfo.actionRequired || (
                     isSessionIssue ? (
                       <span>
-                        Your cryptographic session token has lapsed or was terminated by Supabase security. Click <strong>Return to Sign In</strong> below to re-enter your credentials and generate a fresh session token.
+                        Your cryptographic session token has lapsed or was terminated by security policy. Click <strong>Return to Sign In</strong> below to re-enter your credentials and generate a fresh session token.
                       </span>
                     ) : (
                       <span>

@@ -453,9 +453,9 @@ export const apiService = {
     if (shouldPreferDirectSupabase()) {
       const direct = await directGetDbStatus();
       if (direct.connected) {
-        return { success: true, message: direct.message || 'Connected directly to Supabase Cloud.', details: direct };
+        return { success: true, message: direct.message || 'Connected directly to Cloud Database.', details: direct };
       }
-      return { success: false, message: direct.error || 'Direct Supabase Cloud connection failed.', details: direct };
+      return { success: false, message: direct.error || 'Direct Cloud Database connection failed.', details: direct };
     }
     try {
       const res = await fetch(getApiUrl('/api/config/test-supabase'), { headers: authHeaders() });
@@ -468,7 +468,7 @@ export const apiService = {
           enableDirectSupabaseFallback();
           return {
             success: true,
-            message: `Connected directly to Supabase Cloud (${direct.message}). Direct client mode active.`,
+            message: `Connected directly to Cloud Database (${direct.message}). Direct client mode active.`,
             details: direct
           };
         }
@@ -485,12 +485,12 @@ export const apiService = {
     if (isDirect && !apiUrl) {
       return {
         success: true,
-        message: 'Amplify Cloud Client Active: SMTP is configured in .env (smtp.gmail.com:587). In this static hosting environment, authentication emails (password recovery, invitations) are routed natively through Supabase Auth. Operational alert events are recorded directly in the Supabase audit logs.',
+        message: 'Amplify Cloud Client Active: SMTP is configured in .env (smtp.gmail.com:587). In this static hosting environment, authentication emails (password recovery, invitations) are routed natively through the Cloud Identity Service. Operational alert events are recorded directly in the system audit logs.',
         config: {
           host: 'smtp.gmail.com',
           port: 587,
           mode: 'amplify-direct-client',
-          authService: 'Supabase Native Auth'
+          authService: 'Native Identity Service'
         }
       };
     }
@@ -506,12 +506,12 @@ export const apiService = {
       if (isDirect) {
         return {
           success: true,
-          message: 'Amplify Cloud Client Active: SMTP is configured in .env (smtp.gmail.com:587). In static Amplify hosting, authentication emails are handled natively by Supabase Auth, and operational alert events are recorded in the Supabase audit logs.',
+          message: 'Amplify Cloud Client Active: SMTP is configured in .env (smtp.gmail.com:587). In static Amplify hosting, authentication emails are handled natively by the Cloud Identity Service, and operational alert events are recorded in the system audit logs.',
           config: {
             host: 'smtp.gmail.com',
             port: 587,
             mode: 'amplify-direct-client',
-            authService: 'Supabase Native Auth'
+            authService: 'Native Identity Service'
           }
         };
       }
@@ -541,7 +541,7 @@ export const apiService = {
             alertType: alert.alertType,
             severity: alert.severity,
             recipient: alert.recipient,
-            channel: 'Supabase Cloud Audit'
+            channel: 'Cloud System Audit'
           }
         });
       } catch (e) {
@@ -549,7 +549,7 @@ export const apiService = {
       }
       return {
         success: true,
-        message: `Alert recorded to Supabase system log: "${alert.title}"`,
+        message: `Alert recorded to system audit log: "${alert.title}"`,
         simulated: true
       };
     }
@@ -1171,7 +1171,7 @@ export const apiService = {
             severity: payload.severity,
             recipient: payload.recipient,
             metadata: payload.metadata,
-            channel: 'Supabase Cloud Audit'
+            channel: 'Cloud System Audit'
           }
         });
       } catch (e) {
@@ -1179,7 +1179,7 @@ export const apiService = {
       }
       return {
         success: true,
-        message: `Alert recorded to Supabase system log: "${payload.title}"`,
+        message: `Alert recorded to system audit log: "${payload.title}"`,
         simulated: true
       };
     }
@@ -1222,7 +1222,7 @@ export const apiService = {
             reason: payload.reason,
             actionRequired: payload.actionRequired,
             reportedBy: payload.reportedBy,
-            channel: 'Supabase Cloud Audit'
+            channel: 'Cloud System Audit'
           }
         });
       } catch (e) {
@@ -1230,7 +1230,7 @@ export const apiService = {
       }
       return {
         success: true,
-        message: `Escalation alert logged in Supabase: "${payload.incidentTitle}" for ${payload.suName}`,
+        message: `Escalation alert logged in system audit log: "${payload.incidentTitle}" for ${payload.suName}`,
         simulated: true
       };
     }

@@ -1,6 +1,6 @@
 /**
- * SD Commercial Supabase Session & Authentication Diagnostic Utility
- * Captures Supabase session status, JWT token expiration, and database profile retrieval.
+ * SD Commercial Session & Authentication Diagnostic Utility
+ * Captures session status, JWT token expiration, and database profile retrieval.
  */
 
 export type DiagnosticCategory = 'session' | 'token' | 'profile' | 'permission' | 'audit' | 'network';

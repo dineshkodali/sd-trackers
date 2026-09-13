@@ -88,7 +88,7 @@ export const LoginView: React.FC = () => {
     try {
       const success = await login(cleanEmail, cleanPass);
       if (!success && !authError) {
-        setLocalError('Invalid email address or password. Please verify your Supabase credentials.');
+        setLocalError('Invalid email address or password. Please verify your credentials.');
       }
     } catch (err: any) {
       setLocalError(err.message || 'Authentication encountered an error. Please try again.');
@@ -189,7 +189,7 @@ export const LoginView: React.FC = () => {
 
             <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 border border-teal-500/30 px-3 py-1 text-xs font-semibold text-teal-300 mb-4">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-              <span>Supabase Authentication</span>
+              <span>Secure Enterprise Authentication</span>
             </div>
 
             <h1 className="text-2xl font-bold text-white tracking-tight leading-snug">
@@ -216,7 +216,7 @@ export const LoginView: React.FC = () => {
                 </div>
                 <div>
                   <div className="font-semibold text-slate-200">Role-Based Access Control</div>
-                  <div className="text-[11px] text-slate-400">Governed strictly by Supabase Auth</div>
+                  <div className="text-[11px] text-slate-400">Governed strictly by Role-Based Access Control</div>
                 </div>
               </div>
             </div>
@@ -225,7 +225,7 @@ export const LoginView: React.FC = () => {
           <div className="pt-6 mt-6 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Supabase Cloud Auth Active</span>
+              <span>Cloud Authentication Active</span>
             </div>
           </div>
         </div>
@@ -241,7 +241,7 @@ export const LoginView: React.FC = () => {
                 Sign in to your account
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Enter your registered Supabase credentials to access your designated properties.
+                Enter your registered credentials to access your designated properties.
               </p>
             </div>
 
@@ -342,11 +342,11 @@ export const LoginView: React.FC = () => {
                   {authLoading ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                      <span>Authenticating with Supabase...</span>
+                      <span>Authenticating...</span>
                     </>
                   ) : (
                     <>
-                      <span>Sign In with Supabase</span>
+                      <span>Sign In to Portal</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                     </>
                   )}
@@ -388,7 +388,7 @@ export const LoginView: React.FC = () => {
 
             <form onSubmit={handlePasswordReset} className="p-6 space-y-4 text-xs">
               <p className="text-slate-400 leading-relaxed">
-                Enter your registered Supabase email address. We will dispatch secure password recovery instructions.
+                Enter your registered staff email address. We will dispatch secure password recovery instructions.
               </p>
 
               <div>
@@ -462,7 +462,7 @@ export const LoginView: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Set New Password</h3>
-                  <p className="text-[11px] text-teal-400 font-medium">Supabase Password Recovery</p>
+                  <p className="text-[11px] text-teal-400 font-medium">Secure Password Recovery</p>
                 </div>
               </div>
               <button 

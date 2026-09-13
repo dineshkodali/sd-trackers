@@ -82,7 +82,7 @@ function AppLayout() {
     return (
       <div className="h-screen w-screen bg-[#f3f2f1] flex flex-col items-center justify-center space-y-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0d9488]"></div>
-        <p className="text-xs font-semibold text-[#323130] tracking-wider uppercase">Verifying Supabase Session & Profile...</p>
+        <p className="text-xs font-semibold text-[#323130] tracking-wider uppercase">Verifying Secure Session & Profile...</p>
       </div>
     );
   }

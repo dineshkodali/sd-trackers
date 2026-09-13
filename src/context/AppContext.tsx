@@ -819,7 +819,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (sessionToken) {
       setIsAuthChecking(true);
-      diagnosticLogger.logSessionStatus('checking', 'Verifying Supabase cryptographic session and inspecting token claims...');
+      diagnosticLogger.logSessionStatus('checking', 'Verifying cryptographic session and inspecting token claims...');
 
       // 1. Proactive Token Inspection
       const tokenInfo = parseJwtPayload(sessionToken);
@@ -831,7 +831,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           isBlocked: true,
           reason: 'session_invalidated',
           title: 'Cryptographic Session Expired',
-          message: 'Your Supabase authentication token has exceeded its validity window. For Home Office data protection compliance, your active session was suspended.',
+          message: 'Your authentication token has exceeded its validity window. For Home Office data protection compliance, your active session was suspended.',
           details: tokenInfo.statusDescription,
           userEmail: authProfile?.email,
           userId: authProfile?.id,
@@ -864,7 +864,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               isBlocked: true,
               reason: 'missing_permissions',
               title: 'Access Clearance Blocked',
-              message: `Your staff account (${res.user.email}) is currently designated as "${profileStatus}" in the Supabase database.`,
+              message: `Your staff account (${res.user.email}) is currently designated as "${profileStatus}" in the system database.`,
               details: 'Account profile status must be Active to access accommodation and safeguarding modules.',
               userEmail: res.user.email,
               userId: res.user.id,
@@ -911,7 +911,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             reason: isInvalidated ? 'session_invalidated' : 'missing_permissions',
             title: isInvalidated ? 'Session Invalidation Detected' : 'Authentication Verification Failed',
             message: res.error,
-            details: 'Supabase authorization token rejected or session revoked.',
+            details: 'Authorization token rejected or session revoked.',
             userEmail: authProfile?.email,
             userId: authProfile?.id,
             userRole: currentUserRole,
@@ -3364,7 +3364,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetAllData = useCallback(() => {
     requestConfirmation({
       title: 'Reload All Data From Live Database',
-      message: 'Discard what is currently displayed and reload every module from the live Supabase database. No records are deleted.',
+      message: 'Discard what is currently displayed and reload every module from the live database. No records are deleted.',
       confirmLabel: 'Reload From Database',
       onConfirm: async () => {
         closeConfirmation();
