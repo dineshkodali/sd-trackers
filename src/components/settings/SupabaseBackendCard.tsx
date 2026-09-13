@@ -279,11 +279,17 @@ export const SupabaseBackendCard: React.FC = () => {
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Default From:</span>
-                  <span className="font-mono text-neutral-800 truncate max-w-[180px]">{config?.services?.smtp?.from || 'SD Trackers <dineshkodali16@...'}</span>
+                  <span className="font-mono text-neutral-800 truncate max-w-[180px]" title={config?.services?.smtp?.from || 'SD Trackers <dineshkodali16@gmail.com>'}>
+                    {config?.services?.smtp?.from || 'SD Trackers <dineshkodali16@gmail.com>'}
+                  </span>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Alerts Supported:</span>
                   <span className="text-neutral-800 font-medium">Safeguarding, Maintenance &amp; SPCD</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span>Auth Recovery:</span>
+                  <span className="text-emerald-700 font-semibold">Supabase Auth Native</span>
                 </div>
               </div>
             </div>

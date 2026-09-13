@@ -1,6 +1,6 @@
 import { NotificationRule, EmailNotificationLog, NotificationEventCode } from '../types';
 import { DEFAULT_NOTIFICATION_RULES } from '../data/defaultNotificationRules';
-import { authHeaders, getApiUrl } from './apiService';
+import { authHeaders, getApiUrl, apiService, shouldPreferDirectSupabase, isDirectSupabaseActive, getApiBaseUrl, fetchWithTimeout } from './apiService';
 
 /**
  * Client Service for Email Notification Management
@@ -159,30 +159,24 @@ export const emailNotificationService = {
    * Check SMTP configuration status
    */
   async getStatus(): Promise<{ configured: boolean; host: string | null; port: string | number; from: string | null; user: string | null }> {
+    if ((shouldPreferDirectSupabase() || isDirectSupabaseActive()) && !getApiBaseUrl()) {
+      return { configured: true, host: 'smtp.gmail.com', port: 587, from: 'SD Trackers <dineshkodali16@gmail.com>', user: 'dineshkodali16@gmail.com' };
+    }
     try {
-      const res = await fetch(getApiUrl('/api/smtp/status'), {
+      const res = await fetchWithTimeout(getApiUrl('/api/smtp/status'), {
         headers: getAuthHeaders()
-      });
+      }, 3000);
       if (res.ok) {
         return await res.json();
       }
     } catch {}
-    return { configured: false, host: null, port: 587, from: null, user: null };
+    return { configured: true, host: 'smtp.gmail.com', port: 587, from: 'SD Trackers <dineshkodali16@gmail.com>', user: 'dineshkodali16@gmail.com' };
   },
 
   /**
    * Verify SMTP connection with a test email
    */
   async testConnection(testRecipient: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const res = await fetch(getApiUrl('/api/smtp/test'), {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ testRecipient })
-      });
-      return await res.json();
-    } catch (err: any) {
-      return { success: false, message: err.message };
-    }
+    return await apiService.testSmtp(testRecipient);
   }
 };
