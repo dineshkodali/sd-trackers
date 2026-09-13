@@ -101,13 +101,13 @@
             Standardized end-to-end verification across core CRUD, dynamic columns, permissions, rendering, data persistence, and update performance.
           </p>
         </div>
-        <span class="badge badge-pass">
-          ALL 15 SCENARIOS PASSED (100%)
+        <span class="badge badge-fail">
+          DEFECTS DETECTED
         </span>
       </div>
 
       <div class="meta-grid">
-        <div class="meta-item">Execution Timestamp:<strong>13/09/2026, 19:57:53</strong></div>
+        <div class="meta-item">Execution Timestamp:<strong>13/09/2026, 22:44:33</strong></div>
         <div class="meta-item">Dated Archive Key:<strong>2026-09-13</strong></div>
         <div class="meta-item">Application URL:<strong><a href="http://localhost:3020" target="_blank" style="color: var(--primary); text-decoration: none;">http://localhost:3020</a></strong></div>
         <div class="meta-item">Storage Engine:<strong>Supabase PostgreSQL (Live Service-Role Connected)</strong></div>
@@ -129,19 +129,19 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">Passed Scenarios</div>
-        <div class="stat-val stat-pass">15</div>
+        <div class="stat-val stat-pass">14</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Failed Scenarios</div>
-        <div class="stat-val stat-pass">0</div>
+        <div class="stat-val stat-fail">1</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Overall Pass Rate</div>
-        <div class="stat-val stat-pass">100%</div>
+        <div class="stat-val stat-pass">93%</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Execution Duration</div>
-        <div class="stat-val stat-neutral">1.86s</div>
+        <div class="stat-val stat-neutral">27.01s</div>
       </div>
     </div>
 
@@ -232,11 +232,11 @@
                           <strong>Step 1:</strong> Query central monitoring service endpoint /api/status
                           <div style="color: #4b5563; margin-top: 2px;"><em>Expected:</em> HTTP 200 returned with all 8 core services monitored (web, auth, database, api, files, notifications, reporting, jobs)</div>
                           <div style="color: #107c41; margin-top: 1px;"><em>Actual:</em> HTTP 200 with 8 services active</div>
-                          <div style="color: #6b7280; font-size: 11px; margin-top: 2px;">💡 Operational state: web:operational, auth:operational, database:operational, api:operational, files:operational, notifications:operational, reporting:operational, jobs:operational</div>
+                          <div style="color: #6b7280; font-size: 11px; margin-top: 2px;">💡 Operational state: web:operational, auth:major_outage, database:major_outage, api:operational, files:major_outage, notifications:operational, reporting:major_outage, jobs:operational</div>
                         </div>
                         <div class="step-meta">
                           <span class="pill pill-pass">PASS</span>
-                          <div style="margin-top: 3px;">48ms</div>
+                          <div style="margin-top: 3px;">110ms</div>
                         </div>
                       </div>
                     
@@ -244,11 +244,11 @@
                         <div class="step-desc">
                           <strong>Step 2:</strong> Verify no blocking service outages or critical active incidents
                           <div style="color: #4b5563; margin-top: 2px;"><em>Expected:</em> Active incidents array is empty ([])</div>
-                          <div style="color: #107c41; margin-top: 1px;"><em>Actual:</em> Active incidents count: 0</div>
+                          <div style="color: #107c41; margin-top: 1px;"><em>Actual:</em> Active incidents count: 4</div>
                           
                         </div>
                         <div class="step-meta">
-                          <span class="pill pill-pass">PASS</span>
+                          <span class="pill pill-fail">FAIL</span>
                           <div style="margin-top: 3px;">0ms</div>
                         </div>
                       </div>
@@ -258,8 +258,8 @@
               </td>
               <td><span style="padding: 3px 8px; background: #e1dfdd; border-radius: 4px; font-size: 11px; font-weight: 600;">Super Admin</span></td>
               <td><span style="font-weight: 600; color: #d83b01;">Critical</span></td>
-              <td style="white-space: nowrap; font-family: monospace;">48ms</td>
-              <td><span class="pill pill-pass">PASS</span></td>
+              <td style="white-space: nowrap; font-family: monospace;">110ms</td>
+              <td><span class="pill pill-fail">FAIL</span></td>
             </tr>
           
             <tr class="case-row" data-category="Data Architecture" data-remedy="">
@@ -284,7 +284,7 @@
                         </div>
                         <div class="step-meta">
                           <span class="pill pill-pass">PASS</span>
-                          <div style="margin-top: 3px;">1785ms</div>
+                          <div style="margin-top: 3px;">26832ms</div>
                         </div>
                       </div>
                     
@@ -293,7 +293,7 @@
               </td>
               <td><span style="padding: 3px 8px; background: #e1dfdd; border-radius: 4px; font-size: 11px; font-weight: 600;">Super Admin</span></td>
               <td><span style="font-weight: 600; color: #d83b01;">Critical</span></td>
-              <td style="white-space: nowrap; font-family: monospace;">1785ms</td>
+              <td style="white-space: nowrap; font-family: monospace;">26832ms</td>
               <td><span class="pill pill-pass">PASS</span></td>
             </tr>
           
@@ -463,7 +463,7 @@
                         </div>
                         <div class="step-meta">
                           <span class="pill pill-pass">PASS</span>
-                          <div style="margin-top: 3px;">12ms</div>
+                          <div style="margin-top: 3px;">23ms</div>
                         </div>
                       </div>
                     
@@ -485,7 +485,7 @@
               </td>
               <td><span style="padding: 3px 8px; background: #e1dfdd; border-radius: 4px; font-size: 11px; font-weight: 600;">Welfare Officer</span></td>
               <td><span style="font-weight: 600; color: #b45309;">High</span></td>
-              <td style="white-space: nowrap; font-family: monospace;">12ms</td>
+              <td style="white-space: nowrap; font-family: monospace;">23ms</td>
               <td><span class="pill pill-pass">PASS</span></td>
             </tr>
           
@@ -511,7 +511,7 @@
                         </div>
                         <div class="step-meta">
                           <span class="pill pill-pass">PASS</span>
-                          <div style="margin-top: 3px;">0ms</div>
+                          <div style="margin-top: 3px;">1ms</div>
                         </div>
                       </div>
                     
@@ -533,7 +533,7 @@
               </td>
               <td><span style="padding: 3px 8px; background: #e1dfdd; border-radius: 4px; font-size: 11px; font-weight: 600;">Admin</span></td>
               <td><span style="font-weight: 600; color: #374151;">Medium</span></td>
-              <td style="white-space: nowrap; font-family: monospace;">0ms</td>
+              <td style="white-space: nowrap; font-family: monospace;">1ms</td>
               <td><span class="pill pill-pass">PASS</span></td>
             </tr>
           
@@ -607,7 +607,7 @@
                         </div>
                         <div class="step-meta">
                           <span class="pill pill-pass">PASS</span>
-                          <div style="margin-top: 3px;">8ms</div>
+                          <div style="margin-top: 3px;">29ms</div>
                         </div>
                       </div>
                     
@@ -629,7 +629,7 @@
               </td>
               <td><span style="padding: 3px 8px; background: #e1dfdd; border-radius: 4px; font-size: 11px; font-weight: 600;">Site Manager</span></td>
               <td><span style="font-weight: 600; color: #374151;">Low</span></td>
-              <td style="white-space: nowrap; font-family: monospace;">8ms</td>
+              <td style="white-space: nowrap; font-family: monospace;">29ms</td>
               <td><span class="pill pill-pass">PASS</span></td>
             </tr>
           

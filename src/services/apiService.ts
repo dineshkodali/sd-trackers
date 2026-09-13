@@ -139,11 +139,22 @@ export function isDirectSupabaseActive(): boolean {
 
 export function enableDirectSupabaseFallback(): void {
   directFallbackActive = true;
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem('sd_direct_supabase', 'true');
+    } catch {}
+  }
 }
 
 export function shouldPreferDirectSupabase(): boolean {
   if (directFallbackActive) return true;
   if (typeof window !== 'undefined') {
+    try {
+      if (sessionStorage.getItem('sd_direct_supabase') === 'true') {
+        directFallbackActive = true;
+        return true;
+      }
+    } catch {}
     const override = localStorage.getItem('sd_api_url');
     if (override) return false;
     const envVal = (import.meta as any).env?.VITE_API_URL || '';
@@ -193,6 +204,21 @@ export function getApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   const base = getApiBaseUrl();
   return base ? `${base}${cleanPath}` : cleanPath;
+}
+
+/** Fast fetch with configurable timeout to prevent blocking on dead or static endpoints */
+export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 3000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: options.signal || controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
 }
 
 /**
@@ -852,13 +878,18 @@ export const apiService = {
     // The server rejects that token, so every database call failed with 401 and
     // the app silently ran on local state. Sessions are issued by the server only.
 
-    // 1. The Express backend API
+    // Fast path: In direct Supabase mode (Amplify static hosting), authenticate immediately with Supabase Cloud
+    if (shouldPreferDirectSupabase()) {
+      return await this.loginDirectSupabase(cleanEmail, password);
+    }
+
+    // 1. The Express backend API (when running with a dedicated backend)
     try {
-      const res = await fetch(getApiUrl('/api/auth/login'), {
+      const res = await fetchWithTimeout(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ email, password })
-      });
+      }, 2500);
       const data = await parseApiResponse<any>(res);
       if (data && (data.success || data.user)) {
         return data;
@@ -868,9 +899,21 @@ export const apiService = {
       }
     } catch (apiErr: any) {
       console.warn('Backend API unavailable, falling back to direct browser Supabase auth:', apiErr.message);
+      enableDirectSupabaseFallback();
     }
 
-    // 2. Browser-Direct Supabase Authentication Fallback (for static hosting like Amplify)
+    // 2. Browser-Direct Supabase Authentication Fallback
+    return await this.loginDirectSupabase(cleanEmail, password);
+  },
+
+  async loginDirectSupabase(cleanEmail: string, password: string): Promise<{
+    success?: boolean;
+    user?: { id: string; email: string; name: string; role: string; assignedSite: string };
+    token?: string;
+    session?: { accessToken: string; expiresAt?: number };
+    fallbackMode?: boolean;
+    error?: string;
+  }> {
     try {
       const supabase = getBrowserSupabaseClient();
       if (!supabase) {
@@ -937,14 +980,19 @@ export const apiService = {
       return { error: 'This session was created offline and is not valid. Please sign in again.' };
     }
 
-    // 1. The Express backend API
+    // Fast path: In direct Supabase mode, verify immediately with Supabase without waiting on dead backend endpoints
+    if (shouldPreferDirectSupabase()) {
+      return await this.verifySessionDirectSupabase(token, startTime, false);
+    }
+
+    // 1. The Express backend API (when running with a dedicated backend)
     let transientFailure = false;
     try {
-      const res = await fetch(getApiUrl('/api/auth/me'), {
+      const res = await fetchWithTimeout(getApiUrl('/api/auth/me'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
-      });
+      }, 2500);
       const json = await parseApiResponse<any>(res);
       const durationMs = Math.round(performance.now() - startTime);
 
@@ -964,10 +1012,20 @@ export const apiService = {
       transientFailure = res.status >= 500;
     } catch (apiErr: any) {
       transientFailure = true;
-      console.warn('Backend API /api/auth/me unreachable, checking session directly with Supabase...');
+      enableDirectSupabaseFallback();
     }
 
     // 2. Verify directly with browser Supabase client
+    return await this.verifySessionDirectSupabase(token, startTime, transientFailure);
+  },
+
+  async verifySessionDirectSupabase(token: string, startTime: number, transient = false): Promise<{
+    success?: boolean;
+    user?: { id: string; email: string; name: string; role: string; assignedSite: string; status?: string };
+    error?: string;
+    blockedReason?: string;
+    transient?: boolean;
+  }> {
     try {
       const supabase = getBrowserSupabaseClient();
       if (supabase) {
@@ -1131,11 +1189,23 @@ export const apiService = {
   },
 
   async fetchPasswordAuditLogs(): Promise<{ success?: boolean; logs?: any[]; error?: string }> {
+    if (shouldPreferDirectSupabase()) {
+      const sb = getBrowserSupabaseClient();
+      if (sb) {
+        try {
+          const { data, error } = await sb.from('password_audit_logs').select('*').order('timestamp', { ascending: false }).limit(200);
+          if (!error && Array.isArray(data)) {
+            return { success: true, logs: data };
+          }
+        } catch {}
+      }
+      return { success: true, logs: [] };
+    }
     try {
-      const res = await fetch(getApiUrl('/api/auth/password-audit-logs'), { headers: authHeaders() });
+      const res = await fetchWithTimeout(getApiUrl('/api/auth/password-audit-logs'), { headers: authHeaders() }, 2500);
       return await parseApiResponse<any>(res);
     } catch (err: any) {
-      return { error: err.message };
+      return { error: err.message, logs: [] };
     }
   },
 
@@ -1150,9 +1220,10 @@ export const apiService = {
           }
         } catch {}
       }
+      return { success: true, users: [] };
     }
     try {
-      const res = await fetch(getApiUrl('/api/auth/users'), { headers: authHeaders() });
+      const res = await fetchWithTimeout(getApiUrl('/api/auth/users'), { headers: authHeaders() }, 2500);
       return await parseApiResponse<any>(res);
     } catch (err: any) {
       const sb = getBrowserSupabaseClient();

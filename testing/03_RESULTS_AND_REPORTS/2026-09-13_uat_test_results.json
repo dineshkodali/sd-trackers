@@ -1,6 +1,6 @@
 {
-  "runId": "UAT-1789325873265",
-  "runDate": "13/09/2026, 19:57:53",
+  "runId": "UAT-1789335873112",
+  "runDate": "13/09/2026, 22:44:33",
   "dateKey": "2026-09-13",
   "environment": {
     "appUrl": "http://localhost:3020",
@@ -11,11 +11,11 @@
   },
   "summary": {
     "totalTestCases": 15,
-    "passed": 15,
-    "failed": 0,
+    "passed": 14,
+    "failed": 1,
     "skipped": 0,
-    "passRatePercent": 100,
-    "totalDurationMs": 1858
+    "passRatePercent": 93,
+    "totalDurationMs": 27007
   },
   "remedyAudit": {
     "qa01DynamicColumns": "PASS",
@@ -45,20 +45,20 @@
           "expectedResult": "HTTP 200 returned with all 8 core services monitored (web, auth, database, api, files, notifications, reporting, jobs)",
           "actualResult": "HTTP 200 with 8 services active",
           "status": "PASS",
-          "durationMs": 48,
-          "notes": "Operational state: web:operational, auth:operational, database:operational, api:operational, files:operational, notifications:operational, reporting:operational, jobs:operational"
+          "durationMs": 110,
+          "notes": "Operational state: web:operational, auth:major_outage, database:major_outage, api:operational, files:major_outage, notifications:operational, reporting:major_outage, jobs:operational"
         },
         {
           "stepNumber": 2,
           "description": "Verify no blocking service outages or critical active incidents",
           "expectedResult": "Active incidents array is empty ([])",
-          "actualResult": "Active incidents count: 0",
-          "status": "PASS",
+          "actualResult": "Active incidents count: 4",
+          "status": "FAIL",
           "durationMs": 0
         }
       ],
-      "overallStatus": "PASS",
-      "totalDurationMs": 48
+      "overallStatus": "FAIL",
+      "totalDurationMs": 110
     },
     {
       "id": "UAT-DATA-01",
@@ -77,12 +77,12 @@
           "expectedResult": "All 29 tables reachable with 31/31 operational pages fully connected",
           "actualResult": "29/29 tables online (31/31 pages connected)",
           "status": "PASS",
-          "durationMs": 1785,
+          "durationMs": 26832,
           "notes": "Tables cover safeguarding, facilities, welfare, healthcare, catering, compliance, and governance."
         }
       ],
       "overallStatus": "PASS",
-      "totalDurationMs": 1785
+      "totalDurationMs": 26832
     },
     {
       "id": "UAT-COL-01",
@@ -201,7 +201,7 @@
           "expectedResult": "At least 69 voluntary & community sector partner agencies available immediately in state",
           "actualResult": "69 partner agencies available on initialization",
           "status": "PASS",
-          "durationMs": 12
+          "durationMs": 23
         },
         {
           "stepNumber": 2,
@@ -213,7 +213,7 @@
         }
       ],
       "overallStatus": "PASS",
-      "totalDurationMs": 12
+      "totalDurationMs": 23
     },
     {
       "id": "UAT-PDF-01",
@@ -233,7 +233,7 @@
           "expectedResult": "Font scales down to ~5.2pt header / 4.8pt text and margin compresses to 14pt",
           "actualResult": "Header: 5.2pt, Cell: 4.8pt, Margin: 14pt",
           "status": "PASS",
-          "durationMs": 0
+          "durationMs": 1
         },
         {
           "stepNumber": 2,
@@ -246,7 +246,7 @@
         }
       ],
       "overallStatus": "PASS",
-      "totalDurationMs": 0
+      "totalDurationMs": 1
     },
     {
       "id": "UAT-PERF-01",
@@ -299,7 +299,7 @@
           "expectedResult": "New record appears at the top of the table even if alphabetical sorting would place it elsewhere",
           "actualResult": "Record pinned to row 1 successfully",
           "status": "PASS",
-          "durationMs": 8
+          "durationMs": 29
         },
         {
           "stepNumber": 2,
@@ -312,7 +312,7 @@
         }
       ],
       "overallStatus": "PASS",
-      "totalDurationMs": 8
+      "totalDurationMs": 29
     },
     {
       "id": "UAT-RBAC-01",
