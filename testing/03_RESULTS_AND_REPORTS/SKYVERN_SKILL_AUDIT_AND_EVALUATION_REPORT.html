@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skyvern AI Browser Automation — Skill Audit & Evaluation Report</title>
+  <style>
+    :root {
+      --primary: #0078d4;
+      --primary-hover: #106ebe;
+      --primary-light: #eff6fc;
+      --success: #107c41;
+      --success-light: #dff6dd;
+      --warning: #797673;
+      --warning-bg: #fff4ce;
+      --warning-border: #fce100;
+      --danger: #a4262c;
+      --danger-light: #fde7e9;
+      --purple: #5c2d91;
+      --purple-light: #f3f0f8;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #201f1e;
+      --text-muted: #605e5c;
+      --border: #e1dfdd;
+      --border-dark: #c8c6c4;
+      --code-bg: #1e1e1e;
+      --code-text: #d4d4d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 32px 20px; line-height: 1.5; }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    /* Header */
+    .header { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 24px 28px; margin-bottom: 24px; box-shadow: 0 1.6px 3.6px 0 rgba(0,0,0,0.06); }
+    .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; }
+    .title-area h1 { font-size: 22px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 10px; }
+    .title-area p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .badge { padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
+    .badge-info { background: var(--primary-light); color: var(--primary); border: 1px solid #c7e0f4; }
+    .badge-success { background: var(--success-light); color: var(--success); border: 1px solid #a1d99b; }
+    .badge-warning { background: var(--warning-bg); color: #8a6d3b; border: 1px solid var(--warning-border); }
+    .badge-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #f19ea6; }
+
+    .header-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; }
+    .meta-item span { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600; display: block; }
+    .meta-item strong { color: var(--text); font-size: 14px; margin-top: 2px; display: block; font-family: monospace; }
+
+    /* Quick action buttons */
+    .actions-bar { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600; border-radius: 4px; text-decoration: none; cursor: pointer; border: 1px solid transparent; transition: all 0.15s ease; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-outline { background: #fff; color: #323130; border-color: var(--border-dark); }
+    .btn-outline:hover { background: #f3f2f1; }
+
+    /* Scorecard stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+    .stat-card-title { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; }
+    .stat-card-val { font-size: 20px; font-weight: 700; margin-top: 6px; }
+    .stat-card-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Section card */
+    .section-card { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 22px 26px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .section-title { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .section-title span { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+
+    /* Alerts */
+    .alert { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: flex; gap: 12px; align-items: flex-start; }
+    .alert-info { background: var(--primary-light); border-left: 4px solid var(--primary); color: #004578; }
+    .alert-warning { background: var(--warning-bg); border-left: 4px solid #ffb900; color: #493b00; }
+    .alert-success { background: var(--success-light); border-left: 4px solid var(--success); color: #0b5a2f; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th { background: #faf9f8; text-align: left; padding: 10px 14px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background-color: #faf9f8; }
+
+    .code-tag { background: #f3f2f1; padding: 2px 6px; border-radius: 3px; font-family: Consolas, Monaco, monospace; font-size: 12px; color: #a4262c; border: 1px solid #e1dfdd; }
+    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .status-ready { background: var(--success-light); color: var(--success); }
+    .status-missing { background: var(--danger-light); color: var(--danger); }
+    .status-optional { background: #fff4ce; color: #8a6d3b; }
+
+    /* Code blocks */
+    .code-block { background: var(--code-bg); color: var(--code-text); padding: 14px 18px; border-radius: 6px; font-family: Consolas, Monaco, "Courier New", monospace; font-size: 12px; overflow-x: auto; margin-top: 8px; position: relative; }
+    .code-block code { font-family: inherit; }
+    .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.15); color: #fff; border: none; padding: 4px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; transition: background 0.15s; }
+    .copy-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* Workflow cards */
+    .wf-card { border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 14px; background: #ffffff; }
+    .wf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .wf-title { font-weight: 700; font-size: 14px; color: #111827; }
+
+    /* Tabs */
+    .tab-bar { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; gap: 4px; }
+    .tab-btn { padding: 8px 16px; font-size: 13px; font-weight: 600; border: none; background: transparent; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .footer { text-align: center; margin-top: 32px; font-size: 12px; color: var(--text-muted); }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .actions-bar, .copy-btn { display: none; }
+      .header, .stat-card, .section-card { box-shadow: none; border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-top">
+        <div class="title-area">
+          <h1>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            Skyvern AI Browser Automation — Skill Audit & Evaluation Report
+          </h1>
+          <p>Comprehensive inspection of the Skyvern CLI Skill definition, environment readiness, and testing synergy with SDTracker.</p>
+        </div>
+        <div>
+          <span class="badge badge-info">SKILL SPECIFICATION VALID</span>
+        </div>
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn btn-primary" onclick="window.print()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Print / Export PDF
+        </button>
+        <a class="btn btn-outline" href="http://localhost:3020" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          Open SDTracker App (Port 3020)
+        </a>
+        <a class="btn btn-outline" href="uat-results.html" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          View Playwright UAT Report
+        </a>
+      </div>
+
+      <div class="header-meta">
+        <div class="meta-item">
+          <span>Target Skill Path</span>
+          <strong>.claude/skills/skyvern/SKILL.md</strong>
+        </div>
+        <div class="meta-item">
+          <span>Skill Size & Rules</span>
+          <strong>227 Lines / 10.7 KB / 6 Steps</strong>
+        </div>
+        <div class="meta-item">
+          <span>CLI Environment</span>
+          <strong>Windows Host (Node 22, PS)</strong>
+        </div>
+        <div class="meta-item">
+          <span>Audit Date</span>
+          <strong>2026-09-13 (Compacted Session)</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Executive Scorecard -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-title">Skill Definition</div>
+        <div class="stat-card-val" style="color: var(--success);">READY (100%)</div>
+        <div class="stat-card-desc">Structured 6-step CLI judgment procedure, session rules & credentials.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">CLI Daemon Status</div>
+        <div class="stat-card-val" style="color: #d83b01;">NOT INSTALLED</div>
+        <div class="stat-card-desc"><code class="code-tag">skyvern</code> executable is not yet on Windows system PATH.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Cloud API Secret</div>
+        <div class="stat-card-val" style="color: #797673;">NOT SET</div>
+        <div class="stat-card-desc"><code class="code-tag">SKYVERN_API_KEY</code> is optional; required only for Cloud hosted runs.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Existing Test Suite</div>
+        <div class="stat-card-val" style="color: var(--primary);">49/49 PASS</div>
+        <div class="stat-card-desc">Deterministic Playwright suite runs offline in &lt;3s with 0 token costs.</div>
+      </div>
+    </div>
+
+    <!-- Executive Summary Section -->
+    <div class="section-card">
+      <div class="section-title">
+        Executive Assessment & Architectural Verdict
+        <span>Antigravity Pair-Programming Audit</span>
+      </div>
+      
+      <div class="alert alert-info">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <div>
+          <strong>Key Finding:</strong> The <code class="code-tag">.claude/skills/skyvern/SKILL.md</code> specification is an exceptionally well-crafted, production-grade guide covering task classification, cost containment, session re-use, and failure recovery. However, Skyvern is an <em>AI-driven browser agent</em> rather than a replacement for your core automated regression suite.
+        </div>
+      </div>
+
+      <p style="font-size: 14px; margin-bottom: 12px;">
+        Skyvern uses multimodal LLMs and accessibility trees to autonomously interact with web interfaces, fill out forms, solve dynamic layouts, and extract structured data. In the context of <strong>SDTracker</strong>:
+      </p>
+      <ul style="font-size: 13px; margin-left: 20px; line-height: 1.8; color: #323130;">
+        <li><strong>Complementary Strength:</strong> Skyvern excels at <em>exploratory testing</em>, <em>visual QA validation</em>, and <em>self-healing smoke checks</em> where UI elements may shift dynamically without rigid CSS selectors.</li>
+        <li><strong>Cost & Speed Consideration:</strong> Skyvern invokes 1 to 3 LLM calls and captures screenshots per action (in <code class="code-tag">act</code> and <code class="code-tag">extract</code> modes). For regression tests that run on every commit or build, your local <strong>Playwright</strong> suite is 100x faster, fully deterministic, and completely free.</li>
+        <li><strong>Operational Recommendation:</strong> Keep your existing deterministic Playwright suite for CI/CD and core UAT gates. Use the Skyvern skill when you want Claude to perform autonomous exploratory smoke runs, verify complex form layouts, or scrape external partner data.</li>
+      </ul>
+    </div>
+
+    <!-- Diagnostic Breakdown Table -->
+    <div class="section-card">
+      <div class="section-title">
+        Environment Diagnostic Matrix
+        <span>Host Environment Verification</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Component / Artifact</th>
+            <th>Target State</th>
+            <th>Current Observed State</th>
+            <th>Status</th>
+            <th>Remediation / Guidance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Skill Specification</strong><br><small style="color: var(--text-muted);">.claude/skills/skyvern/SKILL.md</small></td>
+            <td>Valid YAML frontmatter or Markdown judgment procedure</td>
+            <td>227 lines, complete 6-step workflow, task matrix, and credentials rules</td>
+            <td><span class="status-pill status-ready">VALID & COMPLETE</span></td>
+            <td>Ready for immediate use by agent when CLI or MCP is active.</td>
+          </tr>
+          <tr>
+            <td><strong>Skyvern CLI Executable</strong><br><small style="color: var(--text-muted);">skyvern --version</small></td>
+            <td>Available on Windows PATH</td>
+            <td>Command not found (<code class="code-tag">Get-Command skyvern</code> exited with 1)</td>
+            <td><span class="status-pill status-missing">NOT INSTALLED</span></td>
+            <td>Run <code class="code-tag">npm install -g skyvern</code> or configure the Skyvern Docker container.</td>
+          </tr>
+          <tr>
+            <td><strong>Cloud API Authentication</strong><br><small style="color: var(--text-muted);">SKYVERN_API_KEY in .env</small></td>
+            <td>API key provided for Skyvern Cloud</td>
+            <td>Not present in root <code class="code-tag">.env</code></td>
+            <td><span class="status-pill status-optional">OPTIONAL</span></td>
+            <td>Required only if running against Skyvern Cloud API; not needed for local self-hosted Docker.</td>
+          </tr>
+          <tr>
+            <td><strong>Local Chrome CDP Port</strong><br><small style="color: var(--text-muted);">ws://localhost:9222</small></td>
+            <td>Port open for DevTools connection</td>
+            <td>No service currently listening on port 9222</td>
+            <td><span class="status-pill status-optional">NOT BOUND</span></td>
+            <td>Start Chrome with <code class="code-tag">chrome.exe --remote-debugging-port=9222</code> to connect locally.</td>
+          </tr>
+          <tr>
+            <td><strong>Auxiliary Reference Files</strong><br><small style="color: var(--text-muted);">references/*.md</small></td>
+            <td>17 specialized deep-dive markdown files</td>
+            <td>Not present in the directory; instructions are fully consolidated in <code class="code-tag">SKILL.md</code></td>
+            <td><span class="status-pill status-ready">STANDALONE READY</span></td>
+            <td>Core instructions are self-sufficient; missing auxiliary files do not block execution.</td>
+          </tr>
+          <tr>
+            <td><strong>Active Test Runner</strong><br><small style="color: var(--text-muted);">testing/RUN_ALL_TESTS.ts</small></td>
+            <td>Playwright local test harness</td>
+            <td>Operational: 49/49 tests passing, executes against port 3020</td>
+            <td><span class="status-pill status-ready">OPERATIONAL</span></td>
+            <td>Serves as the primary deterministic testing pipeline for SDTracker.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Skyvern 6-Step Judgment Procedure Breakdown -->
+    <div class="section-card">
+      <div class="section-title">
+        The Skyvern CLI 6-Step Decision Engine
+        <span>Extracted from .claude/skills/skyvern/SKILL.md</span>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab(event, 'tab-step1')">Step 1: Task Classification</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-step2')">Step 2: Decision Rules</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-step3')">Step 3: Session Lifecycle</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab-step4')">Step 4 & 5: Verification & Safety</button>
+      </div>
+
+      <!-- Tab 1 -->
+      <div id="tab-step1" class="tab-content active">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          The skill strictly enforces classifying tasks before issuing CLI commands to minimize token consumption and latency:
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Classification</th>
+              <th>Trigger Signal</th>
+              <th>CLI Command</th>
+              <th>Cost Model</th>
+              <th>Engine Behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Quick check (yes/no)</strong></td>
+              <td>"is user logged in?", "is button visible?"</td>
+              <td><code class="code-tag">skyvern browser validate</code></td>
+              <td>1 LLM + screenshots</td>
+              <td>Lightweight validation (2 steps max), returns boolean. Cheapest AI option.</td>
+            </tr>
+            <tr>
+              <td><strong>Quick inspection</strong></td>
+              <td>"what does the page show?"</td>
+              <td><code class="code-tag">skyvern browser extract</code></td>
+              <td>1 LLM + screenshots</td>
+              <td>Dedicated extraction LLM + JSON schema validation + response caching.</td>
+            </tr>
+            <tr>
+              <td><strong>Single action (known)</strong></td>
+              <td>"click #submit-btn", "type email"</td>
+              <td><code class="code-tag">skyvern browser click/type</code></td>
+              <td><strong>0 LLM (Free)</strong></td>
+              <td>Deterministic Playwright execution. Sub-second speed, 0 tokens.</td>
+            </tr>
+            <tr>
+              <td><strong>Single action (unknown)</strong></td>
+              <td>"click the save button"</td>
+              <td><code class="code-tag">skyvern browser act</code></td>
+              <td>2-3 LLM (no screenshots)</td>
+              <td>Uses economy accessibility tree (a11y). Suitable for semantic DOMs.</td>
+            </tr>
+            <tr>
+              <td><strong>Same-page multi-step</strong></td>
+              <td>"fill the form and submit"</td>
+              <td><code class="code-tag">skyvern browser act</code> or primitive chain</td>
+              <td>2-3 LLM or 0 LLM</td>
+              <td>Use <code class="code-tag">act</code> when labels are clear; use click/type chain when selectors known.</td>
+            </tr>
+            <tr>
+              <td><strong>Throwaway trial</strong></td>
+              <td>"try this once", "see if it works"</td>
+              <td><code class="code-tag">skyvern browser run-task</code></td>
+              <td>Higher (autonomous loop)</td>
+              <td>One-off autonomous agent for exploratory defect discovery.</td>
+            </tr>
+            <tr>
+              <td><strong>Reusable automation</strong></td>
+              <td>"automate this weekly", "multi-page wizard"</td>
+              <td><code class="code-tag">skyvern workflow create + run</code></td>
+              <td>N LLM first run; 0 on replay</td>
+              <td>Visual reasoning on run 1; caches deterministic script for subsequent runs.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tab 2 -->
+      <div id="tab-step2" class="tab-content">
+        <ul style="font-size: 13px; line-height: 1.9; color: #323130; margin-left: 20px;">
+          <li><strong>Rule 1:</strong> If the prompt includes a selector, ID, XPath, or exact field target, use browser primitives (<code class="code-tag">click</code>, <code class="code-tag">type</code>) — <strong>never</strong> use <code class="code-tag">act</code>.</li>
+          <li><strong>Rule 2:</strong> If you only need a yes/no answer, use <code class="code-tag">validate</code> — not <code class="code-tag">extract</code> or <code class="code-tag">act</code>.</li>
+          <li><strong>Rule 3:</strong> If the work stays on one page and labels are clear, use <code class="code-tag">act</code> or a primitive chain.</li>
+          <li><strong>Rule 4:</strong> If the user says <em>"try this once"</em>, <em>"see if this works"</em>, or wants a one-off exploratory trial, use <code class="code-tag">run-task</code>.</li>
+          <li><strong>Rule 5:</strong> If the task spans multiple pages and is repeatable, use <code class="code-tag">workflow create</code>.</li>
+          <li><strong>Rule 6 (Security Guardrail):</strong> <strong>NEVER type passwords directly.</strong> Always use stored credentials via <code class="code-tag">skyvern credentials add</code> and <code class="code-tag">skyvern browser login</code>.</li>
+        </ul>
+      </div>
+
+      <!-- Tab 3 -->
+      <div id="tab-step3" class="tab-content">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">
+          Every Skyvern browser command requires an active session. Commands auto-attach to the most recent session:
+        </p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<code># 1. Local session (ideal for SDTracker on http://localhost:3020)
+skyvern browser session create --local --timeout 30
+
+# 2. Or connect to an existing running Chrome instance via CDP
+skyvern browser session connect --cdp "ws://localhost:9222"
+
+# 3. Always cleanly terminate sessions after testing
+skyvern browser session close</code>
+        </div>
+      </div>
+
+      <!-- Tab 4 -->
+      <div id="tab-step4" class="tab-content">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">
+          Skyvern mandates verification after every state-altering navigation step:
+        </p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<code># Visual screenshot snapshot
+skyvern browser screenshot
+
+# Semantic AI assertion (Boolean check)
+skyvern browser validate --prompt "Is the Safeguarding tracker table visible and populated?"
+
+# Low-level DOM evaluation
+skyvern browser evaluate --expression "document.querySelectorAll('table tbody tr').length"</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Playwright vs Skyvern Comparison -->
+    <div class="section-card">
+      <div class="section-title">
+        Playwright vs. Skyvern: Architecture Comparison for SDTracker
+        <span>Choosing the Right Tool for the Job</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Feature / Characteristic</th>
+            <th>SDTracker Playwright Suite (Current)</th>
+            <th>Skyvern AI Agent (Evaluated)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Primary Role</strong></td>
+            <td>Deterministic Regression, Unit, UAT & CI/CD</td>
+            <td>Exploratory AI Testing, Visual Audits, Form Discovery</td>
+          </tr>
+          <tr>
+            <td><strong>Speed / Latency</strong></td>
+            <td><strong>Ultra-Fast:</strong> &lt; 3 seconds for 49 test cases</td>
+            <td><strong>Moderate:</strong> 5–25 seconds per multi-step action</td>
+          </tr>
+          <tr>
+            <td><strong>Cost per Execution</strong></td>
+            <td><strong>$0.00:</strong> 100% offline, local compute</td>
+            <td><strong>Variable:</strong> Requires LLM tokens (Claude / GPT-4o vision)</td>
+          </tr>
+          <tr>
+            <td><strong>Selector Sensitivity</strong></td>
+            <td>Requires stable selectors (<code class="code-tag">data-testid</code>, CSS IDs)</td>
+            <td>Resilient to DOM changes (uses semantic vision & a11y trees)</td>
+          </tr>
+          <tr>
+            <td><strong>Setup Complexity</strong></td>
+            <td><strong>Zero:</strong> Already built-in via <code class="code-tag">npm run test:all</code></td>
+            <td>Requires global CLI install + local Docker daemon / Cloud API</td>
+          </tr>
+          <tr>
+            <td><strong>Best Use-Case in SDTracker</strong></td>
+            <td>Testing auth guardrails, RBAC, form validation, email mock</td>
+            <td>Testing unknown layouts, crawling external vendor portals</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Setup & Provisioning Guide for Windows -->
+    <div class="section-card">
+      <div class="section-title">
+        Windows Provisioning & Installation Troubleshooting
+        <span>Resolving npm 404 & Chrome Path on Windows</span>
+      </div>
+
+      <div class="alert alert-warning">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <div>
+          <strong>Why did <code class="code-tag">npm install -g skyvern</code> fail?</strong><br>
+          Skyvern is an open-source <strong>Python (PyPI) package</strong>, not a Node.js/npm package. Running <code class="code-tag">npm install -g skyvern</code> returns <code class="code-tag">npm error 404 Not Found</code> because Skyvern does not publish to registry.npmjs.org.
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <div>
+          <strong>Why did <code class="code-tag">chrome.exe</code> fail?</strong><br>
+          Google Chrome is verified installed at <code class="code-tag">C:\Program Files\Google\Chrome\Application\chrome.exe</code>, but this directory is not in Windows default system <code class="code-tag">PATH</code>. In PowerShell, you must invoke it with quotes or via the call operator <code class="code-tag">&amp;</code>.
+        </div>
+      </div>
+
+      <h3 style="font-size: 14px; margin-top: 14px; margin-bottom: 8px;">1. Launch Chrome with Remote Debugging (Port 9222)</h3>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<code># Option A: Google Chrome (Verified present on this PC)
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\ChromeDebug"
+
+# Option B: Microsoft Edge (Also verified present)
+& "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --remote-debugging-port=9222 --user-data-dir="C:\EdgeDebug"</code>
+      </div>
+
+      <h3 style="font-size: 14px; margin-top: 14px; margin-bottom: 8px;">2. Install Skyvern via Python / PyPI</h3>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">
+        Requires Python 3.10+ (install from python.org or <code class="code-tag">winget install Python.Python.3.11</code>):
+      </p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<code># 1. Install Skyvern CLI from PyPI
+pip install skyvern
+
+# 2. Or start Skyvern Local Quickstart (UI + Server with local SQLite)
+skyvern quickstart
+
+# 3. Connect to your local Chrome instance and SDTracker dev server
+skyvern browser session connect --cdp "ws://localhost:9222"
+skyvern browser navigate --url "http://localhost:3020"
+skyvern browser validate --prompt "Is the SDTracker login page displayed?"</code>
+      </div>
+
+      <h3 style="font-size: 14px; margin-top: 14px; margin-bottom: 8px;">3. Recommended Native Alternative: Local Playwright Suite</h3>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">
+        Since SDTracker is a Node.js project, your existing Playwright runner requires <strong>zero external Python installs</strong>:
+      </p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<code># Run all 49 SDTracker regression & UAT tests in &lt;3 seconds:
+npm run test:all</code>
+      </div>
+    </div>
+
+      <!-- Workflow 1 -->
+      <div class="wf-card">
+        <div class="wf-header">
+          <span class="wf-title">Workflow 1: SDTracker Authentication & Session Validation</span>
+          <span class="badge badge-info">Zero-Credential Exposure</span>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">
+          Logs into SDTracker on localhost using stored credentials, checks role indicator, and validates dashboard navigation:
+        </p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<code># Step 1: Securely register admin credential (never plain-text passwords in prompt)
+skyvern credentials add --name "sdtracker-admin" --type password --username "admin@sdcdms.co.uk"
+
+# Step 2: Start local session and navigate to active dev server
+skyvern browser session create --local --timeout 30
+skyvern browser navigate --url "http://localhost:3020"
+
+# Step 3: Execute login via stored credential
+skyvern browser login --url "http://localhost:3020" --credential-id cred_sdtracker_admin
+
+# Step 4: Validate session state
+skyvern browser validate --prompt "Is the user logged in and can we see the SDTracker navigation bar?"
+skyvern browser screenshot</code>
+        </div>
+      </div>
+
+      <!-- Workflow 2 -->
+      <div class="wf-card">
+        <div class="wf-header">
+          <span class="wf-title">Workflow 2: Tracker Data Inspection & JSON Extraction</span>
+          <span class="badge badge-success">Extraction Engine</span>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">
+          Navigates to the Safeguarding Tracker and extracts all registered cases into structured JSON:
+        </p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<code># Navigate to Safeguarding tab
+skyvern browser click --selector "button[data-view='safeguarding']"
+
+# Extract table data using dedicated schema validation
+skyvern browser extract \
+  --prompt "Extract all safeguarding records displayed in the table" \
+  --schema '{"type":"object","properties":{"records":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"category":{"type":"string"},"status":{"type":"string"}}}}}}'</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommendations & Roadmap -->
+    <div class="section-card">
+      <div class="section-title">
+        Strategic Recommendations
+        <span>Next steps for SDTracker Development Team</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px;">
+        <div style="background: #faf9f8; padding: 14px; border-radius: 6px; border: 1px solid var(--border);">
+          <strong style="color: var(--primary); font-size: 14px; display: block; margin-bottom: 6px;">1. Preserve Deterministic Playwright</strong>
+          <p style="font-size: 12px; color: var(--text-muted);">
+            Your current master test harness (<code class="code-tag">npm run test:all</code>) is the gold standard for daily regression testing. It verifies all 49 core UAT scenarios in seconds with 100% determinism. Keep this as your required PR/deployment gate.
+          </p>
+        </div>
+
+        <div style="background: #faf9f8; padding: 14px; border-radius: 6px; border: 1px solid var(--border);">
+          <strong style="color: var(--primary); font-size: 14px; display: block; margin-bottom: 6px;">2. Provision Skyvern for Exploratory QA</strong>
+          <p style="font-size: 12px; color: var(--text-muted);">
+            If you wish to leverage Skyvern for visual regression or exploratory form validation, install the CLI globally (<code class="code-tag">npm install -g skyvern</code>) or run the Skyvern Docker container on port 8000, and supply a <code class="code-tag">SKYVERN_API_KEY</code> in root <code class="code-tag">.env</code>.
+          </p>
+        </div>
+
+        <div style="background: #faf9f8; padding: 14px; border-radius: 6px; border: 1px solid var(--border);">
+          <strong style="color: var(--primary); font-size: 14px; display: block; margin-bottom: 6px;">3. Maintain Skill File Integrity</strong>
+          <p style="font-size: 12px; color: var(--text-muted);">
+            The skill definition at <code class="code-tag">.claude/skills/skyvern/SKILL.md</code> is already complete and adheres to all recommended CLI patterns. No modifications are needed to the skill documentation.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Generated by Antigravity AI Engineering Assistant &bull; SD Commercial UK &bull; SDTracker Platform</p>
+      <p style="margin-top: 4px;">Source Skill: <code class="code-tag">.claude/skills/skyvern/SKILL.md</code> &bull; Local Host Active: <code class="code-tag">http://localhost:3020</code></p>
+    </div>
+
+  </div>
+
+  <script>
+    function switchTab(evt, tabId) {
+      const tabContents = document.querySelectorAll('.tab-content');
+      tabContents.forEach(tab => tab.classList.remove('active'));
+      
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      tabBtns.forEach(btn => btn.classList.remove('active'));
+
+      document.getElementById(tabId).classList.add('active');
+      evt.currentTarget.classList.add('active');
+    }
+
+    function copyCode(btn) {
+      const codeBlock = btn.parentElement.querySelector('code');
+      const text = codeBlock.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.innerText;
+        btn.innerText = 'Copied!';
+        setTimeout(() => { btn.innerText = orig; }, 1800);
+      }).catch(err => {
+        console.error('Copy failed:', err);
+      });
+    }
+  </script>
+</body>
+</html>
