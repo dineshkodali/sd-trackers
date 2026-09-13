@@ -12,6 +12,8 @@
     "lint": "tsc --noEmit",
     "test:unit": "tsx --test server/schemaAdapter.test.ts src/services/legacyLocalDataMigration.test.ts",
     "test:qa:report": "tsx scripts/generate-qa-report.ts",
+    "test:uat": "tsx testing/02_TEST_SUITES/uat/uat-master-suite.ts",
+    "test:all": "tsx testing/RUN_ALL_TESTS.ts",
     "db:coverage": "tsx scripts/verify-db-coverage.ts",
     "db:migrate": "tsx scripts/db-migrate.ts"
   },

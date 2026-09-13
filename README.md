@@ -33,8 +33,8 @@ from a single origin, backed by PostgreSQL on Supabase.
 ├── deploy/                   Deployment configurations (Nginx, Docker)
 ├── docs/                     System architecture, design tokens, Amplify guide
 ├── public/                   Static web assets
-├── QA Testing & Results/     Playwright test suite, reports, pentest specs
 ├── scripts/                  Database, sync, and reporting utility scripts
+├── testing/                  Unified test engine, UAT, unit tests, reports & playbooks
 │
 ├── amplify.yml               AWS Amplify CI/CD hosting pipeline
 ├── Dockerfile                Multi-stage production container build
@@ -83,12 +83,19 @@ Useful environment flags:
 
 ## Testing
 
-The full QA suite, test plan and reports live in **`QA Testing & Results/`**.
+The full testing suite, UAT scenarios, test procedures, error audits, and reports live in **[`testing/`](file:///d:/SD%20Commercial/APPS/sdtracker/testing)**.
 
+Run all tests in one command:
 ```bash
-cd "QA Testing & Results"
-npx playwright test
+npm run test:all
 ```
 
-Start the app first — the test runner attaches to a running instance. See that
-folder's README for conventions and current results.
+Or run individual suites:
+```bash
+npm run test:uat          # End-to-end User Acceptance Testing
+npm run test:unit         # Schema adapters & LocalStorage migrations
+npm run db:coverage       # PostgreSQL 29-table & 31-page coverage
+npm run test:qa:report    # Compile dated QA system diagnostics
+```
+
+See [`testing/ALL_TEST_COMMANDS.txt`](file:///d:/SD%20Commercial/APPS/sdtracker/testing/ALL_TEST_COMMANDS.txt) for the complete list of testing commands and options.

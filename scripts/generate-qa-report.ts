@@ -17,7 +17,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const ROOT_DIR = process.cwd();
-const REPORTS_DIR = path.join(ROOT_DIR, 'QA Testing & Results', 'reports');
+const REPORTS_DIR = path.join(ROOT_DIR, 'testing', '03_RESULTS_AND_REPORTS');
 
 interface TestMetric {
   title: string;
