@@ -68,7 +68,7 @@ export const SDVCSDirectoryView: React.FC = () => {
     resetToDefault
   } = useTableSchema<SDVCSAgency>('vcsDirectory', VCS_AGENCIES_TABLE_COLUMNS);
 
-  const [selectedProperty, setSelectedProperty] = useState<string>(!canAccessAllSites() ? assignedSite : 'all');
+  const [selectedProperty, setSelectedProperty] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [gridMode, setGridMode] = useState<'table' | 'matrix'>('table');

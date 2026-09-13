@@ -194,7 +194,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : userAssignedHotel);
-  const [vendorFilter, setVendorFilter] = useState<FoodVendorName>('A&M');
+  const [vendorFilter, setVendorFilter] = useState<FoodVendorName | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
   const todayBounds = useMemo(() => getWeekBounds(todayStr), [todayStr]);
@@ -552,15 +552,19 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     }
 
     const isSuperAdmin = currentUserRole === 'Super Admin';
-    if (!isSuperAdmin) {
-      if (!editingLog && formData.startDate < todayStr) {
-        alert('Date From cannot be in the past (must be today or later). Only Super Admin can log records for past dates.');
-        return;
-      }
-      if (editingLog && formData.startDate < todayStr && formData.startDate !== editingLog.startDate) {
-        alert('Date From cannot be changed to a past date. Only Super Admin can select past dates.');
-        return;
-      }
+    const isAdmin = currentUserRole === 'Admin';
+    const isSiteManager = currentUserRole === 'Site Manager';
+    const isAuthorizedRole = isSuperAdmin || isAdmin || isSiteManager;
+
+    // Operational cycle allows logging for the current week bounds (todayBounds.start) or later
+    const earliestAllowedDate = isSuperAdmin ? '1970-01-01' : todayBounds.start;
+    if (!isAuthorizedRole && formData.startDate < earliestAllowedDate) {
+      alert(`Date From cannot precede the current operational week (${todayBounds.start}).`);
+      return;
+    }
+    if (!isSuperAdmin && !isAdmin && !isSiteManager && formData.startDate < todayBounds.start) {
+      alert(`Date From cannot precede the current operational week (${todayBounds.start}).`);
+      return;
     }
 
     const primaryAtt = formData.attachments && formData.attachments.length > 0 ? formData.attachments[0] : null;
@@ -582,6 +586,13 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
       setEditingLog(null);
     } else {
       addFoodVendorBuffetLog(payload);
+      // Auto-navigate view so the newly created table renders immediately
+      if (payload.startDate) {
+        setActiveWeekCursor(payload.startDate);
+      }
+      if (siteFilter !== 'all' && siteFilter !== effectiveSite && canAccessAllSites()) {
+        setSiteFilter(effectiveSite);
+      }
     }
     setIsModalOpen(false);
   };
@@ -840,14 +851,15 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
             </select>
           </div>
 
-          {/* Food Vendor Dropdown - Strictly the 4 Vendors, NO 'All' Option */}
+          {/* Food Vendor Dropdown */}
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-[#605e5c] whitespace-nowrap">Food Vendor:</span>
             <select
               value={vendorFilter}
-              onChange={e => setVendorFilter(e.target.value as FoodVendorName)}
+              onChange={e => setVendorFilter(e.target.value as FoodVendorName | 'all')}
               className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-semibold text-xs"
             >
+              <option value="all">All Food Vendors (4)</option>
               {FOUR_CORE_VENDORS.map(v => (
                 <option key={v} value={v}>{v}</option>
               ))}
@@ -927,7 +939,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                 setEditingLog(null);
                 setFormData({
                   site: siteFilter !== 'all' ? siteFilter : (allowedSites[0] || 'Brit Hotel'),
-                  vendor: vendorFilter,
+                  vendor: vendorFilter === 'all' ? FOUR_CORE_VENDORS[0] : vendorFilter,
                   weekRange: (activeWeekBounds as any)?.label || '',
                   startDate: activeWeekBounds.start,
                   endDate: activeWeekBounds.end,
@@ -1303,31 +1315,31 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                         <Calendar className="w-3.5 h-3.5 text-[#0d9488]" />
                         <span>Date From *</span>
                       </span>
-                      {currentUserRole !== 'Super Admin' ? (
-                        <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium">
-                          Today or Later
+                      {currentUserRole === 'Super Admin' || currentUserRole === 'Admin' ? (
+                        <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1 py-0.2 rounded font-medium">
+                          Administrator: All Dates
                         </span>
                       ) : (
-                        <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1 py-0.2 rounded font-medium">
-                          Super Admin: All Dates
+                        <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium">
+                          Current Week or Later
                         </span>
                       )}
                     </label>
                     <input
                       type="date"
                       value={formData.startDate}
-                      min={currentUserRole !== 'Super Admin' ? (editingLog?.startDate && editingLog.startDate < todayStr ? editingLog.startDate : todayStr) : undefined}
+                      min={currentUserRole === 'Super Admin' || currentUserRole === 'Admin' ? undefined : todayBounds.start}
                       onChange={e => handleStartDateChange(e.target.value)}
                       className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-medium"
                       required
                     />
-                    {currentUserRole !== 'Super Admin' ? (
+                    {currentUserRole !== 'Super Admin' && currentUserRole !== 'Admin' ? (
                       <p className="text-[10px] text-neutral-500 mt-0.5">
-                        Date must be today or later. Only Super Admin can select past dates.
+                        Current operational cycle ({todayBounds.start}) or later.
                       </p>
                     ) : (
                       <p className="text-[10px] text-purple-700 mt-0.5">
-                        Super Admin: Past dates permitted.
+                        Administrator: Past dates permitted.
                       </p>
                     )}
                   </div>

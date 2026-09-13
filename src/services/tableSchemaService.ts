@@ -22,6 +22,32 @@ let failureReporter: ((message: string) => void) | null = null;
 
 const notify = () => listeners.forEach(listener => listener());
 
+function readFromStorage(moduleKey: string): SerializedColumn[] | null {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const raw = localStorage.getItem(LEGACY_SCHEMA_STORAGE_PREFIX + moduleKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeToStorage(moduleKey: string, cols: SerializedColumn[]) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.setItem(LEGACY_SCHEMA_STORAGE_PREFIX + moduleKey, JSON.stringify(cols));
+  } catch {}
+}
+
+function removeFromStorage(moduleKey: string) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.removeItem(LEGACY_SCHEMA_STORAGE_PREFIX + moduleKey);
+  } catch {}
+}
+
 function serialize<T>(columns: TableColumnConfig<T>[]): SerializedColumn[] {
   return columns.map(col => ({
     key: col.key,
@@ -30,6 +56,13 @@ function serialize<T>(columns: TableColumnConfig<T>[]): SerializedColumn[] {
     required: Boolean(col.required),
     placeholder: col.placeholder || '',
     options: Array.isArray(col.options) ? col.options : undefined,
+    optionCategory: (col as any).optionCategory,
+    allowQuickAdd: (col as any).allowQuickAdd !== false,
+    helperText: (col as any).helperText || '',
+    step: (col as any).step,
+    min: (col as any).min,
+    max: (col as any).max,
+    width: (col as any).width,
     defaultValue: typeof col.defaultValue === 'function' ? undefined : col.defaultValue,
     visibleInTable: col.visibleInTable !== false,
     visibleInView: col.visibleInView !== false,
@@ -73,9 +106,29 @@ function merge<T>(saved: SerializedColumn[], defaultColumns: TableColumnConfig<T
 }
 
 export const tableSchemaService = {
-  /** Replace the cache with layouts loaded from the database. */
+  /** Replace the cache with layouts loaded from the database + merged with local persistent store. */
   hydrate(schemas: Record<string, SerializedColumn[]>) {
-    cache = { ...schemas };
+    const combined: Record<string, SerializedColumn[]> = { ...schemas };
+
+    // Inspect local storage for any existing custom layouts not yet synced to DB
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(LEGACY_SCHEMA_STORAGE_PREFIX)) {
+            const moduleKey = key.slice(LEGACY_SCHEMA_STORAGE_PREFIX.length);
+            if (!combined[moduleKey]) {
+              const localCols = readFromStorage(moduleKey);
+              if (localCols && localCols.length > 0) {
+                combined[moduleKey] = localCols;
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    cache = combined;
     notify();
   },
 
@@ -89,7 +142,16 @@ export const tableSchemaService = {
   },
 
   getSchema<T = any>(moduleKey: string, defaultColumns: TableColumnConfig<T>[]): TableColumnConfig<T>[] {
-    const saved = cache[moduleKey];
+    let saved = cache[moduleKey];
+    if (!Array.isArray(saved) || saved.length === 0) {
+      // Fall back to local persistent store
+      const local = readFromStorage(moduleKey);
+      if (local && local.length > 0) {
+        saved = local;
+        cache[moduleKey] = local;
+      }
+    }
+
     if (!Array.isArray(saved) || saved.length === 0) return defaultColumns;
     try {
       return merge(saved, defaultColumns);
@@ -99,28 +161,37 @@ export const tableSchemaService = {
     }
   },
 
-  /** Save a layout to the database; reverts the cache if the write is refused. */
+  /** Save a layout to the database and persistent local store immediately. */
   async saveSchema<T = any>(moduleKey: string, columns: TableColumnConfig<T>[]): Promise<boolean> {
     const previous = cache[moduleKey];
     const serialized = serialize(columns);
+    
+    // 1. Instant local persistence (ensures columns survive browser reloads & offline use)
     cache = { ...cache, [moduleKey]: serialized };
+    writeToStorage(moduleKey, serialized);
     notify();
 
-    const res = await apiService.saveEntityRecord('tableSchemas', { id: moduleKey, moduleKey, columns: serialized }, {
-      action: 'SETTINGS_UPDATE',
-      module: 'Settings',
-      targetItem: `Table layout: ${moduleKey}`,
-      details: `Saved table layout for ${moduleKey} (${serialized.length} columns).`
-    });
-    if (!res.success) {
-      const next = { ...cache };
-      if (previous) next[moduleKey] = previous; else delete next[moduleKey];
-      cache = next;
-      notify();
-      failureReporter?.(`Table layout for ${moduleKey} was not saved: ${res.error}`);
+    // 2. Persist to backend database entity
+    try {
+      const res = await apiService.saveEntityRecord('tableSchemas', { id: moduleKey, moduleKey, columns: serialized }, {
+        action: 'SETTINGS_UPDATE',
+        module: 'Settings',
+        targetItem: `Table layout: ${moduleKey}`,
+        details: `Saved table layout for ${moduleKey} (${serialized.length} columns).`
+      });
+
+      if (!res.success) {
+        console.warn(`[TableSchemaService] Remote save failed for ${moduleKey}, preserved locally:`, res.error);
+        // Do NOT wipe the user's custom columns from memory or localStorage.
+        failureReporter?.(`Table layout saved locally. Remote database sync warning: ${res.error}`);
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      console.warn(`[TableSchemaService] Network exception saving schema for ${moduleKey}:`, err);
+      failureReporter?.(`Table layout saved locally. Network warning: ${err?.message || err}`);
       return false;
     }
-    return true;
   },
 
   resetSchema<T = any>(moduleKey: string, defaultColumns: TableColumnConfig<T>[]): TableColumnConfig<T>[] {
@@ -128,6 +199,7 @@ export const tableSchemaService = {
     const next = { ...cache };
     delete next[moduleKey];
     cache = next;
+    removeFromStorage(moduleKey);
     notify();
 
     apiService.deleteEntityRecord('tableSchemas', moduleKey, {
@@ -139,6 +211,7 @@ export const tableSchemaService = {
       if (!res.success) {
         if (previous) {
           cache = { ...cache, [moduleKey]: previous };
+          writeToStorage(moduleKey, previous);
           notify();
         }
         failureReporter?.(`Table layout for ${moduleKey} was not reset: ${res.error}`);

@@ -161,8 +161,8 @@ class PdfDoc {
   ): void {
     let clean = String(str ?? '').trim();
     if (maxWidth && maxWidth > 0) {
-      // Estimate approximate width in pt: ~0.55 * size per character for Helvetica
-      const approxCharWidth = size * 0.55;
+      // Estimate approximate width in pt: ~0.49 * size per character for Helvetica proportional text
+      const approxCharWidth = size * 0.49;
       const maxChars = Math.floor(maxWidth / approxCharWidth);
       if (clean.length > maxChars && maxChars > 3) {
         clean = clean.slice(0, maxChars - 3) + '...';
@@ -170,7 +170,7 @@ class PdfDoc {
     }
 
     let drawX = x;
-    const estimatedWidth = clean.length * size * 0.55;
+    const estimatedWidth = clean.length * size * 0.49;
     if (align === 'right') {
       drawX = x - estimatedWidth;
     } else if (align === 'center') {
@@ -288,7 +288,9 @@ export function exportTableToPdf(options: PdfTableExportOptions): void {
   const doc = new PdfDoc(orientation);
   const pageWidth = doc.width;
   const pageHeight = doc.height;
-  const margin = isCompact ? 24 : 36;
+  const numCols = Math.max(1, headers.length);
+  // Adaptive margin based on column density
+  const margin = numCols >= 14 ? 14 : numCols >= 9 ? 18 : (isCompact ? 22 : 30);
   const printableWidth = pageWidth - margin * 2;
 
   // Header Draw helper
@@ -375,17 +377,54 @@ export function exportTableToPdf(options: PdfTableExportOptions): void {
     doc.text(pageStr, pageWidth - margin - 60, footerY, 'F1', isCompact ? 6.5 : 7.5);
   };
 
-  // Calculate column widths
-  const numCols = Math.max(1, headers.length);
-  const baseColWidth = printableWidth / numCols;
-  const colWidths: number[] = headers.map((_, idx) => {
-    const custom = options.columnStyles?.[idx]?.cellWidth;
-    if (typeof custom === 'number') return custom;
-    return baseColWidth;
+  // Dynamically adapt typography and dimensions based on column count
+  let headerFontSize = isCompact ? 7 : 8;
+  let cellFontSize = isCompact ? 6.5 : 7.5;
+  let headerHeight = isCompact ? 16 : 20;
+  let rowHeight = isCompact ? 14 : 18;
+
+  if (numCols >= 14) {
+    headerFontSize = 5.2;
+    cellFontSize = 4.8;
+    headerHeight = 18;
+    rowHeight = 13;
+  } else if (numCols >= 10) {
+    headerFontSize = 6.2;
+    cellFontSize = 5.8;
+    headerHeight = 18;
+    rowHeight = 14;
+  } else if (numCols >= 8) {
+    headerFontSize = 7.0;
+    cellFontSize = 6.6;
+    headerHeight = 19;
+    rowHeight = 15;
+  }
+
+  // Calculate proportional column weights from content
+  const colContentWeights: number[] = headers.map((hdr, colIdx) => {
+    let maxLen = hdr.length;
+    const sampleLimit = Math.min(rows.length, 30);
+    for (let r = 0; r < sampleLimit; r++) {
+      const cellText = String(rows[r]?.[colIdx] ?? '');
+      if (cellText.length > maxLen) maxLen = Math.min(cellText.length, 40);
+    }
+    return Math.max(maxLen, 4);
   });
 
-  const rowHeight = isCompact ? 14 : 18;
-  const headerHeight = isCompact ? 16 : 20;
+  const totalWeight = colContentWeights.reduce((a, b) => a + b, 0);
+  const minColWidth = numCols >= 14 ? 26 : numCols >= 9 ? 34 : 45;
+
+  let colWidths: number[] = headers.map((_, idx) => {
+    const custom = options.columnStyles?.[idx]?.cellWidth;
+    if (typeof custom === 'number') return custom;
+    const proportional = (colContentWeights[idx] / totalWeight) * printableWidth;
+    return Math.max(minColWidth, proportional);
+  });
+
+  const totalAllocated = colWidths.reduce((a, b) => a + b, 0);
+  if (totalAllocated > 0) {
+    colWidths = colWidths.map(w => (w / totalAllocated) * printableWidth);
+  }
 
   let currentY = drawPageHeader(true);
 
@@ -398,15 +437,19 @@ export function exportTableToPdf(options: PdfTableExportOptions): void {
     headers.forEach((hdr, idx) => {
       const colW = colWidths[idx];
       doc.setFillColor(255, 255, 255);
-      doc.text(
-        hdr,
-        curX + 4,
-        startY + (isCompact ? 11 : 14),
-        'F2',
-        isCompact ? 7 : 8,
-        'left',
-        colW - 8
-      );
+      const approxCharWidth = headerFontSize * 0.49;
+      const maxChars = Math.floor((colW - 6) / approxCharWidth);
+
+      if (hdr.length > maxChars && hdr.includes(' ')) {
+        const words = hdr.split(' ');
+        const mid = Math.ceil(words.length / 2);
+        const line1 = words.slice(0, mid).join(' ');
+        const line2 = words.slice(mid).join(' ');
+        doc.text(line1, curX + 3, startY + 7, 'F2', headerFontSize, 'left', colW - 6);
+        doc.text(line2, curX + 3, startY + 14, 'F2', headerFontSize, 'left', colW - 6);
+      } else {
+        doc.text(hdr, curX + 3, startY + (headerHeight / 2 + headerFontSize / 3), 'F2', headerFontSize, 'left', colW - 6);
+      }
       curX += colW;
     });
 
@@ -438,18 +481,18 @@ export function exportTableToPdf(options: PdfTableExportOptions): void {
 
     let curX = margin;
     row.forEach((cellVal, colIdx) => {
-      const colW = colWidths[colIdx] || baseColWidth;
+      const colW = colWidths[colIdx];
       const textVal = String(cellVal ?? '');
 
       doc.setFillColor(36, 36, 36);
       doc.text(
         textVal,
-        curX + 4,
-        currentY + (isCompact ? 10 : 12.5),
+        curX + 3,
+        currentY + (rowHeight / 2 + cellFontSize / 3),
         'F1',
-        isCompact ? 6.5 : 7.5,
+        cellFontSize,
         'left',
-        colW - 8
+        colW - 6
       );
       curX += colW;
     });

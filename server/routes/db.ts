@@ -737,7 +737,9 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
     // `toDatabaseRow` builds a COMPLETE row, so mapping a partial body directly
     // would blank every column the caller did not send (BUG-004). Merge onto
     // the stored record first so untouched fields survive.
-    const { data: existingRow, error: readError } = await client.from(def.table).select('*').eq('id', id).maybeSingle();
+    // Fast-path read of stored record (prefer compact data column to avoid heavy binary/text loads)
+    const selectCols = allowed.has('data') ? 'id, data, site, site_id, status' : '*';
+    const { data: existingRow, error: readError } = await client.from(def.table).select(selectCols).eq('id', id).maybeSingle();
     if (readError) {
       if (isMissingTableError(readError)) return tableMissing(res, def.table);
       return res.status(500).json({ success: false, error: readError.message });

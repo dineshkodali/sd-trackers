@@ -315,7 +315,7 @@ interface AppContextType {
 
   // 6. CRUD for Booklets to be Collected
   bookletRecords: BookletCollectionRecord[];
-  addBookletRecord: (record: Omit<BookletCollectionRecord, 'id'>) => void;
+  addBookletRecord: (record: Omit<BookletCollectionRecord, 'id'> & { id?: string }) => void;
   updateBookletRecord: (id: string, updates: Partial<BookletCollectionRecord>) => void;
   deleteBookletRecord: (id: string) => void;
   resetBookletsToDefault: () => void;
@@ -546,7 +546,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [rfaWelfareRecords, setRfaWelfareRecords] = useState<RFAWelfareCheckRecord[]>([]);
   const [dispersalRecords, setDispersalRecords] = useState<DispersalRecord[]>([]);
   const [bookletRecords, setBookletRecords] = useState<BookletCollectionRecord[]>([]);
-  const [vcsAgencies, setVcsAgencies] = useState<SDVCSAgency[]>([]);
+  const [vcsAgencies, setVcsAgencies] = useState<SDVCSAgency[]>(INITIAL_VCS_AGENCIES);
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
   const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>([]);
   const [users, setUsers] = useState<UserAccount[]>(() => INITIAL_USERS);
@@ -697,7 +697,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
     if ((res as any).record) {
-      setter(prev => prev.map(r => r.id === record.id ? { ...record, ...(res as any).record } : r));
+      setter(prev => prev.map(r => {
+        if (r.id !== record.id) return r;
+        const serverRec = (res as any).record;
+        const merged = { ...record, ...serverRec };
+        // Guard against server wiping out freshly entered dailyCounts matrix
+        if ((record as any).dailyCounts && (!serverRec.dailyCounts || Object.keys(serverRec.dailyCounts).length === 0)) {
+          (merged as any).dailyCounts = (record as any).dailyCounts;
+        }
+        return merged;
+      }));
     }
     if (audit) appendLocalAudit(audit, record.id);
     return true;
@@ -1351,7 +1360,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apply<RFAWelfareCheckRecord>('rfaWelfare', setRfaWelfareRecords);
       apply<DispersalRecord>('dispersal', setDispersalRecords);
       apply<BookletCollectionRecord>('booklets', setBookletRecords);
-      apply<SDVCSAgency>('vcsAgencies', setVcsAgencies);
+      apply<SDVCSAgency>('vcsAgencies', rows => {
+        if (rows && rows.length > 0) {
+          setVcsAgencies(rows);
+        } else {
+          setVcsAgencies(prev => (prev.length > 0 ? prev : INITIAL_VCS_AGENCIES));
+        }
+      });
       apply<DataChangeRequest>('requests', rows =>
         setDataChangeRequests([...rows].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))))
       );
@@ -3017,12 +3032,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [reportPersistFailure, appendLocalAudit]);
 
   // --- 6. CRUD: Booklets to be Collected (booklet_collections) ---
-  const addBookletRecord = useCallback((data: Omit<BookletCollectionRecord, 'id'>) => {
+  const addBookletRecord = useCallback((data: Omit<BookletCollectionRecord, 'id'> & { id?: string }) => {
     const newRecord: BookletCollectionRecord = {
       ...data,
-      id: 'bkl-' + Date.now()
+      id: data.id || ('bkl-' + Date.now())
     };
-    setBookletRecords(prev => [...prev, newRecord]);
+    setBookletRecords(prev => [newRecord, ...prev]);
     persistCreate('booklets', 'Booklet allocation', setBookletRecords, newRecord, {
       action: 'CREATE', module: 'Settings', targetItem: `Booklet: ${newRecord.bookletType} (${newRecord.language})`, site: newRecord.hotelName,
       details: 'Added booklet allocation record.'

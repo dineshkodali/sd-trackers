@@ -10,7 +10,10 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Sparkles,
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BookletCollectionRecord } from '../../types';
@@ -67,6 +70,8 @@ export const BookletCollectionView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortKey, setSortKey] = useState<string>('hotelName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  // QA-08: Discoverability tracking for newly created booklet consignments
+  const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
 
   // Modals
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
@@ -91,6 +96,11 @@ export const BookletCollectionView: React.FC = () => {
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
+      // QA-08: Always pin newly created record to top of table while highlight is active
+      if (lastCreatedId) {
+        if (a.id === lastCreatedId) return -1;
+        if (b.id === lastCreatedId) return 1;
+      }
       const valA = a[sortKey] ?? '';
       const valB = b[sortKey] ?? '';
       if (typeof valA === 'number' && typeof valB === 'number') {
@@ -100,7 +110,7 @@ export const BookletCollectionView: React.FC = () => {
         ? String(valA).localeCompare(String(valB)) 
         : String(valB).localeCompare(String(valA));
     });
-  }, [filteredRecords, sortKey, sortOrder]);
+  }, [filteredRecords, sortKey, sortOrder, lastCreatedId]);
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
@@ -112,10 +122,14 @@ export const BookletCollectionView: React.FC = () => {
   };
 
   const handleCreateSubmit = (data: Partial<BookletCollectionRecord>) => {
+    const generatedId = 'bkl-' + Date.now();
+    const assignedTargetHotel = !canAccessAllSites() 
+      ? assignedSite 
+      : (data.hotelName || (selectedHotel !== 'all' ? selectedHotel : (assignedSite || allowedSites[0])));
+
     addBookletRecord({
-      hotelName: !canAccessAllSites() 
-        ? assignedSite 
-        : (data.hotelName || (selectedHotel !== 'all' ? selectedHotel : (assignedSite || allowedSites[0]))),
+      id: generatedId,
+      hotelName: assignedTargetHotel,
       agentName: data.agentName || 'Ready Homes',
       bookletType: data.bookletType || 'Migrant Help booklets',
       language: data.language || 'English',
@@ -127,7 +141,24 @@ export const BookletCollectionView: React.FC = () => {
       ...data,
       attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
+
+    // QA-08: Ensure immediate discoverability
+    setLastCreatedId(generatedId);
+    if (canAccessAllSites() && selectedHotel !== 'all' && selectedHotel !== assignedTargetHotel) {
+      setSelectedHotel('all');
+    }
+    if (bookletTypeFilter !== 'all' && data.bookletType && bookletTypeFilter !== data.bookletType) {
+      setBookletTypeFilter('all');
+    }
+    if (searchQuery) {
+      setSearchQuery('');
+    }
     setIsCreateModalOpen(false);
+
+    // Auto-dismiss the highlight after 12 seconds
+    setTimeout(() => {
+      setLastCreatedId(prev => (prev === generatedId ? null : prev));
+    }, 12000);
   };
 
   const handleEditSubmit = (data: Partial<BookletCollectionRecord>) => {
@@ -235,7 +266,17 @@ export const BookletCollectionView: React.FC = () => {
     }
 
     if (col.key === 'hotelName') {
-      return <span className="font-semibold text-[#242424]">{value || '—'}</span>;
+      return (
+        <span className="flex items-center gap-1.5 font-semibold text-[#242424]">
+          <span>{value || '—'}</span>
+          {record.id === lastCreatedId && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse">
+              <Sparkles className="w-2.5 h-2.5" />
+              NEW
+            </span>
+          )}
+        </span>
+      );
     }
 
     if (col.key === 'numberForCollection' || col.key === 'collectedBooklets' || col.key === 'bookletsReceived') {
@@ -304,6 +345,26 @@ export const BookletCollectionView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* QA-08: Record Discoverability Alert Banner */}
+      {lastCreatedId && (
+        <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs rounded-xs shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              <strong>New Booklet Consignment Added!</strong> Record has been pinned to the top of the table and highlighted for instant access.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLastCreatedId(null)}
+            className="p-1 hover:bg-emerald-100 text-emerald-800 rounded transition-colors"
+            title="Dismiss banner"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Filters Toolbar */}
       <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -407,7 +468,14 @@ export const BookletCollectionView: React.FC = () => {
                 </tr>
               ) : (
                 sortedRecords.map(record => (
-                  <tr key={record.id} className="hover:bg-[#f3f8fd] transition-colors">
+                  <tr 
+                    key={record.id} 
+                    className={
+                      record.id === lastCreatedId
+                        ? "bg-emerald-50/70 border-l-4 border-l-emerald-600 shadow-xs transition-all duration-500"
+                        : "hover:bg-[#f3f8fd] transition-colors"
+                    }
+                  >
                     {visibleColumns.map(col => (
                       <td key={String(col.key)} className="p-2.5">
                         {renderColumnCell(col, record)}

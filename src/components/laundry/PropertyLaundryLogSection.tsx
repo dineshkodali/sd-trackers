@@ -634,15 +634,19 @@ export const PropertyLaundryLogSection: React.FC = () => {
     }
 
     const isSuperAdmin = currentUserRole === 'Super Admin';
-    if (!isSuperAdmin) {
-      if (!editingLog && formData.startDate < todayStr) {
-        alert('Date From cannot be in the past (must be today or later). Only Super Admin can log records for past dates.');
-        return;
-      }
-      if (editingLog && formData.startDate < todayStr && formData.startDate !== editingLog.startDate) {
-        alert('Date From cannot be changed to a past date. Only Super Admin can select past dates.');
-        return;
-      }
+    const isAdmin = currentUserRole === 'Admin';
+    const isSiteManager = currentUserRole === 'Site Manager';
+    const isAuthorizedRole = isSuperAdmin || isAdmin || isSiteManager;
+
+    // Operational cycle allows logging for the current week bounds (todayBounds.start) or later
+    const earliestAllowedDate = isSuperAdmin ? '1970-01-01' : todayBounds.start;
+    if (!isAuthorizedRole && formData.startDate < earliestAllowedDate) {
+      alert(`Date From cannot precede the current operational week (${todayBounds.start}).`);
+      return;
+    }
+    if (!isSuperAdmin && !isAdmin && !isSiteManager && formData.startDate < todayBounds.start) {
+      alert(`Date From cannot precede the current operational week (${todayBounds.start}).`);
+      return;
     }
 
     const effectiveSite = !canAccessAllSites()
@@ -1134,26 +1138,26 @@ export const PropertyLaundryLogSection: React.FC = () => {
                           Today or Later
                         </span>
                       ) : (
-                        <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1 py-0.2 rounded font-medium">
-                          Super Admin: All Dates
+                        <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium">
+                          Current Week or Later
                         </span>
                       )}
                     </label>
                     <input
                       type="date"
                       value={formData.startDate}
-                      min={currentUserRole !== 'Super Admin' ? (editingLog?.startDate && editingLog.startDate < todayStr ? editingLog.startDate : todayStr) : undefined}
+                      min={currentUserRole === 'Super Admin' || currentUserRole === 'Admin' ? undefined : todayBounds.start}
                       onChange={e => handleStartDateChange(e.target.value, formData.periodType)}
                       className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-medium"
                       required
                     />
-                    {currentUserRole !== 'Super Admin' ? (
+                    {currentUserRole !== 'Super Admin' && currentUserRole !== 'Admin' ? (
                       <p className="text-[10px] text-neutral-500 mt-0.5">
-                        Date must be today or later. Only Super Admin can select past dates.
+                        Current operational cycle ({todayBounds.start}) or later.
                       </p>
                     ) : (
                       <p className="text-[10px] text-purple-700 mt-0.5">
-                        Super Admin: Past dates permitted.
+                        Administrator: All dates permitted.
                       </p>
                     )}
                   </div>
