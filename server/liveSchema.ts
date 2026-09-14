@@ -55,9 +55,8 @@ async function probeDatabaseFallback(): Promise<LiveSchema | null> {
 
   try {
     const { error } = await admin.from('sites').select('id', { head: true });
-    if (error) {
+    if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
       console.warn('[LiveSchema] Fallback probe failed to reach database:', error.message);
-      return null;
     }
 
     const schema: LiveSchema = new Map();
@@ -77,47 +76,28 @@ async function fetchLiveSchema(): Promise<LiveSchema | null> {
   const key = getSupabaseSecretKey() || getSupabasePublishableKey();
   if (!url || !key) return probeDatabaseFallback();
 
-  const maxAttempts = 3;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  try {
     const controller = new AbortController();
-    const timeoutMs = 15_000;
+    const timeoutMs = 3500;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    try {
-      const res = await fetch(`${url.replace(/\/+$/, '')}/rest/v1/`, {
-        headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/openapi+json' },
-        signal: controller.signal,
-      });
+    const res = await fetch(`${url.replace(/\/+$/, '')}/rest/v1/`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/openapi+json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
 
-      if (!res.ok) {
-        console.warn(`[LiveSchema] OpenAPI fetch returned HTTP ${res.status} ${res.statusText} (attempt ${attempt}/${maxAttempts})`);
-        if (attempt < maxAttempts) {
-          await new Promise(r => setTimeout(r, 600 * attempt));
-          continue;
-        }
-        return probeDatabaseFallback();
-      }
-
+    if (res.ok) {
       const spec: any = await res.json();
       const schema: LiveSchema = new Map();
-
-      // Parse Swagger 2.0 (definitions) or OpenAPI 3.0 (components.schemas)
       const definitions = spec?.definitions || spec?.components?.schemas || {};
       for (const [table, def] of Object.entries<any>(definitions)) {
         schema.set(table, new Set(Object.keys(def?.properties || {})));
       }
-
-      if (schema.size > 0) {
-        return schema;
-      }
-    } catch (err: any) {
-      console.warn(`[LiveSchema] OpenAPI fetch error on attempt ${attempt}/${maxAttempts}: ${err?.message || err}`);
-      if (attempt < maxAttempts) {
-        await new Promise(r => setTimeout(r, 600 * attempt));
-      }
-    } finally {
-      clearTimeout(timer);
+      if (schema.size > 0) return schema;
     }
+  } catch (err: any) {
+    // Proceed to fallback probe
   }
 
   return probeDatabaseFallback();

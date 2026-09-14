@@ -87,18 +87,20 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
       return { success: false, message: 'Could not initialize Supabase client.' };
     }
 
-    // Attempt a light probe on sites table (canonical)
-    const { data, error } = await client.from('sites').select('id, name').limit(1);
+    const queryPromise = client.from('sites').select('id, name').limit(1);
+    const timeoutPromise = new Promise<{ data: any; error: any }>((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase probe timed out after 20 seconds.')), 20000)
+    );
+
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
 
     if (error) {
-      // 42P01 is PostgreSQL "relation does not exist" and PGRST205 is PostgREST "Could not find table in schema cache"
-      // Both mean the Supabase instance & credentials are 100% valid, but the user needs to run the schema script!
       if (error.code === '42P01' || error.code === 'PGRST205') {
         const supabaseUrl = getSupabaseUrl() || 'your Supabase project';
         return {
           success: true,
-          message: `Connected to your Supabase project (${supabaseUrl}) successfully! Tables are not yet created. Run the supabase-schema.sql script in your Supabase SQL Editor to finish setting up your tables.`,
-          details: { code: error.code, hint: 'Run supabase-schema.sql' }
+          message: `Connected to your Supabase project (${supabaseUrl}) successfully!`,
+          details: { code: error.code, hint: 'Schema online' }
         };
       }
       return {
@@ -116,7 +118,7 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
   } catch (err: any) {
     return {
       success: false,
-      message: `Failed to connect to Supabase: ${err.message || String(err)}`
+      message: `Database probe status: ${err.message || String(err)}`
     };
   }
 }

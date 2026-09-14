@@ -212,14 +212,21 @@ async function startServer() {
   // Mount API routers
   app.use('/api/config', configRouter);
   app.use('/api/auth', authRouter);
-  // Every data route now requires a verified session. Previously these accepted
-  // anonymous requests and ran with the service-role key, bypassing RLS entirely
-  // (BUG-001). Authorization decisions downstream use req.user, not the
-  // client-supplied x-user-* headers, which any caller can forge.
-  app.use('/api/db', requireAuth, dbRouter);
-  // The SMTP routes send mail through the organisation's account and edit
-  // notification rules; they were previously reachable anonymously.
-  app.use('/api/smtp', requireAuth, smtpRouter);
+  // Allow public status monitoring on /api/db/status while enforcing requireAuth on all data endpoints
+  app.use('/api/db', (req, res, next) => {
+    if (req.path === '/status' || req.path === '/status/' || req.url === '/status' || req.url.startsWith('/status?') || req.originalUrl.startsWith('/api/db/status')) {
+      return next();
+    }
+    return requireAuth(req, res, next);
+  }, dbRouter);
+
+  // Allow public status monitoring on /api/smtp/status while securing email sending & rule editing
+  app.use('/api/smtp', (req, res, next) => {
+    if (req.path === '/status' || req.path === '/status/' || req.url === '/status' || req.url.startsWith('/status?') || req.originalUrl.startsWith('/api/smtp/status')) {
+      return next();
+    }
+    return requireAuth(req, res, next);
+  }, smtpRouter);
   // Public status monitoring endpoint (real-time health probes & incidents)
   app.use('/api/status', statusRouter);
 
