@@ -1,0 +1,779 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e3]:
+    - banner [ref=f1e4]:
+      - generic [ref=f1e5]:
+        - generic [ref=f1e6]:
+          - generic [ref=f1e7]:
+            - generic [ref=f1e8]: S
+            - generic [ref=f1e9]: D
+            - generic [ref=f1e10]: SD
+          - generic [ref=f1e11]:
+            - generic [ref=f1e12]:
+              - generic [ref=f1e13]: SD
+              - generic [ref=f1e14]: COMMERCIAL
+            - generic [ref=f1e15]: Operations & Compliance Portal
+        - generic [ref=f1e17]: Operations Dashboard
+      - generic [ref=f1e19]:
+        - button "All Properties (16 Hotels)" [ref=f1e20] [cursor=pointer]
+        - 'button "Network status: Online" [ref=f1e27] [cursor=pointer]':
+          - generic [ref=f1e34]: Online
+        - button "Super Admin" [ref=f1e36]
+        - button "View notifications" [ref=f1e43]:
+          - generic [ref=f1e47]: "1"
+        - button "S Stack Master" [ref=f1e49]:
+          - generic [ref=f1e50]: S
+          - generic [ref=f1e51]: Stack Master
+    - generic [ref=f1e54]:
+      - complementary [ref=f1e55]:
+        - navigation [ref=f1e56]:
+          - button "Dashboard ACTIVE" [ref=f1e58]:
+            - generic [ref=f1e59]: Dashboard
+            - generic [ref=f1e64]: ACTIVE
+          - generic [ref=f1e65]:
+            - generic [ref=f1e66]: Safeguarding
+            - generic [ref=f1e68]:
+              - button "SG Referrals 0" [ref=f1e69]:
+                - generic [ref=f1e70]: SG Referrals
+                - generic [ref=f1e75]: "0"
+              - button "Toggle Archive View" [ref=f1e76]
+            - generic [ref=f1e80]:
+              - button "Vulnerable SUs 0" [ref=f1e81]:
+                - generic [ref=f1e82]: Vulnerable SUs
+                - generic [ref=f1e86]: "0"
+              - button "Toggle Archive View" [ref=f1e87]
+            - generic [ref=f1e91]:
+              - button "Challenging SUs 0" [ref=f1e92]:
+                - generic [ref=f1e93]: Challenging SUs
+                - generic [ref=f1e97]: "0"
+              - button "Toggle Archive View" [ref=f1e98]
+            - button "RFA Welfare Checks" [ref=f1e101]
+            - button "GP Appointments" [ref=f1e108]
+          - generic [ref=f1e115]:
+            - generic [ref=f1e116]: Facilities & Welfare
+            - button "Maintenance Tracker" [ref=f1e117]
+            - button "SPCD Tracker 0" [ref=f1e125]:
+              - generic [ref=f1e126]: SPCD Tracker
+              - generic [ref=f1e131]: "0"
+            - button "Public Transport" [ref=f1e132]
+            - button "Dispersal Sheet" [ref=f1e139]
+            - button "Booklet Inventory 0" [ref=f1e144]:
+              - generic [ref=f1e145]: Booklet Inventory
+              - generic [ref=f1e149]: "0"
+            - button "Laundry Support" [ref=f1e150]
+            - button "Hot Meals Tracker" [ref=f1e157]
+            - button "Escalations Log" [ref=f1e166]
+            - button "Proof Documents" [ref=f1e174]
+          - generic [ref=f1e181]:
+            - generic [ref=f1e182]: Compliance & Community
+            - button "SD-Compliance Tracker" [ref=f1e183]
+            - button "SD VCS Directory 69" [ref=f1e189]:
+              - generic [ref=f1e190]: SD VCS Directory
+              - generic [ref=f1e197]: "69"
+            - button "Reports & SharePoint" [ref=f1e198]
+            - button "Audit Security Trail" [ref=f1e204]
+            - button "Requests & Approvals" [ref=f1e216]
+          - generic [ref=f1e223]:
+            - generic [ref=f1e224]: Admin & Governance
+            - button "Properties Directory 16" [ref=f1e226]:
+              - generic [ref=f1e227]: Properties Directory
+              - generic [ref=f1e231]: "16"
+            - button "Staff & User Accounts 5" [ref=f1e232]:
+              - generic [ref=f1e233]: Staff & User Accounts
+              - generic [ref=f1e239]: "5"
+            - button "Roles & RBAC Matrix" [ref=f1e240]
+            - button "Field Options & Setup" [ref=f1e246]
+            - button "System Preferences" [ref=f1e250]
+            - button "Email Notifications 19" [ref=f1e254]:
+              - generic [ref=f1e255]: Email Notifications
+              - generic [ref=f1e262]: "19"
+      - main [ref=f1e263]:
+        - generic [ref=f1e264]:
+          - generic [ref=f1e265]:
+            - generic [ref=f1e266]:
+              - heading "SD Commercial Trackers Dashboard" [level=2] [ref=f1e267]
+              - paragraph [ref=f1e268]: Commercial operations, resident safeguarding trackers, facility logs, and compliance analytics across contracted accommodation sites.
+            - generic [ref=f1e269]:
+              - button "Quick Incident Log" [ref=f1e270]
+              - button "+ New Record" [ref=f1e277]
+              - button "Customize Widgets" [ref=f1e281]
+              - generic [ref=f1e285]:
+                - button "Export" [ref=f1e286]
+                - button "Export format & options" [ref=f1e291]
+          - generic [ref=f1e294]:
+            - generic [ref=f1e295] [cursor=pointer]:
+              - generic [ref=f1e297]:
+                - text: Total Active Referrals
+                - generic [ref=f1e298]: "0"
+                - paragraph [ref=f1e299]: 0 Open • 0 In Progress
+              - generic [ref=f1e306]: Manage Referrals
+            - generic [ref=f1e311] [cursor=pointer]:
+              - generic [ref=f1e313]:
+                - text: Open Escalations
+                - generic [ref=f1e314]: "0"
+                - paragraph [ref=f1e315]: Requiring multi-agency & emergency review
+              - generic [ref=f1e319]: Review Escalations
+            - generic [ref=f1e324] [cursor=pointer]:
+              - generic [ref=f1e326]:
+                - text: Total Properties Managed
+                - generic [ref=f1e327]: "16"
+                - paragraph [ref=f1e328]: Official contracted accommodation sites
+              - generic [ref=f1e334]: View Properties Directory
+          - generic [ref=f1e339]:
+            - generic [ref=f1e340]:
+              - generic [ref=f1e341]:
+                - generic [ref=f1e342]: Hotel / Site
+                - combobox [ref=f1e344]:
+                  - option "All Permitted Sites (16)" [selected]
+                  - option "Brit Hotel"
+                  - option "Leigham Court Hotel"
+                  - option "Maida Vale Aparthotel"
+                  - option "Clapham South Dudley Hotel"
+                  - option "Holiday Inn Lambeth"
+                  - option "Stansted Hotel (Ibis Budget Bisop Stortford)"
+                  - option "Holiday Inn Old Street"
+                  - option "Holiday Inn Swiss Cottage"
+                  - option "Ibis Cardiff City Centre"
+                  - option "Hilton Hampton - Ealing"
+                  - option "Ibis Styles - Seven Kings"
+                  - option "Clacton Pier Avenue"
+                  - option "Lea Halls"
+                  - option "Mercure Heathrow Hotel"
+                  - option "Parmiter PDA"
+                  - option "Burrows Court"
+              - generic [ref=f1e345]:
+                - generic [ref=f1e346]: Month / Period
+                - combobox [ref=f1e347]:
+                  - option "All Months" [selected]
+                  - option "June 2026"
+                  - option "May 2026"
+                  - option "April 2026"
+                  - option "March 2026"
+                  - option "February 2026"
+                  - option "January 2026"
+              - generic [ref=f1e348]:
+                - generic [ref=f1e349]: Status
+                - combobox [ref=f1e350]:
+                  - option "All Statuses" [selected]
+                  - option "Open"
+                  - option "In progress"
+                  - option "Completed"
+                  - option "Pending"
+                  - option "Archived"
+              - generic [ref=f1e351]:
+                - generic [ref=f1e352]: Quick Search
+                - textbox "Filter by name, Port/NASS ref, room, or notes..." [ref=f1e355]
+              - generic [ref=f1e356]:
+                - button "Reset" [ref=f1e357]
+                - generic [ref=f1e363]:
+                  - button "Export" [ref=f1e364]
+                  - button "Choose export format (PDF or CSV)" [ref=f1e369]
+            - generic [ref=f1e372]:
+              - generic [ref=f1e373]:
+                - generic [ref=f1e374]:
+                  - text: "Matching records:"
+                  - strong [ref=f1e375]: "0"
+                - generic [ref=f1e376]: Instant search & filter with recent search history
+              - generic [ref=f1e377]:
+                - button "Cards" [ref=f1e378] [cursor=pointer]
+                - button "Table" [ref=f1e385] [cursor=pointer]
+          - generic [ref=f1e388]:
+            - generic [ref=f1e389]:
+              - generic [ref=f1e390]: Total Active Cases
+              - strong [ref=f1e397]: "0"
+              - text: Across active modules
+            - generic [ref=f1e398]:
+              - generic [ref=f1e399]: Open Status
+              - strong [ref=f1e404]: "0"
+              - text: Awaiting LA allocation
+            - generic [ref=f1e405]:
+              - generic [ref=f1e406]: In Progress
+              - strong [ref=f1e411]: "0"
+              - text: Under team review
+            - generic [ref=f1e412]:
+              - generic [ref=f1e413]: Completed
+              - strong [ref=f1e418]: "0"
+              - text: Safeguarding resolved
+            - generic [ref=f1e419]:
+              - generic [ref=f1e420]: Sites Shown
+              - strong [ref=f1e426]:
+                - text: "0"
+                - generic [ref=f1e427]: / 16
+              - text: Permitted hotels
+          - generic [ref=f1e428]:
+            - generic [ref=f1e429]:
+              - generic [ref=f1e430]:
+                - generic [ref=f1e436]:
+                  - heading "Operational Trends & Visual Analytics Manager Overview" [level=2] [ref=f1e437]:
+                    - text: Operational Trends & Visual Analytics
+                    - generic [ref=f1e438]: Manager Overview
+                  - paragraph [ref=f1e439]: Monthly incidence distribution and safeguarding referral pipeline trends across all contracted hotels.
+                - generic [ref=f1e440]:
+                  - generic [ref=f1e441]:
+                    - generic [ref=f1e442]: Current Scope
+                    - text: All Accommodations (16 Sites)
+                  - button "Escalations" [ref=f1e443]
+                  - button "Referrals" [ref=f1e448]
+              - generic [ref=f1e453]:
+                - generic [ref=f1e454]:
+                  - generic [ref=f1e455]: Total Incidents (6 Mo)
+                  - generic [ref=f1e459]:
+                    - generic [ref=f1e460]: "0"
+                    - generic [ref=f1e461]: +0% MoM
+                  - generic [ref=f1e462]: Escalations & behavioral reports combined
+                - generic [ref=f1e463]:
+                  - generic [ref=f1e464]: Primary Incident Category
+                  - generic [ref=f1e468]: None
+                  - generic [ref=f1e470]: 0 logged (0% of all incidents)
+                - generic [ref=f1e471]:
+                  - generic [ref=f1e472]: Referral Resolution Rate
+                  - generic [ref=f1e477]:
+                    - generic [ref=f1e478]: 0%
+                    - generic [ref=f1e479]: (0/0 resolved)
+                  - generic [ref=f1e480]: Closed or permanent aids provided
+                - generic [ref=f1e481]:
+                  - generic [ref=f1e482]: Active Pipeline Backlog
+                  - generic [ref=f1e487]:
+                    - generic [ref=f1e488]: "0"
+                    - generic [ref=f1e489]: (0 Open · 0 In Prog)
+                  - generic [ref=f1e490]: Awaiting local authority allocation or visit
+              - generic [ref=f1e491]:
+                - generic [ref=f1e492]:
+                  - generic [ref=f1e493]:
+                    - generic [ref=f1e494]:
+                      - generic [ref=f1e495]:
+                        - heading "Monthly Incident Types Breakdown" [level=3] [ref=f1e496]
+                        - paragraph [ref=f1e500]: Monthly volume categorized by risk vector and operational impact
+                      - generic [ref=f1e501]:
+                        - button "Stacked" [ref=f1e502]
+                        - button "Grouped" [ref=f1e503]
+                        - button "Share" [ref=f1e504]
+                    - generic [ref=f1e511]:
+                      - list [ref=f1e513]:
+                        - listitem [ref=f1e514]:
+                          - img "Conflict legend icon" [ref=f1e515]
+                          - text: Conflict
+                        - listitem [ref=f1e517]:
+                          - img "Curfew legend icon" [ref=f1e518]
+                          - text: Curfew
+                        - listitem [ref=f1e520]:
+                          - img "Medical legend icon" [ref=f1e521]
+                          - text: Medical
+                        - listitem [ref=f1e523]:
+                          - img "Property legend icon" [ref=f1e524]
+                          - text: Property
+                        - listitem [ref=f1e526]:
+                          - img "Safeguarding legend icon" [ref=f1e527]
+                          - text: Safeguarding
+                        - listitem [ref=f1e529]:
+                          - img "Substance legend icon" [ref=f1e530]
+                          - text: Substance
+                      - application [ref=f1e532]:
+                        - generic [ref=f1e537]:
+                          - generic [ref=f1e538]:
+                            - generic [ref=f1e539]: Jan '26
+                            - generic [ref=f1e541]: Feb '26
+                            - generic [ref=f1e543]: Mar '26
+                            - generic [ref=f1e545]: Apr '26
+                            - generic [ref=f1e547]: May '26
+                            - generic [ref=f1e549]: Jun '26
+                          - generic [ref=f1e551]:
+                            - generic [ref=f1e552]: "0"
+                            - generic [ref=f1e554]: "1"
+                            - generic [ref=f1e556]: "2"
+                            - generic [ref=f1e558]: "3"
+                            - generic [ref=f1e560]: "4"
+                  - generic [ref=f1e562]:
+                    - generic [ref=f1e563]: Aggregate data includes 999 hospital escorts, room conflicts & MASH notices.
+                    - generic [ref=f1e564]: 0 Total Records
+                - generic [ref=f1e565]:
+                  - generic [ref=f1e566]:
+                    - generic [ref=f1e567]:
+                      - generic [ref=f1e568]:
+                        - heading "Safeguarding Referral Status Trends" [level=3] [ref=f1e569]
+                        - paragraph [ref=f1e574]: Monthly progression of Open, In Progress, and Completed cases
+                      - generic [ref=f1e575]:
+                        - button "Pipeline Area" [ref=f1e576]
+                        - button "Trend Lines" [ref=f1e577]
+                    - generic [ref=f1e580]:
+                      - list [ref=f1e582]:
+                        - listitem [ref=f1e583]:
+                          - img "Completed legend icon" [ref=f1e584]
+                          - text: Completed
+                        - listitem [ref=f1e586]:
+                          - img "In Progress legend icon" [ref=f1e587]
+                          - text: In Progress
+                        - listitem [ref=f1e589]:
+                          - img "Open (New) legend icon" [ref=f1e590]
+                          - text: Open (New)
+                      - application [ref=f1e592]:
+                        - generic [ref=f1e597]:
+                          - generic [ref=f1e598]:
+                            - generic [ref=f1e599]: Jan '26
+                            - generic [ref=f1e601]: Feb '26
+                            - generic [ref=f1e603]: Mar '26
+                            - generic [ref=f1e605]: Apr '26
+                            - generic [ref=f1e607]: May '26
+                            - generic [ref=f1e609]: Jun '26
+                          - generic [ref=f1e611]:
+                            - generic [ref=f1e612]: "0"
+                            - generic [ref=f1e614]: "1"
+                            - generic [ref=f1e616]: "2"
+                            - generic [ref=f1e618]: "3"
+                            - generic [ref=f1e620]: "4"
+                  - generic [ref=f1e622]:
+                    - generic [ref=f1e623]: Tracks timeline from Mosaic submission to key worker sign-off.
+                    - generic [ref=f1e624]: 0% Overall Resolution
+              - generic [ref=f1e625]:
+                - generic [ref=f1e626]:
+                  - generic [ref=f1e631]:
+                    - heading "Monthly Incident Types Breakdown Matrix Cross-Tabular Audit" [level=3] [ref=f1e632]:
+                      - text: Monthly Incident Types Breakdown Matrix
+                      - generic [ref=f1e633]: Cross-Tabular Audit
+                    - paragraph [ref=f1e634]: Detailed chronological matrix of all logged behavioral, medical, and property incidents across accommodation sites.
+                  - generic [ref=f1e635]:
+                    - button "Copy for Excel" [ref=f1e636]
+                    - button "Export CSV" [ref=f1e641]
+                    - button "Escalations Log" [ref=f1e646]
+                - table [ref=f1e652]:
+                  - rowgroup [ref=f1e653]:
+                    - row [ref=f1e654]:
+                      - columnheader "Month Period" [ref=f1e655]
+                      - columnheader "Medical" [ref=f1e656]:
+                        - generic "Medical Emergency" [ref=f1e659]: Medical
+                      - columnheader "Conflict" [ref=f1e660]:
+                        - generic "Behavioral & Conflict" [ref=f1e663]: Conflict
+                      - columnheader "Safeguarding" [ref=f1e664]:
+                        - generic "Safeguarding & Welfare" [ref=f1e667]: Safeguarding
+                      - columnheader "Curfew" [ref=f1e668]:
+                        - generic "Curfew & Absence" [ref=f1e671]: Curfew
+                      - columnheader "Property" [ref=f1e672]:
+                        - generic "Property & Hazard" [ref=f1e675]: Property
+                      - columnheader "Substance" [ref=f1e676]:
+                        - generic "Substance Misuse" [ref=f1e679]: Substance
+                      - columnheader "Total Month" [ref=f1e680]
+                  - rowgroup [ref=f1e681]:
+                    - row [ref=f1e682]:
+                      - cell "Jan '26" [ref=f1e683]
+                      - cell "—" [ref=f1e687]
+                      - cell "—" [ref=f1e688]
+                      - cell "—" [ref=f1e689]
+                      - cell "—" [ref=f1e690]
+                      - cell "—" [ref=f1e691]
+                      - cell "—" [ref=f1e692]
+                      - cell "0" [ref=f1e693]
+                    - row [ref=f1e694]:
+                      - cell "Feb '26" [ref=f1e695]
+                      - cell "—" [ref=f1e699]
+                      - cell "—" [ref=f1e700]
+                      - cell "—" [ref=f1e701]
+                      - cell "—" [ref=f1e702]
+                      - cell "—" [ref=f1e703]
+                      - cell "—" [ref=f1e704]
+                      - cell "0" [ref=f1e705]
+                    - row [ref=f1e706]:
+                      - cell "Mar '26" [ref=f1e707]
+                      - cell "—" [ref=f1e711]
+                      - cell "—" [ref=f1e712]
+                      - cell "—" [ref=f1e713]
+                      - cell "—" [ref=f1e714]
+                      - cell "—" [ref=f1e715]
+                      - cell "—" [ref=f1e716]
+                      - cell "0" [ref=f1e717]
+                    - row [ref=f1e718]:
+                      - cell "Apr '26" [ref=f1e719]
+                      - cell "—" [ref=f1e723]
+                      - cell "—" [ref=f1e724]
+                      - cell "—" [ref=f1e725]
+                      - cell "—" [ref=f1e726]
+                      - cell "—" [ref=f1e727]
+                      - cell "—" [ref=f1e728]
+                      - cell "0" [ref=f1e729]
+                    - row [ref=f1e730]:
+                      - cell "May '26" [ref=f1e731]
+                      - cell "—" [ref=f1e735]
+                      - cell "—" [ref=f1e736]
+                      - cell "—" [ref=f1e737]
+                      - cell "—" [ref=f1e738]
+                      - cell "—" [ref=f1e739]
+                      - cell "—" [ref=f1e740]
+                      - cell "0" [ref=f1e741]
+                    - row [ref=f1e742]:
+                      - cell "Jun '26" [ref=f1e743]
+                      - cell "—" [ref=f1e747]
+                      - cell "—" [ref=f1e748]
+                      - cell "—" [ref=f1e749]
+                      - cell "—" [ref=f1e750]
+                      - cell "—" [ref=f1e751]
+                      - cell "—" [ref=f1e752]
+                      - cell "0" [ref=f1e753]
+                  - rowgroup [ref=f1e754]:
+                    - row [ref=f1e755]:
+                      - cell "Grand Totals" [ref=f1e756]
+                      - cell "0" [ref=f1e757]
+                      - cell "0" [ref=f1e758]
+                      - cell "0" [ref=f1e759]
+                      - cell "0" [ref=f1e760]
+                      - cell "0" [ref=f1e761]
+                      - cell "0" [ref=f1e762]
+                      - cell "0" [ref=f1e763]
+                - generic [ref=f1e764]:
+                  - generic [ref=f1e765]: Includes verified incident logs from Police CAD dispatch, 999 paramedic callouts, warning notices, and staff logs.
+                  - generic [ref=f1e766]:
+                    - text: "6-Month Cumulative Total:"
+                    - strong [ref=f1e767]: 0 Incidents
+              - generic [ref=f1e768]:
+                - heading "Duty Manager Operational Briefing & Action Checklist" [level=4] [ref=f1e773]
+                - generic [ref=f1e774]:
+                  - generic [ref=f1e775]:
+                    - generic [ref=f1e776]: 1. Incident Priority Areas
+                    - paragraph [ref=f1e777]:
+                      - strong [ref=f1e778]: None
+                      - text: accounts for 0% of logged escalations. Verify overnight security cover and clear access routes during regular audits.
+                  - generic [ref=f1e779]:
+                    - generic [ref=f1e780]: 2. Active Referrals Tracker
+                    - paragraph [ref=f1e781]:
+                      - text: There are currently
+                      - strong [ref=f1e782]: 0 open referrals
+                      - text: awaiting local authority key worker assignment. Schedule routine Mosaic portal follow-ups on day 5 post-submission.
+                  - generic [ref=f1e783]:
+                    - generic [ref=f1e784]: 3. Case Completion Review
+                    - paragraph [ref=f1e785]:
+                      - text: Current case completion rate stands at
+                      - strong [ref=f1e786]: 0%
+                      - text: . Accommodations with ground-floor mobility adaptations show lower recurring support requests.
+            - generic [ref=f1e787]:
+              - generic [ref=f1e788]:
+                - generic [ref=f1e795]:
+                  - heading "Property Portfolio & Operational Load Breakdown Facility Comparison" [level=3] [ref=f1e796]:
+                    - text: Property Portfolio & Operational Load Breakdown
+                    - generic [ref=f1e797]: Facility Comparison
+                  - paragraph [ref=f1e798]: Live cross-site distribution of resident referrals, active escalations, and open maintenance work orders.
+                - button "Properties Directory" [ref=f1e799]
+              - generic [ref=f1e804]:
+                - generic [ref=f1e805]:
+                  - generic [ref=f1e806]:
+                    - generic [ref=f1e807]:
+                      - generic [ref=f1e808]:
+                        - heading "Brit Hotel" [level=4] [ref=f1e809]
+                        - paragraph [ref=f1e810]: "London • Capacity: 110"
+                      - generic [ref=f1e811]: Normal
+                    - generic [ref=f1e812]:
+                      - generic [ref=f1e813]:
+                        - generic [ref=f1e814]: Referrals
+                        - text: "0"
+                      - generic [ref=f1e815]:
+                        - generic [ref=f1e816]: Escalations
+                        - text: "0"
+                      - generic [ref=f1e817]:
+                        - generic [ref=f1e818]: Repairs
+                        - text: "0"
+                  - generic [ref=f1e819]:
+                    - generic [ref=f1e820]: "Lead: Michael Thorne"
+                    - button "Filter Site" [ref=f1e821]
+                - generic [ref=f1e825]:
+                  - generic [ref=f1e826]:
+                    - generic [ref=f1e827]:
+                      - generic [ref=f1e828]:
+                        - heading "Leigham Court Hotel" [level=4] [ref=f1e829]
+                        - paragraph [ref=f1e830]: "Streatham, London • Capacity: 85"
+                      - generic [ref=f1e831]: Normal
+                    - generic [ref=f1e832]:
+                      - generic [ref=f1e833]:
+                        - generic [ref=f1e834]: Referrals
+                        - text: "0"
+                      - generic [ref=f1e835]:
+                        - generic [ref=f1e836]: Escalations
+                        - text: "0"
+                      - generic [ref=f1e837]:
+                        - generic [ref=f1e838]: Repairs
+                        - text: "0"
+                  - generic [ref=f1e839]:
+                    - generic [ref=f1e840]: "Lead: Sarah Jenkins"
+                    - button "Filter Site" [ref=f1e841]
+                - generic [ref=f1e845]:
+                  - generic [ref=f1e846]:
+                    - generic [ref=f1e847]:
+                      - generic [ref=f1e848]:
+                        - heading "Maida Vale Aparthotel" [level=4] [ref=f1e849]
+                        - paragraph [ref=f1e850]: "Maida Vale, London • Capacity: 95"
+                      - generic [ref=f1e851]: Normal
+                    - generic [ref=f1e852]:
+                      - generic [ref=f1e853]:
+                        - generic [ref=f1e854]: Referrals
+                        - text: "0"
+                      - generic [ref=f1e855]:
+                        - generic [ref=f1e856]: Escalations
+                        - text: "0"
+                      - generic [ref=f1e857]:
+                        - generic [ref=f1e858]: Repairs
+                        - text: "0"
+                  - generic [ref=f1e859]:
+                    - generic [ref=f1e860]: "Lead: David Miller"
+                    - button "Filter Site" [ref=f1e861]
+                - generic [ref=f1e865]:
+                  - generic [ref=f1e866]:
+                    - generic [ref=f1e867]:
+                      - generic [ref=f1e868]:
+                        - heading "Clapham South Dudley Hotel" [level=4] [ref=f1e869]
+                        - paragraph [ref=f1e870]: "Clapham, London • Capacity: 100"
+                      - generic [ref=f1e871]: Normal
+                    - generic [ref=f1e872]:
+                      - generic [ref=f1e873]:
+                        - generic [ref=f1e874]: Referrals
+                        - text: "0"
+                      - generic [ref=f1e875]:
+                        - generic [ref=f1e876]: Escalations
+                        - text: "0"
+                      - generic [ref=f1e877]:
+                        - generic [ref=f1e878]: Repairs
+                        - text: "0"
+                  - generic [ref=f1e879]:
+                    - generic [ref=f1e880]: "Lead: Amina Begum"
+                    - button "Filter Site" [ref=f1e881]
+                - generic [ref=f1e885]:
+                  - generic [ref=f1e886]:
+                    - generic [ref=f1e887]:
+                      - generic [ref=f1e888]:
+                        - heading "Holiday Inn Lambeth" [level=4] [ref=f1e889]
+                        - paragraph [ref=f1e890]: "Lambeth, London • Capacity: 140"
+                      - generic [ref=f1e891]: Normal
+                    - generic [ref=f1e892]:
+                      - generic [ref=f1e893]:
+                        - generic [ref=f1e894]: Referrals
+                        - text: "0"
+                      - generic [ref=f1e895]:
+                        - generic [ref=f1e896]: Escalations
+                        - text: "0"
+                      - generic [ref=f1e897]:
+                        - generic [ref=f1e898]: Repairs
+                        - text: "0"
+                  - generic [ref=f1e899]:
+                    - generic [ref=f1e900]: "Lead: Rachel O'Connor"
+                    - button "Filter Site" [ref=f1e901]
+                - generic [ref=f1e905]:
+                  - generic [ref=f1e906]:
+                    - generic [ref=f1e907]:
+                      - generic [ref=f1e908]:
+                        - heading "Stansted Hotel (Ibis Budget Bisop Stortford)" [level=4] [ref=f1e909]
+                        - paragraph [ref=f1e910]: "Bishop's Stortford / Stansted • Capacity: 120"
+                      - generic [ref=f1e911]: Normal
+                    - generic [ref=f1e912]:
+                      - generic [ref=f1e913]:
+                        - generic [ref=f1e914]: Referrals
+                        - text: "0"
+                      - generic [ref=f1e915]:
+                        - generic [ref=f1e916]: Escalations
+                        - text: "0"
+                      - generic [ref=f1e917]:
+                        - generic [ref=f1e918]: Repairs
+                        - text: "0"
+                  - generic [ref=f1e919]:
+                    - generic [ref=f1e920]: "Lead: James Wilson"
+                    - button "Filter Site" [ref=f1e921]
+              - button "View all 16 contracted accommodation properties →" [ref=f1e926]
+            - generic [ref=f1e927]:
+              - generic [ref=f1e928]:
+                - generic [ref=f1e929]:
+                  - generic [ref=f1e934]:
+                    - heading "Vulnerability Risk Profiles & Safeguarding Breakdown Risk Categorization" [level=3] [ref=f1e935]:
+                      - text: Vulnerability Risk Profiles & Safeguarding Breakdown
+                      - generic [ref=f1e936]: Risk Categorization
+                    - paragraph [ref=f1e937]: Breakdown of resident support requirements, clinical needs, and Care Act statutory risk tiers.
+                  - button "Vulnerable Registry" [ref=f1e938]
+                - generic [ref=f1e943]:
+                  - generic [ref=f1e944]:
+                    - generic [ref=f1e945]: Risk Level Distribution
+                    - generic [ref=f1e946]: 0 Active Vulnerable Residents
+                  - generic [ref=f1e947]:
+                    - 'generic "Critical Risk: 0"'
+                    - 'generic "High Risk: 0"'
+                    - 'generic "Medium Risk: 0"'
+                    - 'generic "Low Risk: 0"'
+                  - generic [ref=f1e948]:
+                    - generic [ref=f1e949]:
+                      - generic [ref=f1e951]: "Critical:"
+                      - strong [ref=f1e952]: "0"
+                    - generic [ref=f1e953]:
+                      - generic [ref=f1e955]: "High:"
+                      - strong [ref=f1e956]: "0"
+                    - generic [ref=f1e957]:
+                      - generic [ref=f1e959]: "Medium:"
+                      - strong [ref=f1e960]: "0"
+                    - generic [ref=f1e961]:
+                      - generic [ref=f1e963]: "Low:"
+                      - strong [ref=f1e964]: "0"
+                - generic [ref=f1e965]:
+                  - generic [ref=f1e966]:
+                    - generic [ref=f1e967]:
+                      - heading "Antenatal / Third Trimester Pregnancy" [level=4] [ref=f1e973]
+                      - generic [ref=f1e974]: "0"
+                    - paragraph [ref=f1e975]:
+                      - strong [ref=f1e976]: "Protocol:"
+                      - text: Midwife & GP allocation, ground floor room assignment
+                  - generic [ref=f1e977]:
+                    - generic [ref=f1e978]:
+                      - heading "Acute Mental Health & Trauma / PTSD" [level=4] [ref=f1e989]
+                      - generic [ref=f1e990]: "0"
+                    - paragraph [ref=f1e991]:
+                      - strong [ref=f1e992]: "Protocol:"
+                      - text: MASH liaison, CMHT visits, crisis line check-ins
+                  - generic [ref=f1e993]:
+                    - generic [ref=f1e994]:
+                      - heading "Mobility Impairment & Physical Disability" [level=4] [ref=f1e1003]
+                      - generic [ref=f1e1004]: "0"
+                    - paragraph [ref=f1e1005]:
+                      - strong [ref=f1e1006]: "Protocol:"
+                      - text: Ground floor accessible room, step-free access
+                  - generic [ref=f1e1007]:
+                    - generic [ref=f1e1008]:
+                      - heading "Chronic Illness / Dialysis / Cardiac" [level=4] [ref=f1e1013]
+                      - generic [ref=f1e1014]: "0"
+                    - paragraph [ref=f1e1015]:
+                      - strong [ref=f1e1016]: "Protocol:"
+                      - text: NHS hospital transport, temperature medication storage
+                  - generic [ref=f1e1017]:
+                    - generic [ref=f1e1018]:
+                      - heading "Substance Dependency / Dual Diagnosis" [level=4] [ref=f1e1024]
+                      - generic [ref=f1e1025]: "0"
+                    - paragraph [ref=f1e1026]:
+                      - strong [ref=f1e1027]: "Protocol:"
+                      - text: Community outreach signposting, safe storage
+              - generic [ref=f1e1028]:
+                - generic [ref=f1e1029]:
+                  - generic [ref=f1e1038]:
+                    - 'heading "Commercial Service Delivery Breakdown: Meals & Laundry Welfare Standards" [level=3] [ref=f1e1039]':
+                      - text: "Commercial Service Delivery Breakdown: Meals & Laundry"
+                      - generic [ref=f1e1040]: Welfare Standards
+                    - paragraph [ref=f1e1041]: Daily food safety probe temperatures, dietary fulfillment, and accommodation laundry wash-cycle turnover.
+                  - generic [ref=f1e1042]:
+                    - button "Food Tracker" [ref=f1e1043]
+                    - button "Laundry Tracker" [ref=f1e1054]
+                - generic [ref=f1e1061]:
+                  - generic [ref=f1e1062]:
+                    - generic [ref=f1e1063]:
+                      - generic [ref=f1e1068]:
+                        - heading "Hot Meals & Temperature Hygiene" [level=4] [ref=f1e1069]
+                        - paragraph [ref=f1e1070]: "UK Statutory Food Hygiene Target: ≥ 63°C"
+                      - generic [ref=f1e1071]: 100% Compliant
+                    - generic [ref=f1e1072]:
+                      - generic [ref=f1e1073]:
+                        - generic [ref=f1e1074]: Total Deliveries
+                        - text: "0"
+                      - generic [ref=f1e1075]:
+                        - generic [ref=f1e1076]: Compliant (≥63°C)
+                        - text: "0"
+                      - generic [ref=f1e1077]:
+                        - generic [ref=f1e1078]: Flagged (<63°C)
+                        - text: "0"
+                    - generic [ref=f1e1079]:
+                      - generic [ref=f1e1080]: Dietary Profiles Fulfilled
+                      - generic [ref=f1e1081]:
+                        - generic [ref=f1e1082]:
+                          - generic [ref=f1e1083]: Halal Certified
+                          - strong [ref=f1e1084]: "0"
+                        - generic [ref=f1e1085]:
+                          - generic [ref=f1e1086]: Vegetarian
+                          - strong [ref=f1e1087]: "0"
+                        - generic [ref=f1e1088]:
+                          - generic [ref=f1e1089]: Diabetic Spec
+                          - strong [ref=f1e1090]: "0"
+                        - generic [ref=f1e1091]:
+                          - generic [ref=f1e1092]: Standard
+                          - strong [ref=f1e1093]: "0"
+                  - generic [ref=f1e1094]:
+                    - generic [ref=f1e1095]:
+                      - generic [ref=f1e1100]:
+                        - heading "Laundry Facility Turnover" [level=4] [ref=f1e1101]
+                        - paragraph [ref=f1e1102]: Wash token issuance & collection schedule
+                      - generic [ref=f1e1103]: 0 Tokens Issued
+                    - generic [ref=f1e1104]:
+                      - generic [ref=f1e1105]:
+                        - generic [ref=f1e1106]: Queued
+                        - text: "0"
+                      - generic [ref=f1e1107]:
+                        - generic [ref=f1e1108]: Washing
+                        - text: "0"
+                      - generic [ref=f1e1109]:
+                        - generic [ref=f1e1110]: Drying
+                        - text: "0"
+                      - generic [ref=f1e1111]:
+                        - generic [ref=f1e1112]: Ready
+                        - text: "0"
+                    - generic [ref=f1e1113]:
+                      - generic [ref=f1e1114]:
+                        - text: "Total Intake Volume:"
+                        - strong [ref=f1e1115]: 0 Laundry Bags
+                      - generic [ref=f1e1116]: Same-day collection active
+            - generic [ref=f1e1120]:
+              - generic [ref=f1e1121]:
+                - generic [ref=f1e1128]:
+                  - 'heading "Commercial Operations Center: Laundry & Hot Food Catering Property Logs & 4-Vendor Matrix" [level=3] [ref=f1e1129]':
+                    - text: "Commercial Operations Center: Laundry & Hot Food Catering"
+                    - generic [ref=f1e1130]: Property Logs & 4-Vendor Matrix
+                  - paragraph [ref=f1e1131]: Weekly / monthly laundry linen reconciliation and 4-vendor hot buffet supply schedule across contracted properties.
+                - generic [ref=f1e1132]:
+                  - generic [ref=f1e1133]:
+                    - button "Weekly Laundry Logs" [ref=f1e1134]
+                    - button "4-Vendor Hot Food 4 Vendors" [ref=f1e1138]:
+                      - generic [ref=f1e1141]: 4-Vendor Hot Food
+                      - generic [ref=f1e1142]: 4 Vendors
+                  - button "Open Full Laundry Hub" [ref=f1e1143]
+              - generic [ref=f1e1148]:
+                - generic [ref=f1e1149]:
+                  - generic [ref=f1e1150]:
+                    - generic [ref=f1e1151]: Dirty Laundry Sent
+                    - generic [ref=f1e1152]: 0 pcs
+                    - generic [ref=f1e1153]: All contracted sites
+                  - generic [ref=f1e1154]:
+                    - generic [ref=f1e1155]: Clean Laundry Returned
+                    - generic [ref=f1e1156]: 0 pcs
+                    - generic [ref=f1e1157]: Reconciled delivery
+                  - generic [ref=f1e1158]:
+                    - generic [ref=f1e1159]: Discrepancies
+                    - generic [ref=f1e1160]: 0 items
+                    - generic [ref=f1e1161]: 0 properties flagged
+                  - generic [ref=f1e1162]:
+                    - generic [ref=f1e1163]: Logged Cycles
+                    - text: "0"
+                    - generic [ref=f1e1164]: Weekly & Monthly records
+                - generic [ref=f1e1165]:
+                  - generic [ref=f1e1166]:
+                    - generic [ref=f1e1167]: "Filter Period:"
+                    - generic [ref=f1e1168]:
+                      - button "All Logs" [ref=f1e1169]
+                      - button "Weekly" [ref=f1e1170]
+                      - button "Monthly" [ref=f1e1171]
+                  - generic [ref=f1e1172]: Showing 0 property log entries
+                - table [ref=f1e1175]:
+                  - rowgroup [ref=f1e1176]:
+                    - row [ref=f1e1177]:
+                      - columnheader "Property / Site" [ref=f1e1178]
+                      - columnheader "Log Period" [ref=f1e1179]
+                      - columnheader "Dirty Laundry Sent" [ref=f1e1180]
+                      - columnheader "Clean Laundry Returned" [ref=f1e1181]
+                      - columnheader "Discrepancies?" [ref=f1e1182]
+                      - columnheader "Remarks / Actions Taken" [ref=f1e1183]
+                      - columnheader "Logged By" [ref=f1e1184]
+                  - rowgroup [ref=f1e1185]:
+                    - row [ref=f1e1186]:
+                      - cell "No property laundry log records match the selected filter." [ref=f1e1187]
+          - generic [ref=f1e1188]:
+            - generic [ref=f1e1189]:
+              - generic [ref=f1e1190]:
+                - heading "Priority Safeguarding & High-Risk SUs (0)" [level=3] [ref=f1e1194]
+                - button "View all vulnerable" [ref=f1e1195]
+              - generic [ref=f1e1199]: No high-risk safeguarding cases reported in selected filter scope.
+            - generic [ref=f1e1201]:
+              - generic [ref=f1e1202]:
+                - heading "Quick Operations" [level=3] [ref=f1e1204]
+                - generic [ref=f1e1208]:
+                  - button "⚡ Quick Incident Log (Immediate Escalation)" [ref=f1e1209]
+                  - button "+ Register New SG Referral" [ref=f1e1220]
+                  - button "+ Log Vulnerability Assessment" [ref=f1e1225]
+                  - button "+ Log Challenging Behavior Incident" [ref=f1e1230]
+                  - button "+ Record Laundry Wash Intake" [ref=f1e1235]
+                  - button "+ Log Hot Food Temp Check" [ref=f1e1240]
+              - generic [ref=f1e1245]:
+                - generic [ref=f1e1246]: Strict Role Protection Active
+                - paragraph [ref=f1e1251]: All CRUD changes require explicit confirmation modals per system policy.
+  - generic [aria-hidden] [ref=f1e1252]: "0"

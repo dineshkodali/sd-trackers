@@ -1,0 +1,336 @@
+- generic [ref=e1]:
+  - generic [ref=e83]:
+    - banner [ref=e84]:
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e87]:
+            - generic [ref=e88]: S
+            - generic [ref=e89]: D
+            - generic [ref=e90]: SD
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e93]: SD
+              - generic [ref=e94]: COMMERCIAL
+            - generic [ref=e95]: Operations & Compliance Portal
+        - generic [ref=e97]: GP Appointments Register
+      - generic [ref=e99]:
+        - button "All Properties (17 Hotels)" [ref=e100] [cursor=pointer]
+        - 'button "Network status: Online" [ref=e107] [cursor=pointer]':
+          - generic [ref=e114]: Online
+        - button "Super Admin" [ref=e116]
+        - button "View notifications" [ref=e123]:
+          - generic [ref=e127]: "312"
+        - button "S Stack Master" [ref=e129]:
+          - generic [ref=e130]: S
+          - generic [ref=e131]: Stack Master
+    - generic [ref=e134]:
+      - complementary [ref=e135]:
+        - navigation [ref=e136]:
+          - button "Dashboard" [ref=e1717]
+          - generic [ref=e145]:
+            - generic [ref=e146]: Safeguarding
+            - generic [ref=e148]:
+              - button "SG Referrals 16" [ref=e149]:
+                - generic [ref=e150]: SG Referrals
+                - generic [ref=e155]: "16"
+              - button "Toggle Archive View" [ref=e156]
+            - generic [ref=e160]:
+              - button "Vulnerable SUs 6" [ref=e161]:
+                - generic [ref=e162]: Vulnerable SUs
+                - generic [ref=e166]: "6"
+              - button "Toggle Archive View" [ref=e167]
+            - generic [ref=e171]:
+              - button "Challenging SUs 7" [ref=e172]:
+                - generic [ref=e173]: Challenging SUs
+                - generic [ref=e177]: "7"
+              - button "Toggle Archive View" [ref=e178]
+            - button "RFA Welfare Checks 3" [ref=e181]:
+              - generic [ref=e182]: RFA Welfare Checks
+              - generic [ref=e188]: "3"
+            - button "GP Appointments 3" [ref=e189]:
+              - generic [ref=e190]: GP Appointments
+              - generic [ref=e196]: "3"
+          - generic [ref=e197]:
+            - generic [ref=e198]: Facilities & Welfare
+            - button "Maintenance Tracker 4" [ref=e199]:
+              - generic [ref=e200]: Maintenance Tracker
+              - generic [ref=e207]: "4"
+            - button "SPCD Tracker 7" [ref=e209]:
+              - generic [ref=e210]: SPCD Tracker
+              - generic [ref=e215]: "7"
+            - button "Public Transport 4" [ref=e216]:
+              - generic [ref=e217]: Public Transport
+              - generic [ref=e223]: "4"
+            - button "Dispersal Sheet 4" [ref=e224]:
+              - generic [ref=e225]: Dispersal Sheet
+              - generic [ref=e229]: "4"
+            - button "Booklet Inventory 46" [ref=e230]:
+              - generic [ref=e231]: Booklet Inventory
+              - generic [ref=e235]: "46"
+            - button "Laundry Support" [ref=e236]
+            - button "Hot Meals Tracker" [ref=e243]
+            - button "Escalations Log 9" [ref=e252]:
+              - generic [ref=e253]: Escalations Log
+              - generic [ref=e260]: "9"
+            - button "Proof Documents" [ref=e261]
+          - generic [ref=e268]:
+            - generic [ref=e269]: Compliance & Community
+            - button "SD-Compliance Tracker 5" [ref=e270]:
+              - generic [ref=e271]: SD-Compliance Tracker
+              - generic [ref=e276]: "5"
+            - button "SD VCS Directory 71" [ref=e277]:
+              - generic [ref=e278]: SD VCS Directory
+              - generic [ref=e285]: "71"
+            - button "Reports & SharePoint" [ref=e286]
+            - button "Audit Security Trail" [ref=e292]
+            - button "Requests & Approvals 1" [ref=e304]:
+              - generic [ref=e305]: Requests & Approvals
+              - generic [ref=e311]: "1"
+          - generic [ref=e312]:
+            - generic [ref=e313]: Admin & Governance
+            - button "Properties Directory 17" [ref=e315]:
+              - generic [ref=e316]: Properties Directory
+              - generic [ref=e320]: "17"
+            - button "Staff & User Accounts 11" [ref=e321]:
+              - generic [ref=e322]: Staff & User Accounts
+              - generic [ref=e328]: "11"
+            - button "Roles & RBAC Matrix" [ref=e329]
+            - button "Field Options & Setup" [ref=e335]
+            - button "System Preferences" [ref=e339]
+            - button "Email Notifications 19" [ref=e343]:
+              - generic [ref=e344]: Email Notifications
+              - generic [ref=e351]: "19"
+      - main [ref=e352]:
+        - generic [ref=e1718]:
+          - generic [ref=e1719]:
+            - generic [ref=e1720]:
+              - generic [ref=e1721]:
+                - heading "GP Appointments Register" [level=1] [ref=e1726]
+                - generic [ref=e1727]: 3 Consultations
+              - paragraph [ref=e1728]: Resident primary healthcare appointments, GP surgery referrals, time slots, attendance & clinical comments.
+            - generic [ref=e1729]:
+              - button "Customize Table" [ref=e1730]
+              - generic [ref=e1734]:
+                - button "Export" [ref=e1735]
+                - button "Export format & options" [ref=e1740]
+              - button "+ Book GP Appointment" [ref=e1743]
+          - generic [ref=e1746]:
+            - generic [ref=e1747]:
+              - generic [ref=e1748]:
+                - generic [ref=e1749]: "Site:"
+                - combobox [ref=e1750]:
+                  - option "All Sites" [selected]
+                  - option "Praneeth plaza"
+                  - option "Holiday Inn Lambeth"
+                  - option "Holiday Inn Old Street"
+                  - option "Maida Vale Aparthotel"
+                  - option "Brit Hotel"
+                  - option "Parmiter PDA"
+                  - option "Holiday Inn Swiss Cottage"
+                  - option "Ibis Styles - Seven Kings"
+                  - option "Stansted Hotel (Ibis Budget Bisop Stortford)"
+                  - option "Clapham South Dudley Hotel"
+                  - option "Hilton Hampton - Ealing"
+                  - option "Leigham Court Hotel"
+                  - option "Ibis Cardiff City Centre"
+                  - option "Clacton Pier Avenue"
+                  - option "Lea Halls"
+                  - option "Mercure Heathrow Hotel"
+                  - option "Burrows Court"
+              - generic [ref=e1751]:
+                - generic [ref=e1752]: "Status:"
+                - combobox [ref=e1753]:
+                  - option "All Statuses" [selected]
+                  - option "Scheduled"
+                  - option "Attended"
+                  - option "Did Not Attend (DNA)"
+                  - option "Rescheduled"
+                  - option "Cancelled"
+            - textbox "Search Room, Port Ref, Resident Name..." [ref=e1758]
+          - generic [ref=e1759]:
+            - table [ref=e1761]:
+              - rowgroup [ref=e1762]:
+                - row [ref=e1763]:
+                  - columnheader "Room No" [ref=e1764] [cursor=pointer]
+                  - columnheader "Port Reference" [ref=e1770] [cursor=pointer]
+                  - columnheader "Service User Name" [ref=e1776] [cursor=pointer]
+                  - columnheader "Hotel Site" [ref=e1782] [cursor=pointer]
+                  - columnheader "Referral Sent On" [ref=e1788] [cursor=pointer]
+                  - columnheader "Appointment Date" [ref=e1794] [cursor=pointer]
+                  - columnheader "Time of GP" [ref=e1799] [cursor=pointer]
+                  - columnheader "Status" [ref=e1805] [cursor=pointer]
+                  - columnheader "Comments / Clinic Notes" [ref=e1811] [cursor=pointer]
+                  - columnheader "Actions" [ref=e1817]
+              - rowgroup [ref=e1818]:
+                - row [ref=e1819]:
+                  - cell "123" [ref=e1820]
+                  - cell "PORT-TEST-1" [ref=e1821]
+                  - cell "Test User" [ref=e1822]
+                  - cell "Ibis Styles - Seven Kings" [ref=e1823]
+                  - cell "2026-09-01" [ref=e1824]
+                  - cell "2026-09-20" [ref=e1825]
+                  - cell "14:30" [ref=e1826]
+                  - cell "Attended" [ref=e1827]
+                  - cell "EDITED comment - changed!" [ref=e1829]
+                  - cell [ref=e1830]:
+                    - generic [ref=e1831]:
+                      - button "View Details Dossier" [ref=e1832]
+                      - button "Edit Appointment" [ref=e1836]
+                      - button "Delete Record" [ref=e1839]
+                - row [ref=e1843]:
+                  - cell "546" [ref=e1844]
+                  - cell "dfv4" [ref=e1845]
+                  - cell "Ramesg" [ref=e1846]
+                  - cell "Praneeth plaza" [ref=e1847]
+                  - cell "2026-09-13" [ref=e1848]
+                  - cell "2026-09-16" [ref=e1849]
+                  - cell "18:00" [ref=e1850]
+                  - cell "Scheduled" [ref=e1851]
+                  - cell "trgtr" [ref=e1853]
+                  - cell [ref=e1854]:
+                    - generic [ref=e1855]:
+                      - button "View Details Dossier" [ref=e1856]
+                      - button "Edit Appointment" [ref=e1860]
+                      - button "Delete Record" [ref=e1863]
+                - row [ref=e1867]:
+                  - cell "65" [ref=e1868]
+                  - cell "sdv34" [ref=e1869]
+                  - cell "Karthik" [ref=e1870]
+                  - cell "Stansted Hotel (Ibis Budget Bisop Stortford)" [ref=e1871]
+                  - cell "2026-09-13" [ref=e1872]
+                  - cell "2026-09-15" [ref=e1873]
+                  - cell "10:00" [ref=e1874]
+                  - cell "Scheduled" [ref=e1875]
+                  - cell "sdvcsdv" [ref=e1877]
+                  - cell [ref=e1878]:
+                    - generic [ref=e1879]:
+                      - button "View Details Dossier" [ref=e1880]
+                      - button "Edit Appointment" [active] [ref=e1884]
+                      - button "Delete Record" [ref=e1887]
+            - generic [ref=e1891]:
+              - generic [ref=e1892]:
+                - generic [ref=e1893]: "Rows per page:"
+                - combobox "Adjust page size to optimize rendering speed" [ref=e1894]:
+                  - option "10 (Fastest)" [selected]
+                  - option "25"
+                  - option "50"
+                  - option "100"
+                - generic [ref=e1895]: "|"
+                - generic [ref=e1896]:
+                  - text: Showing
+                  - strong [ref=e1897]: "1"
+                  - text: "-"
+                  - strong [ref=e1898]: "3"
+                  - text: of
+                  - strong [ref=e1899]: "3"
+              - generic [ref=e1900]:
+                - button "First Page" [disabled] [ref=e1901]
+                - button "Previous Page" [disabled] [ref=e1905]
+                - generic [ref=e1908]: Page 1 of 1
+                - button "Next Page" [disabled] [ref=e1909]
+                - button "Last Page" [disabled] [ref=e1912]
+          - generic [ref=e1917]:
+            - generic [ref=e1918]:
+              - generic [ref=e1919]:
+                - heading "Edit GP Appointment - Room 65" [level=3] [ref=e1920]
+                - paragraph [ref=e1921]: Fill in the configured fields below to create a new record.
+              - button [ref=e1922]
+            - generic [ref=e1926]:
+              - generic [ref=e1927]:
+                - heading "Resident & Room" [level=4] [ref=e1929]
+                - generic [ref=e1930]:
+                  - generic [ref=e1931]:
+                    - generic [ref=e1932]: Room No *
+                    - textbox [ref=e1935]: "65"
+                  - generic [ref=e1936]:
+                    - generic [ref=e1937]: Port Reference *
+                    - textbox [ref=e1940]: sdv34
+                  - generic [ref=e1941]:
+                    - generic [ref=e1942]: Service User Name *
+                    - textbox [ref=e1945]: Karthik
+                  - generic [ref=e1946]:
+                    - generic [ref=e1947]: Hotel Site *
+                    - combobox [ref=e1954]:
+                      - option "Select Hotel Site..." [disabled]
+                      - option "Praneeth plaza"
+                      - option "Holiday Inn Lambeth"
+                      - option "Holiday Inn Old Street"
+                      - option "Maida Vale Aparthotel"
+                      - option "Brit Hotel"
+                      - option "Parmiter PDA"
+                      - option "Holiday Inn Swiss Cottage"
+                      - option "Ibis Styles - Seven Kings"
+                      - option "Stansted Hotel (Ibis Budget Bisop Stortford)" [selected]
+                      - option "Clapham South Dudley Hotel"
+                      - option "Hilton Hampton - Ealing"
+                      - option "Leigham Court Hotel"
+                      - option "Ibis Cardiff City Centre"
+                      - option "Clacton Pier Avenue"
+                      - option "Lea Halls"
+                      - option "Mercure Heathrow Hotel"
+                      - option "Burrows Court"
+              - generic [ref=e1955]:
+                - heading "Consultation Details" [level=4] [ref=e1957]
+                - generic [ref=e1958]:
+                  - generic [ref=e1959]:
+                    - generic [ref=e1960]:
+                      - generic [ref=e1961]: Referral Sent On
+                      - generic [ref=e1963]: "Super Admin: All Dates"
+                    - generic [ref=e1966]:
+                      - textbox [ref=e1967]: 2026-09-13
+                      - generic [ref=e1969]:
+                        - generic [ref=e1970]: •
+                        - text: "Super Admin: Past dates allowed"
+                  - generic [ref=e1971]:
+                    - generic [ref=e1972]:
+                      - generic [ref=e1973]: Appointment Date *
+                      - generic [ref=e1975]: "Super Admin: All Dates"
+                    - generic [ref=e1978]:
+                      - textbox [ref=e1979]: 2026-09-15
+                      - generic [ref=e1981]:
+                        - generic [ref=e1982]: •
+                        - text: "Super Admin: Past dates allowed"
+                  - generic [ref=e1983]:
+                    - generic [ref=e1984]: Time of GP
+                    - textbox "10:00" [ref=e1987]
+                  - generic [ref=e1988]:
+                    - generic [ref=e1989]:
+                      - generic [ref=e1990]: Status
+                      - generic [ref=e1992]:
+                        - button "Status" [ref=e1993] [cursor=pointer]:
+                          - generic [ref=e1995]: Add
+                        - button "Manage choices for Status" [ref=e1996] [cursor=pointer]
+                    - combobox [ref=e2000]:
+                      - option "Select Status..." [disabled]
+                      - option "Scheduled" [selected]
+                      - option "Attended"
+                      - option "Did Not Attend (DNA)"
+                      - option "Cancelled"
+                      - option "Rescheduled"
+                      - option "➕ + Add New Option..."
+                  - generic [ref=e2001]:
+                    - generic [ref=e2002]: Comments / Clinic Notes
+                    - textbox [ref=e2005]: sdvcsdv
+              - generic [ref=e2006]:
+                - heading "Audit & Accountability" [level=4] [ref=e2008]
+                - generic [ref=e2010]:
+                  - generic [ref=e2011]:
+                    - generic [ref=e2012]: Logged By
+                    - generic [ref=e2018]: Locked to Logged-in User
+                  - textbox "Locked to logged-in user for accountability and audit logs." [disabled] [ref=e2023]: Stack Master
+              - generic [ref=e2027]:
+                - generic [ref=e2028]:
+                  - generic [ref=e2029]:
+                    - heading "Proof & Document Attachments" [level=4] [ref=e2032]
+                    - generic [ref=e2033]: 0 files
+                  - generic [ref=e2034]: Full File Management (Admins & RMs)
+                - generic [ref=e2036] [cursor=pointer]:
+                  - generic [ref=e2040]: Click or drag & drop files (single or multiple)
+                  - generic [ref=e2041]: "Accepts: PDF (.pdf), Word (.docx), Excel (.xlsx), Images (.png, .jpeg)"
+                - generic [ref=e2042]: No files or proofs attached to this record yet.
+              - generic [ref=e2043]:
+                - button "Revert Changes" [ref=e2044]
+                - generic [ref=e2045]:
+                  - button "Cancel" [ref=e2046]
+                  - button "Save Changes" [ref=e2047]
+  - generic [aria-hidden] [ref=e1716]: "6"

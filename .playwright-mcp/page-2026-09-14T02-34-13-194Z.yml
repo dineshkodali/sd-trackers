@@ -1,0 +1,48 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: S
+          - generic [ref=e11]: D
+          - generic [ref=e12]: SD
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - generic [ref=e15]: SD
+            - generic [ref=e16]: COMMERCIAL
+          - generic [ref=e17]: Operations & Compliance Portal
+      - generic [ref=e18]: Secure Enterprise Authentication
+      - heading "SD Commercial Operations Portal" [level=1] [ref=e23]
+      - paragraph [ref=e24]: Unified compliance and management system for housing operations, safeguarding referrals, resident welfare, and maintenance workflows.
+      - generic [ref=e25]:
+        - generic [ref=e32]:
+          - generic [ref=e33]: Multi-Site Accommodation
+          - generic [ref=e34]: Hotel & property operation tracking
+        - generic [ref=e39]:
+          - generic [ref=e40]: Role-Based Access Control
+          - generic [ref=e41]: Governed strictly by Role-Based Access Control
+    - generic [ref=e42]: Cloud Authentication Active
+  - generic [ref=e46]:
+    - generic [ref=e47]:
+      - generic [ref=e48]:
+        - generic [ref=e49]: Staff Authentication
+        - heading "Sign in to your account" [level=2] [ref=e50]
+        - paragraph [ref=e51]: Enter your registered credentials to access your designated properties.
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - generic [ref=e54]: Staff Email Address
+          - textbox "e.g. staff@sdcommercial.co.uk" [active] [ref=e56]
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - generic [ref=e59]: Password
+            - button "Forgot password?" [ref=e60]
+          - generic [ref=e61]:
+            - textbox "••••••••••••" [ref=e62]
+            - button [ref=e63]
+        - generic [ref=e68] [cursor=pointer]:
+          - checkbox "Remember this device" [checked] [ref=e69]
+          - generic [ref=e70]: Remember this device
+        - button "Sign In to Portal" [ref=e72] [cursor=pointer]
+    - generic [ref=e76]:
+      - generic [ref=e77]: TLS 256-bit Encrypted
+      - generic [ref=e82]: SD Commercial UK LTD
