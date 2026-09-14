@@ -474,7 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Authentication & Tokenized Session State
   const [sessionToken, setSessionTokenState] = useState<string | null>(() => loadStorage<string | null>('token', null));
   const [authProfile, setAuthProfileState] = useState<AuthUser | null>(() => loadStorage<AuthUser | null>('auth_user', null));
-  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(() => !!sessionToken);
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authBlockedState, setAuthBlockedState] = useState<AuthBlockedInfo | null>(null);
@@ -818,7 +818,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Session verification on mount or token update with diagnostic logging & blocked state detection
   useEffect(() => {
     if (sessionToken) {
-      setIsAuthChecking(true);
       diagnosticLogger.logSessionStatus('checking', 'Verifying cryptographic session and inspecting token claims...');
 
       // 1. Proactive Token Inspection
@@ -846,6 +845,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsAuthChecking(false);
         return;
       }
+
+      // Non-blocking background verification; UI is immediately interactive
+      setIsAuthChecking(false);
 
       // 2. Query Supabase session status & retrieve database profile
       apiService.verifySession(sessionToken).then(res => {
@@ -1414,7 +1416,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ? null
           : missingTables.length === failed.length
             ? `${missingTables.length} module(s) have no database table yet - an administrator must run the database migration. Those modules cannot save.`
-            : `${failed.length} module(s) could not be loaded from the live database.`,
+            : failed.length === plan.length
+              ? 'Session not authenticated. Please log in to view and save live database records.'
+              : `${failed.length} module(s) could not be loaded from the live database.`,
         unavailable: failed.map(p => p.label),
         missingTables
       });

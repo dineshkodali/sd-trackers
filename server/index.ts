@@ -1,9 +1,15 @@
 import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
+import dns from 'dns';
 import { exec } from 'child_process';
 import { createServer as createHttpServer } from 'http';
 import { createServer as createViteServer } from 'vite';
+
+// Ensure IPv4 resolution priority to avoid Windows IPv6 network stalls on cloud endpoints
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (_) {}
 
 // Load environment variables strictly from root .env file
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });

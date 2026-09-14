@@ -20,7 +20,7 @@ function intervalSeconds(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? Math.min(Math.max(n, 3), 3600) : fallback;
 }
 
-const INTERVAL_MS = intervalSeconds(process.env.STATUS_CHECK_INTERVAL_SECONDS, 10) * 1000;
+const INTERVAL_MS = intervalSeconds(process.env.STATUS_CHECK_INTERVAL_SECONDS, 60) * 1000;
 /** Consecutive checks needed before a status change is shown (1 = immediate failure reflection). */
 const CONFIRM_CHECKS = 1;
 /** Consecutive healthy checks before an automatic incident is resolved. */
@@ -236,7 +236,11 @@ class StatusMonitor {
   }
 
   start(selfBaseUrl: string) {
-    if (this.timer || process.env.STATUS_MONITOR === 'off') return;
+    // Background polling is opt-in: it was hitting the database and other
+    // services every few seconds by default, which is unnecessary noise for
+    // most deployments. GET /api/status?live=1 still runs an on-demand check
+    // without this loop. Set STATUS_MONITOR=on in .env to re-enable it.
+    if (this.timer || process.env.STATUS_MONITOR !== 'on') return;
     this.selfBaseUrl = selfBaseUrl.replace(/\/+$/, '');
     const tick = () => {
       this.runCycle().catch(err => console.error('[Status] Monitor cycle failed:', err));

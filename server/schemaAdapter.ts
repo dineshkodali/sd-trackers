@@ -276,6 +276,24 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'id', 'timestamp', 'admin_email', 'target_email', 'target_user_id',
     'action', 'status', 'error', 'created_by', 'created_at', 'updated_at'
   ]),
+  role_permissions: new Set([
+    'id', 'role', 'permissions', 'can_delete_records', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  app_settings: new Set([
+    'id', 'value', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  table_schemas: new Set([
+    'id', 'module_key', 'columns', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  field_options: new Set([
+    'id', 'category', 'label', 'value', 'order_index', 'is_default', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  email_notification_rules: new Set([
+    'id', 'rule_name', 'event_type', 'recipient_roles', 'recipient_emails', 'template_id', 'is_active', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  email_notification_logs: new Set([
+    'id', 'timestamp', 'event_type', 'recipient', 'subject', 'status', 'error', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
   ...Object.fromEntries(Object.keys(FIELD_SPECS).map(t => [t, new Set(specColumns(t))])),
 };
 

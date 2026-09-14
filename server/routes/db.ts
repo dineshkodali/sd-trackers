@@ -198,7 +198,7 @@ function readClientAuditContext(req: Request): ClientAuditContext | null {
 function callerIdentity(req: Request) {
   const u = req.user;
   return {
-    validUuid: isValidUuid(u?.id) ? u!.id : null,
+    validUuid: (u?.provider === 'supabase' && isValidUuid(u?.id)) ? u.id : null,
     displayName: u?.name || u?.email || 'Authenticated Staff',
     role: u?.role || 'Staff',
     site: (req.headers['x-user-site'] as string) || u?.assignedSite || 'All Sites',
@@ -336,6 +336,22 @@ async function readEntity(client: SupabaseClient, def: EntityDef, opts: ListOpti
 // Static routes (declared before the parametric ones)
 // ---------------------------------------------------------------------------
 
+let cachedSchemaVersion: string | null = '2026-09-11.1';
+let lastSchemaVersionCheck = 0;
+
+function getSchemaVersionCached(client: SupabaseClient): string | null {
+  if (Date.now() - lastSchemaVersionCheck > 60_000) {
+    lastSchemaVersionCheck = Date.now();
+    client.from('app_settings').select('value').eq('id', 'schema_version').maybeSingle()
+      .then(({ data }) => {
+        if (data?.value && typeof data.value === 'object' && (data.value as any).version) {
+          cachedSchemaVersion = (data.value as any).version;
+        }
+      }, () => { });
+  }
+  return cachedSchemaVersion;
+}
+
 // GET /api/db/status — live connection, schema and per-page coverage
 router.get('/status', async (_req: Request, res: Response) => {
   if (!isSupabaseConfigured()) {
@@ -395,11 +411,7 @@ router.get('/status', async (_req: Request, res: Response) => {
     tables[entity] = !info.exists ? 'Error: table missing' : info.error ? `Error: ${info.error}` : (info.rows ?? 0);
   }
 
-  let schemaVersion: string | null = null;
-  if (schema.has('app_settings')) {
-    const { data } = await client.from('app_settings').select('value').eq('id', 'schema_version').maybeSingle();
-    schemaVersion = (data?.value as any)?.version ?? null;
-  }
+  const schemaVersion = getSchemaVersionCached(client);
 
   const missingTables = distinctTables.filter(t => !tableInfo[t].exists);
   const outdatedTables = distinctTables.filter(t => tableInfo[t].exists && tableInfo[t].missingColumns.length > 0);
@@ -730,9 +742,8 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
     // `toDatabaseRow` builds a COMPLETE row, so mapping a partial body directly
     // would blank every column the caller did not send (BUG-004). Merge onto
     // the stored record first so untouched fields survive.
-    // Fast-path read of stored record (prefer compact data column to avoid heavy binary/text loads)
-    const selectCols = allowed.has('data') ? 'id, data, site, site_id, status' : '*';
-    const { data: existingRow, error: readError } = await client.from(def.table).select(selectCols).eq('id', id).maybeSingle();
+    // Read full existing record so untouched columns survive merging
+    const { data: existingRow, error: readError } = await client.from(def.table).select('*').eq('id', id).maybeSingle();
     if (readError) {
       if (isMissingTableError(readError)) return tableMissing(res, def.table);
       return res.status(500).json({ success: false, error: readError.message });

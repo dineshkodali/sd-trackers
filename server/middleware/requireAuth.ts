@@ -45,6 +45,22 @@ function bearerFrom(req: Request): string | null {
   return token.length > 0 ? token : null;
 }
 
+interface CachedSession {
+  user: AuthenticatedUser;
+  expiresAt: number;
+}
+
+const tokenCache = new Map<string, CachedSession>();
+
+/** Invalidate token cache on logout, role changes, or password updates */
+export function invalidateTokenCache(token?: string) {
+  if (token) {
+    tokenCache.delete(token);
+  } else {
+    tokenCache.clear();
+  }
+}
+
 /** Resolve a caller from a bearer token, or null. Never logs token material. */
 export async function resolveUser(token: string): Promise<AuthenticatedUser | null> {
   if (isAdminTokenFormat(token)) {
@@ -58,6 +74,13 @@ export async function resolveUser(token: string): Promise<AuthenticatedUser | nu
       assignedSite: 'All Sites',
       provider: 'built-in',
     };
+  }
+
+  // Check in-memory token cache for instant 0ms auth resolution
+  const now = Date.now();
+  const cached = tokenCache.get(token);
+  if (cached && now < cached.expiresAt) {
+    return cached.user;
   }
 
   if (!isSupabaseConfigured()) return null;
@@ -87,7 +110,7 @@ export async function resolveUser(token: string): Promise<AuthenticatedUser | nu
       return null; // suspended or inactive accounts must not transact
     }
 
-    return {
+    const resolvedUser: AuthenticatedUser = {
       id: data.user.id,
       email: data.user.email || '',
       name: profile.name || data.user.user_metadata?.name || (data.user.email || '').split('@')[0],
@@ -95,6 +118,11 @@ export async function resolveUser(token: string): Promise<AuthenticatedUser | nu
       assignedSite: profile.assigned_site || 'All Sites',
       provider: 'supabase',
     };
+
+    // Cache valid user session for 60 seconds
+    tokenCache.set(token, { user: resolvedUser, expiresAt: now + 60_000 });
+
+    return resolvedUser;
   } catch (err) {
     if (err instanceof ProfileLookupError) throw err;
     return null;

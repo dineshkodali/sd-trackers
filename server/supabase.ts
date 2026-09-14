@@ -89,7 +89,7 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
 
     const queryPromise = client.from('sites').select('id, name').limit(1);
     const timeoutPromise = new Promise<{ data: any; error: any }>((_, reject) =>
-      setTimeout(() => reject(new Error('Supabase probe timed out after 20 seconds.')), 20000)
+      setTimeout(() => reject(new Error('Supabase probe timed out after 8 seconds.')), 8000)
     );
 
     const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;

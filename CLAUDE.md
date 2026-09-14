@@ -188,11 +188,11 @@ Any string works as a custom agent type.
 
 ## Build & Test
 
-- ALWAYS run tests after code changes
-- ALWAYS verify build succeeds before committing
+- Do NOT run tests or builds automatically after every change — only run them when the user explicitly asks for a test/build run. Unprompted test/build runs burn time and tokens on every turn.
+- When asked to verify, use:
 
 ```bash
-npm run build && npm test
+npm run build && npm run test:unit
 ```
 
 ## CLI Quick Reference

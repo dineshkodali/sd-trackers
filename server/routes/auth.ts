@@ -2,8 +2,8 @@ import { Router, Request, Response } from 'express';
 import { getSupabaseAdmin, getSupabaseAnon, isSupabaseConfigured } from '../supabase.js';
 import { sendEmail, isSmtpConfigured } from '../mailer.js';
 import { getClientOrigin } from '../urlHelper.js';
-import { signAdminToken, verifyAdminToken, isAdminTokenFormat } from '../tokenSigner.js';
-import { requireAuth, requireRole } from '../middleware/requireAuth.js';
+import { signAdminToken } from '../tokenSigner.js';
+import { requireAuth, requireRole, resolveUser, invalidateTokenCache, ProfileLookupError } from '../middleware/requireAuth.js';
 
 const router = Router();
 
@@ -196,8 +196,12 @@ router.post('/login', async (req: Request, res: Response) => {
 
 // POST /api/auth/logout
 router.post('/logout', async (req: Request, res: Response) => {
-  // Optionally sign out from Supabase
   try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      invalidateTokenCache(token);
+    }
     const supabase = getSupabaseAnon();
     if (supabase) {
       await supabase.auth.signOut();
@@ -287,7 +291,7 @@ router.post('/signup', requireAuth, requireRole('Super Admin', 'Admin'), async (
   }
 });
 
-// GET /api/auth/me — Verify JWT via Supabase only (no in-memory sessions, no demo tokens)
+// GET /api/auth/me — Instant session verification with in-memory caching
 router.get('/me', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -295,75 +299,28 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 
   const token = authHeader.split(' ')[1];
-
-  // Built-in administrator token. Previously ANY string beginning `sm-jwt-` was
-  // accepted here and granted Super Admin without verification (BUG-002); the
-  // signature and expiry are now checked before any trust is extended.
-  if (isAdminTokenFormat(token)) {
-    const payload = verifyAdminToken(token);
-    if (!payload) {
+  try {
+    const user = await resolveUser(token);
+    if (!user) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
     return res.json({
       success: true,
       user: {
-        id: payload.sub,
-        email: payload.email,
-        name: 'Stack Master',
-        role: payload.role,
-        assignedSite: 'All Sites',
-        assignedSites: ['All Sites'],
-        status: 'Active',
-        provider: 'default-superadmin'
-      }
-    });
-  }
-
-  if (!isSupabaseConfigured()) {
-    return res.status(503).json({ error: 'Authentication service (Supabase) is not configured.' });
-  }
-
-  try {
-    const supabase = getSupabaseAdmin() || getSupabaseAnon();
-    if (!supabase) {
-      return res.status(503).json({ error: 'Supabase client unavailable' });
-    }
-
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-
-    // Fetch profile from database
-    const admin = getSupabaseAdmin();
-    let profile = null;
-    if (admin) {
-      const { data: profData, error: profileError } = await admin
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-      // A failed lookup must not read as "no profile" (which means Inactive):
-      // report it as temporary so the client keeps the session and retries.
-      if (profileError) {
-        return res.status(503).json({ error: 'User profile lookup is temporarily unavailable. Please retry.' });
-      }
-      profile = profData;
-    }
-
-    res.json({
-      success: true,
-      user: {
         id: user.id,
         email: user.email,
-        name: profile?.name || user.user_metadata?.name || user.email?.split('@')[0],
-        role: profile?.role || 'Staff',
-        assignedSite: profile?.assigned_site || 'All Sites',
-        // No profile means the account was never provisioned; it may not transact.
-        status: profile?.status || 'Inactive'
+        name: user.name,
+        role: user.role,
+        assignedSite: user.assignedSite,
+        assignedSites: [user.assignedSite || 'All Sites'],
+        status: 'Active',
+        provider: user.provider
       }
     });
   } catch (err: any) {
+    if (err instanceof ProfileLookupError) {
+      return res.status(503).json({ error: 'User profile lookup is temporarily unavailable. Please retry.' });
+    }
     res.status(401).json({ error: err.message || 'Token verification failed' });
   }
 });

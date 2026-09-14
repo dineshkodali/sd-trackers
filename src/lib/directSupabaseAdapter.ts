@@ -115,7 +115,8 @@ export async function directBatchFetchEntities(
     })
   );
 
-  return { success: true, results };
+  const hasAnySuccess = Object.values(results).some(r => r.success);
+  return { success: hasAnySuccess, results };
 }
 
 export async function directFetchEntityRecords<T = any>(

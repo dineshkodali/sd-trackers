@@ -147,30 +147,6 @@ export function enableDirectSupabaseFallback(): void {
 }
 
 export function shouldPreferDirectSupabase(): boolean {
-  if (directFallbackActive) return true;
-  if (typeof window !== 'undefined') {
-    try {
-      if (sessionStorage.getItem('sd_direct_supabase') === 'true') {
-        directFallbackActive = true;
-        return true;
-      }
-    } catch {}
-    const override = localStorage.getItem('sd_api_url');
-    if (override) return false;
-    const envVal = (import.meta as any).env?.VITE_API_URL || '';
-    if (!envVal) {
-      const host = window.location.hostname;
-      if (
-        host.endsWith('amplifyapp.com') ||
-        host.includes('amplify') ||
-        host.endsWith('sdcdms.co.uk') ||
-        host.includes('sdcdms') ||
-        (host !== 'localhost' && host !== '127.0.0.1' && !host.startsWith('192.168.') && !host.startsWith('10.'))
-      ) {
-        return true;
-      }
-    }
-  }
   return false;
 }
 
@@ -399,102 +375,32 @@ export const apiService = {
 
   // System Configuration & Status
   async getConfigStatus(): Promise<SystemConfigStatus> {
-    if (shouldPreferDirectSupabase()) {
-      const directClient = getBrowserSupabaseClient();
-      return {
-        status: 'ok',
-        environment: 'client-direct-supabase',
-        services: {
-          supabase: {
-            configured: Boolean(directClient),
-            url: 'https://kxikojvpcyprfbyxsdaa.supabase.co',
-            hasAnonKey: true,
-            hasServiceRoleKey: false
-          },
-          smtp: {
-            configured: true,
-            host: 'smtp.gmail.com',
-            port: 587,
-            user: 'dineshkodali16@gmail.com',
-            from: 'SD Trackers <dineshkodali16@gmail.com>'
-          }
-        }
-      };
-    }
     try {
-      const res = await fetchWithTimeout(getApiUrl('/api/config/status'), {}, 2500);
+      const res = await fetchWithTimeout(getApiUrl('/api/config/status'), {}, 5000);
       return await parseApiResponse<SystemConfigStatus>(res);
-    } catch (err) {
-      console.warn('Could not fetch config status from backend, using direct client status:', err);
-      const directClient = getBrowserSupabaseClient();
+    } catch (err: any) {
+      console.warn('Could not fetch config status from backend:', err);
       return {
-        status: 'ok',
-        environment: 'client-direct-supabase',
+        status: 'error',
+        environment: 'unknown',
         services: {
-          supabase: {
-            configured: Boolean(directClient),
-            url: 'https://kxikojvpcyprfbyxsdaa.supabase.co',
-            hasAnonKey: true,
-            hasServiceRoleKey: false
-          },
-          smtp: {
-            configured: true,
-            host: 'smtp.gmail.com',
-            port: 587,
-            user: 'dineshkodali16@gmail.com',
-            from: 'SD Trackers <dineshkodali16@gmail.com>'
-          }
+          supabase: { configured: false, url: null, hasAnonKey: false, hasServiceRoleKey: false },
+          smtp: { configured: false, host: null, port: '', user: null, from: null }
         }
       };
     }
   },
 
   async testSupabase(): Promise<{ success: boolean; message: string; details?: any }> {
-    if (shouldPreferDirectSupabase()) {
-      const direct = await directGetDbStatus();
-      if (direct.connected) {
-        return { success: true, message: direct.message || 'Connected directly to Cloud Database.', details: direct };
-      }
-      return { success: false, message: direct.error || 'Direct Cloud Database connection failed.', details: direct };
-    }
     try {
       const res = await fetch(getApiUrl('/api/config/test-supabase'), { headers: authHeaders() });
       return await parseApiResponse<any>(res);
     } catch (err: any) {
-      // Fallback: If backend proxy is unreachable (e.g. static hosting on AWS Amplify returning HTML), test direct browser connection
-      try {
-        const direct = await directGetDbStatus();
-        if (direct.connected) {
-          enableDirectSupabaseFallback();
-          return {
-            success: true,
-            message: `Connected directly to Cloud Database (${direct.message}). Direct client mode active.`,
-            details: direct
-          };
-        }
-      } catch {}
       return { success: false, message: `Request failed: ${err.message}` };
     }
   },
 
   async testSmtp(recipientEmail?: string): Promise<{ success: boolean; message: string; config?: any }> {
-    const isDirect = shouldPreferDirectSupabase() || isDirectSupabaseActive();
-    const apiUrl = getApiBaseUrl();
-
-    // If running directly on a static cloud frontend (e.g. AWS Amplify) with no custom backend API proxy:
-    if (isDirect && !apiUrl) {
-      return {
-        success: true,
-        message: 'Amplify Cloud Client Active: SMTP is configured in .env (smtp.gmail.com:587). In this static hosting environment, authentication emails (password recovery, invitations) are routed natively through the Cloud Identity Service. Operational alert events are recorded directly in the system audit logs.',
-        config: {
-          host: 'smtp.gmail.com',
-          port: 587,
-          mode: 'amplify-direct-client',
-          authService: 'Native Identity Service'
-        }
-      };
-    }
-
     try {
       const res = await fetchWithTimeout(getApiUrl('/api/smtp/test'), {
         method: 'POST',
@@ -503,18 +409,6 @@ export const apiService = {
       }, 4000);
       return await parseApiResponse<any>(res);
     } catch (err: any) {
-      if (isDirect) {
-        return {
-          success: true,
-          message: 'Amplify Cloud Client Active: SMTP is configured in .env (smtp.gmail.com:587). In static Amplify hosting, authentication emails are handled natively by the Cloud Identity Service, and operational alert events are recorded in the system audit logs.',
-          config: {
-            host: 'smtp.gmail.com',
-            port: 587,
-            mode: 'amplify-direct-client',
-            authService: 'Native Identity Service'
-          }
-        };
-      }
       return { success: false, message: `SMTP test request failed: ${err.message}` };
     }
   },
@@ -567,58 +461,15 @@ export const apiService = {
 
   // Database API — every page's data lives in the live Supabase database.
   async getDbStatus(): Promise<DbStatusResponse> {
-    if (shouldPreferDirectSupabase()) {
-      const direct = await directGetDbStatus();
-      if (direct.connected) {
-        return {
-          connected: true,
-          live: true,
-          mode: 'supabase-cloud',
-          message: direct.message,
-          totalPages: 31,
-          connectedPages: 31,
-          schemaVersion: '2026.09 (Direct Supabase Cloud)',
-          migrationRequired: false
-        };
-      }
-    }
     try {
-      const res = await fetch(getApiUrl('/api/db/status'), { headers: authHeaders() });
+      const res = await fetchWithTimeout(getApiUrl('/api/db/status'), { headers: authHeaders() }, 6000);
       const json = await parseApiResponse<DbStatusResponse>(res);
       if (!res.ok && !json?.mode) {
-        // Fallback to direct client
-        const direct = await directGetDbStatus();
-        if (direct.connected) {
-          enableDirectSupabaseFallback();
-          return {
-            connected: true,
-            live: true,
-            mode: 'supabase-cloud',
-            message: direct.message,
-            totalPages: 31,
-            connectedPages: 31,
-            schemaVersion: '2026.09 (Direct Supabase Cloud)',
-            migrationRequired: false
-          };
-        }
         return { connected: false, mode: 'offline', error: (json as any)?.error || `HTTP ${res.status}`, totalPages: 31, connectedPages: 0 };
       }
       return json;
     } catch (err: any) {
-      const direct = await directGetDbStatus();
-      if (direct.connected) {
-        enableDirectSupabaseFallback();
-        return {
-          connected: true,
-          live: true,
-          mode: 'supabase-cloud',
-          message: direct.message,
-          totalPages: 31,
-          connectedPages: 31,
-          schemaVersion: '2026.09 (Direct Supabase Cloud)',
-          migrationRequired: false
-        };
-      }
+      console.warn('Could not fetch db status from backend:', err);
       return { connected: false, mode: 'offline', error: err.message, totalPages: 31, connectedPages: 0 };
     }
   },
