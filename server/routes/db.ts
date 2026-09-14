@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getSupabaseAdmin, isSupabaseConfigured, getSupabaseUrl } from '../supabase.js';
+import { getSupabaseAdmin, isSupabaseConfigured, getSupabaseUrl, getSupabaseAnon } from '../supabase.js';
 import { runDatabaseMigrations, loadSchemaSql } from '../migrate.js';
 import { toDatabaseRow, fromDatabaseRow, TABLE_COLUMNS, DATA_TABLES, moduleLabelFor } from '../schemaAdapter.js';
 import { requireRole } from '../middleware/requireAuth.js';
