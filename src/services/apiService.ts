@@ -244,6 +244,17 @@ export function getActiveToken(): string | null {
       if (stored) {
         return stored.startsWith('"') ? JSON.parse(stored) : stored;
       }
+      // Also inspect Supabase client auth tokens in localStorage (e.g. sb-*-auth-token)
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.access_token) return parsed.access_token;
+          }
+        }
+      }
     } catch {}
   }
   return null;

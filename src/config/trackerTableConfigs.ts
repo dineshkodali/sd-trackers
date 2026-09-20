@@ -63,6 +63,8 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     label: 'Priority',
     type: 'select',
     required: true,
+    optionCategory: 'maintenancePriorities',
+    allowQuickAdd: true,
     options: [
       { label: 'CAT 1 (Emergency - 4h)', value: 'CAT 1', badgeBg: 'bg-red-100', badgeText: 'text-red-800' },
       { label: 'CAT 2 - Interim (24h)', value: 'CAT 2 - Interim', badgeBg: 'bg-amber-100', badgeText: 'text-amber-800' },
@@ -81,7 +83,10 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
   {
     key: 'priorityTimeScale',
     label: 'Priority TimeScale',
-    type: 'text',
+    type: 'select',
+    optionCategory: 'maintenanceTimeScales',
+    allowQuickAdd: true,
+    options: ['4 Hours (0 Days)', '1 (24 Hours Interim)', '2 (5 Working Days)', '3 (21 Working Days)'],
     placeholder: 'e.g. 4 Hours (0 Days), 1 (24 Hours Interim)',
     defaultValue: '4 Hours (0 Days)',
     section: 'Defect Details'
@@ -144,6 +149,8 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     label: 'Defect Status',
     type: 'select',
     required: true,
+    optionCategory: 'maintenanceStatuses',
+    allowQuickAdd: true,
     options: [
       { label: 'In Process', value: 'In Process' },
       { label: 'Completed', value: 'Completed' }
@@ -222,6 +229,8 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     label: 'Referral Council',
     type: 'select',
     required: true,
+    optionCategory: 'councils',
+    allowQuickAdd: true,
     options: (ctx) => (ctx?.councilOptions || ['Westminster City Council', 'Lambeth Council', 'Newham Council', 'Croydon Council', 'Camden Council']),
     defaultValue: 'Westminster City Council',
     section: 'Property & Council'
@@ -260,6 +269,8 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     label: 'Referral Type',
     type: 'select',
     required: true,
+    optionCategory: 'referralTypes',
+    allowQuickAdd: true,
     options: (ctx) => (ctx?.referralTypeOptions || ['Safeguarding Adult', 'Safeguarding Child', 'Mental Health Crisis', 'Modern Slavery / NRM', 'Domestic Abuse']),
     defaultValue: 'Safeguarding Adult',
     section: 'Referral Details'
@@ -269,6 +280,8 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     label: 'Urgency / Priority',
     type: 'select',
     required: true,
+    optionCategory: 'riskLevels',
+    allowQuickAdd: true,
     options: [
       { label: 'Critical / Immediate Risk', value: 'Critical' },
       { label: 'High Priority', value: 'High' },
@@ -289,6 +302,8 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     label: 'Referral Status',
     type: 'select',
     required: true,
+    optionCategory: 'referralStatuses',
+    allowQuickAdd: true,
     options: ['Open', 'In Progress', 'Awaiting LA Response', 'Allocated', 'Completed', 'Closed'],
     defaultValue: 'Open',
     badgeColors: {
@@ -313,6 +328,8 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     key: 'methodOfReferral',
     label: 'Method of Referral',
     type: 'select',
+    optionCategory: 'referralMethods',
+    allowQuickAdd: true,
     options: ['Mosaic Portal', 'Secure Email', 'Telephone Crisis Line', 'Multi-Agency Safeguarding Hub (MASH)', 'Direct Portal'],
     defaultValue: 'Mosaic Portal',
     section: 'Communication & Handling'
@@ -426,6 +443,8 @@ export const vulnerableTableConfig: TableColumnConfig<VulnerableSU>[] = [
     key: 'group',
     label: 'Demographic Group',
     type: 'select',
+    optionCategory: 'welfareResidentGroups',
+    allowQuickAdd: true,
     options: ['Single Adult', 'Family', 'Pregnant Woman', 'Elderly', 'Young Adult (18-21)', 'Medical Need'],
     defaultValue: 'Single Adult',
     section: 'Classification & Vulnerability'
@@ -443,6 +462,8 @@ export const vulnerableTableConfig: TableColumnConfig<VulnerableSU>[] = [
     label: 'Vulnerability Category',
     type: 'select',
     required: true,
+    optionCategory: 'vulnerabilities',
+    allowQuickAdd: true,
     options: ['Medical & Physical Disability', 'Mental Health & Wellbeing', 'Elderly / Frail', 'Pregnancy & Newborn', 'Trauma & PTSD', 'Substance Dependency', 'Language & Complex Needs'],
     defaultValue: 'Medical & Physical Disability',
     section: 'Classification & Vulnerability'
@@ -452,6 +473,8 @@ export const vulnerableTableConfig: TableColumnConfig<VulnerableSU>[] = [
     label: 'Risk Level',
     type: 'select',
     required: true,
+    optionCategory: 'riskLevels',
+    allowQuickAdd: true,
     options: ['Critical', 'High', 'Medium', 'Low'],
     defaultValue: 'Medium',
     badgeColors: {
@@ -467,6 +490,8 @@ export const vulnerableTableConfig: TableColumnConfig<VulnerableSU>[] = [
     label: 'Care Status',
     type: 'select',
     required: true,
+    optionCategory: 'vulnerableStatuses',
+    allowQuickAdd: true,
     options: ['Active', 'Monitoring Required', 'Stable Under Care', 'Discharged / Closed'],
     defaultValue: 'Active',
     badgeColors: {
@@ -574,6 +599,8 @@ export const challengingTableConfig: TableColumnConfig<ChallengingSU>[] = [
     key: 'group',
     label: 'Demographic Group',
     type: 'select',
+    optionCategory: 'welfareResidentGroups',
+    allowQuickAdd: true,
     options: ['Single Adult', 'Family', 'Young Adult (18-21)', 'Other'],
     defaultValue: 'Single Adult',
     section: 'Service User'
@@ -598,6 +625,8 @@ export const challengingTableConfig: TableColumnConfig<ChallengingSU>[] = [
     label: 'Status',
     type: 'select',
     required: true,
+    optionCategory: 'challengingStatuses',
+    allowQuickAdd: true,
     options: ['Open', 'Under Review', 'Resolved', 'Archived'],
     defaultValue: 'Open',
     badgeColors: {
@@ -613,6 +642,8 @@ export const challengingTableConfig: TableColumnConfig<ChallengingSU>[] = [
     label: 'Type of Issue',
     type: 'select',
     required: true,
+    optionCategory: 'incidentTypes',
+    allowQuickAdd: true,
     options: ['Verbal Aggression', 'Curfew Non-compliance', 'Room Damage', 'Substance Misuse', 'Dispute with Resident', 'Other'],
     defaultValue: 'Verbal Aggression',
     section: 'Incident Details'
@@ -663,6 +694,8 @@ export const challengingTableConfig: TableColumnConfig<ChallengingSU>[] = [
     label: 'Risk Factor',
     type: 'select',
     required: true,
+    optionCategory: 'incidentRiskFactors',
+    allowQuickAdd: true,
     options: ['Critical', 'High', 'Medium', 'Low'],
     defaultValue: 'Medium',
     badgeColors: {
@@ -796,6 +829,8 @@ export const spcdTableConfig: TableColumnConfig<SPCDRecord>[] = [
     key: 'sgReview',
     label: 'SG Review',
     type: 'select',
+    optionCategory: 'referralStatuses',
+    allowQuickAdd: true,
     options: ['Pending Safeguarding Lead Review', 'Reviewed - Compliant', 'Reviewed - Action Required', 'Closed'],
     defaultValue: 'Pending Safeguarding Lead Review',
     badgeColors: {
@@ -868,6 +903,8 @@ export const sitesTableConfig: TableColumnConfig<SiteInfo>[] = [
     label: 'Operational Status',
     type: 'select',
     required: true,
+    optionCategory: 'propertyStatuses',
+    allowQuickAdd: true,
     options: ['Active', 'Under Maintenance'],
     defaultValue: 'Active',
     badgeColors: {

@@ -291,7 +291,8 @@ export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
     canManageProperties: true,
     canManageFiles: true,
     canManageUsers: true,
-    canManageSettings: true
+    canManageSettings: true,
+    canManageFinance: true
   },
   'Admin': {
     canViewAllProperties: true,
@@ -303,7 +304,47 @@ export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
     canManageProperties: true,
     canManageFiles: true,
     canManageUsers: true,
-    canManageSettings: true
+    canManageSettings: true,
+    canManageFinance: true
+  },
+  'Finance Admin': {
+    canViewAllProperties: true,
+    canCreateRecords: true,
+    canEditRecords: true,
+    canDeleteRecords: true,
+    canArchiveRestore: true,
+    canExportData: true,
+    canManageProperties: false,
+    canManageFiles: true,
+    canManageUsers: false,
+    canManageSettings: false,
+    canManageFinance: true
+  },
+  'Finance Manager': {
+    canViewAllProperties: true,
+    canCreateRecords: true,
+    canEditRecords: true,
+    canDeleteRecords: false,
+    canArchiveRestore: true,
+    canExportData: true,
+    canManageProperties: false,
+    canManageFiles: true,
+    canManageUsers: false,
+    canManageSettings: false,
+    canManageFinance: true
+  },
+  'Finance Staff': {
+    canViewAllProperties: true,
+    canCreateRecords: true,
+    canEditRecords: true,
+    canDeleteRecords: false,
+    canArchiveRestore: false,
+    canExportData: true,
+    canManageProperties: false,
+    canManageFiles: true,
+    canManageUsers: false,
+    canManageSettings: false,
+    canManageFinance: true
   },
   'Regional Manager': {
     canViewAllProperties: true,
@@ -315,7 +356,8 @@ export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
     canManageProperties: false,
     canManageFiles: true,
     canManageUsers: false,
-    canManageSettings: false
+    canManageSettings: false,
+    canManageFinance: false
   },
   'General Manager': {
     canViewAllProperties: false,
@@ -327,7 +369,8 @@ export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
     canManageProperties: false,
     canManageFiles: false,
     canManageUsers: false,
-    canManageSettings: false
+    canManageSettings: false,
+    canManageFinance: false
   },
   'Employee': {
     canViewAllProperties: false,
@@ -339,7 +382,8 @@ export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
     canManageProperties: false,
     canManageFiles: false,
     canManageUsers: false,
-    canManageSettings: false
+    canManageSettings: false,
+    canManageFinance: false
   },
   'Site Manager': {
     canViewAllProperties: false,
@@ -351,7 +395,8 @@ export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
     canManageProperties: false,
     canManageFiles: false,
     canManageUsers: false,
-    canManageSettings: false
+    canManageSettings: false,
+    canManageFinance: false
   },
   'Staff': {
     canViewAllProperties: false,
@@ -363,7 +408,8 @@ export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
     canManageProperties: false,
     canManageFiles: false,
     canManageUsers: false,
-    canManageSettings: false
+    canManageSettings: false,
+    canManageFinance: false
   }
 };
 

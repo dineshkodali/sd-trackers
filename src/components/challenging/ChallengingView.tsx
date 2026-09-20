@@ -634,6 +634,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
         onOpenExport={handleOpenExportModal}
         totalFilteredCount={sortedData.length}
         searchStorageKey="challenging_search"
+        statusOptions={challengingStatusOptions}
       />
 
       {/* Table */}

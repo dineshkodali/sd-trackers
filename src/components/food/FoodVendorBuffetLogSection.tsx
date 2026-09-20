@@ -52,7 +52,8 @@ const BUFFET_ROWS = [
   { key: 'childDinner', label: 'Child Dinner' }
 ] as const;
 
-const FOUR_CORE_VENDORS: FoodVendorName[] = ['A&M', 'Freshbite', '9 Cuisines', 'Sands'];
+// FOUR_CORE_VENDORS is now loaded dynamically from Field Options Setup (category: 'foodVendors')
+// Do not hardcode vendors here - use getFieldOptions below in the component.
 
 const buffetExportColumns: ExportColumnOption[] = [
   { id: 'site', label: 'Property / Hotel' },
@@ -146,6 +147,7 @@ function formatWeekRangeFromDates(startDateStr: string, endDateStr: string): { w
 export const FoodVendorBuffetLogSection: React.FC = () => {
   const {
     foodVendorBuffetLogs,
+    getFieldOptions,
     allowedSites,
     addFoodVendorBuffetLog,
     updateFoodVendorBuffetLog,
@@ -159,6 +161,16 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     currentUserRole,
     currentUserName
   } = useApp();
+
+  // Dynamic food vendors from Field Options Setup - reflects live changes
+  const foodVendors = React.useMemo(() => {
+    const opts = getFieldOptions('foodVendors', false); // active only
+    if (opts && opts.length > 0) {
+      return opts.map(o => o.value || o.label);
+    }
+    // Default fallback if fieldOptions not yet loaded
+    return ['A&M', 'Freshbite', '9 Cuisines', 'Sands'];
+  }, [getFieldOptions]);
 
   const userAssignedHotel = useMemo(() => {
     if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
@@ -859,8 +871,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
               onChange={e => setVendorFilter(e.target.value as FoodVendorName | 'all')}
               className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-semibold text-xs"
             >
-              <option value="all">All Food Vendors (4)</option>
-              {FOUR_CORE_VENDORS.map(v => (
+              <option value="all">All Food Vendors ({foodVendors.length})</option>
+              {foodVendors.map(v => (
                 <option key={v} value={v}>{v}</option>
               ))}
             </select>
@@ -939,7 +951,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                 setEditingLog(null);
                 setFormData({
                   site: siteFilter !== 'all' ? siteFilter : (allowedSites[0] || 'Brit Hotel'),
-                  vendor: vendorFilter === 'all' ? FOUR_CORE_VENDORS[0] : vendorFilter,
+                  vendor: vendorFilter === 'all' ? (foodVendors[0] || '') : vendorFilter,
                   weekRange: (activeWeekBounds as any)?.label || '',
                   startDate: activeWeekBounds.start,
                   endDate: activeWeekBounds.end,
@@ -1301,7 +1313,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                     className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-semibold"
                     required
                   >
-                    {FOUR_CORE_VENDORS.map(v => <option key={v} value={v}>{v}</option>)}
+                    {foodVendors.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
               </div>

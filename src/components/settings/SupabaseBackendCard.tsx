@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Database, 
+  Copy, 
+  ExternalLink, 
   Mail, 
   CheckCircle2, 
   AlertCircle, 
@@ -69,6 +71,26 @@ export const SupabaseBackendCard: React.FC = () => {
       setSmtpResult({ success: false, message: err.message });
     } finally {
       setTestingSmtp(false);
+    }
+  };
+
+  const [copiedSql, setCopiedSql] = useState<boolean>(false);
+
+  const handleCopyFinanceSql = async () => {
+    try {
+      const res = await fetch('/api/db/finance-migration-sql', {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token') || ''}` }
+      });
+      const sqlText = res.ok ? await res.text() : '';
+      if (sqlText) {
+        await navigator.clipboard.writeText(sqlText);
+        setCopiedSql(true);
+        setTimeout(() => setCopiedSql(false), 4000);
+      } else {
+        alert('Could not retrieve migration script from server.');
+      }
+    } catch (err: any) {
+      alert('Failed to copy migration script: ' + err.message);
     }
   };
 
@@ -328,9 +350,36 @@ export const SupabaseBackendCard: React.FC = () => {
                 <Database className="w-3.5 h-3.5 text-[#0d9488]" />
                 Page Storage Coverage ({dbStatus.connectedPages ?? 31}/{dbStatus.totalPages ?? 31} pages fully connected)
               </h4>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
-                100% Relational Database Schema Synchronized
-              </span>
+              {dbStatus.missingTables && dbStatus.missingTables.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                    {dbStatus.missingTables.length} Finance Tables Awaiting Migration
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyFinanceSql}
+                    className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                    title="Copy 004_finance_module.sql to clipboard"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>{copiedSql ? 'Copied to Clipboard!' : 'Copy Migration SQL'}</span>
+                  </button>
+                  <a
+                    href="https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2 py-1 bg-white hover:bg-[#edebe9] text-[#242424] border border-[#8a8886] rounded text-[10px] font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <span>Supabase SQL Editor</span>
+                    <ExternalLink className="w-3 h-3 text-[#605e5c]" />
+                  </a>
+                </div>
+              ) : (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  100% Relational Database Schema Synchronized
+                </span>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-[11px]">
@@ -347,12 +396,25 @@ export const SupabaseBackendCard: React.FC = () => {
                     <tr key={p.entity} className="border-b border-[#f3f2f1] last:border-0 hover:bg-[#faf9f8]">
                       <td className="py-1.5 pr-3 font-medium text-[#242424]">{p.page}</td>
                       <td className="py-1.5 pr-3 font-mono text-[#605e5c]">{p.table}{p.sharedTable ? ' (shared)' : ''}</td>
-                      <td className="py-1.5 pr-3 text-right font-mono font-semibold">{p.rows ?? '-'}</td>
+                      <td className="py-1.5 pr-3 text-right font-mono font-semibold">
+                        {p.rows !== null && p.rows !== undefined ? (
+                          <span>{p.rows}</span>
+                        ) : (
+                          <span className="text-neutral-400 font-normal">-</span>
+                        )}
+                      </td>
                       <td className="py-1.5">
-                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          Connected
-                        </span>
+                        {p.connected ? (
+                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Connected
+                          </span>
+                        ) : (
+                          <span className="text-amber-700 font-semibold flex items-center gap-1" title="Table not found in Supabase schema cache. Run 004_finance_module.sql in Supabase SQL editor.">
+                            <AlertCircle className="w-3 h-3 text-amber-600" />
+                            Pending Migration (Run SQL)
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

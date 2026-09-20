@@ -19,6 +19,7 @@ import authRouter from './routes/auth.js';
 import dbRouter from './routes/db.js';
 import smtpRouter from './routes/smtp.js';
 import statusRouter from './routes/status.js';
+import financeRouter from './routes/finance.js';
 import { statusMonitor } from './status/monitor.js';
 import { runDatabaseMigrations } from './migrate.js';
 import { seedReferenceData } from './seed.js';
@@ -233,6 +234,8 @@ async function startServer() {
     }
     return requireAuth(req, res, next);
   }, smtpRouter);
+  // Mount Finance module router
+  app.use('/api/finance', requireAuth, financeRouter);
   // Public status monitoring endpoint (real-time health probes & incidents)
   app.use('/api/status', statusRouter);
 
@@ -249,7 +252,12 @@ async function startServer() {
   // Vite middleware for development / Static files for production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        watch: {
+          ignored: ['**/server/data/**', '**/dist/**', '**/*.json']
+        }
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

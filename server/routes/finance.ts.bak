@@ -1,0 +1,758 @@
+import { Router } from 'express';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { getSupabaseAdmin } from '../supabase.js';
+import { requireAuth } from '../middleware/requireAuth.js';
+
+const router = Router();
+
+// ============================================================================
+// File-backed Persistence Fallback for Finance Module
+// Guarantees zero data loss and instant round-tripping even when live Supabase
+// tables are awaiting migration execution.
+// ============================================================================
+
+const DATA_DIR = path.join(process.cwd(), 'server', 'data');
+const FINANCE_STORAGE_FILE = path.join(DATA_DIR, 'finance_storage.json');
+
+interface LocalFinanceStore {
+  bills: any[];
+  items: any[];
+  attachments: any[];
+  vendors: any[];
+  history: any[];
+}
+
+const DEFAULT_VENDORS = [
+  {
+    id: 'fven-001',
+    organization_id: '00000000-0000-0000-0000-000000000001',
+    vendor_name: 'Apex Facilities & Commercial Cleaning Ltd',
+    vendor_reference: 'APEX-FAC-01',
+    contact_email: 'accounts@apexfacilities.co.uk',
+    contact_phone: '+44 20 7946 0912',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'fven-002',
+    organization_id: '00000000-0000-0000-0000-000000000001',
+    vendor_name: 'Brakes Foodservice Wholesale',
+    vendor_reference: 'BRAKES-UK-88',
+    contact_email: 'orders@brake.co.uk',
+    contact_phone: '+44 34 5606 9090',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'fven-003',
+    organization_id: '00000000-0000-0000-0000-000000000001',
+    vendor_name: 'Total Commercial Laundry Solutions',
+    vendor_reference: 'TOT-LAU-09',
+    contact_email: 'billing@totallaundry.co.uk',
+    contact_phone: '+44 16 1496 0233',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'fven-004',
+    organization_id: '00000000-0000-0000-0000-000000000001',
+    vendor_name: 'British Gas Business Energy',
+    vendor_reference: 'BG-UTIL-44',
+    contact_email: 'business@britishgas.co.uk',
+    contact_phone: '+44 33 0100 0050',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'fven-005',
+    organization_id: '00000000-0000-0000-0000-000000000001',
+    vendor_name: 'Enterprise Rent-A-Car Commercial',
+    vendor_reference: 'ENT-FLEET-12',
+    contact_email: 'commercial@enterprise.co.uk',
+    contact_phone: '+44 80 0800 2277',
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'fven-006',
+    organization_id: '00000000-0000-0000-0000-000000000001',
+    vendor_name: 'Direct Site Supplies & Maintenance Ltd',
+    vendor_reference: 'DSS-MAINT-77',
+    contact_email: 'helpdesk@directsitesupplies.co.uk',
+    contact_phone: '+44 12 1496 0888',
+    status: 'active',
+    created_at: new Date().toISOString()
+  }
+];
+
+function readLocalStore(): LocalFinanceStore {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(FINANCE_STORAGE_FILE)) {
+      const initial: LocalFinanceStore = {
+        bills: [],
+        items: [],
+        attachments: [],
+        vendors: DEFAULT_VENDORS,
+        history: []
+      };
+      fs.writeFileSync(FINANCE_STORAGE_FILE, JSON.stringify(initial, null, 2), 'utf8');
+      return initial;
+    }
+    const raw = fs.readFileSync(FINANCE_STORAGE_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.vendors) || parsed.vendors.length === 0) {
+      parsed.vendors = DEFAULT_VENDORS;
+    }
+    return parsed;
+  } catch (err) {
+    console.warn('[FinanceStore] Could not read local finance storage file:', err);
+    return {
+      bills: [],
+      items: [],
+      attachments: [],
+      vendors: DEFAULT_VENDORS,
+      history: []
+    };
+  }
+}
+
+function writeLocalStore(store: LocalFinanceStore): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(FINANCE_STORAGE_FILE, JSON.stringify(store, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[FinanceStore] Failed to write local finance storage file:', err);
+  }
+}
+
+// ============================================================================
+// Helper: Enrich Bill Record with Joined / Resolved Entity Names
+// ============================================================================
+
+async function enrichBillRecord(bill: any, supabase: any, store: LocalFinanceStore): Promise<any> {
+  const enriched = { ...bill };
+
+  // Site Name
+  if (!enriched.siteName && !enriched.site?.name) {
+    if (enriched.site_id) {
+      if (supabase) {
+        try {
+          const { data: site } = await supabase.from('sites').select('name').eq('id', enriched.site_id).single();
+          if (site?.name) enriched.siteName = site.name;
+        } catch {}
+      }
+      if (!enriched.siteName) {
+        enriched.siteName = enriched.site_id;
+      }
+    }
+  } else if (enriched.site?.name) {
+    enriched.siteName = enriched.site.name;
+  }
+
+  // Vendor Name
+  if (!enriched.vendorName && !enriched.vendor?.vendor_name) {
+    if (enriched.vendor_id) {
+      const v = store.vendors.find((item: any) => item.id === enriched.vendor_id);
+      if (v) {
+        enriched.vendorName = v.vendor_name;
+      } else if (supabase) {
+        try {
+          const { data: ven } = await supabase.from('finance_vendors').select('vendor_name').eq('id', enriched.vendor_id).single();
+          if (ven?.vendor_name) enriched.vendorName = ven.vendor_name;
+        } catch {}
+      }
+    }
+  } else if (enriched.vendor?.vendor_name) {
+    enriched.vendorName = enriched.vendor.vendor_name;
+  }
+
+  // Submitter Name
+  if (!enriched.submitterName && !enriched.submitter?.name) {
+    if (enriched.submitted_by) {
+      if (supabase) {
+        try {
+          const { data: prof } = await supabase.from('profiles').select('name').eq('id', enriched.submitted_by).single();
+          if (prof?.name) enriched.submitterName = prof.name;
+        } catch {}
+      }
+    }
+  } else if (enriched.submitter?.name) {
+    enriched.submitterName = enriched.submitter.name;
+  }
+
+  // Final Approver Name
+  if (!enriched.finalApprovedByName && !enriched.final_approver?.name) {
+    if (enriched.final_approved_by) {
+      if (supabase) {
+        try {
+          const { data: prof } = await supabase.from('profiles').select('name').eq('id', enriched.final_approved_by).single();
+          if (prof?.name) enriched.finalApprovedByName = prof.name;
+        } catch {}
+      }
+    }
+  } else if (enriched.final_approver?.name) {
+    enriched.finalApprovedByName = enriched.final_approver.name;
+  }
+
+  // Attach items from store if missing
+  if (!enriched.items || enriched.items.length === 0) {
+    enriched.items = store.items.filter((i: any) => i.bill_id === enriched.id);
+  }
+
+  // Attach attachments from store if missing
+  if (!enriched.attachments || enriched.attachments.length === 0) {
+    enriched.attachments = store.attachments.filter((a: any) => a.bill_id === enriched.id);
+  }
+
+  return enriched;
+}
+
+// ============================================================================
+// API ROUTES
+// ============================================================================
+
+// GET /api/finance/bills
+router.get('/bills', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = readLocalStore();
+    const { siteId, status, vendorId, billType, search } = req.query;
+
+    let dbBills: any[] = [];
+    let dbSuccess = false;
+
+    if (supabase) {
+      try {
+        let query = supabase
+          .from('finance_bills')
+          .select(`
+            *,
+            site:sites(name),
+            vendor:finance_vendors(vendor_name)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (siteId && siteId !== 'all') {
+          query = query.eq('site_id', String(siteId));
+        }
+        if (status && status !== 'all') {
+          query = query.eq('status', String(status));
+        }
+        if (vendorId && vendorId !== 'all') {
+          query = query.eq('vendor_id', String(vendorId));
+        }
+        if (billType && billType !== 'all') {
+          query = query.eq('bill_type', String(billType));
+        }
+
+        const { data, error } = await query;
+        if (!error && data) {
+          dbBills = data;
+          dbSuccess = true;
+        }
+      } catch (e) {
+        // Fallback to local store
+      }
+    }
+
+    // Merge database bills and local store bills (avoiding duplicates)
+    const seenIds = new Set<string>();
+    const mergedRaw: any[] = [];
+
+    for (const b of dbBills) {
+      seenIds.add(b.id);
+      mergedRaw.push(b);
+    }
+
+    for (const b of store.bills) {
+      if (!seenIds.has(b.id)) {
+        seenIds.add(b.id);
+        mergedRaw.push(b);
+      }
+    }
+
+    // Enrich every bill record
+    const enrichedBills = await Promise.all(mergedRaw.map(b => enrichBillRecord(b, supabase, store)));
+
+    // Apply filtering
+    let results = enrichedBills;
+
+    if (siteId && siteId !== 'all') {
+      results = results.filter(b => b.site_id === siteId || b.siteId === siteId);
+    }
+    if (status && status !== 'all') {
+      results = results.filter(b => b.status === status);
+    }
+    if (vendorId && vendorId !== 'all') {
+      results = results.filter(b => b.vendor_id === vendorId || b.vendorId === vendorId);
+    }
+    if (billType && billType !== 'all') {
+      results = results.filter(b => b.bill_type === billType || b.billType === billType);
+    }
+    if (search && typeof search === 'string') {
+      const q = search.toLowerCase().trim();
+      results = results.filter(b =>
+        String(b.bill_number || b.billNumber || '').toLowerCase().includes(q) ||
+        String(b.siteName || b.site_id || '').toLowerCase().includes(q) ||
+        String(b.vendorName || '').toLowerCase().includes(q) ||
+        String(b.purchase_reference || b.purchaseReference || '').toLowerCase().includes(q) ||
+        String(b.description || '').toLowerCase().includes(q) ||
+        String(b.submitterName || '').toLowerCase().includes(q)
+      );
+    }
+
+    return res.json({ success: true, data: results, source: dbSuccess ? 'supabase' : 'local_store' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
+// GET /api/finance/bills/:id
+router.get('/bills/:id', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = readLocalStore();
+    const { id } = req.params;
+
+    let bill: any = null;
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('finance_bills')
+          .select(`
+            *,
+            site:sites(name),
+            vendor:finance_vendors(vendor_name)
+          `)
+          .eq('id', id)
+          .single();
+
+        if (!error && data) {
+          bill = data;
+          const { data: items } = await supabase.from('finance_bill_items').select('*').eq('bill_id', id);
+          const { data: attachments } = await supabase.from('finance_bill_attachments').select('*').eq('bill_id', id);
+          const { data: queries } = await supabase.from('finance_bill_queries').select('*').eq('bill_id', id);
+          const { data: reconciliations } = await supabase.from('finance_reconciliation_records').select('*').eq('bill_id', id);
+          const { data: payments } = await supabase.from('finance_payment_records').select('*').eq('bill_id', id);
+          const { data: history } = await supabase.from('finance_bill_status_history').select('*').eq('bill_id', id).order('created_at', { ascending: false });
+
+          bill.items = items || [];
+          bill.attachments = attachments || [];
+          bill.queries = queries || [];
+          bill.reconciliations = reconciliations || [];
+          bill.payments = payments || [];
+          bill.history = history || [];
+        }
+      } catch (e) {}
+    }
+
+    if (!bill) {
+      bill = store.bills.find(b => b.id === id);
+      if (bill) {
+        bill.items = store.items.filter(i => i.bill_id === id);
+        bill.attachments = store.attachments.filter(a => a.bill_id === id);
+        bill.history = store.history.filter(h => h.bill_id === id);
+      }
+    }
+
+    if (!bill) {
+      return res.status(404).json({ error: 'Bill not found' });
+    }
+
+    const enriched = await enrichBillRecord(bill, supabase, store);
+    return res.json({ success: true, data: enriched });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
+// POST /api/finance/bills
+// Save new bill modal submission with full line items, attachments, and audit log
+router.post('/bills', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = readLocalStore();
+
+    const body = req.body || {};
+    const rawBill = body.bill || body;
+    const items = body.items || [];
+    const attachments = body.attachments || [];
+
+    const billId = rawBill.id || `bill-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+    const callerId = req.user?.id || rawBill.submittedBy || rawBill.submitted_by || '00000000-0000-0000-0000-000000000000';
+    const callerName = req.user?.name || req.user?.email || 'Authenticated Staff';
+
+    const subtotal = Number(rawBill.subtotal || 0);
+    const taxAmount = Number(rawBill.taxAmount ?? rawBill.tax_amount ?? 0);
+    const totalAmount = Number(rawBill.totalAmount ?? rawBill.total_amount ?? (subtotal + taxAmount));
+
+    const billRecord = {
+      id: billId,
+      organization_id: rawBill.organizationId || rawBill.organization_id || '00000000-0000-0000-0000-000000000001',
+      site_id: rawBill.siteId || rawBill.site_id,
+      vendor_id: rawBill.vendorId || rawBill.vendor_id || null,
+      bill_number: rawBill.billNumber || rawBill.bill_number || `BILL-${Date.now().toString().slice(-6)}`,
+      bill_type: rawBill.billType || rawBill.bill_type || 'vendor_invoice',
+      bill_date: rawBill.billDate || rawBill.bill_date || new Date().toISOString().split('T')[0],
+      due_date: rawBill.dueDate || rawBill.due_date || null,
+      currency: rawBill.currency || 'GBP',
+      subtotal,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
+      description: rawBill.description || '',
+      purchase_reference: rawBill.purchaseReference || rawBill.purchase_reference || null,
+      submitted_by: callerId,
+      submitterName: callerName,
+      submitted_at: new Date().toISOString(),
+      status: rawBill.status || 'submitted',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // Format line items
+    const itemRows = (items || []).map((item: any, idx: number) => {
+      const q = Number(item.quantity || 1);
+      const u = Number(item.unitPrice ?? item.unit_price ?? 0);
+      const t = Number(item.taxAmount ?? item.tax_amount ?? 0);
+      return {
+        id: item.id || `item-${billId}-${idx + 1}`,
+        bill_id: billId,
+        description: item.description || 'General item',
+        quantity: q,
+        unit_price: u,
+        tax_amount: t,
+        line_total: Number(item.lineTotal ?? item.line_total ?? (q * u + t)),
+        created_at: new Date().toISOString()
+      };
+    });
+
+    // Format attachment records
+    const attachmentRows = (attachments || []).map((att: any, idx: number) => ({
+      id: att.id || `att-${billId}-${idx + 1}`,
+      bill_id: billId,
+      file_name: att.fileName || att.file_name || 'document.pdf',
+      storage_bucket: att.storageBucket || att.storage_bucket || 'finance-documents',
+      storage_path: att.storagePath || att.storage_path || `finance/${billId}/${att.fileName || 'document.pdf'}`,
+      attachment_type: att.attachmentType || att.attachment_type || 'vendor_invoice',
+      mime_type: att.mimeType || att.mime_type || 'application/pdf',
+      file_size_bytes: Number(att.fileSizeBytes ?? att.file_size_bytes ?? 1024),
+      uploaded_by: callerId,
+      created_at: new Date().toISOString()
+    }));
+
+    // Status history entry
+    const historyEntry = {
+      id: `hist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      bill_id: billId,
+      old_status: null,
+      new_status: billRecord.status,
+      changed_by: callerId,
+      changed_by_name: callerName,
+      reason: 'Bill created and submitted via modal form',
+      created_at: new Date().toISOString()
+    };
+
+    // 1. Save to local store
+    store.bills = store.bills.filter(b => b.id !== billId);
+    store.bills.unshift(billRecord);
+
+    store.items = store.items.filter(i => i.bill_id !== billId);
+    if (itemRows.length > 0) store.items.push(...itemRows);
+
+    if (attachmentRows.length > 0) {
+      store.attachments.push(...attachmentRows);
+    }
+
+    store.history.unshift(historyEntry);
+    writeLocalStore(store);
+
+    // 2. Attempt saving to live Supabase
+    if (supabase) {
+      try {
+        const { error: billError } = await supabase.from('finance_bills').insert([billRecord]);
+        if (!billError) {
+          if (itemRows.length > 0) {
+            await supabase.from('finance_bill_items').insert(itemRows);
+          }
+          if (attachmentRows.length > 0) {
+            await supabase.from('finance_bill_attachments').insert(attachmentRows);
+          }
+          await supabase.from('finance_bill_status_history').insert([{
+            bill_id: billId,
+            old_status: null,
+            new_status: billRecord.status,
+            changed_by: callerId,
+            reason: 'Bill created and submitted via modal form'
+          }]);
+        }
+      } catch (e) {
+        console.warn('[FinanceRoute] Supabase write failed, retained in persistent store:', e);
+      }
+    }
+
+    const enriched = await enrichBillRecord(billRecord, supabase, store);
+    return res.status(201).json({
+      success: true,
+      billId,
+      record: enriched,
+      data: enriched
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+});
+
+// POST /api/finance/bills/:id/submit
+router.post('/bills/:id/submit', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = readLocalStore();
+    const { id } = req.params;
+
+    let updated = false;
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.rpc('fn_finance_submit_bill', { p_bill_id: id });
+        if (!error && data) {
+          return res.json(data);
+        }
+      } catch (e) {}
+    }
+
+    // Local state machine transition
+    const bill = store.bills.find(b => b.id === id);
+    if (bill) {
+      const oldStatus = bill.status;
+      bill.status = 'submitted';
+      bill.updated_at = new Date().toISOString();
+      store.history.unshift({
+        id: `hist-${Date.now()}`,
+        bill_id: id,
+        old_status: oldStatus,
+        new_status: 'submitted',
+        changed_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
+        changed_by_name: req.user?.name || 'Staff',
+        reason: 'Bill submitted for finance review',
+        created_at: new Date().toISOString()
+      });
+      writeLocalStore(store);
+      updated = true;
+    }
+
+    if (updated) {
+      return res.json({ success: true, status: 'submitted' });
+    }
+    return res.status(404).json({ error: 'Bill not found' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/finance/bills/:id/approve
+router.post('/bills/:id/approve', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = readLocalStore();
+    const { id } = req.params;
+    const { comments } = req.body;
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.rpc('fn_finance_final_approval', {
+          p_bill_id: id,
+          p_comments: comments || null
+        });
+        if (!error && data) return res.json(data);
+      } catch (e) {}
+    }
+
+    const bill = store.bills.find(b => b.id === id);
+    if (bill) {
+      const oldStatus = bill.status;
+      bill.status = 'approved';
+      bill.final_approved_by = req.user?.id || '00000000-0000-0000-0000-000000000000';
+      bill.finalApprovedByName = req.user?.name || 'Finance Admin';
+      bill.final_approved_at = new Date().toISOString();
+      bill.updated_at = new Date().toISOString();
+
+      store.history.unshift({
+        id: `hist-${Date.now()}`,
+        bill_id: id,
+        old_status: oldStatus,
+        new_status: 'approved',
+        changed_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
+        changed_by_name: req.user?.name || 'Finance Admin',
+        reason: comments || 'Finance final approval signed off',
+        created_at: new Date().toISOString()
+      });
+      writeLocalStore(store);
+      return res.json({ success: true, status: 'approved' });
+    }
+
+    return res.status(404).json({ error: 'Bill not found' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/finance/bills/:id/reject
+router.post('/bills/:id/reject', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = readLocalStore();
+    const { id } = req.params;
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ error: 'Rejection reason is required' });
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.rpc('fn_finance_reject_bill', {
+          p_bill_id: id,
+          p_reason: reason
+        });
+        if (!error && data) return res.json(data);
+      } catch (e) {}
+    }
+
+    const bill = store.bills.find(b => b.id === id);
+    if (bill) {
+      const oldStatus = bill.status;
+      bill.status = 'rejected';
+      bill.rejected_by = req.user?.id || '00000000-0000-0000-0000-000000000000';
+      bill.rejectedByName = req.user?.name || 'Finance Admin';
+      bill.rejected_at = new Date().toISOString();
+      bill.rejection_reason = reason;
+      bill.updated_at = new Date().toISOString();
+
+      store.history.unshift({
+        id: `hist-${Date.now()}`,
+        bill_id: id,
+        old_status: oldStatus,
+        new_status: 'rejected',
+        changed_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
+        changed_by_name: req.user?.name || 'Finance Admin',
+        reason: reason,
+        created_at: new Date().toISOString()
+      });
+      writeLocalStore(store);
+      return res.json({ success: true, status: 'rejected' });
+    }
+
+    return res.status(404).json({ error: 'Bill not found' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/finance/vendors
+router.get('/vendors', requireAuth, async (_req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = readLocalStore();
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('finance_vendors')
+          .select('*')
+          .order('vendor_name', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          return res.json({ success: true, data });
+        }
+      } catch (e) {}
+    }
+
+    return res.json({ success: true, data: store.vendors });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/finance/vendors
+router.post('/vendors', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = readLocalStore();
+    const vendorData = req.body || {};
+
+    const id = vendorData.id || `fven-${Date.now()}`;
+    const newVendor = {
+      id,
+      organization_id: vendorData.organizationId || vendorData.organization_id || '00000000-0000-0000-0000-000000000001',
+      vendor_name: vendorData.vendorName || vendorData.vendor_name || 'New Vendor',
+      vendor_reference: vendorData.vendorReference || vendorData.vendor_reference || null,
+      contact_email: vendorData.contactEmail || vendorData.contact_email || null,
+      contact_phone: vendorData.contactPhone || vendorData.contact_phone || null,
+      payment_details: vendorData.paymentDetails || vendorData.payment_details || {},
+      status: vendorData.status || 'active',
+      created_by: req.user?.id || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    store.vendors = store.vendors.filter(v => v.id !== id);
+    store.vendors.push(newVendor);
+    writeLocalStore(store);
+
+    if (supabase) {
+      try {
+        await supabase.from('finance_vendors').upsert([newVendor]);
+      } catch (e) {}
+    }
+
+    return res.status(201).json({ success: true, data: newVendor });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/finance/bills/:id
+router.delete('/bills/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const store = readLocalStore();
+    const existing = store.bills.find(b => b.id === id);
+
+    store.bills = store.bills.filter(b => b.id !== id);
+    store.items = store.items.filter(i => i.bill_id !== id);
+    store.attachments = store.attachments.filter(a => a.bill_id !== id);
+    store.history = store.history.filter(h => h.bill_id !== id);
+    writeLocalStore(store);
+
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      try {
+        const targetTable = existing?.bill_type === 'vendor_invoice'
+          ? 'vendor_invoices'
+          : existing?.bill_type === 'credit_card_expense'
+          ? 'credit_card_bills'
+          : existing?.bill_type === 'delivery_note'
+          ? 'delivery_notes'
+          : 'finance_bills';
+
+        const { error } = await supabase.from(targetTable).delete().eq('id', id);
+        if (error && targetTable !== 'finance_bills') {
+          await supabase.from('finance_bills').delete().eq('id', id);
+        }
+      } catch (e) {
+        console.warn('[FinanceRoute] Supabase delete error:', e);
+      }
+    }
+
+    return res.json({ success: true, id });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+export default router;

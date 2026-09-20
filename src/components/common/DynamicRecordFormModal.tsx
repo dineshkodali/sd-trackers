@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, AlertCircle, Loader2, Lock, Building2, UserCheck, Calendar, Plus, Settings2 } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
+import { FieldOptionCategory } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { AttachmentsSection } from './AttachmentsSection';
 import { QuickOptionModal } from './QuickOptionModal';
@@ -512,6 +513,57 @@ export function DynamicRecordFormModal<T = any>({
     }
   };
 
+  const inferOptionCategory = (col: TableColumnConfig<T>): FieldOptionCategory | undefined => {
+    if (col.optionCategory) return col.optionCategory;
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (key.includes('referraltype') || label.includes('referraltype')) return 'referralTypes';
+    if (key.includes('referralcouncil') || key === 'council' || label.includes('council')) return 'councils';
+    if (key.includes('referralmethod') || key.includes('methodofreferral')) return 'referralMethods';
+    if (key.includes('vulnerability') || label.includes('vulnerability')) return 'vulnerabilities';
+    if (key.includes('incidentriskfactor') || key === 'riskfactor') return 'incidentRiskFactors';
+    if (key.includes('urgency') || key === 'risklevel') return 'riskLevels';
+    if (key.includes('incidenttype') || key.includes('typeofissue')) return 'incidentTypes';
+    if (key.includes('prioritytimescale')) return 'maintenanceTimeScales';
+    if (key.includes('priority')) return 'maintenancePriorities';
+    if (key.includes('defectstatus')) return 'maintenanceStatuses';
+    if (key.includes('propertystatus')) return 'propertyStatuses';
+    if (key.includes('wlissued')) return 'wlIssuedStatuses';
+    if (key.includes('modeoftransport') || key.includes('transportmode')) return 'transportModes';
+    if (key.includes('compliancetype')) return 'complianceTypes';
+    if (key.includes('compliancestatus')) return 'complianceStatuses';
+    if (key.includes('bookletstatus')) return 'bookletStatuses';
+    if (key.includes('vcscategory')) return 'vcsCategories';
+    if (key.includes('mealtype')) return 'mealTypes';
+    if (key.includes('dietarytype')) return 'dietaryTypes';
+    if (key.includes('foodvendor')) return 'foodVendors';
+    if (key.includes('laundrystage')) return 'laundryStages';
+    if (key.includes('laundryperiodtype') || key === 'periodtype') return 'laundryPeriodTypes';
+    if (key.includes('discrepancystatus')) return 'discrepancyStatuses';
+    if (key.includes('roomtype')) return 'propertyRoomTypes';
+    if (key === 'group' || key === 'demographicgroup') return 'welfareResidentGroups';
+    if (key === 'exitbriefing' || key === 'iaexitbriefingcompleted') return 'dispersalExitStatuses';
+    if (key === 'dispersalletter' || key === 'hodispersalletterreceived') return 'dispersalLetterStatuses';
+    if (key === 'dispersaltravel' || key === 'travelled') return 'dispersalTravelStatuses';
+    if (key === 'incidentwarning' || key === 'incidentwarningcompleted') return 'dispersalWarningStatuses';
+
+    if (key === 'status') {
+      const allKeys = formColumns.map(c => String(c.key).toLowerCase());
+      if (allKeys.some(k => k.includes('referral') || k.includes('mosaic'))) return 'referralStatuses';
+      if (allKeys.some(k => k.includes('vulnerab'))) return 'vulnerableStatuses';
+      if (allKeys.some(k => k.includes('challeng') || k.includes('incident'))) return 'challengingStatuses';
+      if (allKeys.some(k => k.includes('defect') || k.includes('priority'))) return 'maintenanceStatuses';
+      if (allKeys.some(k => k.includes('transport') || k.includes('urn'))) return 'transportApprovalStatuses';
+      if (allKeys.some(k => k.includes('compliance') || k.includes('contractor'))) return 'complianceStatuses';
+      if (allKeys.some(k => k.includes('booklet') || k.includes('collected'))) return 'bookletStatuses';
+      if (allKeys.some(k => k.includes('food') || k.includes('meal'))) return 'foodStatuses';
+      if (allKeys.some(k => k.includes('capacity') || k.includes('hotelcode') || k.includes('pid'))) return 'propertyStatuses';
+    }
+
+    return undefined;
+  };
+
   const resolveOptions = (col: TableColumnConfig<T>): SelectOption[] => {
     if (isSiteColumn(col)) {
       if (!canAccessAllSites()) {
@@ -519,20 +571,41 @@ export function DynamicRecordFormModal<T = any>({
       }
       return allSiteNames.map(name => ({ label: name, value: name }));
     }
-    if (col.optionCategory) {
-      const dynamic = getFieldOptions(col.optionCategory, false);
-      if (dynamic && dynamic.length > 0) {
-        return dynamic.map(d => ({ label: d.label, value: d.value, color: d.color, description: d.description }));
+
+    const category = inferOptionCategory(col);
+    if (category) {
+      const dynamic = getFieldOptions(category, false);
+      const list: SelectOption[] = (dynamic || []).map(d => ({
+        label: d.label,
+        value: d.value,
+        color: d.color,
+        description: d.description
+      }));
+
+      // In edit mode: if current record has an existing value that is not in the active options list, retain it
+      const currentVal = formData[String(col.key)];
+      if (currentVal && !list.some(o => String(o.value) === String(currentVal))) {
+        list.push({ label: `${currentVal} (Previous / Unlisted)`, value: currentVal });
       }
+
+      return list;
     }
+
     if (!col.options) return [];
     const rawOptions = typeof col.options === 'function' ? col.options(effectiveContext) : col.options;
-    return (rawOptions || []).map(opt => {
+    const list: SelectOption[] = (rawOptions || []).map(opt => {
       if (typeof opt === 'string') {
         return { label: opt, value: opt };
       }
       return opt;
     });
+
+    const currentVal = formData[String(col.key)];
+    if (currentVal && !list.some(o => String(o.value) === String(currentVal))) {
+      list.push({ label: `${currentVal} (Previous / Unlisted)`, value: currentVal });
+    }
+
+    return list;
   };
 
   const validate = (): boolean => {
@@ -948,12 +1021,12 @@ export function DynamicRecordFormModal<T = any>({
           <QuickOptionModal
             isOpen={Boolean(quickManageCol)}
             onClose={() => setQuickManageCol(null)}
-            categoryKey={quickManageCol.optionCategory}
+            categoryKey={inferOptionCategory(quickManageCol)}
             categoryName={quickManageCol.label}
             onOptionAdded={newOpt => {
               handleChange(String(quickManageCol.key), newOpt.value);
             }}
-            customOptions={!quickManageCol.optionCategory ? (resolveOptions(quickManageCol) as any) : undefined}
+            customOptions={!inferOptionCategory(quickManageCol) ? (resolveOptions(quickManageCol) as any) : undefined}
           />
         )}
       </div>

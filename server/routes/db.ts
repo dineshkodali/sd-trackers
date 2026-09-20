@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -73,12 +75,28 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   email_notification_rules: { page: 'Notifications - rules', table: 'email_notification_rules', write: 'none', remove: 'none' },
   email_notification_logs: { page: 'Notifications - delivery log', table: 'email_notification_logs', write: 'none', remove: 'none' },
   passwordAudit: { page: 'Password Audit Log', table: 'password_audit_logs', read: 'admin', write: 'none', remove: 'none' },
+  financeBills: { page: 'Finance Bills & Invoices', table: 'finance_bills' },
+  vendorInvoices: { page: 'Vendor Invoices', table: 'vendor_invoices' },
+  creditCardBills: { page: 'Credit Card Bills', table: 'credit_card_bills' },
+  deliveryNotes: { page: 'Delivery Notes', table: 'delivery_notes' },
+  financeApprovals: { page: 'Finance Approvals', table: 'finance_approvals' },
+  financeVendors: { page: 'Finance Vendors', table: 'finance_vendors' },
+  financeBillItems: { page: 'Finance Bill Items', table: 'finance_bill_items' },
+  financeBillAttachments: { page: 'Finance Bill Attachments', table: 'finance_bill_attachments' },
 
   // Aliases used by existing clients
   audit: { page: 'Audit Security Trail', table: 'audit_trails', write: 'append', remove: 'superadmin', alias: true },
   laundry_logs: { page: 'Laundry Support - resident intake', table: 'laundry_logs', variant: r => !isPropertyLaundry(r), alias: true },
   hot_food_logs: { page: 'Hot Meals Tracker - deliveries', table: 'hot_food_logs', variant: r => !isVendorBuffet(r), alias: true },
   profiles: { page: 'Staff & User Accounts', table: 'profiles', write: 'admin', remove: 'none', alias: true },
+  finance_bills: { page: 'Finance Bills & Invoices', table: 'finance_bills', alias: true },
+  vendor_invoices: { page: 'Vendor Invoices', table: 'vendor_invoices', alias: true },
+  credit_card_bills: { page: 'Credit Card Bills', table: 'credit_card_bills', alias: true },
+  delivery_notes: { page: 'Delivery Notes', table: 'delivery_notes', alias: true },
+  finance_approvals: { page: 'Finance Approvals', table: 'finance_approvals', alias: true },
+  finance_vendors: { page: 'Finance Vendors', table: 'finance_vendors', alias: true },
+  finance_bill_items: { page: 'Finance Bill Items', table: 'finance_bill_items', alias: true },
+  finance_bill_attachments: { page: 'Finance Bill Attachments', table: 'finance_bill_attachments', alias: true },
 };
 
 /** Retained for callers that imported the old name. */
@@ -381,10 +399,24 @@ router.get('/status', async (_req: Request, res: Response) => {
   const distinctTables = Array.from(new Set(Object.values(ENTITY_REGISTRY).map(d => d.table)));
   const tableInfo: Record<string, { exists: boolean; rows: number | null; missingColumns: string[]; error?: string }> = {};
 
-  for (const table of distinctTables) {
-    const live = schema.get(table);
-    tableInfo[table] = { exists: Boolean(live), rows: 0, missingColumns: [] };
-  }
+  // Probe live row counts & existence from Supabase PostgREST with 15s caching
+  await Promise.all(distinctTables.map(async (table) => {
+    try {
+      const { count, error } = await client.from(table).select('id', { count: 'exact' }).limit(1);
+      if (error) {
+        if (error.code === 'PGRST205' || error.code === '42P01') {
+          tableInfo[table] = { exists: false, rows: null, missingColumns: [] };
+        } else {
+          tableInfo[table] = { exists: true, rows: count ?? 0, missingColumns: [], error: error.message };
+        }
+      } else {
+        tableInfo[table] = { exists: true, rows: count ?? 0, missingColumns: [] };
+      }
+    } catch (e: any) {
+      const live = schema.get(table);
+      tableInfo[table] = { exists: Boolean(live), rows: null, missingColumns: [], error: e.message };
+    }
+  }));
 
   const pages = Object.entries(ENTITY_REGISTRY)
     .filter(([, d]) => !d.alias)
@@ -451,6 +483,16 @@ router.post('/migrate', requireRole(...ADMIN_ROLES), async (_req: Request, res: 
 });
 
 // GET /api/db/migration-sql - the migration script, for the Supabase SQL editor
+// GET /api/db/finance-migration-sql - returns the complete finance module migration
+router.get('/finance-migration-sql', (_req: Request, res: Response) => {
+  const migPath = path.join(process.cwd(), 'db', 'migrations', '004_finance_module.sql');
+  if (!fs.existsSync(migPath)) {
+    return res.status(404).json({ success: false, error: 'Migration script db/migrations/004_finance_module.sql not found' });
+  }
+  const sql = fs.readFileSync(migPath, 'utf8');
+  res.type('text/plain').send(sql);
+});
+
 router.get('/migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
   const sql = loadSchemaSql();
   if (!sql) return res.status(404).json({ success: false, error: 'db/schema.sql not found' });

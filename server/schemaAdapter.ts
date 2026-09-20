@@ -294,6 +294,51 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   email_notification_logs: new Set([
     'id', 'timestamp', 'event_type', 'recipient', 'subject', 'status', 'error', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
+  finance_bills: new Set([
+    'id', 'organization_id', 'site_id', 'vendor_id', 'bill_type', 'bill_number',
+    'invoice_date', 'due_date', 'received_date', 'subtotal', 'tax_amount', 'total_amount',
+    'currency', 'status', 'payment_status', 'payment_reference', 'payment_method',
+    'paid_at', 'description', 'po_reference', 'dispute_reason', 'notes',
+    'internal_reference', 'rejection_reason', 'rejected_at', 'rejected_by',
+    'final_approved_by', 'final_approved_at', 'finance_released_at', 'audit_trail',
+    'data', 'created_by', 'submitted_by', 'submitted_at', 'created_at', 'updated_at'
+  ]),
+  vendor_invoices: new Set([
+    'id', 'organization_id', 'site_id', 'vendor_id', 'bill_type', 'bill_number',
+    'invoice_date', 'due_date', 'received_date', 'subtotal', 'tax_amount', 'total_amount',
+    'currency', 'status', 'payment_status', 'payment_reference', 'payment_method',
+    'paid_at', 'description', 'po_reference', 'dispute_reason', 'notes',
+    'internal_reference', 'rejection_reason', 'rejected_at', 'rejected_by',
+    'final_approved_by', 'final_approved_at', 'finance_released_at', 'audit_trail',
+    'data', 'created_by', 'submitted_by', 'submitted_at', 'created_at', 'updated_at'
+  ]),
+  credit_card_bills: new Set([
+    'id', 'organization_id', 'site_id', 'vendor_id', 'bill_type', 'bill_number',
+    'invoice_date', 'due_date', 'received_date', 'subtotal', 'tax_amount', 'total_amount',
+    'currency', 'status', 'payment_status', 'payment_reference', 'payment_method',
+    'paid_at', 'description', 'po_reference', 'dispute_reason', 'notes',
+    'internal_reference', 'rejection_reason', 'rejected_at', 'rejected_by',
+    'final_approved_by', 'final_approved_at', 'finance_released_at', 'audit_trail',
+    'data', 'created_by', 'submitted_by', 'submitted_at', 'created_at', 'updated_at'
+  ]),
+  delivery_notes: new Set([
+    'id', 'organization_id', 'site_id', 'vendor_id', 'bill_type', 'bill_number',
+    'invoice_date', 'due_date', 'received_date', 'subtotal', 'tax_amount', 'total_amount',
+    'currency', 'status', 'payment_status', 'payment_reference', 'payment_method',
+    'paid_at', 'description', 'po_reference', 'dispute_reason', 'notes',
+    'internal_reference', 'rejection_reason', 'rejected_at', 'rejected_by',
+    'final_approved_by', 'final_approved_at', 'finance_released_at', 'audit_trail',
+    'data', 'created_by', 'submitted_by', 'submitted_at', 'created_at', 'updated_at'
+  ]),
+  finance_approvals: new Set([
+    'id', 'organization_id', 'site_id', 'vendor_id', 'bill_type', 'bill_number',
+    'invoice_date', 'due_date', 'received_date', 'subtotal', 'tax_amount', 'total_amount',
+    'currency', 'status', 'payment_status', 'payment_reference', 'payment_method',
+    'paid_at', 'description', 'po_reference', 'dispute_reason', 'notes',
+    'internal_reference', 'rejection_reason', 'rejected_at', 'rejected_by',
+    'final_approved_by', 'final_approved_at', 'finance_released_at', 'audit_trail',
+    'data', 'created_by', 'submitted_by', 'submitted_at', 'created_at', 'updated_at'
+  ]),
   ...Object.fromEntries(Object.keys(FIELD_SPECS).map(t => [t, new Set(specColumns(t))])),
 };
 

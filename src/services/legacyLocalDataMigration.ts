@@ -67,7 +67,7 @@ const MODULES: ModuleSpec[] = [
   { key: 'booklet_records', entity: 'booklets', seeds: INITIAL_BOOKLET_RECORDS },
   { key: 'vcs_agencies', entity: 'vcsAgencies', seeds: INITIAL_VCS_AGENCIES },
   { key: 'data_change_requests', entity: 'requests' },
-  { key: 'field_options', entity: 'fieldOptions', seeds: DEFAULT_FIELD_OPTIONS, adminOnly: true },
+  { key: 'field_options', entity: 'fieldOptions', seeds: DEFAULT_FIELD_OPTIONS, adminOnly: true, checkDeletions: true },
 ];
 
 /** Superseded by server-held data; removed without upload. */

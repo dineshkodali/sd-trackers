@@ -20,7 +20,9 @@ export default defineConfig(() => {
       open: process.env.OPEN_BROWSER !== 'false',
       // HMR can be disabled via DISABLE_HMR env var to prevent file watching overhead.
       hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        ignored: ['**/server/data/**', '**/dist/**', '**/*.json']
+      },
     },
     preview: {
       host: '0.0.0.0',

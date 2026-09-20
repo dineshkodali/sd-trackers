@@ -40,8 +40,7 @@ const complianceExportColumns: ExportColumnOption[] = [
 ];
 
 export const SDComplianceTrackerView: React.FC = () => {
-  const {
-    complianceRecords,
+  const {complianceRecords,
     addComplianceRecord,
     updateComplianceRecord,
     deleteComplianceRecord,
@@ -51,9 +50,14 @@ export const SDComplianceTrackerView: React.FC = () => {
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
-    currentUserRole
+    currentUserRole,
+    getFieldOptions
   } = useApp();
 
+
+  // Dynamic compliance types and statuses from Field Options Setup
+  const complianceTypeOptions = React.useMemo(() => getFieldOptions('complianceTypes', false), [getFieldOptions]);
+  const complianceStatusOptions = React.useMemo(() => getFieldOptions('complianceStatuses', false), [getFieldOptions]);
   // Table Schema Hook
   const {
     columns,
@@ -351,11 +355,10 @@ export const SDComplianceTrackerView: React.FC = () => {
               className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
             >
               <option value="all">All Statuses</option>
-              <option value="Compliant">Compliant</option>
-              <option value="Expiring Soon">Expiring Soon</option>
-              <option value="Expired">Expired</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Overdue">Overdue</option>
+              {complianceStatusOptions.length > 0
+                ? complianceStatusOptions.map(o => <option key={o.id} value={o.value || o.label}>{o.label}</option>)
+                : ['Compliant', 'Expiring Soon', 'Expired', 'In Progress', 'Overdue'].map(s => <option key={s} value={s}>{s}</option>)
+              }
             </select>
           </div>
 
@@ -368,14 +371,10 @@ export const SDComplianceTrackerView: React.FC = () => {
               className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
             >
               <option value="all">All Compliance Types</option>
-              <option value="Fire">Fire Safety (FRA)</option>
-              <option value="Gas">Gas (CP12)</option>
-              <option value="Electrical">Electrical (EICR)</option>
-              <option value="Emergency">Emergency Lighting</option>
-              <option value="Legionella">Legionella (LRA)</option>
-              <option value="PAT">PAT Testing</option>
-              <option value="Asbestos">Asbestos</option>
-              <option value="Insurance">Insurance</option>
+              {complianceTypeOptions.length > 0
+                ? complianceTypeOptions.map(o => <option key={o.id} value={o.value || o.label}>{o.label}</option>)
+                : ['Fire', 'Gas', 'Electrical', 'Emergency', 'Legionella', 'PAT', 'Asbestos', 'Insurance'].map(t => <option key={t} value={t}>{t}</option>)
+              }
             </select>
           </div>
 

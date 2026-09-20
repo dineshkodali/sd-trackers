@@ -17,7 +17,7 @@ const TTL_MS = 60_000;
 let cache: { at: number; schema: LiveSchema } | null = null;
 let inflight: Promise<LiveSchema | null> | null = null;
 
-const KNOWN_TABLES = [
+export const KNOWN_TABLES = [
   'referrals',
   'vulnerable_residents',
   'challenging_behavior',
@@ -46,7 +46,23 @@ const KNOWN_TABLES = [
   'audit_trails',
   'email_notification_rules',
   'email_notification_logs',
-  'password_audit_logs'
+  'password_audit_logs',
+  'finance_bills',
+  'vendor_invoices',
+  'credit_card_bills',
+  'delivery_notes',
+  'finance_approvals',
+  'finance_bill_items',
+  'finance_bill_attachments',
+  'finance_vendors',
+  'finance_verification_profiles',
+  'finance_verification_tasks',
+  'finance_approval_requests',
+  'finance_bill_queries',
+  'finance_reconciliation_records',
+  'finance_payment_records',
+  'finance_bill_status_history',
+  'finance_workflow_events'
 ];
 
 async function probeDatabaseFallback(): Promise<LiveSchema | null> {

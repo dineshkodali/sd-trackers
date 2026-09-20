@@ -146,8 +146,7 @@ function formatPeriodFromDates(
 }
 
 export const PropertyLaundryLogSection: React.FC = () => {
-  const {
-    propertyLaundryLogs,
+  const {propertyLaundryLogs,
     allowedSites,
     addPropertyLaundryLog,
     updatePropertyLaundryLog,
@@ -161,9 +160,14 @@ export const PropertyLaundryLogSection: React.FC = () => {
     authProfile,
     currentUserName,
     currentUserRole,
-    settings
+    settings,
+    getFieldOptions
   } = useApp();
 
+
+  // Dynamic laundry options from Field Options Setup
+  const laundryPeriodTypeOptions = React.useMemo(() => getFieldOptions('laundryPeriodTypes', false), [getFieldOptions]);
+  const discrepancyStatusOptions = React.useMemo(() => getFieldOptions('discrepancyStatuses', false), [getFieldOptions]);
   const userAssignedHotel = useMemo(() => {
     if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
       return assignedSite;
@@ -887,8 +891,10 @@ export const PropertyLaundryLogSection: React.FC = () => {
               className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
             >
               <option value="all">All Logs</option>
-              <option value="Weekly">Weekly Logs</option>
-              <option value="Monthly">Monthly Logs</option>
+              {laundryPeriodTypeOptions.length > 0
+                ? laundryPeriodTypeOptions.map(o => <option key={o.id} value={o.value || o.label}>{o.label}</option>)
+                : [{ v: 'Weekly', l: 'Weekly Logs' }, { v: 'Monthly', l: 'Monthly Logs' }].map(o => <option key={o.v} value={o.v}>{o.l}</option>)
+              }
             </select>
           </div>
 

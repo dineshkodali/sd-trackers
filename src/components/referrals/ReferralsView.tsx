@@ -590,6 +590,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         onOpenExport={handleOpenExportModal}
         totalFilteredCount={sortedData.length}
         searchStorageKey="referrals_search"
+        statusOptions={referralStatusOptions}
       />
 
       {/* Main Table Panel with persistent bottom-stretching height */}

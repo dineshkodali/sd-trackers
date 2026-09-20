@@ -5,7 +5,9 @@ async function testPut() {
   const token = signAdminToken({
     sub: 'master-admin-01',
     email: 'admin@sdcommercial.co.uk',
-    role: 'Super Admin'
+    role: 'Super Admin',
+    iss: 'sdtracker-internal',
+    exp: Math.floor(Date.now() / 1000) + 3600
   });
   console.log('Generated token for Stack Master');
 

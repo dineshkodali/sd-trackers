@@ -218,6 +218,8 @@ interface AppContextType {
   canManageFiles: () => boolean;
   canManageProperties: () => boolean;
   canManageUsers: () => boolean;
+  canManageFinance: () => boolean;
+  isFinanceUser: () => boolean;
 
   // CRUD for Referrals
   addReferral: (referral: Omit<SGReferral, 'id' | 'srNo' | 'createdAt' | 'updatedAt' | 'lastUpdatedBy'>) => void;
@@ -499,7 +501,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return getInitialAssignedSite();
   });
-  const [activePage, setActivePageRaw] = useState<string>('dashboard');
+  const [activePage, setActivePageRaw] = useState<string>(() => {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const saved = sessionStorage.getItem('sg_tracker_active_page');
+        if (saved && typeof saved === 'string' && saved.trim()) {
+          return saved.trim();
+        }
+      }
+    } catch {}
+    return 'dashboard';
+  });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isMobileCompactView, setIsMobileCompactView] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -510,6 +522,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setActivePage = useCallback((page: string) => {
     setActivePageRaw(page);
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.setItem('sg_tracker_active_page', page);
+      }
+    } catch {}
     setIsMobileSidebarOpen(false); // Automatically close mobile drawer when navigating
   }, []);
 
@@ -842,6 +859,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAuthProfileState(null);
         localStorage.removeItem(STORAGE_KEY_PREFIX + 'token');
         localStorage.removeItem(STORAGE_KEY_PREFIX + 'auth_user');
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.removeItem('sg_tracker_active_page');
+      }
+    } catch {}
         setIsAuthChecking(false);
         return;
       }
@@ -1375,8 +1397,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apply<AuditLog>('audit', setAuditLogs);
       apply<CustomFieldOption>('fieldOptions', rows => {
         // Categories with no stored options (never seeded) fall back to the built-in vocabulary.
+        const validRows = rows.filter(o => o.label !== '__EMPTY__' && o.value !== '__EMPTY__');
         const stored = new Set(rows.map(o => o.category));
-        setFieldOptions([...rows, ...DEFAULT_FIELD_OPTIONS.filter(o => !stored.has(o.category))]);
+        setFieldOptions([...validRows, ...DEFAULT_FIELD_OPTIONS.filter(o => !stored.has(o.category))]);
       });
       apply<any>('rolePermissions', rows => setRolePermissions(rolePermissionsFromRows(rows)));
       apply<any>('appSettings', rows => {
@@ -1616,6 +1639,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const isAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
     if (!isAdmin) return false;
     return rolePermissions[currentUserRole]?.canManageProperties ?? true;
+  }, [currentUserRole, rolePermissions]);
+
+  const canManageFinance = useCallback(() => {
+    return (
+      currentUserRole === 'Super Admin' ||
+      currentUserRole === 'Admin' ||
+      currentUserRole === 'Finance Admin' ||
+      currentUserRole === 'Finance Manager' ||
+      (rolePermissions[currentUserRole]?.canManageFinance ?? false)
+    );
+  }, [currentUserRole, rolePermissions]);
+
+  const isFinanceUser = useCallback(() => {
+    return (
+      currentUserRole === 'Super Admin' ||
+      currentUserRole === 'Admin' ||
+      currentUserRole === 'Finance Admin' ||
+      currentUserRole === 'Finance Manager' ||
+      currentUserRole === 'Finance Staff' ||
+      (rolePermissions[currentUserRole]?.canManageFinance ?? false)
+    );
   }, [currentUserRole, rolePermissions]);
 
   const canManageUsers = useCallback(() => {
@@ -3765,6 +3809,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       order: nextOrder
     };
     setFieldOptions(prev => [...prev, newOption]);
+    apiService.deleteEntityRecord('fieldOptions', `empty-cat-${option.category}`).catch(() => {});
     persistCreate('fieldOptions', 'Field option', setFieldOptions, newOption, {
       action: 'CREATE', module: 'Settings', targetItem: `Field Option: ${option.label}`, site: 'All Sites',
       details: `Added new option "${option.label}" to category "${option.category}".`
@@ -3791,7 +3836,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteFieldOption = useCallback((id: string) => {
     const target = fieldOptions.find(o => o.id === id);
     if (!target) return;
+    const remainingInCat = fieldOptions.filter(o => o.category === target.category && o.id !== id);
     setFieldOptions(prev => prev.filter(o => o.id !== id));
+
+    if (remainingInCat.length === 0) {
+      const tombstone: CustomFieldOption = {
+        id: `empty-cat-${target.category}`,
+        category: target.category,
+        label: '__EMPTY__',
+        value: '__EMPTY__',
+        order: 0,
+        isActive: false
+      };
+      apiService.saveEntityRecord('fieldOptions', tombstone).catch(() => {});
+    }
+
     persistDelete('fieldOptions', `Field option "${target.label}" deletion`, setFieldOptions, target, {
       action: 'DELETE', module: 'Settings', targetItem: `Field Option: ${target.label}`, site: 'All Sites',
       details: `Deleted option "${target.label}" from category "${target.category}".`
@@ -3834,6 +3893,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const removeIds = fieldOptions
       .filter(o => (!category || o.category === category) && !defaultIds.has(o.id))
       .map(o => o.id);
+    if (category) {
+      removeIds.push(`empty-cat-${category}`);
+    }
     const updated = category ? [...fieldOptions.filter(o => o.category !== category), ...defaults] : DEFAULT_FIELD_OPTIONS;
     setFieldOptions(updated);
 
@@ -3979,6 +4041,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canManageFiles,
       canManageProperties,
       canManageUsers,
+      canManageFinance,
+      isFinanceUser,
       addReferral,
       updateReferral,
       archiveReferral,

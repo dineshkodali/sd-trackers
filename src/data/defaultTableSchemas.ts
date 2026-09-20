@@ -12,7 +12,8 @@ import {
   SDVCSAgency,
   DocumentRecord,
   PropertyLaundryLog,
-  PropertyFoodVendorBuffetLog
+  PropertyFoodVendorBuffetLog,
+  FinanceBill
 } from '../types';
 
 export const renderSchemaAttachmentCell = (val: any, row: any) =>
@@ -491,4 +492,102 @@ export const FOOD_VENDOR_BUFFET_TABLE_COLUMNS: TableColumnConfig<PropertyFoodVen
   { key: 'lastUpdatedBy', label: 'Audited By', type: 'text', section: 'Audit & Compliance' },
   { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Attachments & Evidence', renderCell: renderSchemaAttachmentCell }
 ];
+
+export const FINANCE_STATUS_BADGE_CLASSES: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-700 border-gray-300',
+  submitted: 'bg-purple-100 text-purple-800 border-purple-300',
+  under_review: 'bg-blue-100 text-blue-800 border-blue-300',
+  verification_pending: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  query_raised: 'bg-amber-100 text-amber-800 border-amber-300',
+  awaiting_approval: 'bg-violet-100 text-violet-800 border-violet-300',
+  approved: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  rejected: 'bg-rose-100 text-rose-800 border-rose-300',
+  payment_pending: 'bg-sky-100 text-sky-800 border-sky-300',
+  partially_paid: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  paid: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  reconciliation_pending: 'bg-orange-100 text-orange-800 border-orange-300',
+  reconciled: 'bg-teal-100 text-teal-800 border-teal-300',
+  cancelled: 'bg-gray-200 text-gray-600 border-gray-400'
+};
+
+export const FINANCE_INVOICES_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = [
+  { key: 'billNumber', label: 'Bill / Invoice #', type: 'text', required: true, section: 'Invoice Details' },
+  { key: 'siteId', label: 'Site / Property', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Property & Supplier' },
+  { key: 'vendorName' as any, label: 'Supplier / Vendor', type: 'text', section: 'Property & Supplier' },
+  { key: 'purchaseReference', label: 'PO / Ref #', type: 'text', section: 'Invoice Details' },
+  { key: 'billDate', label: 'Invoice Date', type: 'date', required: true, section: 'Schedule & Amounts' },
+  { key: 'dueDate', label: 'Due Date', type: 'date', section: 'Schedule & Amounts' },
+  { key: 'subtotal', label: 'Subtotal (£)', type: 'number', section: 'Schedule & Amounts' },
+  { key: 'taxAmount', label: 'VAT / Tax (£)', type: 'number', section: 'Schedule & Amounts' },
+  { key: 'totalAmount', label: 'Total (£)', type: 'number', required: true, section: 'Schedule & Amounts' },
+  { 
+    key: 'status', 
+    label: 'Status', 
+    type: 'select', 
+    options: ['draft', 'submitted', 'under_review', 'verification_pending', 'query_raised', 'awaiting_approval', 'approved', 'rejected', 'payment_pending', 'partially_paid', 'paid', 'reconciled', 'cancelled'],
+    badgeColors: FINANCE_STATUS_BADGE_CLASSES,
+    section: 'Status & Governance'
+  },
+  { key: 'submitterName' as any, label: 'Submitted By', type: 'text', section: 'Status & Governance' },
+  { key: 'finalApprovedByName' as any, label: 'Finance Sign-off', type: 'text', section: 'Status & Governance' }
+];
+
+export const FINANCE_CREDIT_CARD_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = [
+  { key: 'billNumber', label: 'Card Receipt Ref', type: 'text', required: true, section: 'Receipt Information' },
+  { key: 'siteId', label: 'Site / Property', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location' },
+  { key: 'vendorName' as any, label: 'Merchant / Store', type: 'text', section: 'Merchant' },
+  { key: 'billDate', label: 'Transaction Date', type: 'date', required: true, section: 'Details' },
+  { key: 'totalAmount', label: 'Amount (£)', type: 'number', required: true, section: 'Details' },
+  { key: 'purchaseReference', label: 'Card Last 4 / Receipt #', type: 'text', section: 'Receipt Information' },
+  { 
+    key: 'status', 
+    label: 'Status', 
+    type: 'select', 
+    options: ['draft', 'submitted', 'under_review', 'query_raised', 'awaiting_approval', 'approved', 'rejected', 'paid', 'reconciled'],
+    badgeColors: FINANCE_STATUS_BADGE_CLASSES,
+    section: 'Governance'
+  },
+  { key: 'submitterName' as any, label: 'Cardholder / Staff', type: 'text', section: 'Governance' },
+  { key: 'description', label: 'Expense Reason', type: 'textarea', colSpan: 2, section: 'Details' }
+];
+
+export const FINANCE_DELIVERY_NOTES_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = [
+  { key: 'billNumber', label: 'Delivery Note #', type: 'text', required: true, section: 'Delivery Details' },
+  { key: 'siteId', label: 'Delivery Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location' },
+  { key: 'vendorName' as any, label: 'Supplier / Courier', type: 'text', section: 'Delivery Details' },
+  { key: 'purchaseReference', label: 'PO Reference', type: 'text', section: 'Delivery Details' },
+  { key: 'billDate', label: 'Delivery Date', type: 'date', required: true, section: 'Delivery Details' },
+  { key: 'totalAmount', label: 'Invoice Value (£)', type: 'number', section: 'Details' },
+  { 
+    key: 'status', 
+    label: 'Verification Status', 
+    type: 'select', 
+    options: ['submitted', 'under_review', 'verification_pending', 'query_raised', 'awaiting_approval', 'approved', 'reconciled'],
+    badgeColors: FINANCE_STATUS_BADGE_CLASSES,
+    section: 'Verification'
+  },
+  { key: 'submitterName' as any, label: 'Received By', type: 'text', section: 'Verification' },
+  { key: 'description', label: 'Goods / Condition Notes', type: 'textarea', colSpan: 2, section: 'Delivery Details' }
+];
+
+export const FINANCE_APPROVALS_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = [
+  { key: 'billNumber', label: 'Bill Reference', type: 'text', required: true, section: 'Invoice Details' },
+  { key: 'siteId', label: 'Property / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Property' },
+  { key: 'vendorName' as any, label: 'Payee / Vendor', type: 'text', section: 'Payee' },
+  { key: 'billType', label: 'Type', type: 'text', section: 'Invoice Details' },
+  { key: 'billDate', label: 'Bill Date', type: 'date', section: 'Schedule' },
+  { key: 'dueDate', label: 'Due Date', type: 'date', section: 'Schedule' },
+  { key: 'totalAmount', label: 'Payable (£)', type: 'number', required: true, section: 'Amounts' },
+  { 
+    key: 'status', 
+    label: 'Workflow Stage', 
+    type: 'select', 
+    options: ['submitted', 'under_review', 'verification_pending', 'query_raised', 'awaiting_approval', 'approved', 'rejected'],
+    badgeColors: FINANCE_STATUS_BADGE_CLASSES,
+    section: 'Approval Status'
+  },
+  { key: 'submitterName' as any, label: 'Submitted By', type: 'text', section: 'Submitter' },
+  { key: 'finalApprovedByName' as any, label: 'Approved By', type: 'text', section: 'Approval Status' }
+];
+
 

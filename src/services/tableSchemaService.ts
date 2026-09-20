@@ -85,8 +85,10 @@ function merge<T>(saved: SerializedColumn[], defaultColumns: TableColumnConfig<T
       return {
         ...defaultCol,
         ...savedCol,
-        // Retain default callbacks like options and formatters if saved one doesn't supply them
+        // Retain default callbacks like options, optionCategory, and formatters if saved one doesn't supply them
         options: defaultCol.options || savedCol.options,
+        optionCategory: defaultCol.optionCategory || savedCol.optionCategory,
+        allowQuickAdd: defaultCol.allowQuickAdd ?? savedCol.allowQuickAdd ?? true,
         formatValue: defaultCol.formatValue,
         defaultValue: defaultCol.defaultValue ?? savedCol.defaultValue
       } as TableColumnConfig<T>;
@@ -104,6 +106,13 @@ function merge<T>(saved: SerializedColumn[], defaultColumns: TableColumnConfig<T
 
   return merged;
 }
+
+const SCHEMA_ALIASES: Record<string, string[]> = {
+  vendor_invoices: ['finance_invoices'],
+  credit_card_bills: ['finance_credit_cards', 'finance_cc_bills'],
+  delivery_notes: ['finance_delivery_notes'],
+  finance_approvals: ['finance_approvals']
+};
 
 export const tableSchemaService = {
   /** Replace the cache with layouts loaded from the database + merged with local persistent store. */
@@ -142,13 +151,19 @@ export const tableSchemaService = {
   },
 
   getSchema<T = any>(moduleKey: string, defaultColumns: TableColumnConfig<T>[]): TableColumnConfig<T>[] {
-    let saved = cache[moduleKey];
-    if (!Array.isArray(saved) || saved.length === 0) {
-      // Fall back to local persistent store
-      const local = readFromStorage(moduleKey);
+    const candidateKeys = [moduleKey, ...(SCHEMA_ALIASES[moduleKey] || [])];
+    let saved: SerializedColumn[] | null = null;
+
+    for (const key of candidateKeys) {
+      if (Array.isArray(cache[key]) && cache[key].length > 0) {
+        saved = cache[key];
+        break;
+      }
+      const local = readFromStorage(key);
       if (local && local.length > 0) {
         saved = local;
-        cache[moduleKey] = local;
+        cache[key] = local;
+        break;
       }
     }
 

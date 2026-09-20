@@ -19,6 +19,7 @@ interface FilterBarProps {
   totalFilteredCount: number;
   searchStorageKey?: string;
   searchPlaceholder?: string;
+  statusOptions?: Array<string | { label: string; value: string }>;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -36,7 +37,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onOpenExport,
   totalFilteredCount,
   searchStorageKey = 'safeguarding_filter_bar',
-  searchPlaceholder = 'Filter by name, Port/NASS ref, room, or notes...'
+  searchPlaceholder = 'Filter by name, Port/NASS ref, room, or notes...',
+  statusOptions
 }) => {
   const { allowedSites, canAccessAllSites, isMobileCompactView, setIsMobileCompactView } = useApp();
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -123,11 +125,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:outline-2 focus:outline-[#71afe5]"
           >
             <option value="all">All Statuses</option>
-            <option value="Open">Open</option>
-            <option value="In progress">In progress</option>
-            <option value="Completed">Completed</option>
-            <option value="Pending">Pending</option>
-            <option value="Archived">Archived</option>
+            {statusOptions && statusOptions.length > 0 ? (
+              statusOptions.map((opt, idx) => {
+                const val = typeof opt === 'string' ? opt : opt.value;
+                const lbl = typeof opt === 'string' ? opt : opt.label;
+                return <option key={`${val}-${idx}`} value={val}>{lbl}</option>;
+              })
+            ) : (
+              <>
+                <option value="Open">Open</option>
+                <option value="In progress">In progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Pending">Pending</option>
+                <option value="Archived">Archived</option>
+              </>
+            )}
           </select>
         </div>
 

@@ -54,23 +54,29 @@ export const ManageableSelect: React.FC<ManageableSelectProps> = ({
   const resolvedOptions = useMemo(() => {
     if (optionCategory) {
       const dynamicOpts = getFieldOptions(optionCategory, false);
-      if (dynamicOpts && dynamicOpts.length > 0) {
-        return dynamicOpts.map(opt => ({
-          label: opt.label,
-          value: opt.value,
-          color: opt.color,
-          description: opt.description
-        }));
+      const list: Array<{ label: string; value: string; color?: string; description?: string }> = (dynamicOpts || []).map(opt => ({
+        label: opt.label,
+        value: opt.value,
+        color: opt.color,
+        description: opt.description
+      }));
+      if (value && !list.some(o => String(o.value) === String(value))) {
+        list.push({ label: `${value} (Previous / Unlisted)`, value: String(value) });
       }
+      return list;
     }
 
-    return options.map(opt => {
+    const list = options.map(opt => {
       if (typeof opt === 'string') {
         return { label: opt, value: opt };
       }
       return opt;
     });
-  }, [optionCategory, getFieldOptions, options]);
+    if (value && !list.some(o => String(o.value) === String(value))) {
+      list.push({ label: `${value} (Previous / Unlisted)`, value: String(value) });
+    }
+    return list;
+  }, [optionCategory, getFieldOptions, options, value]);
 
   // Selected option metadata
   const selectedOptionMeta = useMemo(() => {

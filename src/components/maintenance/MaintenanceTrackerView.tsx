@@ -103,6 +103,7 @@ export const MaintenanceTrackerView: React.FC = () => {
 
   const priorityOptions = useMemo(() => getFieldOptions('maintenancePriorities'), [getFieldOptions]);
   const timeScaleOptions = useMemo(() => getFieldOptions('maintenanceTimeScales'), [getFieldOptions]);
+  const defectStatusOptions = useMemo(() => getFieldOptions('maintenanceStatuses'), [getFieldOptions]);
 
   // Filters
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
@@ -938,8 +939,9 @@ export const MaintenanceTrackerView: React.FC = () => {
               className="px-2.5 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
             >
               <option value="all">All Defect Statuses</option>
-              <option value="In Process">In Process</option>
-              <option value="Completed">Completed</option>
+              {defectStatusOptions.map(opt => (
+                <option key={opt.id} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
 

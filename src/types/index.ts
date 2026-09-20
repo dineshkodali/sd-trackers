@@ -1,11 +1,16 @@
 export type RoleType = 
   | 'Super Admin'
   | 'Admin'
+  | 'Finance Admin'
+  | 'Finance Manager'
+  | 'Finance Staff'
   | 'Regional Manager'
   | 'General Manager'
   | 'Employee'
   | 'Site Manager'
   | 'Staff';
+
+export * from './finance';
 
 export type StatusType = 'Open' | 'In progress' | 'Completed' | 'Pending' | 'Archived';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
@@ -47,7 +52,9 @@ export interface RolePermissions {
   canManageFiles: boolean; // Full CRUD for files (upload & delete)
   canManageUsers: boolean;
   canManageSettings: boolean;
+  canManageFinance?: boolean;
 }
+
 
 export interface SGReferral {
   id: string;
@@ -164,7 +171,9 @@ export interface PropertyLaundryLog {
   updatedAt: string;
 }
 
-export type FoodVendorName = 'A&M' | 'Freshbite' | '9 cusines' | 'sands' | '9 Cuisines' | 'Sands';
+// FoodVendorName is now dynamic - sourced from Field Options Setup (category: 'foodVendors')
+// This allows admins to add/remove catering vendors without code changes.
+export type FoodVendorName = string;
 
 export interface FoodBuffetItemBreakdown {
   lunch: number;

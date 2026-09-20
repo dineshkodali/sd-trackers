@@ -29,6 +29,12 @@ import {
   BookOpen,
   HandHeart,
   BellRing,
+  Receipt,
+  FileCheck,
+  CreditCard,
+  Truck,
+  Scale,
+  Building2,
   X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -61,6 +67,7 @@ export const Sidebar: React.FC = () => {
     canManageProperties,
     canManageUsers,
     rolePermissions,
+    isFinanceUser,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen
   } = useApp();
@@ -582,6 +589,86 @@ export const Sidebar: React.FC = () => {
           </button>
         </div>
 
+        {/* Section: Finance Management */}
+        <div className="space-y-1">
+          <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider flex items-center justify-between">
+            <span>Finance</span>
+            {isFinanceUser() && (
+              <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded font-semibold border border-emerald-200">
+                CENTRAL
+              </span>
+            )}
+          </div>
+
+          {/* 1. Vendor Invoices */}
+          <button
+            type="button"
+            id="nav-finance-invoices"
+            onClick={() => setActivePage('finance')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
+              isNavActive('finance')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Receipt className={`w-4 h-4 ${isNavActive('finance') ? 'text-white' : 'text-emerald-700'}`} />
+              <span>Vendor Invoices</span>
+            </div>
+          </button>
+
+          {/* 2. Credit Card Bills */}
+          <button
+            type="button"
+            id="nav-finance-credit-cards"
+            onClick={() => setActivePage('financeCreditCards')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
+              isNavActive('financeCreditCards')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <CreditCard className={`w-4 h-4 ${isNavActive('financeCreditCards') ? 'text-white' : 'text-purple-700'}`} />
+              <span>Credit Card Bills</span>
+            </div>
+          </button>
+
+          {/* 3. Delivery Notes */}
+          <button
+            type="button"
+            id="nav-finance-delivery-notes"
+            onClick={() => setActivePage('financeDeliveryNotes')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
+              isNavActive('financeDeliveryNotes')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Truck className={`w-4 h-4 ${isNavActive('financeDeliveryNotes') ? 'text-white' : 'text-blue-700'}`} />
+              <span>Delivery Notes</span>
+            </div>
+          </button>
+
+          {/* 4. Finance Approvals */}
+          <button
+            type="button"
+            id="nav-finance-approvals"
+            onClick={() => setActivePage('financeApprovals')}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
+              isNavActive('financeApprovals')
+                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
+                : 'text-[#333333] hover:bg-[#f0efeb]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <FileCheck className={`w-4 h-4 ${isNavActive('financeApprovals') ? 'text-white' : 'text-teal-700'}`} />
+              <span>Finance Approvals</span>
+            </div>
+          </button>
+        </div>
+
         {/* Section: Compliance & SharePoint */}
         <div className="space-y-1">
           <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
@@ -631,6 +718,8 @@ export const Sidebar: React.FC = () => {
               {vcsAgencies.length}
             </span>
           </button>
+
+
 
           {(rolePermissions[currentUserRole]?.canExportData || canManageSettings()) && (
             <button

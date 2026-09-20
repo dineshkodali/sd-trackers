@@ -40,17 +40,21 @@ const transportExportColumns: ExportColumnOption[] = [
 ];
 
 export const PublicTransportTrackerView: React.FC = () => {
-  const {
-    publicTransportRecords,
+  const {publicTransportRecords,
     addPublicTransportRecord,
     updatePublicTransportRecord,
     deletePublicTransportRecord,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
-    currentUserRole
+    currentUserRole,
+    getFieldOptions
   } = useApp();
 
+
+  // Dynamic transport modes and statuses from Field Options Setup
+  const transportModeOptions = React.useMemo(() => getFieldOptions('transportModes', false), [getFieldOptions]);
+  const transportStatusOptions = React.useMemo(() => getFieldOptions('transportApprovalStatuses', false), [getFieldOptions]);
   // Table Schema Hook
   const {
     columns,
@@ -341,12 +345,10 @@ export const PublicTransportTrackerView: React.FC = () => {
               className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
             >
               <option value="all">All Modes</option>
-              <option value="Bus">Bus</option>
-              <option value="Train">Train</option>
-              <option value="Underground">Underground</option>
-              <option value="Tram">Tram</option>
-              <option value="Taxi">Taxi</option>
-              <option value="Walking">Walking</option>
+              {transportModeOptions.length > 0
+                ? transportModeOptions.map(o => <option key={o.id} value={o.value || o.label}>{o.label}</option>)
+                : ['Bus', 'Train', 'Underground', 'Tram', 'Taxi', 'Walking'].map(m => <option key={m} value={m}>{m}</option>)
+              }
             </select>
           </div>
 
@@ -359,10 +361,10 @@ export const PublicTransportTrackerView: React.FC = () => {
               className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
             >
               <option value="all">All Statuses</option>
-              <option value="Approved">Approved</option>
-              <option value="Pending">Pending</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
+              {transportStatusOptions.length > 0
+                ? transportStatusOptions.map(o => <option key={o.id} value={o.value || o.label}>{o.label}</option>)
+                : ['Approved', 'Pending', 'Completed', 'Cancelled'].map(s => <option key={s} value={s}>{s}</option>)
+              }
             </select>
           </div>
 

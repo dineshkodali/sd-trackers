@@ -1,0 +1,125 @@
+{
+  "bills": [
+    {
+      "id": "a7633a3d-a906-44c7-95da-d59a3e8aa4b0",
+      "status": "submitted",
+      "site_id": "site-443",
+      "currency": "GBP",
+      "due_date": "2026-10-20",
+      "siteName": "Holiday Inn Lambeth",
+      "subtotal": 0,
+      "bill_date": "2026-09-20",
+      "bill_type": "vendor_invoice",
+      "site_name": "Holiday Inn Lambeth",
+      "vendor_id": "00000000-0000-0000-0001-000000000001",
+      "created_at": "2026-09-20T23:11:39.626Z",
+      "tax_amount": 20,
+      "updated_at": "2026-09-20T23:24:09.791Z",
+      "vendorName": "Apex Facilities & Commercial Cleaning Ltd",
+      "bill_number": "INV-892036",
+      "description": "",
+      "vendor_name": "Apex Facilities & Commercial Cleaning Ltd",
+      "submitted_at": "2026-09-20T23:11:39.626Z",
+      "submitted_by": "ce98b46b-4a6a-4a66-a70a-72e6c56d7691",
+      "total_amount": 20,
+      "submitterName": "Stack Master",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "purchase_reference": null
+    }
+  ],
+  "items": [
+    {
+      "id": "item-a7633a3d-a906-44c7-95da-d59a3e8aa4b0-1",
+      "bill_id": "a7633a3d-a906-44c7-95da-d59a3e8aa4b0",
+      "quantity": 1,
+      "created_at": "2026-09-20T23:24:09.791Z",
+      "line_total": 20,
+      "tax_amount": 20,
+      "unit_price": 0,
+      "description": "Goods / Services"
+    }
+  ],
+  "attachments": [],
+  "vendors": [
+    {
+      "id": "fven-001",
+      "vendor_name": "Apex Facilities & Commercial Cleaning Ltd"
+    },
+    {
+      "id": "fven-002",
+      "status": "active",
+      "created_at": "2026-09-20T19:22:37.633Z",
+      "vendor_name": "Brakes Foodservice Wholesale",
+      "contact_email": "orders@brake.co.uk",
+      "contact_phone": "+44 34 5606 9090",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "vendor_reference": "BRAKES-UK-88"
+    },
+    {
+      "id": "fven-003",
+      "status": "active",
+      "created_at": "2026-09-20T19:22:37.634Z",
+      "vendor_name": "Total Commercial Laundry Solutions",
+      "contact_email": "billing@totallaundry.co.uk",
+      "contact_phone": "+44 16 1496 0233",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "vendor_reference": "TOT-LAU-09"
+    },
+    {
+      "id": "fven-004",
+      "status": "active",
+      "created_at": "2026-09-20T19:22:37.634Z",
+      "vendor_name": "British Gas Business Energy",
+      "contact_email": "business@britishgas.co.uk",
+      "contact_phone": "+44 33 0100 0050",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "vendor_reference": "BG-UTIL-44"
+    },
+    {
+      "id": "fven-005",
+      "status": "active",
+      "created_at": "2026-09-20T19:22:37.634Z",
+      "vendor_name": "Enterprise Rent-A-Car Commercial",
+      "contact_email": "commercial@enterprise.co.uk",
+      "contact_phone": "+44 80 0800 2277",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "vendor_reference": "ENT-FLEET-12"
+    },
+    {
+      "id": "fven-006",
+      "status": "active",
+      "created_at": "2026-09-20T19:22:37.634Z",
+      "vendor_name": "Direct Site Supplies & Maintenance Ltd",
+      "contact_email": "helpdesk@directsitesupplies.co.uk",
+      "contact_phone": "+44 12 1496 0888",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "vendor_reference": "DSS-MAINT-77"
+    }
+  ],
+  "history": [
+    {
+      "id": "hist-1789946649791-ff3d7a",
+      "reason": "Bill updated via form modal",
+      "bill_id": "a7633a3d-a906-44c7-95da-d59a3e8aa4b0",
+      "changed_by": "ce98b46b-4a6a-4a66-a70a-72e6c56d7691",
+      "created_at": "2026-09-20T23:24:09.792Z",
+      "new_status": "submitted",
+      "old_status": "submitted",
+      "changed_by_name": "Stack Master"
+    },
+    {
+      "id": "hist-1789945899626-a398d8",
+      "reason": "Bill created and submitted via modal form",
+      "bill_id": "a7633a3d-a906-44c7-95da-d59a3e8aa4b0",
+      "changed_by": "ce98b46b-4a6a-4a66-a70a-72e6c56d7691",
+      "created_at": "2026-09-20T23:11:39.626Z",
+      "new_status": "submitted",
+      "old_status": null,
+      "changed_by_name": "Stack Master"
+    }
+  ],
+  "queries": [],
+  "query_responses": [],
+  "reconciliations": [],
+  "payments": []
+}

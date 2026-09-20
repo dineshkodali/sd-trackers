@@ -556,6 +556,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
         onOpenExport={handleOpenExportModal}
         totalFilteredCount={sortedData.length}
         searchStorageKey="vulnerable_search"
+        statusOptions={vulnerableStatusOptions}
       />
 
       {/* Data Table with persistent bottom-stretching height */}

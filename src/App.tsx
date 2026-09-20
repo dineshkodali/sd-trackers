@@ -41,6 +41,11 @@ import { AuthenticationBlockedView } from './components/auth/AuthenticationBlock
 import { DiagnosticInspectorModal } from './components/auth/DiagnosticInspectorModal';
 import { LiveDataBanner } from './components/common/LiveDataBanner';
 import { AccessDeniedView } from './components/common/AccessDeniedView';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { VendorInvoicesView } from './components/finance/VendorInvoicesView';
+import { CreditCardBillsView } from './components/finance/CreditCardBillsView';
+import { DeliveryNotesView } from './components/finance/DeliveryNotesView';
+import { FinanceApprovalsView } from './components/finance/FinanceApprovalsView';
 
 function AppLayout() {
   const { 
@@ -156,6 +161,14 @@ function AppLayout() {
         return <FoodView />;
       case 'escalations':
         return <EscalationsView />;
+      case 'finance':
+        return <VendorInvoicesView />;
+      case 'financeCreditCards':
+        return <CreditCardBillsView />;
+      case 'financeDeliveryNotes':
+        return <DeliveryNotesView />;
+      case 'financeApprovals':
+        return <FinanceApprovalsView />;
       case 'documents':
         return <DocumentsView />;
       case 'properties':
@@ -208,9 +221,15 @@ function AppLayout() {
         <Sidebar />
 
         {/* Viewport Content Area - Dedicated scrolling container */}
-        <main className="flex-1 overflow-y-auto p-2.5 sm:p-4 md:p-6 lg:p-8 max-w-[1700px] mx-auto w-full h-full">
+        <main className={`flex-1 overflow-y-auto h-full ${
+          activePage.startsWith('finance')
+            ? 'p-2.5 sm:p-4 md:p-6 w-full max-w-none'
+            : 'p-2.5 sm:p-4 md:p-6 lg:p-8 max-w-[1700px] mx-auto w-full'
+        }`}>
           <LiveDataBanner />
-          {renderActiveView()}
+          <ErrorBoundary key={activePage} fallbackTitle={`Display Issue in ${activePage}`}>
+            {renderActiveView()}
+          </ErrorBoundary>
         </main>
       </div>
 

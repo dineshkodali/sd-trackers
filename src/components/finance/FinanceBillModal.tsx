@@ -1,0 +1,652 @@
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2, Upload, FileText, AlertCircle, CheckCircle2, Building2, Lock, Loader2 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { financeService } from '../../services/financeService';
+import type { FinanceBill, FinanceBillItem, FinanceBillType, FinanceVendor } from '../../types/finance';
+
+interface FinanceBillModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  billToEdit?: FinanceBill | null;
+  vendors: FinanceVendor[];
+  defaultBillType?: FinanceBillType;
+  title?: string;
+}
+
+export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  billToEdit,
+  vendors,
+  defaultBillType = 'vendor_invoice',
+  title
+}) => {
+  const { properties, assignedSite, canAccessAllSites, authProfile } = useApp();
+
+  const [siteId, setSiteId] = useState<string>('');
+  const [vendorId, setVendorId] = useState<string>('');
+  const [billNumber, setBillNumber] = useState<string>('');
+  const [billType, setBillType] = useState<FinanceBillType>(defaultBillType);
+  const [billDate, setBillDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
+  const [purchaseReference, setPurchaseReference] = useState<string>('');
+
+  const [items, setItems] = useState<Array<{ description: string; quantity: number; unitPrice: number; taxAmount: number }>>([
+    { description: 'Goods / Services', quantity: 1, unitPrice: 0, taxAmount: 0 }
+  ]);
+
+  const [files, setFiles] = useState<{ file: File; type: 'vendor_invoice' | 'delivery_note' | 'credit_card_receipt' | 'other' }[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Accessible sites
+  const availableProperties = canAccessAllSites()
+    ? properties
+    : properties.filter(p => p.id === assignedSite || p.name === assignedSite);
+
+  useEffect(() => {
+    if (billToEdit) {
+      setSiteId(billToEdit.siteId);
+      setVendorId(billToEdit.vendorId || '');
+      setBillNumber(billToEdit.billNumber);
+      setBillType(billToEdit.billType);
+      setBillDate(billToEdit.billDate);
+      setDueDate(billToEdit.dueDate || '');
+      setDescription(billToEdit.description || '');
+      setPurchaseReference(billToEdit.purchaseReference || '');
+      if (billToEdit.items && billToEdit.items.length > 0) {
+        setItems(billToEdit.items.map(i => ({
+          description: i.description,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          taxAmount: i.taxAmount
+        })));
+      }
+    } else {
+      const type = defaultBillType || 'vendor_invoice';
+      const prefix = type === 'credit_card_expense' ? 'CC' : type === 'delivery_note' ? 'DN' : type === 'other_expense' ? 'EXP' : 'INV';
+      setSiteId(availableProperties[0]?.id || assignedSite || '');
+      setVendorId(vendors[0]?.id || '');
+      setBillNumber(`${prefix}-${Date.now().toString().slice(-6)}`);
+      setBillType(type);
+      setBillDate(new Date().toISOString().split('T')[0]);
+      setDueDate(new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]);
+      setDescription('');
+      setPurchaseReference('');
+      setItems([{ description: 'Goods / Services', quantity: 1, unitPrice: 0, taxAmount: 0 }]);
+      setFiles([]);
+    }
+    setError(null);
+  }, [billToEdit, isOpen, defaultBillType]);
+
+  if (!isOpen) return null;
+
+  const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity || 1) * Number(item.unitPrice || 0)), 0);
+  const taxAmount = items.reduce((sum, item) => sum + Number(item.taxAmount || 0), 0);
+  const totalAmount = subtotal + taxAmount;
+
+  const handleAddItem = () => {
+    setItems(prev => [...prev, { description: '', quantity: 1, unitPrice: 0, taxAmount: 0 }]);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    if (items.length <= 1) return;
+    setItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleItemChange = (index: number, field: string, value: any) => {
+    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'vendor_invoice' | 'delivery_note' | 'credit_card_receipt' | 'other') => {
+    if (e.target.files) {
+      const selected = Array.from(e.target.files);
+      const newFiles = selected.map(f => ({ file: f, type }));
+      setFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearOrRevert = () => {
+    if (billToEdit) {
+      setSiteId(billToEdit.siteId);
+      setVendorId(billToEdit.vendorId || '');
+      setBillNumber(billToEdit.billNumber);
+      setBillType(billToEdit.billType);
+      setBillDate(billToEdit.billDate);
+      setDueDate(billToEdit.dueDate || '');
+      setDescription(billToEdit.description || '');
+      setPurchaseReference(billToEdit.purchaseReference || '');
+      if (billToEdit.items && billToEdit.items.length > 0) {
+        setItems(billToEdit.items.map(i => ({
+          description: i.description,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          taxAmount: i.taxAmount
+        })));
+      }
+      setFiles([]);
+    } else {
+      const type = defaultBillType || 'vendor_invoice';
+      const prefix = type === 'credit_card_expense' ? 'CC' : type === 'delivery_note' ? 'DN' : type === 'other_expense' ? 'EXP' : 'INV';
+      setSiteId(availableProperties[0]?.id || assignedSite || '');
+      setVendorId(vendors[0]?.id || '');
+      setBillNumber(`${prefix}-${Date.now().toString().slice(-6)}`);
+      setBillType(type);
+      setBillDate(new Date().toISOString().split('T')[0]);
+      setDueDate(new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]);
+      setDescription('');
+      setPurchaseReference('');
+      setItems([{ description: 'Goods / Services', quantity: 1, unitPrice: 0, taxAmount: 0 }]);
+      setFiles([]);
+    }
+    setError(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!siteId) {
+      setError('Please select a property/site.');
+      return;
+    }
+    if (!billNumber.trim()) {
+      setError('Bill number is required.');
+      return;
+    }
+    if (totalAmount <= 0) {
+      setError('Total bill amount must be greater than zero.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const selectedProperty = availableProperties.find(p => p.id === siteId || p.name === siteId);
+      const resolvedSiteName = selectedProperty?.name || siteId;
+      const selectedVendor = vendors.find(v => v.id === vendorId);
+      const resolvedVendorName = selectedVendor?.vendorName;
+
+      const billData: Partial<FinanceBill> = {
+        siteId,
+        siteName: resolvedSiteName,
+        vendorId: vendorId || undefined,
+        vendorName: resolvedVendorName || undefined,
+        billNumber: billNumber.trim(),
+        billType,
+        billDate,
+        dueDate: dueDate || undefined,
+        currency: 'GBP',
+        subtotal,
+        taxAmount,
+        totalAmount,
+        description: description.trim(),
+        purchaseReference: purchaseReference.trim() || undefined,
+        submittedBy: authProfile?.id || '00000000-0000-0000-0000-000000000000'
+      };
+
+      let result: { success: boolean; billId?: string; error?: string };
+      if (billToEdit) {
+        const updateRes = await financeService.updateBill(billToEdit.id, billData, items);
+        result = { success: updateRes.success, billId: billToEdit.id, error: updateRes.error };
+      } else {
+        result = await financeService.createBill(billData, items);
+      }
+
+      if (!result.success || !result.billId) {
+        throw new Error(result.error || 'Failed to submit bill');
+      }
+
+      // Upload files if any
+      if (files.length > 0) {
+        for (const f of files) {
+          await financeService.uploadAttachment(
+            result.billId,
+            f.file,
+            f.type,
+            authProfile?.id || '00000000-0000-0000-0000-000000000000'
+          );
+        }
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while saving the bill.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getPrimaryUploadLabel = () => {
+    switch (billType) {
+      case 'delivery_note':
+        return 'Attach Delivery Note / Proof of Delivery';
+      case 'credit_card_expense':
+        return 'Attach Credit Card Receipt / Voucher';
+      default:
+        return 'Attach Vendor Invoice (PDF / Scan)';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
+      <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[#e1dfdd] flex items-center justify-between bg-[#faf9f8]">
+          <div>
+            <h3 className="text-base font-semibold text-[#242424] flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#0d9488]" />
+              <span>{title || (billToEdit ? 'Edit Finance Record' : 'Log New Finance Record')}</span>
+            </h3>
+            <p className="text-[11px] text-neutral-500 mt-0.5">
+              Submit invoices, delivery notes, or site expenses for Central Finance verification and approval.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
+            aria-label="Close dialog"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Section 1: 2-Column Responsive Grid */}
+          <div className="space-y-3">
+            <div className="pb-1 border-b border-neutral-200">
+              <h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">Document & Property Details</h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Property / Site */}
+              <div className="space-y-1">
+                <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                  <span className="flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5 text-teal-600 inline" />
+                    <span>Property / Site <span className="text-red-500">*</span></span>
+                  </span>
+                  {!canAccessAllSites() && (
+                    <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5 text-teal-600" /> Assigned Property (Locked)
+                    </span>
+                  )}
+                </label>
+                {canAccessAllSites() ? (
+                  <select
+                    value={siteId}
+                    onChange={e => setSiteId(e.target.value)}
+                    required
+                    disabled={isSubmitting}
+                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs"
+                  >
+                    {availableProperties.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={availableProperties.find(p => p.id === siteId)?.name || siteId || assignedSite || ''}
+                      readOnly
+                      disabled
+                      className="w-full p-2 pr-8 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
+                    />
+                    <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                )}
+              </div>
+
+              {/* Vendor / Supplier */}
+              <div className="space-y-1">
+                <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                  <span>Vendor / Supplier</span>
+                </label>
+                <select
+                  value={vendorId}
+                  onChange={e => setVendorId(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs"
+                >
+                  <option value="">-- Non-vendor / Direct Expense --</option>
+                  {vendors.map(v => (
+                    <option key={v.id} value={v.id}>{v.vendorName}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Bill / Document Type */}
+              <div className="space-y-1">
+                <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                  <span>Document Type <span className="text-red-500">*</span></span>
+                </label>
+                <select
+                  value={billType}
+                  onChange={e => setBillType(e.target.value as FinanceBillType)}
+                  disabled={isSubmitting}
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs"
+                >
+                  <option value="vendor_invoice">Vendor Invoice</option>
+                  <option value="credit_card_expense">Credit Card Expense</option>
+                  <option value="delivery_note">Delivery Note &amp; Goods Receipt</option>
+                  <option value="other_expense">Other Direct Expense</option>
+                </select>
+              </div>
+
+              {/* Bill Number */}
+              <div className="space-y-1">
+                <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                  <span>
+                    {billType === 'delivery_note' ? 'Delivery Note #' : billType === 'credit_card_expense' ? 'Card Receipt / Ref #' : 'Invoice / Bill #'}{' '}
+                    <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={billNumber}
+                  onChange={e => setBillNumber(e.target.value)}
+                  required
+                  disabled={isSubmitting}
+                  placeholder={billType === 'delivery_note' ? 'e.g. DN-90214' : billType === 'credit_card_expense' ? 'e.g. CC-40291' : 'e.g. INV-10492'}
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs"
+                />
+              </div>
+
+              {/* Bill Date */}
+              <div className="space-y-1">
+                <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                  <span>
+                    {billType === 'delivery_note' ? 'Delivery Date' : billType === 'credit_card_expense' ? 'Transaction Date' : 'Invoice Date'}{' '}
+                    <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                <input
+                  type="date"
+                  value={billDate}
+                  onChange={e => setBillDate(e.target.value)}
+                  required
+                  disabled={isSubmitting}
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs"
+                />
+              </div>
+
+              {/* Due Date */}
+              <div className="space-y-1">
+                <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                  <span>Due Date</span>
+                </label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs"
+                />
+              </div>
+
+              {/* Purchase Reference */}
+              <div className="sm:col-span-2 space-y-1">
+                <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                  <span>
+                    {billType === 'delivery_note' ? 'PO / Goods Inward Reference (Optional)' : billType === 'credit_card_expense' ? 'Card Last 4 / Receipt Reference (Optional)' : 'PO / Purchase Reference (Optional)'}
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={purchaseReference}
+                  onChange={e => setPurchaseReference(e.target.value)}
+                  disabled={isSubmitting}
+                  placeholder={billType === 'delivery_note' ? 'e.g. PO-2026-0881' : billType === 'credit_card_expense' ? 'e.g. Card ending 4419' : 'e.g. PO-2026-0881'}
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs"
+                />
+              </div>
+
+              {/* Description / Notes */}
+              <div className="sm:col-span-2 space-y-1">
+                <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                  <span>
+                    {billType === 'delivery_note' ? 'Goods / Delivery Condition Notes' : billType === 'credit_card_expense' ? 'Expense Reason & Site Justification' : 'Description / Goods Notes'}
+                  </span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  disabled={isSubmitting}
+                  placeholder={billType === 'delivery_note' ? 'Notes on goods received, condition, box count...' : billType === 'credit_card_expense' ? 'Summary of expense purpose and operational justification...' : 'Summary of goods delivered or service performed at site...'}
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs resize-y"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section Divider */}
+          <div className="border-t border-[#e1dfdd]" />
+
+          {/* Section 2: Content Card for Line Items & Cost Breakdown */}
+          <div className="border border-[#e1dfdd] rounded-xs bg-[#faf9f8] p-4 space-y-3">
+            <div className="flex items-center justify-between pb-1 border-b border-neutral-200">
+              <h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+                Line Items &amp; Cost Breakdown
+              </h4>
+              <button
+                type="button"
+                onClick={handleAddItem}
+                disabled={isSubmitting}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-[#0d9488] hover:bg-teal-50 rounded-xs border border-teal-200 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Item</span>
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {items.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-2 bg-white p-2.5 rounded-xs border border-[#e1dfdd]">
+                  <input
+                    type="text"
+                    required
+                    disabled={isSubmitting}
+                    value={item.description}
+                    onChange={e => handleItemChange(idx, 'description', e.target.value)}
+                    placeholder="Description / Product"
+                    className="flex-1 text-xs rounded-xs border border-[#8a8886] px-2.5 py-1.5 focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] text-[#323130]"
+                  />
+                  <div className="w-20">
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="any"
+                      required
+                      disabled={isSubmitting}
+                      value={item.quantity}
+                      onChange={e => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                      placeholder="Qty"
+                      className="w-full text-xs rounded-xs border border-[#8a8886] px-2 py-1.5 text-right focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] text-[#323130]"
+                    />
+                  </div>
+                  <div className="w-24">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      disabled={isSubmitting}
+                      value={item.unitPrice}
+                      onChange={e => handleItemChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                      placeholder="Unit £"
+                      className="w-full text-xs rounded-xs border border-[#8a8886] px-2 py-1.5 text-right focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] text-[#323130]"
+                    />
+                  </div>
+                  <div className="w-20">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      disabled={isSubmitting}
+                      value={item.taxAmount}
+                      onChange={e => handleItemChange(idx, 'taxAmount', parseFloat(e.target.value) || 0)}
+                      placeholder="VAT £"
+                      className="w-full text-xs rounded-xs border border-[#8a8886] px-2 py-1.5 text-right focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] text-[#323130]"
+                    />
+                  </div>
+                  <div className="w-24 text-right text-xs font-semibold text-[#323130]">
+                    £{((item.quantity * item.unitPrice) + item.taxAmount).toFixed(2)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(idx)}
+                    disabled={items.length <= 1 || isSubmitting}
+                    className="p-1 text-neutral-400 hover:text-red-600 disabled:opacity-30 transition-colors cursor-pointer"
+                    title="Remove item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Totals Breakdown */}
+            <div className="mt-4 pt-3 border-t border-[#e1dfdd] flex justify-end gap-6 text-xs">
+              <div className="text-neutral-500">
+                Subtotal: <span className="font-semibold text-neutral-800">£{subtotal.toFixed(2)}</span>
+              </div>
+              <div className="text-neutral-500">
+                VAT / Tax: <span className="font-semibold text-neutral-800">£{taxAmount.toFixed(2)}</span>
+              </div>
+              <div className="font-bold text-teal-800">
+                Total Amount: £{totalAmount.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          {/* Section Divider */}
+          <div className="border-t border-[#e1dfdd]" />
+
+          {/* Section 3: Content Card with Dashed Drop Zone */}
+          <div className="border border-[#e1dfdd] rounded-xs bg-[#faf9f8] p-4 space-y-3">
+            <div className="pb-1 border-b border-neutral-200">
+              <h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+                Supporting Documents &amp; Proof
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Primary Document Dropzone */}
+              <label className="border-2 border-dashed border-[#8a8886]/40 hover:border-[#0d9488] bg-white rounded-xs p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group">
+                <Upload className="w-6 h-6 text-neutral-400 group-hover:text-[#0d9488] transition-colors mb-1.5" />
+                <span className="text-xs font-semibold text-[#323130]">{getPrimaryUploadLabel()}</span>
+                <span className="text-[11px] text-neutral-500 mt-0.5">PDF, PNG, JPG up to 15MB</span>
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  className="hidden"
+                  disabled={isSubmitting}
+                  onChange={e => handleFileChange(e, billType === 'delivery_note' ? 'delivery_note' : billType === 'credit_card_expense' ? 'credit_card_receipt' : 'vendor_invoice')}
+                />
+              </label>
+
+              {/* Supporting Evidence Dropzone */}
+              <label className="border-2 border-dashed border-[#8a8886]/40 hover:border-[#0d9488] bg-white rounded-xs p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group">
+                <Upload className="w-6 h-6 text-neutral-400 group-hover:text-[#0d9488] transition-colors mb-1.5" />
+                <span className="text-xs font-semibold text-[#323130]">Attach Supporting Evidence / Quote</span>
+                <span className="text-[11px] text-neutral-500 mt-0.5">Optional delivery receipt or quote</span>
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  className="hidden"
+                  disabled={isSubmitting}
+                  onChange={e => handleFileChange(e, 'other')}
+                />
+              </label>
+            </div>
+
+            {/* Selected files preview */}
+            {files.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                {files.map((f, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-teal-50/60 border border-teal-200 px-3 py-1.5 rounded-xs text-xs">
+                    <div className="flex items-center gap-2 text-teal-950 truncate">
+                      <FileText className="w-4 h-4 text-teal-600 shrink-0" />
+                      <span className="font-medium truncate">{f.file.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-200 text-teal-800 uppercase font-semibold">
+                        {f.type.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFile(idx)}
+                      disabled={isSubmitting}
+                      className="text-neutral-400 hover:text-red-600 transition-colors cursor-pointer"
+                      title="Remove file"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="pt-4 border-t border-[#e1dfdd] flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleClearOrRevert}
+              disabled={isSubmitting}
+              className="px-3 py-1.5 text-xs text-neutral-600 hover:text-neutral-900 border border-neutral-300 rounded-xs hover:bg-neutral-100 transition-colors cursor-pointer"
+              title={billToEdit ? "Revert unsaved changes to original values" : "Clear all fields to defaults"}
+            >
+              {billToEdit ? 'Revert Changes' : 'Clear Form'}
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="px-4 py-2 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold transition-colors cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer text-xs"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{billToEdit ? 'Save Changes' : 'Submit to Finance'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
