@@ -169,7 +169,11 @@ export const tableSchemaService = {
 
     if (!Array.isArray(saved) || saved.length === 0) return defaultColumns;
     try {
-      return merge(saved, defaultColumns);
+      let filteredSaved = saved;
+      if (moduleKey === 'credit_card_bills' || (SCHEMA_ALIASES['credit_card_bills'] && SCHEMA_ALIASES['credit_card_bills'].includes(moduleKey))) {
+        filteredSaved = saved.filter(col => col.key !== 'billNumber' && col.key !== 'purchaseReference');
+      }
+      return merge(filteredSaved, defaultColumns);
     } catch (e) {
       console.warn(`[TableSchemaService] Failed to apply schema for ${moduleKey}:`, e);
       return defaultColumns;

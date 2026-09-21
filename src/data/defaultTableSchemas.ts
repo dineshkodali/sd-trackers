@@ -533,12 +533,11 @@ export const FINANCE_INVOICES_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = 
 ];
 
 export const FINANCE_CREDIT_CARD_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = [
-  { key: 'billNumber', label: 'Card Receipt Ref', type: 'text', required: true, section: 'Receipt Information' },
   { key: 'siteId', label: 'Site / Property', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location' },
   { key: 'vendorName' as any, label: 'Merchant / Store', type: 'text', section: 'Merchant' },
   { key: 'billDate', label: 'Transaction Date', type: 'date', required: true, section: 'Details' },
   { key: 'totalAmount', label: 'Amount (£)', type: 'number', required: true, section: 'Details' },
-  { key: 'purchaseReference', label: 'Card Last 4 / Receipt #', type: 'text', section: 'Receipt Information' },
+  { key: 'description', label: 'Expense Reason', type: 'textarea', colSpan: 2, section: 'Details' },
   { 
     key: 'status', 
     label: 'Status', 
@@ -547,8 +546,7 @@ export const FINANCE_CREDIT_CARD_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[]
     badgeColors: FINANCE_STATUS_BADGE_CLASSES,
     section: 'Governance'
   },
-  { key: 'submitterName' as any, label: 'Cardholder / Staff', type: 'text', section: 'Governance' },
-  { key: 'description', label: 'Expense Reason', type: 'textarea', colSpan: 2, section: 'Details' }
+  { key: 'submitterName' as any, label: 'Cardholder / Staff', type: 'text', section: 'Governance' }
 ];
 
 export const FINANCE_DELIVERY_NOTES_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = [

@@ -68,6 +68,9 @@ export const Sidebar: React.FC = () => {
     canManageUsers,
     rolePermissions,
     isFinanceUser,
+    financeBills,
+    assignedSite,
+    canAccessAllSites,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen
   } = useApp();
@@ -96,6 +99,21 @@ export const Sidebar: React.FC = () => {
   const openMaintenance = maintenanceRecords.filter(m => m.defectStatus !== 'Completed').length;
   const cat1Count = maintenanceRecords.filter(m => m.priority === 'CAT 1' && m.defectStatus !== 'Completed').length;
   const spcdCount = spcdRecords.filter(s => !s.isArchived).length;
+
+  const userSiteFilter = (b: any) => {
+    if (canAccessAllSites()) return true;
+    if (!assignedSite || assignedSite === 'All Sites' || assignedSite === 'all') return true;
+    const allowed = assignedSite.toLowerCase().trim();
+    const bSiteName = (b.siteName || '').toLowerCase().trim();
+    const bSiteId = (b.siteId || '').toLowerCase().trim();
+    return bSiteName === allowed || bSiteName.includes(allowed) || bSiteId === allowed;
+  };
+
+  const scopedBills = (financeBills || []).filter(userSiteFilter);
+  const vendorInvoicesCount = scopedBills.filter(b => b.billType === 'vendor_invoice').length;
+  const creditCardBillsCount = scopedBills.filter(b => b.billType === 'credit_card_expense' || b.billType === 'other_expense').length;
+  const deliveryNotesCount = scopedBills.filter(b => b.billType === 'delivery_note').length;
+  const financeApprovalsCount = scopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length;
 
   const isSuperAdmin = currentUserRole === 'Super Admin';
   const isAdminOrSuperAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
@@ -615,6 +633,13 @@ export const Sidebar: React.FC = () => {
               <Receipt className={`w-4 h-4 ${isNavActive('finance') ? 'text-white' : 'text-emerald-700'}`} />
               <span>Vendor Invoices</span>
             </div>
+            {vendorInvoicesCount > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('finance') ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800'
+              }`}>
+                {vendorInvoicesCount}
+              </span>
+            )}
           </button>
 
           {/* 2. Credit Card Bills */}
@@ -632,6 +657,13 @@ export const Sidebar: React.FC = () => {
               <CreditCard className={`w-4 h-4 ${isNavActive('financeCreditCards') ? 'text-white' : 'text-purple-700'}`} />
               <span>Credit Card Bills</span>
             </div>
+            {creditCardBillsCount > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('financeCreditCards') ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-800'
+              }`}>
+                {creditCardBillsCount}
+              </span>
+            )}
           </button>
 
           {/* 3. Delivery Notes */}
@@ -649,6 +681,13 @@ export const Sidebar: React.FC = () => {
               <Truck className={`w-4 h-4 ${isNavActive('financeDeliveryNotes') ? 'text-white' : 'text-blue-700'}`} />
               <span>Delivery Notes</span>
             </div>
+            {deliveryNotesCount > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                isNavActive('financeDeliveryNotes') ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-800'
+              }`}>
+                {deliveryNotesCount}
+              </span>
+            )}
           </button>
 
           {/* 4. Finance Approvals */}
@@ -666,6 +705,13 @@ export const Sidebar: React.FC = () => {
               <FileCheck className={`w-4 h-4 ${isNavActive('financeApprovals') ? 'text-white' : 'text-teal-700'}`} />
               <span>Finance Approvals</span>
             </div>
+            {financeApprovalsCount > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                isNavActive('financeApprovals') ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {financeApprovalsCount}
+              </span>
+            )}
           </button>
         </div>
 

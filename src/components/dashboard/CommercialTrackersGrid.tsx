@@ -15,7 +15,9 @@ import {
   ScrollText,
   ArrowUpRight,
   ExternalLink,
-  Plus
+  Plus,
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -39,8 +41,16 @@ export const CommercialTrackersGrid: React.FC<CommercialTrackersGridProps> = ({
     spcdRecords,
     properties,
     users,
-    auditLogs
+    auditLogs,
+    financeBills
   } = useApp();
+
+  const financeInvoices = (financeBills || []).filter(b => b.billType === 'vendor_invoice');
+  const financeCards = (financeBills || []).filter(b => b.billType === 'credit_card_expense' || b.billType === 'other_expense');
+  const financeInvoicesCount = financeInvoices.length;
+  const pendingFinanceInvoices = financeInvoices.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length;
+  const financeCardsCount = financeCards.length;
+  const pendingFinanceCards = financeCards.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length;
 
   // Metrics
   const activeReferralsCount = referrals.filter(r => r.status !== 'Archived').length;
@@ -265,6 +275,36 @@ export const CommercialTrackersGrid: React.FC<CommercialTrackersGridProps> = ({
       textColor: 'text-purple-900',
       iconBg: 'bg-purple-100 text-purple-800',
       badge: 'Governance'
+    },
+    {
+      id: 'finance',
+      title: 'Vendor Invoices & Bills',
+      code: 'TRK-INV',
+      desc: 'Central supplier invoices, purchase orders, VAT tracking, and multi-site approvals.',
+      icon: Receipt,
+      count: financeInvoicesCount,
+      subtext: `${pendingFinanceInvoices} Pending Approval`,
+      theme: 'emerald',
+      bgColor: 'bg-emerald-50/50 hover:bg-emerald-50',
+      borderColor: 'border-emerald-200 hover:border-emerald-600',
+      textColor: 'text-emerald-900',
+      iconBg: 'bg-emerald-100 text-emerald-800',
+      badge: 'Finance'
+    },
+    {
+      id: 'financeCreditCards',
+      title: 'Credit Card Bills & Receipts',
+      code: 'TRK-CRD',
+      desc: 'Corporate card expenses, petty cash disbursements, and emergency site spend.',
+      icon: CreditCard,
+      count: financeCardsCount,
+      subtext: `${pendingFinanceCards} Pending Sign-off`,
+      theme: 'purple',
+      bgColor: 'bg-purple-50/50 hover:bg-purple-50',
+      borderColor: 'border-purple-200 hover:border-purple-600',
+      textColor: 'text-purple-900',
+      iconBg: 'bg-purple-100 text-purple-800',
+      badge: 'Finance'
     }
   ];
 

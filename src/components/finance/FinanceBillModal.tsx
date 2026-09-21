@@ -14,12 +14,14 @@ import {
   ShieldCheck,
   CreditCard,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Store
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceSupplierModal } from './FinanceSupplierModal';
 import { ManageableSelect } from '../common/ManageableSelect';
+import { QuickOptionModal } from '../common/QuickOptionModal';
 import type { FinanceBill, FinanceBillItem, FinanceBillType, FinanceVendor } from '../../types/finance';
 
 interface FinanceBillModalProps {
@@ -84,6 +86,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
     );
   });
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [isMerchantModalOpen, setIsMerchantModalOpen] = useState(false);
 
   // Approval Routing
   const [approvers, setApprovers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
@@ -128,6 +131,24 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
       }
     });
   }, [isOpen, routeToApproval, selectedApproverId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleVendorsChanged = () => {
+      financeService.getVendors(true).then(v => {
+        if (v) {
+          const clean = v.filter(item => 
+            !item.id.startsWith('fven-') && 
+            !item.vendorName.includes('Apex Facilities') && 
+            !item.vendorName.includes('Direct Site Supplies')
+          );
+          setAllVendors(clean);
+        }
+      });
+    };
+    window.addEventListener('finance-vendors-changed', handleVendorsChanged);
+    return () => window.removeEventListener('finance-vendors-changed', handleVendorsChanged);
+  }, [isOpen]);
 
   // Hydrate fields on open or edit
   useEffect(() => {
@@ -268,7 +289,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
       setError('Please select a property / site.');
       return;
     }
-    if (!billNumber.trim()) {
+    if (billType !== 'credit_card_expense' && !billNumber.trim()) {
       setError('Reference / ticket number is required.');
       return;
     }
@@ -295,8 +316,6 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
       let finalDescription = description.trim();
       if (billType === 'delivery_note') {
         finalDescription = `[Condition: ${deliveryCondition === 'good' ? 'Good Order' : 'Damaged / Discrepancy'}] ${finalDescription}`;
-      } else if (billType === 'credit_card_expense' && cardReference.trim()) {
-        finalDescription = `[Card Ref: ${cardReference.trim()}] ${finalDescription}`;
       }
 
       // Compute final financial values
@@ -341,12 +360,16 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
         }];
       }
 
+      const resolvedBillNumber = billType === 'credit_card_expense'
+        ? (billToEdit?.billNumber || billNumber.trim() || `CC-${Date.now().toString().slice(-6)}`)
+        : billNumber.trim();
+
       const billData: Partial<FinanceBill> = {
         siteId,
         siteName: resolvedSiteName,
         vendorId: vendorId || undefined,
         vendorName: vendorName.trim(),
-        billNumber: billNumber.trim(),
+        billNumber: resolvedBillNumber,
         billType,
         billDate,
         dueDate: billType === 'vendor_invoice' ? (dueDate || undefined) : undefined,
@@ -355,7 +378,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
         taxAmount: finalTax,
         totalAmount: finalTotal,
         description: finalDescription,
-        purchaseReference: purchaseReference.trim() || undefined,
+        purchaseReference: billType === 'credit_card_expense' ? undefined : (purchaseReference.trim() || undefined),
         submittedBy: authProfile?.id || '00000000-0000-0000-0000-000000000000',
         status: billStatus
       };
@@ -510,53 +533,65 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
 
               {/* Supplier / Vendor / Merchant */}
               <div className="space-y-1">
-                <div className="flex items-center justify-between mb-1">
-                  {billType !== 'credit_card_expense' && (
-                    <label className="font-semibold text-[#605e5c]">
-                      <span>
-                        {billType === 'delivery_note' ? 'Supplier / Carrier Name' : 'Supplier / Vendor Name'} <span className="text-red-500">*</span>
-                      </span>
-                    </label>
-                  )}
-                  {billType !== 'credit_card_expense' && (
-                    <button
-                      type="button"
-                      onClick={() => setIsSupplierModalOpen(true)}
-                      className="text-[10px] text-[#0d9488] hover:text-[#0f766e] font-semibold flex items-center gap-1 cursor-pointer hover:underline"
-                    >
-                      <Truck className="w-3 h-3" />
-                      <span>Manage Suppliers</span>
-                    </button>
-                  )}
-                </div>
-{billType === 'credit_card_expense' ? (
-                  <ManageableSelect
-                    label="Merchant / Store Name"
-                    value={vendorName}
-                    onChange={value => {
-                      setVendorName(value);
-                      setVendorId('');
-                    }}
-                    optionCategory="financeCardMerchants"
-                    allowQuickAdd={['Super Admin', 'Admin'].includes(authProfile?.role || currentUserRole)}
-                    showManageActions={['Super Admin', 'Admin'].includes(authProfile?.role || currentUserRole)}
-                    required
-                    disabled={isSubmitting}
-                    placeholder="Select merchant / store..."
-                  />
+                {billType === 'credit_card_expense' ? (
+                  <>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-[#605e5c]">
+                        <span>Merchant / Store Name <span className="text-red-500">*</span></span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsMerchantModalOpen(true)}
+                        className="text-[10px] text-[#0d9488] hover:text-[#0f766e] font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                      >
+                        <Store className="w-3 h-3" />
+                        <span>Manage Merchants</span>
+                      </button>
+                    </div>
+                    <ManageableSelect
+                      value={vendorName}
+                      onChange={value => {
+                        setVendorName(value);
+                        setVendorId('');
+                      }}
+                      optionCategory="financeCardMerchants"
+                      allowQuickAdd={true}
+                      showManageActions={true}
+                      required
+                      disabled={isSubmitting}
+                      placeholder="Select merchant / store..."
+                    />
+                  </>
                 ) : (
-                  <select
-                    value={vendorId}
-                    onChange={e => handleVendorChange(e.target.value)}
-                    required
-                    disabled={isSubmitting}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs font-medium"
-                  >
-                    <option value="">Select supplier / vendor...</option>
-                    {allVendors.map(v => (
-                      <option key={v.id} value={v.id}>{v.vendorName}</option>
-                    ))}
-                  </select>
+                  <>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-[#605e5c]">
+                        <span>
+                          {billType === 'delivery_note' ? 'Supplier / Carrier Name' : 'Supplier / Vendor Name'} <span className="text-red-500">*</span>
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsSupplierModalOpen(true)}
+                        className="text-[10px] text-[#0d9488] hover:text-[#0f766e] font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                      >
+                        <Truck className="w-3 h-3" />
+                        <span>Manage Suppliers</span>
+                      </button>
+                    </div>
+                    <select
+                      value={vendorId}
+                      onChange={e => handleVendorChange(e.target.value)}
+                      required
+                      disabled={isSubmitting}
+                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs font-medium"
+                    >
+                      <option value="">Select supplier / vendor...</option>
+                      {allVendors.map(v => (
+                        <option key={v.id} value={v.id}>{v.vendorName}</option>
+                      ))}
+                    </select>
+                  </>
                 )}
               </div>
             </div>
@@ -714,21 +749,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
             {/* ========================================================================= */}
             {billType === 'credit_card_expense' && (
               <div className="space-y-4 border border-[#e1dfdd] rounded-xs bg-[#faf9f8] p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="font-semibold text-[#605e5c] block mb-1">
-                      Receipt / Transaction Ref <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={billNumber}
-                      onChange={e => setBillNumber(e.target.value)}
-                      required
-                      placeholder="e.g. CC-40291"
-                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
-                    />
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="font-semibold text-[#605e5c] block mb-1">
                       Transaction Date <span className="text-red-500">*</span>
@@ -764,34 +785,6 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                         className="w-full pl-7 p-2 border border-[#8a8886] rounded-xs bg-white text-base font-extrabold text-[#0d9488]"
                       />
                     </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-semibold text-[#605e5c] block mb-1">
-                      Card / Account Used (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={cardReference}
-                      onChange={e => setCardReference(e.target.value)}
-                      placeholder="e.g. Visa ending 4419, Manager Fuel Card"
-                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-semibold text-[#605e5c] block mb-1">
-                      Purchase / PO Reference (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={purchaseReference}
-                      onChange={e => setPurchaseReference(e.target.value)}
-                      placeholder="e.g. EXP-REF-100"
-                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
-                    />
                   </div>
                 </div>
 
@@ -1170,6 +1163,18 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
         onSelectSupplier={s => {
           setVendorId(s.id);
           setVendorName(s.vendorName);
+        }}
+      />
+
+      {/* Merchant Modal for Adding/Managing Credit Card Expense Merchants */}
+      <QuickOptionModal
+        isOpen={isMerchantModalOpen}
+        onClose={() => setIsMerchantModalOpen(false)}
+        categoryKey="financeCardMerchants"
+        categoryName="Credit Card Merchants"
+        onOptionAdded={opt => {
+          setVendorName(opt.value);
+          setVendorId('');
         }}
       />
     </>

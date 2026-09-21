@@ -68,7 +68,7 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   userGroups: { page: 'User Groups', table: 'user_groups', write: 'admin', remove: 'admin' },
   property_user_assignments: { page: 'Property Assignments', table: 'property_user_assignments', write: 'admin', remove: 'admin' },
   rolePermissions: { page: 'Roles & RBAC Matrix', table: 'role_permissions', write: 'admin', remove: 'admin' },
-  fieldOptions: { page: 'Field Options & Setup', table: 'field_options', write: 'admin', remove: 'admin' },
+  fieldOptions: { page: 'Field Options & Setup', table: 'field_options', write: 'any', remove: 'any' },
   appSettings: { page: 'System Preferences', table: 'app_settings', write: 'admin', remove: 'none' },
   tableSchemas: { page: 'Custom Table Columns', table: 'table_schemas', write: 'admin', remove: 'admin' },
   audit_trails: { page: 'Audit Security Trail', table: 'audit_trails', write: 'append', remove: 'superadmin' },

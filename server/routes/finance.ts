@@ -72,19 +72,7 @@ interface LocalFinanceStore {
   payments: any[];
 }
 
-const DEFAULT_VENDORS = [
-  {
-    id: '00000000-0000-0000-0001-000000000001',
-    organization_id: '00000000-0000-0000-0000-000000000001',
-    vendor_name: 'Apex Facilities & Commercial Cleaning Ltd',
-    vendor_reference: 'APEX-FAC-01',
-    contact_email: 'accounts@apexfacilities.co.uk',
-    contact_phone: '+44 20 7946 0912',
-    status: 'active',
-    created_at: new Date().toISOString()
-  }
-];
-
+const DEFAULT_VENDORS: any[] = [];
 
 export const VENDOR_UUID_MAP: Record<string, string> = {
   'fven-001': '00000000-0000-0000-0001-000000000001',
@@ -106,9 +94,16 @@ export async function syncStoreToDedicatedSupabaseTables(supabase: any, store: L
     if (probeErr) return;
 
     hasAttemptedNativeTableSync = true;
-    console.log('[FinanceStore] Supabase finance tables online! Syncing store records...');
 
-    const vendorRows = (store.vendors || DEFAULT_VENDORS).map((v: any) => ({
+    const rawVendors = (store.vendors || []).filter((v: any) =>
+      v.id !== '00000000-0000-0000-0001-000000000001' &&
+      v.id !== '00000000-0000-0000-0001-000000000006' &&
+      v.id !== 'fven-006' &&
+      !v.vendor_name?.includes('Apex Facilities') &&
+      !v.vendor_name?.includes('Direct Site Supplies')
+    );
+
+    const vendorRows = rawVendors.map((v: any) => ({
       id: toVendorUuid(v.id),
       organization_id: '00000000-0000-0000-0000-000000000001',
       vendor_name: v.vendor_name || v.vendorName || 'Unnamed Vendor',
@@ -117,7 +112,9 @@ export async function syncStoreToDedicatedSupabaseTables(supabase: any, store: L
       contact_phone: v.contact_phone || v.contactPhone || null,
       status: v.status || 'active'
     }));
-    await supabase.from('finance_vendors').upsert(vendorRows, { onConflict: 'id' });
+    if (vendorRows.length > 0) {
+      await supabase.from('finance_vendors').upsert(vendorRows, { onConflict: 'id' });
+    }
 
     for (const b of store.bills) {
       if (!isValidUuid(b.id)) continue;
@@ -1830,6 +1827,7 @@ router.get('/vendors', requireAuth, async (_req, res) => {
     const supabase = getSupabaseAdmin();
     const store = await getUnifiedStore(supabase);
 
+    let rawList: any[] = [];
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -1838,12 +1836,24 @@ router.get('/vendors', requireAuth, async (_req, res) => {
           .order('vendor_name', { ascending: true });
 
         if (!error && data && data.length > 0) {
-          return res.json({ success: true, data });
+          rawList = data;
         }
       } catch (e) {}
     }
 
-    return res.json({ success: true, data: store.vendors });
+    if (rawList.length === 0) {
+      rawList = store.vendors || [];
+    }
+
+    const clean = rawList.filter((v: any) =>
+      !v.id?.startsWith('fven-') &&
+      v.id !== '00000000-0000-0000-0001-000000000001' &&
+      v.id !== '00000000-0000-0000-0001-000000000006' &&
+      !v.vendor_name?.includes('Apex Facilities') &&
+      !v.vendor_name?.includes('Direct Site Supplies')
+    );
+
+    return res.json({ success: true, data: clean });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

@@ -19,12 +19,14 @@ import {
   CheckCircle2,
   XCircle,
   Send,
-  Clock
+  Clock,
+  Truck
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceBillModal } from './FinanceBillModal';
 import { FinanceBillDetailModal } from './FinanceBillDetailModal';
+import { FinanceSupplierModal } from './FinanceSupplierModal';
 import { Pagination } from '../common/Pagination';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
@@ -62,6 +64,7 @@ export const VendorInvoicesView: React.FC = () => {
 
   // Filters
   const [siteFilter, setSiteFilter] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+  const [vendorFilter, setVendorFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusTabFilter, setStatusTabFilter] = useState<'all' | 'awaiting_approval' | 'approved' | 'paid' | 'queries'>('all');
@@ -73,6 +76,7 @@ export const VendorInvoicesView: React.FC = () => {
 
   // Modals
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [billToEdit, setBillToEdit] = useState<FinanceBill | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [selectedBill, setSelectedBill] = useState<FinanceBill | null>(null);
@@ -131,12 +135,21 @@ export const VendorInvoicesView: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const handleChanged = () => {
+      loadData();
+    };
+    window.addEventListener('finance-bills-changed', handleChanged);
+    window.addEventListener('finance-vendors-changed', handleChanged);
+    window.addEventListener('field-options-changed', handleChanged);
+    return () => {
+      window.removeEventListener('finance-bills-changed', handleChanged);
+      window.removeEventListener('finance-vendors-changed', handleChanged);
+      window.removeEventListener('field-options-changed', handleChanged);
+    };
   }, []);
 
-  // Filter and sort
-  const filteredBills = useMemo(() => {
+  const siteScopedBills = useMemo(() => {
     return bills.filter(b => {
-      // Site restriction for site staff
       if (!canAccessAllSites()) {
         const allowed = (assignedSite || '').toLowerCase().trim();
         const bSiteName = (b.siteName || '').toLowerCase().trim();
@@ -164,6 +177,66 @@ export const VendorInvoicesView: React.FC = () => {
           (propId && (bSiteId === propId || bSiteId.includes(propId)));
         if (!matchesFilter) return false;
       }
+      return true;
+    });
+  }, [bills, siteFilter, canAccessAllSites, assignedSite, properties]);
+
+  const availableVendors = useMemo(() => {
+    const set = new Set<string>();
+    vendors.forEach(v => {
+      if (
+        v.vendorName &&
+        v.vendorName.trim() &&
+        !v.id?.startsWith('fven-') &&
+        !v.vendorName.includes('Apex Facilities') &&
+        !v.vendorName.includes('Direct Site Supplies')
+      ) {
+        set.add(v.vendorName.trim());
+      }
+    });
+    bills.forEach(b => {
+      if (
+        b.vendorName &&
+        b.vendorName.trim() &&
+        !b.vendorName.includes('Apex Facilities') &&
+        !b.vendorName.includes('Direct Site Supplies')
+      ) {
+        set.add(b.vendorName.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [vendors, bills]);
+
+  const vendorScopedBills = useMemo(() => {
+    if (vendorFilter === 'all') return siteScopedBills;
+    const target = vendorFilter.toLowerCase().trim();
+    const matchedVendor = vendors.find(v => v.vendorName.toLowerCase().trim() === target || v.id === target);
+    return siteScopedBills.filter(b => {
+      const bVendorName = (b.vendorName || '').toLowerCase().trim();
+      const bVendorId = (b.vendorId || '').toLowerCase().trim();
+      return (
+        bVendorName === target ||
+        (target && bVendorName.includes(target)) ||
+        bVendorId === target ||
+        (matchedVendor && bVendorId === matchedVendor.id)
+      );
+    });
+  }, [siteScopedBills, vendorFilter, vendors]);
+
+  // Filter and sort
+  const filteredBills = useMemo(() => {
+    return vendorScopedBills.filter(b => {
+      if (statusTabFilter !== 'all') {
+        if (statusTabFilter === 'awaiting_approval') {
+          if (b.status !== 'awaiting_approval' && b.status !== 'submitted') return false;
+        } else if (statusTabFilter === 'approved') {
+          if (b.status !== 'approved') return false;
+        } else if (statusTabFilter === 'paid') {
+          if (b.status !== 'paid') return false;
+        } else if (statusTabFilter === 'queries') {
+          if (b.status !== 'rejected' && (b.status as any) !== 'query_raised') return false;
+        }
+      }
 
       if (statusFilter !== 'all' && b.status !== statusFilter) return false;
 
@@ -188,7 +261,7 @@ export const VendorInvoicesView: React.FC = () => {
         ? String(valA).localeCompare(String(valB))
         : String(valB).localeCompare(String(valA));
     });
-  }, [bills, siteFilter, statusFilter, searchQuery, sortField, sortAsc, canAccessAllSites, assignedSite]);
+  }, [vendorScopedBills, statusFilter, statusTabFilter, searchQuery, sortField, sortAsc]);
 
   const paginatedBills = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -323,6 +396,7 @@ export const VendorInvoicesView: React.FC = () => {
         isCompact: isCompact !== false,
         metadata: [
           { label: 'Site Scope', value: siteFilter === 'all' ? 'All Properties' : siteFilter },
+          { label: 'Supplier Scope', value: vendorFilter === 'all' ? 'All Suppliers' : vendorFilter },
           { label: 'Status Scope', value: statusFilter === 'all' ? 'All Statuses' : statusFilter },
           { label: 'Total Records', value: dataToExport.length }
         ]
@@ -418,6 +492,16 @@ export const VendorInvoicesView: React.FC = () => {
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={() => setIsSupplierModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+            title="Manage registered invoice suppliers"
+          >
+            <Truck className="w-3.5 h-3.5 text-[#0d9488]" />
+            <span>Manage Suppliers</span>
+          </button>
+
           <ExportDropdown
             moduleName="Vendor Invoices Register"
             totalRecordCount={bills.length}
@@ -449,7 +533,10 @@ export const VendorInvoicesView: React.FC = () => {
             <span className="font-semibold text-[#605e5c] whitespace-nowrap">Property:</span>
             <select
               value={siteFilter}
-              onChange={e => setSiteFilter(e.target.value)}
+              onChange={e => {
+                setSiteFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               disabled={!canAccessAllSites()}
               className={`p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[160px] ${
                 !canAccessAllSites() ? 'bg-[#f3f2f1] cursor-not-allowed text-[#605e5c]' : ''
@@ -462,6 +549,24 @@ export const VendorInvoicesView: React.FC = () => {
             </select>
           </div>
 
+          {/* Supplier Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Supplier:</span>
+            <select
+              value={vendorFilter}
+              onChange={e => {
+                setVendorFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[170px]"
+            >
+              <option value="all">All Suppliers ({availableVendors.length})</option>
+              {availableVendors.map((name, idx) => (
+                <option key={`${name}-${idx}`} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Status Filter */}
           <div className="min-w-[190px]">
             <ManageableSelect
@@ -469,9 +574,9 @@ export const VendorInvoicesView: React.FC = () => {
               value={statusFilter === 'all' ? '' : statusFilter}
               onChange={setStatusFilter}
               optionCategory="financeBillStatuses"
-              allowQuickAdd={currentUserRole === 'Super Admin' || currentUserRole === 'Admin'}
+              allowQuickAdd={true}
               placeholder="All Statuses"
-              showManageActions={currentUserRole === 'Super Admin' || currentUserRole === 'Admin'}
+              showManageActions={true}
               className="p-1.5"
               compact
             />
@@ -489,12 +594,14 @@ export const VendorInvoicesView: React.FC = () => {
             />
           </div>
 
-          {(siteFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+          {(siteFilter !== 'all' || vendorFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
             <button
               onClick={() => {
                 if (canAccessAllSites()) setSiteFilter('all');
+                setVendorFilter('all');
                 setStatusFilter('all');
                 setSearchQuery('');
+                setCurrentPage(1);
               }}
               className="flex items-center gap-1 text-[11px] text-[#605e5c] hover:text-[#242424] cursor-pointer"
             >
@@ -508,11 +615,11 @@ export const VendorInvoicesView: React.FC = () => {
       {/* Approval Status Tab Switcher */}
       <div className="flex items-center gap-2 border-b border-[#edebe9] pb-1 overflow-x-auto text-xs">
         {[
-          { id: 'all', label: 'All Invoices', count: bills.length },
-          { id: 'awaiting_approval', label: 'Pending Approval', count: bills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
-          { id: 'approved', label: 'Approved', count: bills.filter(b => b.status === 'approved').length },
-          { id: 'paid', label: 'Paid', count: bills.filter(b => b.status === 'paid').length },
-          { id: 'queries', label: 'Queries / Rejected', count: bills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
+          { id: 'all', label: 'All Invoices', count: vendorScopedBills.length },
+          { id: 'awaiting_approval', label: 'Pending Approval', count: vendorScopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
+          { id: 'approved', label: 'Approved', count: vendorScopedBills.filter(b => b.status === 'approved').length },
+          { id: 'paid', label: 'Paid', count: vendorScopedBills.filter(b => b.status === 'paid').length },
+          { id: 'queries', label: 'Queries / Rejected', count: vendorScopedBills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
         ].map(tab => (
           <button
             key={tab.id}
@@ -738,6 +845,14 @@ export const VendorInvoicesView: React.FC = () => {
         onResetToDefault={resetToDefault}
         moduleTitle="Vendor Invoices"
         currentUserRole={authProfile?.role || currentUserRole}
+      />
+
+      {/* Supplier Management Modal */}
+      <FinanceSupplierModal
+        isOpen={isSupplierModalOpen}
+        onClose={() => setIsSupplierModalOpen(false)}
+        onSupplierAdded={() => loadData()}
+        onSupplierDeleted={() => loadData()}
       />
     </div>
   );

@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   XCircle,
   Send,
-  Clock
+  Clock,
+  Store
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
@@ -32,24 +33,23 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { ManageableSelect } from '../common/ManageableSelect';
+import { QuickOptionModal } from '../common/QuickOptionModal';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { FINANCE_CREDIT_CARD_TABLE_COLUMNS, FINANCE_STATUS_BADGE_CLASSES } from '../../data/defaultTableSchemas';
 import type { FinanceBill, FinanceVendor } from '../../types/finance';
 
 const creditCardExportColumns: ExportColumnOption[] = [
-  { id: 'billNumber', label: 'Receipt / Ref #' },
   { id: 'siteName', label: 'Property / Site' },
   { id: 'vendorName', label: 'Merchant / Store' },
-  { id: 'purchaseReference', label: 'Card Last 4 / Receipt #' },
   { id: 'billDate', label: 'Transaction Date' },
   { id: 'totalAmount', label: 'Amount (£)' },
+  { id: 'description', label: 'Expense Reason' },
   { id: 'status', label: 'Status' },
-  { id: 'submitterName', label: 'Cardholder / Staff' },
-  { id: 'description', label: 'Expense Reason' }
+  { id: 'submitterName', label: 'Cardholder / Staff' }
 ];
 
 export const CreditCardBillsView: React.FC = () => {
-  const { properties, assignedSite, canAccessAllSites, currentUserRole, isFinanceUser, canManageFinance, authProfile, requestConfirmation, closeConfirmation } = useApp();
+  const { properties, assignedSite, canAccessAllSites, currentUserRole, isFinanceUser, canManageFinance, authProfile, requestConfirmation, closeConfirmation, getFieldOptions } = useApp();
 
   const { columns, saveColumns, resetToDefault } = useTableSchema('credit_card_bills', FINANCE_CREDIT_CARD_TABLE_COLUMNS);
 
@@ -59,6 +59,7 @@ export const CreditCardBillsView: React.FC = () => {
 
   // Filters
   const [siteFilter, setSiteFilter] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+  const [merchantFilter, setMerchantFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusTabFilter, setStatusTabFilter] = useState<'all' | 'awaiting_approval' | 'approved' | 'paid' | 'queries'>('all');
@@ -70,6 +71,7 @@ export const CreditCardBillsView: React.FC = () => {
 
   // Modals
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const [isMerchantModalOpen, setIsMerchantModalOpen] = useState(false);
   const [billToEdit, setBillToEdit] = useState<FinanceBill | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [selectedBill, setSelectedBill] = useState<FinanceBill | null>(null);
@@ -128,11 +130,21 @@ export const CreditCardBillsView: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const handleChanged = () => {
+      loadData();
+    };
+    window.addEventListener('finance-bills-changed', handleChanged);
+    window.addEventListener('finance-vendors-changed', handleChanged);
+    window.addEventListener('field-options-changed', handleChanged);
+    return () => {
+      window.removeEventListener('finance-bills-changed', handleChanged);
+      window.removeEventListener('finance-vendors-changed', handleChanged);
+      window.removeEventListener('field-options-changed', handleChanged);
+    };
   }, []);
 
-  const filteredBills = useMemo(() => {
+  const siteScopedBills = useMemo(() => {
     return bills.filter(b => {
-      // Site restriction for site staff
       if (!canAccessAllSites()) {
         const allowed = (assignedSite || '').toLowerCase().trim();
         const bSiteName = (b.siteName || '').toLowerCase().trim();
@@ -160,16 +172,53 @@ export const CreditCardBillsView: React.FC = () => {
           (propId && (bSiteId === propId || bSiteId.includes(propId)));
         if (!matchesFilter) return false;
       }
+      return true;
+    });
+  }, [bills, siteFilter, canAccessAllSites, assignedSite, properties]);
+
+  const merchantOptions = useMemo(() => {
+    return getFieldOptions('financeCardMerchants', false);
+  }, [getFieldOptions]);
+
+  const availableMerchants = useMemo(() => {
+    const set = new Set<string>();
+    merchantOptions.forEach(o => {
+      if (o.label && o.label.trim()) set.add(o.label.trim());
+    });
+    bills.forEach(b => {
+      if (b.vendorName && b.vendorName.trim()) set.add(b.vendorName.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [merchantOptions, bills]);
+
+  const merchantScopedBills = useMemo(() => {
+    if (merchantFilter === 'all') return siteScopedBills;
+    const filter = merchantFilter.toLowerCase().trim();
+    return siteScopedBills.filter(b => (b.vendorName || '').toLowerCase().trim() === filter);
+  }, [siteScopedBills, merchantFilter]);
+
+  const filteredBills = useMemo(() => {
+    return merchantScopedBills.filter(b => {
+      if (statusTabFilter !== 'all') {
+        if (statusTabFilter === 'awaiting_approval') {
+          if (b.status !== 'awaiting_approval' && b.status !== 'submitted') return false;
+        } else if (statusTabFilter === 'approved') {
+          if (b.status !== 'approved') return false;
+        } else if (statusTabFilter === 'paid') {
+          if (b.status !== 'paid') return false;
+        } else if (statusTabFilter === 'queries') {
+          if (b.status !== 'rejected' && (b.status as any) !== 'query_raised') return false;
+        }
+      }
 
       if (statusFilter !== 'all' && b.status !== statusFilter) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const match =
-          (b.billNumber || '').toLowerCase().includes(q) ||
           (b.vendorName && b.vendorName.toLowerCase().includes(q)) ||
-          (b.purchaseReference && b.purchaseReference.toLowerCase().includes(q)) ||
           (b.description && b.description.toLowerCase().includes(q)) ||
+          (b.siteName && b.siteName.toLowerCase().includes(q)) ||
           (b.submitterName && b.submitterName.toLowerCase().includes(q));
         if (!match) return false;
       }
@@ -185,7 +234,7 @@ export const CreditCardBillsView: React.FC = () => {
         ? String(valA).localeCompare(String(valB))
         : String(valB).localeCompare(String(valA));
     });
-  }, [bills, siteFilter, statusFilter, searchQuery, sortField, sortAsc, canAccessAllSites, assignedSite]);
+  }, [merchantScopedBills, statusFilter, statusTabFilter, searchQuery, sortField, sortAsc]);
 
   const paginatedBills = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -214,15 +263,13 @@ export const CreditCardBillsView: React.FC = () => {
   };
 
   const getExportColumnMap = (): Record<string, { label: string; getValue: (b: FinanceBill) => string | number }> => ({
-    billNumber: { label: 'Receipt / Ref #', getValue: b => b.billNumber },
     siteName: { label: 'Property / Site', getValue: b => b.siteName || b.siteId },
     vendorName: { label: 'Merchant / Store', getValue: b => b.vendorName || 'N/A' },
-    purchaseReference: { label: 'Card Last 4 / Receipt #', getValue: b => b.purchaseReference || '—' },
     billDate: { label: 'Transaction Date', getValue: b => b.billDate },
     totalAmount: { label: 'Amount (£)', getValue: b => `£${Number(b.totalAmount || 0).toFixed(2)}` },
+    description: { label: 'Expense Reason', getValue: b => b.description || '—' },
     status: { label: 'Status', getValue: b => (b.status || 'submitted').replace(/_/g, ' ').toUpperCase() },
-    submitterName: { label: 'Cardholder / Staff', getValue: b => b.submitterName || b.submittedBy },
-    description: { label: 'Expense Reason', getValue: b => b.description || '—' }
+    submitterName: { label: 'Cardholder / Staff', getValue: b => b.submitterName || b.submittedBy }
   });
 
   const canApproveThisBill = (bill: FinanceBill) => {
@@ -316,6 +363,7 @@ export const CreditCardBillsView: React.FC = () => {
         isCompact: isCompact !== false,
         metadata: [
           { label: 'Site Scope', value: siteFilter === 'all' ? 'All Properties' : siteFilter },
+          { label: 'Merchant Scope', value: merchantFilter === 'all' ? 'All Merchants' : merchantFilter },
           { label: 'Status Scope', value: statusFilter === 'all' ? 'All Statuses' : statusFilter },
           { label: 'Total Records', value: dataToExport.length }
         ]
@@ -411,6 +459,16 @@ export const CreditCardBillsView: React.FC = () => {
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={() => setIsMerchantModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+            title="Manage credit card merchant and store choices"
+          >
+            <Store className="w-3.5 h-3.5 text-[#0d9488]" />
+            <span>Manage Merchants</span>
+          </button>
+
           <ExportDropdown
             moduleName="Credit Card Register"
             totalRecordCount={bills.length}
@@ -455,6 +513,24 @@ export const CreditCardBillsView: React.FC = () => {
             </select>
           </div>
 
+          {/* Merchant Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Merchant:</span>
+            <select
+              value={merchantFilter}
+              onChange={e => {
+                setMerchantFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[170px]"
+            >
+              <option value="all">All Merchants ({availableMerchants.length})</option>
+              {availableMerchants.map((m, idx) => (
+                <option key={`${m}-${idx}`} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Status Filter */}
           <div className="min-w-[190px]">
             <ManageableSelect
@@ -462,9 +538,9 @@ export const CreditCardBillsView: React.FC = () => {
               value={statusFilter === 'all' ? '' : statusFilter}
               onChange={setStatusFilter}
               optionCategory="financeBillStatuses"
-              allowQuickAdd={currentUserRole === 'Super Admin' || currentUserRole === 'Admin'}
+              allowQuickAdd={true}
               placeholder="All Statuses"
-              showManageActions={currentUserRole === 'Super Admin' || currentUserRole === 'Admin'}
+              showManageActions={true}
               className="p-1.5"
               compact
             />
@@ -482,12 +558,14 @@ export const CreditCardBillsView: React.FC = () => {
             />
           </div>
 
-          {(siteFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+          {(siteFilter !== 'all' || merchantFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
             <button
               onClick={() => {
                 if (canAccessAllSites()) setSiteFilter('all');
+                setMerchantFilter('all');
                 setStatusFilter('all');
                 setSearchQuery('');
+                setCurrentPage(1);
               }}
               className="flex items-center gap-1 text-[11px] text-[#605e5c] hover:text-[#242424] cursor-pointer"
             >
@@ -501,11 +579,11 @@ export const CreditCardBillsView: React.FC = () => {
       {/* Approval Status Tab Switcher */}
       <div className="flex items-center gap-2 border-b border-[#edebe9] pb-1 overflow-x-auto text-xs">
         {[
-          { id: 'all', label: 'All Card Expenses', count: bills.length },
-          { id: 'awaiting_approval', label: 'Pending Approval', count: bills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
-          { id: 'approved', label: 'Approved', count: bills.filter(b => b.status === 'approved').length },
-          { id: 'paid', label: 'Paid', count: bills.filter(b => b.status === 'paid').length },
-          { id: 'queries', label: 'Queries / Rejected', count: bills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
+          { id: 'all', label: 'All Card Expenses', count: merchantScopedBills.length },
+          { id: 'awaiting_approval', label: 'Pending Approval', count: merchantScopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
+          { id: 'approved', label: 'Approved', count: merchantScopedBills.filter(b => b.status === 'approved').length },
+          { id: 'paid', label: 'Paid', count: merchantScopedBills.filter(b => b.status === 'paid').length },
+          { id: 'queries', label: 'Queries / Rejected', count: merchantScopedBills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
         ].map(tab => (
           <button
             key={tab.id}
@@ -731,6 +809,14 @@ export const CreditCardBillsView: React.FC = () => {
         onResetToDefault={resetToDefault}
         moduleTitle="Credit Card Bills"
         currentUserRole={authProfile?.role || currentUserRole}
+      />
+
+      {/* Merchant Management Modal */}
+      <QuickOptionModal
+        isOpen={isMerchantModalOpen}
+        onClose={() => setIsMerchantModalOpen(false)}
+        categoryKey="financeCardMerchants"
+        categoryName="Credit Card Merchants"
       />
     </div>
   );

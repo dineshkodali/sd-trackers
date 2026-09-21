@@ -30,7 +30,8 @@ import {
   Activity,
   AlertCircle,
   Wrench,
-  Utensils
+  Utensils,
+  CreditCard
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { CustomFieldOption, FieldOptionCategory } from '../../types';
@@ -57,7 +58,9 @@ export const FieldOptionsSetupView: React.FC = () => {
     reorderFieldOption, 
     resetFieldOptionsCategory,
     requestConfirmation,
-    currentUserRole
+    currentUserRole,
+    canManageFinance,
+    isFinanceUser
   } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState<FieldOptionCategory>('referralTypes');
@@ -78,7 +81,7 @@ export const FieldOptionsSetupView: React.FC = () => {
   const [formDescription, setFormDescription] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
 
-  const canManage = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
+  const canManage = currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || currentUserRole === 'Finance Admin' || canManageFinance() || isFinanceUser();
 
   // Category metadata lookup
   const currentCategoryMeta = useMemo(() => {
@@ -236,6 +239,7 @@ export const FieldOptionsSetupView: React.FC = () => {
       case 'AlertCircle': return <AlertCircle className={className} />;
       case 'Wrench': return <Wrench className={className} />;
       case 'Utensils': return <Utensils className={className} />;
+      case 'CreditCard': return <CreditCard className={className} />;
       default: return <SlidersHorizontal className={className} />;
     }
   };

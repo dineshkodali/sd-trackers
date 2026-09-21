@@ -102,6 +102,8 @@ import {
   deriveInAppNotifications, 
   filterNotificationsForRole 
 } from '../services/inAppNotificationService';
+import { financeService } from '../services/financeService';
+import type { FinanceBill } from '../types/finance';
 
 export interface BatchRetentionModuleStat {
   id: string;
@@ -328,6 +330,10 @@ interface AppContextType {
   updateVCSAgency: (id: string, updates: Partial<SDVCSAgency>) => void;
   deleteVCSAgency: (id: string) => void;
   resetVCSToDefault: () => void;
+
+  // 8. Finance Bills state
+  financeBills: FinanceBill[];
+  refreshFinanceBills: () => Promise<void>;
 
   // CRUD for Properties (Sites) & Users
   properties: PropertyInfo[];
@@ -574,6 +580,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [rolePermissions, setRolePermissions] = useState<Record<RoleType, RolePermissions>>(INITIAL_ROLE_PERMISSIONS);
 
   const [fieldOptions, setFieldOptions] = useState<CustomFieldOption[]>(DEFAULT_FIELD_OPTIONS);
+
+  const [financeBills, setFinanceBills] = useState<FinanceBill[]>(() => financeService.getCachedBills());
+
+  const refreshFinanceBills = useCallback(async () => {
+    try {
+      const data = await financeService.getBills();
+      if (Array.isArray(data)) {
+        setFinanceBills(data);
+      }
+    } catch (e) {
+      console.error('Failed to refresh finance bills:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshFinanceBills();
+    const handleChanged = () => {
+      refreshFinanceBills();
+    };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'sd_finance_bills_ts' || e.key === 'sg_tracker_finance_bills') {
+        refreshFinanceBills();
+      }
+    };
+    window.addEventListener('finance-bills-changed', handleChanged);
+    window.addEventListener('finance-vendors-changed', handleChanged);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('finance-bills-changed', handleChanged);
+      window.removeEventListener('finance-vendors-changed', handleChanged);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [refreshFinanceBills]);
 
   const [cacheStats, setCacheStats] = useState<SmartCacheStats>(() => smartCache.getStats());
 
@@ -3814,6 +3853,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'CREATE', module: 'Settings', targetItem: `Field Option: ${option.label}`, site: 'All Sites',
       details: `Added new option "${option.label}" to category "${option.category}".`
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('field-options-changed', { detail: { category: option.category, action: 'create', option: newOption } }));
+      try { localStorage.setItem('sd_field_options_ts', String(Date.now())); } catch {}
+    }
     return newOption;
   }, [fieldOptions, persistCreate]);
 
@@ -3831,6 +3874,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reportPersistFailure(`Field option "${target.label}"`, res.error);
       }
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('field-options-changed', { detail: { category: target.category, action: 'update', id, updates } }));
+      try { localStorage.setItem('sd_field_options_ts', String(Date.now())); } catch {}
+    }
   }, [fieldOptions, reportPersistFailure]);
 
   const deleteFieldOption = useCallback((id: string) => {
@@ -3855,6 +3902,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'DELETE', module: 'Settings', targetItem: `Field Option: ${target.label}`, site: 'All Sites',
       details: `Deleted option "${target.label}" from category "${target.category}".`
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('field-options-changed', { detail: { category: target.category, action: 'delete', id } }));
+      try { localStorage.setItem('sd_field_options_ts', String(Date.now())); } catch {}
+    }
   }, [fieldOptions, persistDelete]);
 
   const toggleFieldOptionStatus = useCallback((id: string) => {
@@ -3884,6 +3935,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reportPersistFailure('Field option order', res.error);
       }
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('field-options-changed', { detail: { category: target.category, action: 'reorder' } }));
+      try { localStorage.setItem('sd_field_options_ts', String(Date.now())); } catch {}
+    }
   }, [fieldOptions, reportPersistFailure]);
 
   const resetFieldOptionsCategory = useCallback((category?: FieldOptionCategory) => {
@@ -3903,6 +3958,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'UPDATE', module: 'Settings', targetItem: 'Reset Field Options', site: 'All Sites',
       details: `Reset field options to system defaults${category ? ` for category "${category}"` : ''}.`
     };
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('field-options-changed', { detail: { category, action: 'reset' } }));
+      try { localStorage.setItem('sd_field_options_ts', String(Date.now())); } catch {}
+    }
     (async () => {
       const removed = await apiService.bulkDeleteEntityRecords('fieldOptions', removeIds);
       const saved = removed.success ? await apiService.bulkSaveEntityRecords('fieldOptions', defaults, audit) : removed;
@@ -4002,6 +4061,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateVCSAgency,
       deleteVCSAgency,
       resetVCSToDefault,
+      financeBills,
+      refreshFinanceBills,
       properties,
       addProperty,
       updateProperty,

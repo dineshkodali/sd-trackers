@@ -77,6 +77,10 @@ export const Header: React.FC = () => {
       case 'laundry': return 'Property Laundry Register';
       case 'food': return 'Hot Food & Catering Tracker';
       case 'escalations': return 'Safeguarding Escalations Log';
+      case 'finance': return 'Vendor Invoices';
+      case 'financeCreditCards': return 'Credit Card Bills & Expenses';
+      case 'financeDeliveryNotes': return 'Delivery Notes & Goods Receipt';
+      case 'financeApprovals': return 'Finance Approvals Queue';
       case 'documents': return 'Compliance & Document Repository';
       case 'properties': return 'Properties Directory';
       case 'users': return 'Users & Role Assignments';

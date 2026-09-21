@@ -52,8 +52,18 @@ class FinanceService {
     return all.filter(b => b.billType === billType);
   }
 
+  private filterCleanVendors(list: FinanceVendor[]): FinanceVendor[] {
+    return (list || []).filter(v =>
+      !v.id?.startsWith('fven-') &&
+      v.id !== '00000000-0000-0000-0001-000000000001' &&
+      v.id !== '00000000-0000-0000-0001-000000000006' &&
+      !v.vendorName?.includes('Apex Facilities') &&
+      !v.vendorName?.includes('Direct Site Supplies')
+    );
+  }
+
   public getCachedVendors(): FinanceVendor[] {
-    return this.cachedVendors || [];
+    return this.filterCleanVendors(this.cachedVendors || []);
   }
 
   private loadLocalBillsCache(): FinanceBill[] {
@@ -70,6 +80,8 @@ class FinanceService {
     try {
       if (typeof window === 'undefined') return;
       localStorage.setItem('sg_tracker_finance_bills', JSON.stringify(bills));
+      localStorage.setItem('sd_finance_bills_ts', String(Date.now()));
+      window.dispatchEvent(new CustomEvent('finance-bills-changed'));
     } catch {}
   }
 
@@ -79,7 +91,7 @@ class FinanceService {
 
   async getVendors(forceRefresh = false): Promise<FinanceVendor[]> {
     if (!forceRefresh && this.cachedVendors && Date.now() - this.cachedVendorsTime < 60000) {
-      return this.cachedVendors;
+      return this.filterCleanVendors(this.cachedVendors);
     }
     // 1. Try Express route
     try {
@@ -87,7 +99,7 @@ class FinanceService {
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
-          const vendors = json.data.map(this.mapVendorFromDb);
+          const vendors = this.filterCleanVendors(json.data.map(this.mapVendorFromDb));
           this.cachedVendors = vendors;
           this.cachedVendorsTime = Date.now();
           return vendors;
@@ -104,7 +116,10 @@ class FinanceService {
           .select('*')
           .order('vendor_name', { ascending: true });
         if (!error && data) {
-          return data.map(this.mapVendorFromDb);
+          const vendors = this.filterCleanVendors(data.map(this.mapVendorFromDb));
+          this.cachedVendors = vendors;
+          this.cachedVendorsTime = Date.now();
+          return vendors;
         }
       } catch {}
     }
@@ -113,7 +128,10 @@ class FinanceService {
     try {
       const res = await apiService.fetchEntityRecords<any>('finance_vendors', { limit: 500 });
       if (res.data && res.data.length > 0) {
-        return res.data.map(this.mapVendorFromDb);
+        const vendors = this.filterCleanVendors(res.data.map(this.mapVendorFromDb));
+        this.cachedVendors = vendors;
+        this.cachedVendorsTime = Date.now();
+        return vendors;
       }
     } catch {}
 
@@ -125,12 +143,19 @@ class FinanceService {
     const dbPayload = {
       id: vendor.id || undefined,
       organization_id: vendor.organizationId || DEFAULT_ORG_ID,
-      vendor_name: vendor.vendorName,
-      vendor_reference: vendor.vendorReference || null,
-      contact_email: vendor.contactEmail || null,
-      contact_phone: vendor.contactPhone || null,
+      vendor_name: vendor.vendorName || (vendor as any).name,
+      vendor_reference: vendor.vendorReference || (vendor as any).reference || `VEN-${Date.now().toString().slice(-4)}`,
+      contact_email: vendor.contactEmail || (vendor as any).email || null,
+      contact_phone: vendor.contactPhone || (vendor as any).phone || null,
       payment_details: vendor.paymentDetails || {},
       status: vendor.status || 'active'
+    };
+
+    const emitVendorsChanged = () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('finance-vendors-changed'));
+        try { localStorage.setItem('sd_finance_vendors_ts', String(Date.now())); } catch {}
+      }
     };
 
     // 1. Try Express route (handles both creation & update seamlessly)
@@ -143,6 +168,7 @@ class FinanceService {
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
+          emitVendorsChanged();
           return { success: true, vendor: this.mapVendorFromDb(json.data) };
         }
       }
@@ -158,10 +184,16 @@ class FinanceService {
             .eq('id', vendor.id)
             .select()
             .single();
-          if (!error && data) return { success: true, vendor: this.mapVendorFromDb(data) };
+          if (!error && data) {
+            emitVendorsChanged();
+            return { success: true, vendor: this.mapVendorFromDb(data) };
+          }
         } catch {}
       }
       const res = await apiService.updateEntityRecord('finance_vendors', vendor.id, dbPayload);
+      if (res.success) {
+        emitVendorsChanged();
+      }
       return { success: res.success, error: res.error };
     } else {
       if (client) {
@@ -171,10 +203,16 @@ class FinanceService {
             .insert([dbPayload])
             .select()
             .single();
-          if (!error && data) return { success: true, vendor: this.mapVendorFromDb(data) };
+          if (!error && data) {
+            emitVendorsChanged();
+            return { success: true, vendor: this.mapVendorFromDb(data) };
+          }
         } catch {}
       }
       const res = await apiService.saveEntityRecord('finance_vendors', dbPayload);
+      if (res.success) {
+        emitVendorsChanged();
+      }
       return { success: res.success, error: res.error };
     }
   }
@@ -182,6 +220,12 @@ class FinanceService {
 
   public async deleteVendor(id: string): Promise<{ success: boolean; error?: string }> {
     this.cachedVendors = null;
+    const emitVendorsChanged = () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('finance-vendors-changed'));
+        try { localStorage.setItem('sd_finance_vendors_ts', String(Date.now())); } catch {}
+      }
+    };
     try {
       const res = await fetch(getApiUrl(`/api/finance/vendors/${id}`), {
         method: 'DELETE',
@@ -189,7 +233,10 @@ class FinanceService {
       });
       if (res.ok) {
         const json = await res.json();
-        if (json.success) return { success: true };
+        if (json.success) {
+          emitVendorsChanged();
+          return { success: true };
+        }
       }
     } catch {}
 
@@ -197,12 +244,19 @@ class FinanceService {
     if (client) {
       try {
         const { error } = await client.from('finance_vendors').delete().eq('id', id);
-        if (!error) return { success: true };
+        if (!error) {
+          emitVendorsChanged();
+          return { success: true };
+        }
       } catch (e: any) {
         return { success: false, error: e.message };
       }
     }
-    return { success: true };
+    const res = await apiService.deleteEntityRecord('finance_vendors', id);
+    if (res.success) {
+      emitVendorsChanged();
+    }
+    return { success: res.success, error: res.error };
   }
 
   // ==========================================
@@ -1571,6 +1625,10 @@ class FinanceService {
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.supplier) {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('finance-vendors-changed'));
+            try { localStorage.setItem('sd_finance_vendors_ts', String(Date.now())); } catch {}
+          }
           return { success: true, supplier: this.mapVendorFromDb(json.supplier) };
         }
       }
@@ -1589,7 +1647,13 @@ class FinanceService {
       });
       if (res.ok) {
         const json = await res.json();
-        if (json.success) return { success: true };
+        if (json.success) {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('finance-vendors-changed'));
+            try { localStorage.setItem('sd_finance_vendors_ts', String(Date.now())); } catch {}
+          }
+          return { success: true };
+        }
       }
     } catch (e: any) {
       return { success: false, error: e.message };
