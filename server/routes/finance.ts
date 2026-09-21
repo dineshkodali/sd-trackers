@@ -742,7 +742,23 @@ router.get('/bills/:id', requireAuth, async (req, res) => {
           ]);
 
           bill.items = itemsRes.data || [];
-          bill.attachments = attRes.data || [];
+          bill.attachments = await Promise.all((attRes.data || []).map(async (attachment: any) => {
+            if (attachment.data_url || attachment.dataUrl || attachment.signed_url || attachment.signedUrl || !attachment.storage_path) {
+              return attachment;
+            }
+
+            try {
+              const signed = await supabase.storage
+                .from(attachment.storage_bucket || 'finance-documents')
+                .createSignedUrl(attachment.storage_path, 3600);
+              if (!signed.error && signed.data?.signedUrl) {
+                return { ...attachment, signed_url: signed.data.signedUrl };
+              }
+            } catch (error) {
+              console.warn('[FinanceRoute] Attachment preview URL generation skipped:', error);
+            }
+            return attachment;
+          }));
           bill.queries = queriesRes.data || [];
           bill.reconciliations = recsRes.data || [];
           bill.payments = paysRes.data || [];

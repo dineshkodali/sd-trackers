@@ -196,15 +196,10 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Autocomplete change
-  const handleVendorInputChange = (typed: string) => {
-    setVendorName(typed);
-    const matched = allVendors.find(v => v.vendorName.toLowerCase() === typed.trim().toLowerCase());
-    if (matched) {
-      setVendorId(matched.id);
-    } else {
-      setVendorId('');
-    }
+  const handleVendorChange = (selectedId: string) => {
+    const selected = allVendors.find(v => v.id === selectedId);
+    setVendorId(selectedId);
+    setVendorName(selected?.vendorName || '');
   };
 
   // Amount auto-balancing for invoices
@@ -281,7 +276,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
     }
 
     // Amounts validation
-    if (billType !== 'delivery_note' && totalAmountInput <= 0) {
+    if (totalAmountInput <= 0) {
       setError('Total amount must be greater than £0.00');
       return;
     }
@@ -307,11 +302,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
       let finalTotal = Number((totalAmountInput || 0).toFixed(2));
       let finalSubtotal = Number((subtotalInput || 0).toFixed(2));
 
-      if (billType === 'delivery_note') {
-        finalSubtotal = 0;
-        finalTax = 0;
-        finalTotal = 0;
-      } else if (billType === 'credit_card_expense') {
+      if (billType === 'credit_card_expense') {
         finalTax = 0;
         finalSubtotal = finalTotal;
       } else {
@@ -550,26 +541,18 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                     className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs font-medium"
                   />
                 ) : (
-                  <>
-                    <input
-                      type="text"
-                      list="finance-vendor-suggestions"
-                      value={vendorName}
-                      onChange={e => handleVendorInputChange(e.target.value)}
-                      required
-                      disabled={isSubmitting}
-                      placeholder={
-                        billType === 'delivery_note' ? 'e.g. Brakes Foodservice, DPD, Bidfood...' :
-                        'Type or select supplier / vendor...'
-                      }
-                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs font-medium"
-                    />
-                    <datalist id="finance-vendor-suggestions">
-                      {allVendors.map(v => (
-                        <option key={v.id} value={v.vendorName} />
-                      ))}
-                    </datalist>
-                  </>
+                  <select
+                    value={vendorId}
+                    onChange={e => handleVendorChange(e.target.value)}
+                    required
+                    disabled={isSubmitting}
+                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs font-medium"
+                  >
+                    <option value="">Select supplier / vendor...</option>
+                    {allVendors.map(v => (
+                      <option key={v.id} value={v.id}>{v.vendorName}</option>
+                    ))}
+                  </select>
                 )}
               </div>
             </div>
@@ -649,6 +632,59 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                       >
                         ⚠ Damaged / Discrepancy
                       </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delivery value and VAT inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-white p-3 rounded-xs border border-[#e1dfdd]">
+                  <div>
+                    <label className="font-semibold text-[#0d9488] block mb-1">
+                      Delivery Value (£) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-[#0d9488]">£</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={totalAmountInput || ''}
+                        onChange={e => handleTotalChange(parseFloat(e.target.value) || 0)}
+                        required
+                        placeholder="0.00"
+                        className="w-full pl-7 p-2 border border-[#0d9488] rounded-xs bg-teal-50/20 text-base font-extrabold text-[#0d9488]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-[#605e5c] block mb-1">Subtotal (£)</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400">£</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={subtotalInput || ''}
+                        onChange={e => handleSubtotalChange(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        className="w-full pl-7 p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-[#605e5c] block mb-1">VAT / Tax (£)</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400">£</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={taxAmountInput || ''}
+                        onChange={e => handleTaxChange(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        className="w-full pl-7 p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs font-semibold"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1117,8 +1153,8 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
         onClose={() => setIsSupplierModalOpen(false)}
         onSupplierAdded={s => {
           setAllVendors(prev => [s, ...prev]);
-          setVendorName(s.vendorName);
           setVendorId(s.id);
+          setVendorName(s.vendorName);
         }}
         onSupplierDeleted={id => {
           setAllVendors(prev => prev.filter(v => v.id !== id));
@@ -1128,8 +1164,8 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
           }
         }}
         onSelectSupplier={s => {
-          setVendorName(s.vendorName);
           setVendorId(s.id);
+          setVendorName(s.vendorName);
         }}
       />
     </>

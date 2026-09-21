@@ -303,7 +303,14 @@ class FinanceService {
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
-          return this.mapBillFromDb(json.data);
+          const bill = this.mapBillFromDb(json.data);
+          bill.attachments = await Promise.all((bill.attachments || []).map(async attachment => {
+            if (!attachment.signedUrl && attachment.storagePath) {
+              attachment.signedUrl = await this.getAttachmentSignedUrl(attachment.storagePath);
+            }
+            return attachment;
+          }));
+          return bill;
         }
       }
     } catch {}
@@ -1460,7 +1467,7 @@ class FinanceService {
       fileSizeBytes: Number(row.file_size_bytes ?? row.fileSizeBytes ?? 0),
       uploadedBy: row.uploaded_by || row.uploadedBy || '',
       uploadedByName: row.uploadedByName || '',
-      signedUrl: row.data_url || row.dataUrl || row.signedUrl,
+      signedUrl: row.data_url || row.dataUrl || row.signed_url || row.signedUrl,
       createdAt: row.created_at || row.createdAt || new Date().toISOString()
     };
   };

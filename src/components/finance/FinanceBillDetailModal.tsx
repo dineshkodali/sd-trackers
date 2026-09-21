@@ -348,7 +348,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
 
   // Resolve signed URLs for attachments if not yet loaded
   const resolveAttachmentUrl = async (att: FinanceBillAttachment): Promise<string | undefined> => {
-    let url = att.signedUrl || (att as any).dataUrl;
+    let url = att.signedUrl || (att as any).dataUrl || (att as any).data_url || (att as any).url || (att as any).signed_url;
     if (!url && att.storagePath) {
       url = await financeService.getAttachmentSignedUrl(att.storagePath);
       if (url) {
