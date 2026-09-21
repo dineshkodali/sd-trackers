@@ -189,7 +189,9 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
     try {
       const res = await financeService.financeFinalApproval(billId, approvalComments);
       if (!res.success) throw new Error(res.error || 'Approval failed');
-      setActionSuccess('Bill has received final approval from Finance.');
+      setActionSuccess(isRegionalReviewer
+        ? 'Regional Manager review completed. The bill is now awaiting Finance final approval.'
+        : 'Bill has received final approval from Finance.');
       await loadBillDetails();
       onRefresh();
     } catch (err: any) {
@@ -513,6 +515,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
     currentUserRole !== 'Super Admin';
 
   const canApprove = (isFinanceUser() || canManageFinance() || currentUserRole === 'Super Admin' || (bill?.assignedApproverId === authProfile?.id)) && !isAssignedToOther;
+  const isRegionalReviewer = currentUserRole === 'Regional Manager' && bill?.status === 'awaiting_approval' && bill?.assignedApproverId === authProfile?.id;
   const attachmentTypeOptions = getFieldOptions('financeAttachmentTypes');
 
   return (
@@ -1063,7 +1066,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                     )}
 
                     {/* Finance Decision Controls */}
-                    {bill?.status !== 'approved' && bill?.status !== 'rejected' && isFinanceUser() && (
+                    {bill?.status !== 'approved' && bill?.status !== 'rejected' && (isFinanceUser() || isRegionalReviewer) && (
                       <div className="pt-3 border-t border-[#e1dfdd] space-y-4">
                         <div className="space-y-1">
                           <label className="font-semibold text-[#605e5c] block">
@@ -1087,7 +1090,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                               className="flex items-center gap-1.5 px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs transition-colors cursor-pointer text-xs disabled:opacity-50"
                             >
                               <CheckCircle className="w-3.5 h-3.5" />
-                              <span>Grant Final Finance Approval</span>
+                              <span>{isRegionalReviewer ? 'Complete Regional Review' : 'Grant Final Finance Approval'}</span>
                             </button>
                             <button
                               type="button"

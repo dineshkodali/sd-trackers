@@ -89,12 +89,12 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
 
   return (
     <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>
-      <div className="flex items-center">
+      <div className="inline-flex items-stretch h-8">
         {/* Main Export Trigger Button */}
         <button
           type="button"
           onClick={() => openExportModal('pdf')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-l-xs border transition-colors ${getButtonStyles()}`}
+          className={`flex items-center gap-1.5 px-3 text-xs font-semibold rounded-l-xs border-r-0 transition-colors ${getButtonStyles()}`}
           title="Open Export & Review Options"
         >
           <Download className="w-3.5 h-3.5 text-inherit" />
@@ -105,7 +105,7 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
         <button
           type="button"
           onClick={() => setIsMenuOpen(prev => !prev)}
-          className={`px-1.5 py-1.5 text-xs font-semibold rounded-r-xs border border-l-0 transition-colors ${getButtonStyles()}`}
+          className={`inline-flex w-8 items-center justify-center text-xs font-semibold rounded-r-xs border transition-colors ${getButtonStyles()}`}
           title="Export format & options"
           aria-expanded={isMenuOpen}
         >

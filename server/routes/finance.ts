@@ -1187,6 +1187,39 @@ router.post('/bills/:id/approve', requireAuth, async (req, res) => {
       });
     }
 
+    // Regional Managers complete the intermediate review. Finance performs the
+    // final approval in a separate action after this transition.
+    if (callerRole === 'Regional Manager') {
+      if (bill.status !== 'awaiting_approval') {
+        return res.status(409).json({ success: false, error: 'This bill is not awaiting Regional Manager review.' });
+      }
+      const oldStatus = bill.status;
+      if (supabase) {
+        const { error } = await supabase.from('finance_bills').update({ status: 'under_review', updated_at: new Date().toISOString() }).eq('id', id);
+        if (!error) {
+          return res.json({ success: true, status: 'under_review' });
+        }
+      }
+      bill.status = 'under_review';
+      bill.updated_at = new Date().toISOString();
+      store.history.unshift({
+        id: `hist-${Date.now()}`,
+        bill_id: id,
+        old_status: oldStatus,
+        new_status: 'under_review',
+        changed_by: callerId || '00000000-0000-0000-0000-000000000000',
+        changed_by_name: req.user?.name || 'Regional Manager',
+        reason: comments || 'Regional Manager review completed; awaiting Finance final approval',
+        created_at: new Date().toISOString()
+      });
+      writeLocalStore(store);
+      return res.json({ success: true, status: 'under_review' });
+    }
+
+    if (['Finance Admin', 'Finance Manager', 'Finance Staff'].includes(callerRole || '') && bill.status !== 'under_review') {
+      return res.status(409).json({ success: false, error: 'Finance final approval is available after Regional Manager review.' });
+    }
+
     if (supabase) {
       try {
         const { data, error } = await supabase.rpc('fn_finance_final_approval', {

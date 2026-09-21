@@ -170,11 +170,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {/* Unified Export dropdown button */}
           {(onOpenExport || onExportPdf || onExportCsv) && (
             <div className="relative" ref={exportDropdownRef}>
-              <div className="flex items-center">
+              <div className="inline-flex items-stretch h-8">
                 <button
                   id="btn-export-main"
                   onClick={() => handleExportClick('pdf')}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0f766e] border border-[#71afe5] rounded-l-xs font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-3 text-xs bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0f766e] border border-r-0 border-[#71afe5] rounded-l-xs font-semibold transition-colors"
                   title="Export records"
                 >
                   <Download className="w-3.5 h-3.5 text-[#0d9488]" />
@@ -183,7 +183,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 <button
                   id="btn-export-dropdown-toggle"
                   onClick={() => setIsExportMenuOpen(prev => !prev)}
-                  className="px-1.5 py-2 bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0f766e] border border-l-0 border-[#71afe5] rounded-r-xs font-semibold transition-colors"
+                  className="inline-flex w-8 items-center justify-center bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0f766e] border border-[#71afe5] rounded-r-xs font-semibold transition-colors"
                   title="Choose export format (PDF or CSV)"
                   aria-expanded={isExportMenuOpen}
                 >

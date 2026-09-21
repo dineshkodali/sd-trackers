@@ -57,7 +57,7 @@ export const FinanceApprovalsView: React.FC = () => {
 
   // Filters
   const [siteFilter, setSiteFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('awaiting_approval');
+  const [statusFilter, setStatusFilter] = useState<string>('pending_any');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortField, setSortField] = useState<string>('billDate');

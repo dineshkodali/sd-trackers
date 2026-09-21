@@ -87,7 +87,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
 
   // Approval Routing
   const [approvers, setApprovers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
-  const [routeToApproval, setRouteToApproval] = useState(true);
+  const [routeToApproval, setRouteToApproval] = useState(false);
   const [selectedApproverId, setSelectedApproverId] = useState<string>('');
   const [approvalNotes, setApprovalNotes] = useState<string>('');
 
@@ -121,13 +121,13 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
     financeService.getApprovers().then(list => {
       if (list && list.length > 0) {
         setApprovers(list);
-        if (!selectedApproverId) {
+        if (!selectedApproverId && routeToApproval) {
           const rm = list.find(a => a.role === 'Regional Manager') || list[0];
           if (rm) setSelectedApproverId(rm.id);
         }
       }
     });
-  }, [isOpen]);
+  }, [isOpen, routeToApproval, selectedApproverId]);
 
   // Hydrate fields on open or edit
   useEffect(() => {
@@ -186,7 +186,8 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
       setTaxAmountInput(0);
       setDeliveryCondition('good');
       setCardReference('');
-      setRouteToApproval(true);
+      setRouteToApproval(false);
+      setSelectedApproverId('');
       setApprovalNotes('');
       setShowItemizedLines(false);
       setItems([{ description: 'Goods / Services', quantity: 1, unitPrice: 0, taxAmount: 0 }]);
@@ -510,13 +511,13 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
               {/* Supplier / Vendor / Merchant */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-semibold text-[#605e5c]">
-                    <span>
-                      {billType === 'delivery_note' ? 'Supplier / Carrier Name' :
-                       billType === 'credit_card_expense' ? 'Merchant / Store Name' :
-                       'Supplier / Vendor Name'} <span className="text-red-500">*</span>
-                    </span>
-                  </label>
+                  {billType !== 'credit_card_expense' && (
+                    <label className="font-semibold text-[#605e5c]">
+                      <span>
+                        {billType === 'delivery_note' ? 'Supplier / Carrier Name' : 'Supplier / Vendor Name'} <span className="text-red-500">*</span>
+                      </span>
+                    </label>
+                  )}
                   {billType !== 'credit_card_expense' && (
                     <button
                       type="button"
@@ -530,7 +531,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                 </div>
 {billType === 'credit_card_expense' ? (
                   <ManageableSelect
-                    label="Merchant / Store"
+                    label="Merchant / Store Name"
                     value={vendorName}
                     onChange={value => {
                       setVendorName(value);

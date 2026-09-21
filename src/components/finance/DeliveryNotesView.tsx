@@ -481,6 +481,7 @@ export const DeliveryNotesView: React.FC = () => {
               placeholder="All Statuses"
               showManageActions={currentUserRole === 'Super Admin' || currentUserRole === 'Admin'}
               className="p-1.5"
+              compact
             />
           </div>
 

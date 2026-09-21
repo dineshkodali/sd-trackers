@@ -22,6 +22,7 @@ export interface ManageableSelectProps {
   badgeColors?: Record<string, string>;
   helperText?: string;
   showManageActions?: boolean;
+  compact?: boolean;
 }
 
 const ADD_NEW_SENTINEL = '__ADD_NEW_OPTION__';
@@ -42,7 +43,8 @@ export const ManageableSelect: React.FC<ManageableSelectProps> = ({
   error,
   badgeColors,
   helperText,
-  showManageActions = true
+  showManageActions = true,
+  compact = false
 }) => {
   const { getFieldOptions, currentUserRole } = useApp();
   const [isQuickModalOpen, setIsQuickModalOpen] = useState(false);
@@ -97,10 +99,10 @@ export const ManageableSelect: React.FC<ManageableSelectProps> = ({
   };
 
   return (
-    <div className="space-y-1 w-full">
+    <div className={compact ? 'flex items-center gap-2 w-full' : 'space-y-1 w-full'}>
       {/* Label and Quick Actions Header */}
       {label && (
-        <div className="flex items-center justify-between">
+        <div className={`flex items-center justify-between ${compact ? 'shrink-0 gap-1' : ''}`}>
           <label className="font-semibold text-[#605e5c] text-xs flex items-center gap-1">
             <span>{label}</span>
             {required && <span className="text-red-500">*</span>}
@@ -131,7 +133,7 @@ export const ManageableSelect: React.FC<ManageableSelectProps> = ({
       )}
 
       {/* Select Input Wrapper */}
-      <div className="relative">
+      <div className={`relative ${compact ? 'flex-1 min-w-0' : ''}`}>
         <select
           name={name}
           value={value ?? ''}
