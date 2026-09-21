@@ -19,6 +19,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceSupplierModal } from './FinanceSupplierModal';
+import { ManageableSelect } from '../common/ManageableSelect';
 import type { FinanceBill, FinanceBillItem, FinanceBillType, FinanceVendor } from '../../types/finance';
 
 interface FinanceBillModalProps {
@@ -40,7 +41,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
   defaultBillType = 'vendor_invoice',
   title
 }) => {
-  const { properties, assignedSite, canAccessAllSites, authProfile } = useApp();
+  const { properties, assignedSite, canAccessAllSites, authProfile, currentUserRole } = useApp();
 
   const isEmployee = authProfile?.role === 'Employee' || authProfile?.role === 'Staff';
 
@@ -528,17 +529,19 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                   )}
                 </div>
 {billType === 'credit_card_expense' ? (
-                  <input
-                    type="text"
+                  <ManageableSelect
+                    label="Merchant / Store"
                     value={vendorName}
-                    onChange={e => {
-                      setVendorName(e.target.value);
+                    onChange={value => {
+                      setVendorName(value);
                       setVendorId('');
                     }}
+                    optionCategory="financeCardMerchants"
+                    allowQuickAdd={['Super Admin', 'Admin'].includes(authProfile?.role || currentUserRole)}
+                    showManageActions={['Super Admin', 'Admin'].includes(authProfile?.role || currentUserRole)}
                     required
                     disabled={isSubmitting}
-                    placeholder="e.g. Tesco, Screwfix, Shell, Amazon..."
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs font-medium"
+                    placeholder="Select merchant / store..."
                   />
                 ) : (
                   <select

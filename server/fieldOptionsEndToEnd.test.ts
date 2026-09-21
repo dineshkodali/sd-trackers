@@ -19,8 +19,8 @@ import {
   FINANCE_APPROVALS_TABLE_COLUMNS
 } from '../src/data/defaultTableSchemas.js';
 
-test('Field Options: All 45 categories are registered and accounted for', () => {
-  assert.equal(FIELD_CATEGORIES_META.length, 45);
+test('Field Options: All 46 categories are registered and accounted for', () => {
+  assert.equal(FIELD_CATEGORIES_META.length, 46);
   const metaKeys = new Set(FIELD_CATEGORIES_META.map(m => m.key));
   
   // Every option in DEFAULT_FIELD_OPTIONS belongs to a valid metadata category

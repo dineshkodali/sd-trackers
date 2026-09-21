@@ -329,6 +329,13 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'CheckCircle'
   },
   {
+    key: 'financeCardMerchants',
+    name: 'Credit Card Merchants',
+    department: 'Operations & Governance',
+    description: 'Merchant and store choices used only by Credit Card Bills',
+    iconName: 'CreditCard'
+  },
+  {
     key: 'councils',
     name: 'Responsible Councils & LAs',
     department: 'Operations & Governance',
@@ -651,4 +658,10 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   // 44. Finance vendor statuses
   { id: 'opt-fin-vendor-1', category: 'financeVendorStatuses', label: 'Active', value: 'active', color: 'emerald', description: 'Supplier is available for finance records', isActive: true, isSystem: true, order: 1 },
   { id: 'opt-fin-vendor-2', category: 'financeVendorStatuses', label: 'Inactive', value: 'inactive', color: 'slate', description: 'Supplier is retained but not currently available', isActive: true, isSystem: true, order: 2 }
+  ,
+  // 45. Credit card merchants (separate from invoice and delivery suppliers)
+  { id: 'opt-fin-merchant-1', category: 'financeCardMerchants', label: 'Tesco', value: 'Tesco', color: 'blue', description: 'Corporate card merchant', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fin-merchant-2', category: 'financeCardMerchants', label: 'Screwfix', value: 'Screwfix', color: 'amber', description: 'Corporate card merchant', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-fin-merchant-3', category: 'financeCardMerchants', label: 'Shell', value: 'Shell', color: 'teal', description: 'Corporate card merchant', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-fin-merchant-4', category: 'financeCardMerchants', label: 'Amazon', value: 'Amazon', color: 'purple', description: 'Corporate card merchant', isActive: true, isSystem: true, order: 4 }
 ];

@@ -480,6 +480,7 @@ export type FieldOptionCategory =
   | 'financeBillStatuses'
   | 'financeAttachmentTypes'
   | 'financeVendorStatuses'
+  | 'financeCardMerchants'
   | 'councils';
 
 export interface CustomFieldOption {
