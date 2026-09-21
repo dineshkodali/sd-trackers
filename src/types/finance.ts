@@ -129,6 +129,8 @@ export interface FinanceBill {
   submitterName?: string;
   submittedAt: string;
   status: FinanceBillStatus;
+  assignedApproverId?: string;
+  assignedApproverName?: string;
   finalApprovedBy?: string;
   finalApprovedByName?: string;
   finalApprovedAt?: string;
@@ -140,6 +142,10 @@ export interface FinanceBill {
   updatedAt: string;
   items?: FinanceBillItem[];
   attachments?: FinanceBillAttachment[];
+  queries?: FinanceBillQuery[];
+  reconciliations?: FinanceReconciliationRecord[];
+  payments?: FinancePaymentRecord[];
+  history?: FinanceBillStatusHistory[];
   queriesCount?: number;
   unresolvedQueriesCount?: number;
 }

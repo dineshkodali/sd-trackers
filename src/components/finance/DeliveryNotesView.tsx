@@ -16,18 +16,24 @@ import {
   Building2,
   FileCheck2,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Send,
+  Clock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceBillModal } from './FinanceBillModal';
 import { FinanceBillDetailModal } from './FinanceBillDetailModal';
+import { FinanceSupplierModal } from './FinanceSupplierModal';
 import { Pagination } from '../common/Pagination';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import { ManageableSelect } from '../common/ManageableSelect';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { FINANCE_DELIVERY_NOTES_TABLE_COLUMNS, FINANCE_STATUS_BADGE_CLASSES } from '../../data/defaultTableSchemas';
 import type { FinanceBill, FinanceVendor } from '../../types/finance';
@@ -45,18 +51,20 @@ const deliveryNoteExportColumns: ExportColumnOption[] = [
 ];
 
 export const DeliveryNotesView: React.FC = () => {
-  const { properties, assignedSite, canAccessAllSites, currentUserRole, requestConfirmation, closeConfirmation } = useApp();
+  const { properties, assignedSite, canAccessAllSites, currentUserRole, isFinanceUser, canManageFinance, authProfile, requestConfirmation, closeConfirmation } = useApp();
 
   const { columns, saveColumns, resetToDefault } = useTableSchema('delivery_notes', FINANCE_DELIVERY_NOTES_TABLE_COLUMNS);
 
-  const [bills, setBills] = useState<FinanceBill[]>([]);
-  const [vendors, setVendors] = useState<FinanceVendor[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [bills, setBills] = useState<FinanceBill[]>(() => financeService.getCachedBills('delivery_note'));
+  const [vendors, setVendors] = useState<FinanceVendor[]>(() => financeService.getCachedVendors());
+  const [isLoading, setIsLoading] = useState(() => financeService.getCachedBills('delivery_note').length === 0);
 
   // Filters
   const [siteFilter, setSiteFilter] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [statusTabFilter, setStatusTabFilter] = useState<'all' | 'awaiting_approval' | 'approved' | 'paid' | 'queries'>('all');
+  const [processingActionId, setProcessingActionId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string>('billDate');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -66,8 +74,10 @@ export const DeliveryNotesView: React.FC = () => {
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [billToEdit, setBillToEdit] = useState<FinanceBill | null>(null);
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
+  const [selectedBill, setSelectedBill] = useState<FinanceBill | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyRef = (ref: string) => {
@@ -219,6 +229,54 @@ export const DeliveryNotesView: React.FC = () => {
     description: { label: 'Goods / Condition Notes', getValue: b => b.description || '—' }
   });
 
+  const canApproveThisBill = (bill: FinanceBill) => {
+    if (bill.status !== 'awaiting_approval') return false;
+    if (bill.assignedApproverId) {
+      return authProfile?.id === bill.assignedApproverId || currentUserRole === 'Super Admin';
+    }
+    if (bill.assignedApproverName && authProfile?.name) {
+      if (authProfile.name.toLowerCase() === bill.assignedApproverName.toLowerCase()) {
+        return true;
+      }
+    }
+    return currentUserRole === 'Super Admin' || canManageFinance() || isFinanceUser() || currentUserRole === 'Admin';
+  };
+
+  const handleInlineApprove = async (billId: string) => {
+    setProcessingActionId(billId);
+    try {
+      const res = await financeService.financeFinalApproval(billId, 'Approved via quick table action');
+      if (res.success) {
+        await loadData();
+      }
+    } catch {}
+    setProcessingActionId(null);
+  };
+
+  const handleInlineReject = async (billId: string) => {
+    const reason = window.prompt('Please enter a rejection reason:');
+    if (!reason) return;
+    setProcessingActionId(billId);
+    try {
+      const res = await financeService.financeRejectBill(billId, reason);
+      if (res.success) {
+        await loadData();
+      }
+    } catch {}
+    setProcessingActionId(null);
+  };
+
+  const handleInlineRequestApproval = async (billId: string) => {
+    setProcessingActionId(billId);
+    try {
+      const res = await financeService.requestApproval(billId);
+      if (res.success) {
+        await loadData();
+      }
+    } catch {}
+    setProcessingActionId(null);
+  };
+
   const handlePerformExport = ({
     format,
     scope,
@@ -306,9 +364,16 @@ export const DeliveryNotesView: React.FC = () => {
     if (col.key === 'status') {
       const badgeClass = FINANCE_STATUS_BADGE_CLASSES[bill.status] || 'bg-gray-100 text-gray-700';
       return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[10px] font-semibold border ${badgeClass}`}>
-          {(bill.status || 'submitted').replace(/_/g, ' ').toUpperCase()}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[10px] font-semibold border ${badgeClass}`}>
+            {(bill.status || 'submitted').replace(/_/g, ' ').toUpperCase()}
+          </span>
+          {bill.status === 'awaiting_approval' && (
+            <span className="text-[10px] text-amber-600 flex items-center gap-0.5" title="Awaiting Manager Approval">
+              <Clock className="w-3 h-3 animate-pulse text-amber-500" />
+            </span>
+          )}
+        </div>
       );
     }
 
@@ -339,7 +404,7 @@ export const DeliveryNotesView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {currentUserRole === 'Super Admin' && (
+          {(authProfile?.role || currentUserRole) === 'Super Admin' && (
             <button
               type="button"
               onClick={() => setIsSchemaModalOpen(true)}
@@ -360,6 +425,16 @@ export const DeliveryNotesView: React.FC = () => {
             onExport={handlePerformExport}
             buttonVariant="toolbar"
           />
+
+          <button
+            type="button"
+            onClick={() => setIsSupplierModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#0d9488] border border-[#0d9488]/40 rounded-xs shadow-xs transition-colors cursor-pointer"
+            title="Manage delivery note and goods suppliers"
+          >
+            <Truck className="w-3.5 h-3.5" />
+            <span>Manage Suppliers</span>
+          </button>
 
           <button
             onClick={() => {
@@ -396,20 +471,17 @@ export const DeliveryNotesView: React.FC = () => {
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Verification:</span>
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
-            >
-              <option value="all">All Statuses</option>
-              <option value="submitted">Submitted</option>
-              <option value="under_review">Under Review</option>
-              <option value="verification_pending">Pending Verification</option>
-              <option value="query_raised">Query Raised</option>
-              <option value="approved">Verified &amp; Approved</option>
-            </select>
+          <div className="min-w-[190px]">
+            <ManageableSelect
+              label="Verification"
+              value={statusFilter === 'all' ? '' : statusFilter}
+              onChange={setStatusFilter}
+              optionCategory="financeBillStatuses"
+              allowQuickAdd={currentUserRole === 'Super Admin' || currentUserRole === 'Admin'}
+              placeholder="All Statuses"
+              showManageActions={currentUserRole === 'Super Admin' || currentUserRole === 'Admin'}
+              className="p-1.5"
+            />
           </div>
 
           {/* Search Input */}
@@ -440,11 +512,40 @@ export const DeliveryNotesView: React.FC = () => {
         </div>
       </div>
 
+      {/* Approval Status Tab Switcher */}
+      <div className="flex items-center gap-2 border-b border-[#edebe9] pb-1 overflow-x-auto text-xs">
+        {[
+          { id: 'all', label: 'All Deliveries', count: bills.length },
+          { id: 'awaiting_approval', label: 'Pending Approval', count: bills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
+          { id: 'approved', label: 'Verified & Approved', count: bills.filter(b => b.status === 'approved').length },
+          { id: 'paid', label: 'Invoiced / Paid', count: bills.filter(b => b.status === 'paid').length },
+          { id: 'queries', label: 'Queries / Rejected', count: bills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setStatusTabFilter(tab.id as any)}
+            className={`px-3 py-1.5 rounded-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
+              statusTabFilter === tab.id
+                ? 'bg-[#0d9488] text-white shadow-xs'
+                : 'bg-white text-[#605e5c] hover:bg-[#f3f2f1] hover:text-[#242424] border border-[#e1dfdd]'
+            }`}
+          >
+            <span>{tab.label}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+              statusTabFilter === tab.id ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-600'
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Main Data Table */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap">
+      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden flex flex-col justify-between min-h-[560px] lg:min-h-[calc(100vh-270px)]">
+        <div className="overflow-x-auto flex-1 overflow-y-auto">
+          <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
+            <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap sticky top-0 z-20 shadow-xs">
               <tr>
                 {visibleColumns.map(col => {
                   const isSorted = sortField === col.key;
@@ -475,13 +576,13 @@ export const DeliveryNotesView: React.FC = () => {
             <tbody className="divide-y divide-[#edebe9]">
               {isLoading ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
+                  <td colSpan={visibleColumns.length + 1} className="py-24 text-center text-[#605e5c]">
                     Loading delivery notes...
                   </td>
                 </tr>
               ) : paginatedBills.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
+                  <td colSpan={visibleColumns.length + 1} className="py-24 text-center text-[#605e5c]">
                     No delivery notes found matching the current filters.
                   </td>
                 </tr>
@@ -583,13 +684,20 @@ export const DeliveryNotesView: React.FC = () => {
       {selectedBillId && (
         <FinanceBillDetailModal
           billId={selectedBillId}
+          initialBill={selectedBill}
           isOpen={isDetailModalOpen}
-          onClose={() => setIsDetailModalOpen(false)}
+          onClose={() => { setIsDetailModalOpen(false); setSelectedBill(null); }}
           onRefresh={loadData}
         />
       )}
 
       {/* Schema Customization Modal */}
+      <FinanceSupplierModal
+        isOpen={isSupplierModalOpen}
+        onClose={() => setIsSupplierModalOpen(false)}
+        onSupplierAdded={() => { loadData(); }} onSupplierDeleted={() => { loadData(); }}
+      />
+
       <TableSchemaEditorModal
         isOpen={isSchemaModalOpen}
         onClose={() => setIsSchemaModalOpen(false)}
@@ -597,6 +705,7 @@ export const DeliveryNotesView: React.FC = () => {
         onSaveColumns={saveColumns}
         onResetToDefault={resetToDefault}
         moduleTitle="Delivery Notes"
+        currentUserRole={authProfile?.role || currentUserRole}
       />
     </div>
   );

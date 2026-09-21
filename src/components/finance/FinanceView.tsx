@@ -64,6 +64,16 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) 
     ? properties
     : properties.filter(p => p.id === assignedSite || p.name === assignedSite);
 
+  const handleDeleteVendor = async (vendorId: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to remove vendor "${name}"?`)) return;
+    try {
+      await financeService.deleteVendor(vendorId);
+      loadData();
+    } catch (err: any) {
+      alert('Failed to delete vendor: ' + err.message);
+    }
+  };
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -555,16 +565,25 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) 
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setVendorToEdit(v);
-                              setIsVendorModalOpen(true);
-                            }}
-                            className="text-xs font-semibold text-teal-600 hover:text-teal-800"
-                          >
-                            Edit
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVendorToEdit(v);
+                                setIsVendorModalOpen(true);
+                              }}
+                              className="text-xs font-semibold text-teal-600 hover:text-teal-800"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteVendor(v.id, v.vendorName)}
+                              className="text-xs font-semibold text-red-500 hover:text-red-700 ml-2"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

@@ -9,6 +9,32 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Keep the existing RBAC matrix compatible while giving Finance its own grant.
+ALTER TABLE IF EXISTS public.role_permissions
+  ADD COLUMN IF NOT EXISTS can_manage_finance BOOLEAN NOT NULL DEFAULT FALSE;
+
+INSERT INTO public.role_permissions (
+  id, role, can_view_all_properties, can_create_records, can_edit_records,
+  can_delete_records, can_archive_restore, can_export_data, can_manage_files,
+  can_manage_finance
+)
+VALUES (
+  'Finance Staff', 'Finance Staff', TRUE, TRUE, TRUE,
+  FALSE, FALSE, TRUE, TRUE, TRUE
+)
+ON CONFLICT (id) DO UPDATE SET
+  role = EXCLUDED.role,
+  can_view_all_properties = EXCLUDED.can_view_all_properties,
+  can_create_records = EXCLUDED.can_create_records,
+  can_edit_records = EXCLUDED.can_edit_records,
+  can_delete_records = EXCLUDED.can_delete_records,
+  can_archive_restore = EXCLUDED.can_archive_restore,
+  can_export_data = EXCLUDED.can_export_data,
+  can_manage_files = EXCLUDED.can_manage_files,
+  can_manage_finance = EXCLUDED.can_manage_finance,
+  updated_at = NOW();
+
+
 -- 1. Organizations table (Multi-tenancy foundation)
 CREATE TABLE IF NOT EXISTS public.organizations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

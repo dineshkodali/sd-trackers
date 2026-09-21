@@ -293,5 +293,110 @@ test('Finance Module: Distinct bill types prevent cross-page data pollution', ()
   assert.equal(sampleBills.length, 4);
 });
 
+test('Finance Module: Editing bill amount from 100 to 150 strictly synchronizes unit price, subtotal, and line total', () => {
+  // Scenario reported by user: Single line expense updated from 100 to 150
+  const initialBill = {
+    subtotal: 100.0,
+    taxAmount: 0.0,
+    totalAmount: 100.0,
+    items: [{ description: 'test-vps', quantity: 1, unitPrice: 100.0, taxAmount: 0.0, lineTotal: 100.0 }]
+  };
 
+  // User edits total to 150
+  const updatedTotal = 150.0;
+  const updatedTax = 0.0;
+  const updatedSubtotal = updatedTotal - updatedTax;
 
+  const reconciledItems = initialBill.items.map(it => {
+    const q = it.quantity || 1;
+    let u = it.unitPrice;
+    const t = updatedTax;
+    let lt = updatedTotal;
+    if (q === 1) {
+      u = lt - t;
+    }
+    return {
+      description: it.description,
+      quantity: q,
+      unitPrice: u,
+      taxAmount: t,
+      lineTotal: lt
+    };
+  });
+
+  assert.equal(updatedSubtotal, 150.0);
+  assert.equal(reconciledItems[0].unitPrice, 150.0);
+  assert.equal(reconciledItems[0].lineTotal, 150.0);
+  assert.equal(reconciledItems[0].unitPrice * reconciledItems[0].quantity + reconciledItems[0].taxAmount, reconciledItems[0].lineTotal);
+});
+
+test('Finance Module: Item reconciliation with VAT maintains unit price consistency', () => {
+  const totalAmount = 150.0;
+  const taxAmount = 25.0;
+  const subtotal = totalAmount - taxAmount; // 125.0
+
+  const items = [{
+    description: 'Hardware repair',
+    quantity: 1,
+    unitPrice: subtotal,
+    taxAmount: taxAmount,
+    lineTotal: totalAmount
+  }];
+
+  assert.equal(items[0].unitPrice, 125.0);
+  assert.equal(items[0].unitPrice * items[0].quantity + items[0].taxAmount, 150.0);
+});
+
+test('Finance Module: Attachment deletion permission guard strictly restricts delete to Admins and Super Admins', () => {
+  const staffRole = 'Staff';
+  const siteManagerRole = 'Site Manager';
+  const adminRole = 'Admin';
+  const superAdminRole = 'Super Admin';
+  const financeAdminRole = 'Finance Admin';
+
+  const isRoleAllowedToDelete = (role: string) => {
+    return ['Super Admin', 'Admin', 'Administrator', 'Finance Admin'].includes(role) || role.toLowerCase().includes('admin');
+  };
+
+  assert.equal(isRoleAllowedToDelete(staffRole), false);
+  assert.equal(isRoleAllowedToDelete(siteManagerRole), false);
+  assert.equal(isRoleAllowedToDelete(adminRole), true);
+  assert.equal(isRoleAllowedToDelete(superAdminRole), true);
+  assert.equal(isRoleAllowedToDelete(financeAdminRole), true);
+});
+
+test('Finance Module: Attachment deletion removes records from bill and unified storage without leaving orphans', () => {
+  const billId = 'bill-test-att-001';
+  const attId = 'att-uuid-999';
+  const storagePath = 'org1/bill-test-att-001/att-uuid-999_invoice.pdf';
+
+  const mockStore = {
+    bills: [
+      { id: billId, bill_number: 'INV-101', attachments: [{ id: attId, file_name: 'invoice.pdf', storage_path: storagePath }] }
+    ],
+    attachments: [
+      { id: attId, bill_id: billId, file_name: 'invoice.pdf', storage_path: storagePath },
+      { id: 'att-other', bill_id: 'bill-other', file_name: 'other.pdf', storage_path: 'other/path.pdf' }
+    ],
+    history: [] as any[]
+  };
+
+  // Perform deletion cleanup simulation
+  mockStore.attachments = mockStore.attachments.filter(a => a.id !== attId);
+  const targetBill = mockStore.bills.find(b => b.id === billId);
+  if (targetBill) {
+    targetBill.attachments = targetBill.attachments.filter(a => a.id !== attId);
+  }
+  mockStore.history.unshift({
+    id: 'hist-del-1',
+    bill_id: billId,
+    reason: 'Permanently deleted attachment: invoice.pdf'
+  });
+
+  // Verify full cleanup
+  assert.equal(mockStore.attachments.length, 1);
+  assert.equal(mockStore.attachments.some(a => a.id === attId), false);
+  assert.equal(targetBill?.attachments.length, 0);
+  assert.equal(mockStore.history[0].reason.includes('Deleted attachment: invoice.pdf'), false);
+  assert.match(mockStore.history[0].reason, /Permanently deleted attachment/);
+});

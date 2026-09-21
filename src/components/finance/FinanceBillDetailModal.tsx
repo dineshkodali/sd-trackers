@@ -17,12 +17,18 @@ import {
   User,
   ExternalLink,
   Plus,
-  RotateCcw
+  RotateCcw,
+  Edit3,
+  ShieldCheck,
+  Eye,
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import type {
   FinanceBill,
+  FinanceBillAttachment,
   FinanceBillQuery,
   FinanceReconciliationRecord,
   FinancePaymentRecord,
@@ -32,21 +38,25 @@ import type {
 
 interface FinanceBillDetailModalProps {
   billId: string | null;
+  initialBill?: FinanceBill | null;
   isOpen: boolean;
   onClose: () => void;
   onRefresh: () => void;
+  onEdit?: (bill: FinanceBill) => void;
 }
 
 export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
   billId,
+  initialBill,
   isOpen,
   onClose,
-  onRefresh
+  onRefresh,
+  onEdit
 }) => {
-  const { authProfile, isFinanceUser, canManageFinance } = useApp();
+  const { authProfile, isFinanceUser, canManageFinance, currentUserRole, getFieldOptions } = useApp();
 
   const [activeTab, setActiveTab] = useState<'details' | 'attachments' | 'approval' | 'queries' | 'reconciliation' | 'payments' | 'history'>('details');
-  const [bill, setBill] = useState<FinanceBill | null>(null);
+  const [bill, setBill] = useState<FinanceBill | null>(initialBill || null);
   const [queries, setQueries] = useState<FinanceBillQuery[]>([]);
   const [reconciliations, setReconciliations] = useState<FinanceReconciliationRecord[]>([]);
   const [payments, setPayments] = useState<FinancePaymentRecord[]>([]);
@@ -86,9 +96,28 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
   const [uploadType, setUploadType] = useState<FinanceAttachmentType>('delivery_note');
   const [isUploading, setIsUploading] = useState(false);
 
+  // Attachment preview and deletion states
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    url: string;
+    fileName: string;
+    mimeType: string;
+    fileSizeBytes?: number;
+  } | null>(null);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<FinanceBillAttachment | null>(null);
+  const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
+
+  // Move to Approval Modal state
+  const [approvers, setApprovers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
+  const [showMoveToApprovalModal, setShowMoveToApprovalModal] = useState(false);
+  const [selectedApproverId, setSelectedApproverId] = useState('');
+  const [approvalConcernNotes, setApprovalConcernNotes] = useState('');
+  const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+
   const loadBillDetails = async () => {
     if (!billId) return;
-    setIsLoading(true);
+    if (!bill && !initialBill) {
+      setIsLoading(true);
+    }
     setActionError(null);
     try {
       const fullBill = await financeService.getBillById(billId);
@@ -97,17 +126,22 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
         setRecExpected(fullBill.totalAmount);
         setRecActual(fullBill.totalAmount);
         setPaymentAmount(fullBill.totalAmount);
+        setQueries(fullBill.queries || []);
+        setReconciliations(fullBill.reconciliations || []);
+        setPayments(fullBill.payments || []);
+        setHistory(fullBill.history || []);
+      } else {
+        const [qs, recs, pays, hist] = await Promise.all([
+          financeService.getBillQueries(billId),
+          financeService.getReconciliations(billId),
+          financeService.getPayments(billId),
+          financeService.getBillHistory(billId)
+        ]);
+        setQueries(qs);
+        setReconciliations(recs);
+        setPayments(pays);
+        setHistory(hist);
       }
-      const [qs, recs, pays, hist] = await Promise.all([
-        financeService.getBillQueries(billId),
-        financeService.getReconciliations(billId),
-        financeService.getPayments(billId),
-        financeService.getBillHistory(billId)
-      ]);
-      setQueries(qs);
-      setReconciliations(recs);
-      setPayments(pays);
-      setHistory(hist);
     } catch (err: any) {
       setActionError('Failed to load bill details');
     } finally {
@@ -117,13 +151,32 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
 
   useEffect(() => {
     if (isOpen && billId) {
+      if (initialBill) {
+        setBill(initialBill);
+        setRecExpected(initialBill.totalAmount);
+        setRecActual(initialBill.totalAmount);
+        setPaymentAmount(initialBill.totalAmount);
+        if (initialBill.queries) setQueries(initialBill.queries);
+        if (initialBill.reconciliations) setReconciliations(initialBill.reconciliations);
+        if (initialBill.payments) setPayments(initialBill.payments);
+        if (initialBill.history) setHistory(initialBill.history);
+        setIsLoading(false);
+      }
       loadBillDetails();
       setActiveTab('details');
       setShowRejectBox(false);
       setShowNewQueryBox(false);
       setShowNewRecBox(false);
       setShowPaymentBox(false);
+      setShowMoveToApprovalModal(false);
       setActionSuccess(null);
+      financeService.getApprovers().then(list => {
+        if (list && list.length > 0) {
+          setApprovers(list);
+          const rm = list.find(a => a.role === 'Regional Manager') || list[0];
+          if (rm) setSelectedApproverId(rm.id);
+        }
+      });
     }
   }, [isOpen, billId]);
 
@@ -143,6 +196,31 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
       setActionError(err.message);
     } finally {
       setIsProcessingDecision(false);
+    }
+  };
+
+  const handleConfirmMoveToApproval = async () => {
+    if (!billId) return;
+    setIsSubmittingApproval(true);
+    setActionError(null);
+    try {
+      const targetApprover = approvers.find(a => a.id === selectedApproverId);
+      const res = await financeService.requestApproval(
+        billId,
+        selectedApproverId || undefined,
+        targetApprover?.name || undefined,
+        approvalConcernNotes.trim() || undefined
+      );
+      if (!res.success) throw new Error(res.error || 'Failed to move to approval');
+      setActionSuccess(`Bill moved to approval with ${targetApprover?.name || 'Regional Manager'}.`);
+      setShowMoveToApprovalModal(false);
+      setApprovalConcernNotes('');
+      await loadBillDetails();
+      onRefresh();
+    } catch (err: any) {
+      setActionError(err.message || 'Error moving bill to approval');
+    } finally {
+      setIsSubmittingApproval(false);
     }
   };
 
@@ -268,6 +346,150 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
     }
   };
 
+  // Resolve signed URLs for attachments if not yet loaded
+  const resolveAttachmentUrl = async (att: FinanceBillAttachment): Promise<string | undefined> => {
+    let url = att.signedUrl || (att as any).dataUrl;
+    if (!url && att.storagePath) {
+      url = await financeService.getAttachmentSignedUrl(att.storagePath);
+      if (url) {
+        att.signedUrl = url;
+      }
+    }
+    return url;
+  };
+
+  // Open in-app document viewer modal
+  const handleOpenPreview = async (att: FinanceBillAttachment) => {
+    try {
+      const url = await resolveAttachmentUrl(att);
+      if (!url) {
+        setActionError('Document URL is not currently available for preview.');
+        return;
+      }
+      setPreviewAttachment({
+        url,
+        fileName: att.fileName,
+        mimeType: att.mimeType || 'application/octet-stream',
+        fileSizeBytes: att.fileSizeBytes
+      });
+    } catch {
+      setActionError('Could not open preview for this document.');
+    }
+  };
+
+  // Open document in new browser tab without downloading
+  const handleOpenNewTab = async (att: FinanceBillAttachment) => {
+    try {
+      const url = await resolveAttachmentUrl(att);
+      if (!url) {
+        setActionError('Document link could not be resolved.');
+        return;
+      }
+      if (url.startsWith('data:')) {
+        try {
+          const arr = url.split(',');
+          const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          const blobUrl = URL.createObjectURL(blob);
+          window.open(blobUrl, '_blank');
+          return;
+        } catch {
+          window.open(url, '_blank');
+          return;
+        }
+      }
+      window.open(url, '_blank');
+    } catch {
+      setActionError('Failed to open document in new tab.');
+    }
+  };
+
+  // Download document
+  const handleDownloadAttachment = async (att: FinanceBillAttachment | { fileName: string; mimeType?: string; signedUrl?: string; storagePath?: string; dataUrl?: string; url?: string }) => {
+    try {
+      let url = att.signedUrl || (att as any).dataUrl || (att as any).url;
+      if (!url && att.storagePath) {
+        url = await financeService.getAttachmentSignedUrl(att.storagePath);
+      }
+      if (!url) {
+        setActionError('File download URL is not available.');
+        return;
+      }
+
+      if (url.startsWith('data:')) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = att.fileName || 'attachment';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Network error downloading file');
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = att.fileName || 'attachment';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      const fallback = att.signedUrl || (att as any).dataUrl || (att as any).url;
+      if (fallback) {
+        window.open(fallback, '_blank');
+      } else {
+        setActionError('Could not download file. Please check connection.');
+      }
+    }
+  };
+
+  // Delete attachment handler (Admins & Super Admins only)
+  const handleConfirmDeleteAttachment = async () => {
+    if (!attachmentToDelete || !billId) return;
+    setIsDeletingAttachment(true);
+    setActionError(null);
+    try {
+      const res = await financeService.deleteAttachment(billId, attachmentToDelete.id, attachmentToDelete.storagePath);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to delete attachment');
+      }
+      setBill(prev => prev ? {
+        ...prev,
+        attachments: (prev.attachments || []).filter(a => a.id !== attachmentToDelete.id)
+      } : prev);
+      setAttachmentToDelete(null);
+      setActionSuccess(`Successfully deleted attachment "${attachmentToDelete.fileName}" and completely cleaned up storage.`);
+      await loadBillDetails();
+      onRefresh();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to delete attachment');
+    } finally {
+      setIsDeletingAttachment(false);
+    }
+  };
+
+  // Icon styling helper based on file extension
+  const getFileIconStyle = (fileName: string, mimeType?: string) => {
+    const isPdf = /\.pdf$/i.test(fileName) || mimeType === 'application/pdf';
+    const isImg = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(fileName) || mimeType?.startsWith('image/');
+    const isSheet = /\.(csv|xlsx|xls)$/i.test(fileName) || mimeType?.includes('sheet') || mimeType?.includes('csv');
+
+    if (isPdf) return 'bg-rose-50 border-rose-200 text-rose-600';
+    if (isImg) return 'bg-indigo-50 border-indigo-200 text-indigo-600';
+    if (isSheet) return 'bg-emerald-50 border-emerald-200 text-emerald-600';
+    return 'bg-teal-50 border-teal-200 text-[#0d9488]';
+  };
+
   const statusBadgeColor = (status?: string) => {
     switch (status) {
       case 'approved': return 'bg-emerald-50 text-emerald-800 border-emerald-300';
@@ -284,6 +506,14 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
   };
 
   const isSubmitter = !!authProfile?.id && bill?.submittedBy === authProfile.id;
+  const canDeleteAttachment = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
+  const isAssignedToOther = bill?.status === 'awaiting_approval' && 
+    bill?.assignedApproverId && 
+    bill.assignedApproverId !== authProfile?.id && 
+    currentUserRole !== 'Super Admin';
+
+  const canApprove = (isFinanceUser() || canManageFinance() || currentUserRole === 'Super Admin' || (bill?.assignedApproverId === authProfile?.id)) && !isAssignedToOther;
+  const attachmentTypeOptions = getFieldOptions('financeAttachmentTypes');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
@@ -304,14 +534,43 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
               {bill?.siteName || 'Property'} • {bill?.vendorName || 'Direct Expense'} • Due: {bill?.dueDate || 'Immediate'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
-            aria-label="Close dialog"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {bill && bill.status !== 'approved' && bill.status !== 'paid' && (
+              <button
+                type="button"
+                onClick={() => setShowMoveToApprovalModal(true)}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] hover:bg-[#ccfbf1] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Move bill to approval stage and assign RM approver"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Move to Approval</span>
+              </button>
+            )}
+
+            {onEdit && bill && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit(bill);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-white text-[#0078d4] border border-[#8a8886] hover:bg-[#f3f2f1] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Edit Bill Information, Line Items & Files"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Record</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer ml-1"
+              aria-label="Close dialog"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Action alerts */}
@@ -487,6 +746,51 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                         <span className="text-[#242424]">{bill.description}</span>
                       </div>
                     )}
+
+                    {/* Supporting Documents Quick Access */}
+                    {bill?.attachments && bill.attachments.length > 0 && (
+                      <div className="p-3 border border-[#e1dfdd] rounded-xs bg-[#faf9f8] text-xs mt-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-[#605e5c] flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-[#0d9488]" />
+                            Attached Documents ({bill.attachments.length})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('attachments')}
+                            className="text-[11px] font-semibold text-[#0d9488] hover:underline cursor-pointer"
+                          >
+                            Manage All Attachments →
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {bill.attachments.map(att => (
+                            <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#e1dfdd] rounded-xs text-xs">
+                              <span className="truncate max-w-[150px] font-medium text-[#242424]" title={att.fileName}>
+                                {att.fileName}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPreview(att)}
+                                className="text-[#0d9488] hover:text-[#0f766e] font-semibold ml-1 cursor-pointer"
+                                title="Preview document in webapp"
+                              >
+                                Preview
+                              </button>
+                              <span className="text-neutral-300">|</span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenNewTab(att)}
+                                className="text-neutral-500 hover:text-[#0d9488] cursor-pointer"
+                                title="Open in new tab"
+                              >
+                                <ExternalLink className="w-3 h-3 inline" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Section Divider */}
@@ -510,15 +814,24 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                         </thead>
                         <tbody className="divide-y divide-[#e1dfdd]">
                           {bill?.items && bill.items.length > 0 ? (
-                            bill.items.map((item, idx) => (
-                              <tr key={idx} className="hover:bg-neutral-50/50">
-                                <td className="py-2.5 px-4 font-medium text-[#242424]">{item.description}</td>
-                                <td className="py-2.5 px-3 text-right text-neutral-600">{item.quantity}</td>
-                                <td className="py-2.5 px-3 text-right text-neutral-600">£{item.unitPrice.toFixed(2)}</td>
-                                <td className="py-2.5 px-3 text-right text-neutral-600">£{item.taxAmount.toFixed(2)}</td>
-                                <td className="py-2.5 px-4 text-right font-bold text-[#242424]">£{item.lineTotal.toFixed(2)}</td>
-                              </tr>
-                            ))
+                            bill.items.map((item, idx) => {
+                              const qty = Number(item.quantity || 1);
+                              const tax = Number(item.taxAmount || 0);
+                              const lineTot = Number(item.lineTotal || 0);
+                              let uPrice = Number(item.unitPrice || 0);
+                              if (qty === 1 && lineTot > 0 && (uPrice === 0 || Math.abs(uPrice + tax - lineTot) > 0.01)) {
+                                uPrice = Number(Math.max(0, lineTot - tax).toFixed(2));
+                              }
+                              return (
+                                <tr key={idx} className="hover:bg-neutral-50/50">
+                                  <td className="py-2.5 px-4 font-medium text-[#242424]">{item.description}</td>
+                                  <td className="py-2.5 px-3 text-right text-neutral-600">{qty}</td>
+                                  <td className="py-2.5 px-3 text-right text-neutral-600">£{uPrice.toFixed(2)}</td>
+                                  <td className="py-2.5 px-3 text-right text-neutral-600">£{tax.toFixed(2)}</td>
+                                  <td className="py-2.5 px-4 text-right font-bold text-[#242424]">£{lineTot.toFixed(2)}</td>
+                                </tr>
+                              );
+                            })
                           ) : (
                             <tr>
                               <td colSpan={5} className="py-6 text-center text-neutral-400">No itemized lines recorded</td>
@@ -551,11 +864,9 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                           disabled={isUploading}
                           className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs"
                         >
-                          <option value="vendor_invoice">Vendor Invoice</option>
-                          <option value="delivery_note">Delivery Note / Proof</option>
-                          <option value="credit_card_receipt">Credit Card Receipt</option>
-                          <option value="purchase_order">Purchase Order</option>
-                          <option value="other">Other Document</option>
+                          {attachmentTypeOptions.map(option => (
+                            <option key={option.id} value={option.value}>{option.label}</option>
+                          ))}
                         </select>
                       </div>
 
@@ -600,39 +911,83 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                       </h4>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       {bill?.attachments && bill.attachments.length > 0 ? (
                         bill.attachments.map(att => (
-                          <div key={att.id} className="bg-white p-3 rounded-xs border border-[#e1dfdd] flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5 overflow-hidden">
-                              <div className="w-8 h-8 rounded-xs bg-teal-50 border border-teal-200 text-[#0d9488] flex items-center justify-center shrink-0">
-                                <FileText className="w-4 h-4" />
+                          <div key={att.id} className="bg-white p-3.5 rounded-xs border border-[#e1dfdd] hover:border-[#0d9488]/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                            <div className="flex items-center gap-3 overflow-hidden min-w-0">
+                              <div className={`w-10 h-10 rounded-xs border flex items-center justify-center shrink-0 ${getFileIconStyle(att.fileName, att.mimeType)}`}>
+                                <FileText className="w-5 h-5" />
                               </div>
-                              <div className="truncate">
-                                <p className="text-xs font-semibold text-[#242424] truncate">{att.fileName}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] px-1.5 py-0.2 rounded-xs bg-neutral-100 text-neutral-600 font-medium uppercase">
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  onClick={() => handleOpenPreview(att)}
+                                  className="text-xs font-semibold text-[#242424] truncate hover:text-[#0d9488] cursor-pointer"
+                                  title={att.fileName}
+                                >
+                                  {att.fileName}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-xs bg-neutral-100 text-neutral-600 font-medium uppercase tracking-wider">
                                     {(att.attachmentType || 'document').replace(/_/g, ' ')}
                                   </span>
                                   <span className="text-[10px] text-neutral-400">
-                                    {(att.fileSizeBytes / 1024).toFixed(0)} KB
+                                    {((att.fileSizeBytes || 0) / 1024).toFixed(0)} KB
                                   </span>
+                                  {att.createdAt && (
+                                    <span className="text-[10px] text-neutral-400">
+                                      • {new Date(att.createdAt).toLocaleDateString('en-GB')}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                            {att.signedUrl ? (
-                              <a
-                                href={att.signedUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-[#0d9488] hover:underline bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-xs shrink-0"
+
+                            {/* Action Buttons: Preview, Open in New Tab, Download, and Admin Delete */}
+                            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                              {/* 1. Preview in Webapp */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPreview(att)}
+                                title="Preview document inside webapp"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-[#0d9488] bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1.5 rounded-xs transition-colors cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Preview</span>
+                              </button>
+
+                              {/* 2. Open in New Tab without downloading */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenNewTab(att)}
+                                title="Open document in new browser tab"
+                                className="inline-flex items-center justify-center w-8 h-8 text-neutral-600 hover:text-[#0d9488] bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-xs transition-colors cursor-pointer"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* 3. Download Document */}
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadAttachment(att)}
+                                title="Download file"
+                                className="inline-flex items-center justify-center w-8 h-8 text-neutral-600 hover:text-[#0d9488] bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-xs transition-colors cursor-pointer"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                                <span>View</span>
-                              </a>
-                            ) : (
-                              <span className="text-[10px] text-neutral-400">Stored</span>
-                            )}
+                              </button>
+
+                              {/* 4. Delete Document (Admins and Super Admins ONLY) */}
+                              {canDeleteAttachment && (
+                                <button
+                                  type="button"
+                                  onClick={() => setAttachmentToDelete(att)}
+                                  title="Delete attachment (Admins only)"
+                                  className="inline-flex items-center justify-center w-8 h-8 text-neutral-400 hover:text-red-600 bg-neutral-50 hover:bg-red-50 border border-neutral-200 hover:border-red-200 rounded-xs transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))
                       ) : (
@@ -1298,6 +1653,249 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    
+      {/* IN-APP DOCUMENT PREVIEW MODAL */}
+      {previewAttachment && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setPreviewAttachment(null)}
+        >
+          <div 
+            className="relative w-full max-w-5xl bg-white rounded-xs shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-[#8a8886]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Preview Modal Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#faf9f8] border-b border-[#e1dfdd]">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <FileText className="w-4 h-4 text-[#0d9488] shrink-0" />
+                <div className="truncate">
+                  <h3 className="text-xs font-bold text-[#242424] truncate" title={previewAttachment.fileName}>
+                    {previewAttachment.fileName}
+                  </h3>
+                  <p className="text-[10px] text-[#605e5c]">
+                    {previewAttachment.mimeType} • {((previewAttachment.fileSizeBytes || 0) / 1024).toFixed(0)} KB
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => window.open(previewAttachment.url, '_blank')}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#242424] hover:text-[#0d9488] bg-white border border-[#8a8886] px-2.5 py-1 rounded-xs transition-colors cursor-pointer"
+                  title="Open in new browser tab"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">New Tab</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDownloadAttachment(previewAttachment)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-[#0d9488] hover:bg-[#0f766e] px-2.5 py-1 rounded-xs transition-colors cursor-pointer"
+                  title="Download document"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Download</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewAttachment(null)}
+                  className="p-1 rounded-xs hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] transition-colors cursor-pointer"
+                  title="Close preview"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Preview Modal Content Body */}
+            <div className="flex-1 overflow-auto p-4 bg-neutral-100 flex items-center justify-center min-h-[50vh] max-h-[80vh]">
+              {previewAttachment.mimeType.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(previewAttachment.fileName) ? (
+                <img 
+                  src={previewAttachment.url} 
+                  alt={previewAttachment.fileName} 
+                  className="max-h-[75vh] max-w-full object-contain rounded-xs shadow-md"
+                />
+              ) : previewAttachment.mimeType === 'application/pdf' || /\.pdf$/i.test(previewAttachment.fileName) ? (
+                <iframe 
+                  src={previewAttachment.url} 
+                  title={previewAttachment.fileName}
+                  className="w-full h-[75vh] bg-white rounded-xs border border-[#e1dfdd] shadow-sm"
+                />
+              ) : (
+                <div className="text-center p-8 bg-white rounded-xs border border-[#e1dfdd] max-w-md shadow-xs space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-teal-50 text-[#0d9488] flex items-center justify-center mx-auto border border-teal-200">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#242424]">{previewAttachment.fileName}</h4>
+                    <p className="text-[11px] text-neutral-500 mt-1">
+                      Direct embedded preview is not available for this file type ({previewAttachment.mimeType}).
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => window.open(previewAttachment.url, '_blank')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#0d9488] bg-teal-50 border border-teal-200 rounded-xs hover:bg-teal-100 transition-colors cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Open in Tab</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadAttachment(previewAttachment)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#0d9488] hover:bg-[#0f766e] rounded-xs transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download File</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PERMANENT ATTACHMENT DELETION CONFIRMATION DIALOG (ADMIN ONLY) */}
+      {attachmentToDelete && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => !isDeletingAttachment && setAttachmentToDelete(null)}
+        >
+          <div 
+            className="relative w-full max-w-md bg-white rounded-xs shadow-2xl p-5 space-y-4 border border-[#8a8886]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-[#242424]">Delete Attachment</h3>
+                <p className="text-xs text-[#605e5c]">
+                  Are you sure you want to permanently delete <span className="font-bold text-[#242424]">{attachmentToDelete.fileName}</span>?
+                </p>
+                <p className="text-[11px] text-red-600 font-medium">
+                  This will completely remove the file from cloud storage, delete the database record, and record an audit entry. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#e1dfdd]">
+              <button
+                type="button"
+                disabled={isDeletingAttachment}
+                onClick={() => setAttachmentToDelete(null)}
+                className="px-3 py-1.5 text-xs font-semibold text-[#242424] bg-white border border-[#8a8886] rounded-xs hover:bg-[#edebe9] transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAttachment}
+                onClick={handleConfirmDeleteAttachment}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xs transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {isDeletingAttachment ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting & Cleaning Up...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Move to Approval Modal Dialog */}
+      {showMoveToApprovalModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
+          <div className="bg-white border border-[#edebe9] rounded-xs shadow-2xl w-full max-w-md p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[#edebe9]">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#0d9488]" />
+                <h4 className="font-bold text-sm text-[#242424]">Move to Approval</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMoveToApprovalModal(false)}
+                className="p-1 text-neutral-400 hover:text-neutral-700 rounded-xs"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#605e5c]">
+              Route this record to a Regional Manager or Admin for sign-off.
+            </p>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-[#323130] mb-1">
+                  Select Approver (Regional Manager) <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedApproverId}
+                  onChange={e => setSelectedApproverId(e.target.value)}
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488]"
+                >
+                  {approvers.length === 0 ? (
+                    <option value="">Loading approvers...</option>
+                  ) : (
+                    approvers.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.role})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#323130] mb-1">
+                  Approval Notes / Concerns (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={approvalConcernNotes}
+                  onChange={e => setApprovalConcernNotes(e.target.value)}
+                  placeholder="e.g. Please verify item price discrepancy with supplier contract..."
+                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#edebe9]">
+              <button
+                type="button"
+                onClick={() => setShowMoveToApprovalModal(false)}
+                className="px-3 py-1.5 border border-[#8a8886] text-[#323130] rounded-xs hover:bg-[#edebe9] text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmMoveToApproval}
+                disabled={isSubmittingApproval}
+                className="px-4 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs disabled:opacity-50"
+              >
+                {isSubmittingApproval ? 'Submitting...' : 'Confirm & Move'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+</div>
   );
 };

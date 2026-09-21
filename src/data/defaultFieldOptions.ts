@@ -301,6 +301,34 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'Shield'
   },
   {
+    key: 'financeBillTypes',
+    name: 'Finance Document Types',
+    department: 'Operations & Governance',
+    description: 'Bill and document types used across Vendor Invoices, Credit Cards, and Delivery Notes',
+    iconName: 'Landmark'
+  },
+  {
+    key: 'financeBillStatuses',
+    name: 'Finance Workflow Statuses',
+    department: 'Operations & Governance',
+    description: 'Review, approval, payment, and reconciliation stages for finance records',
+    iconName: 'Activity'
+  },
+  {
+    key: 'financeAttachmentTypes',
+    name: 'Finance Attachment Types',
+    department: 'Compliance & Documents',
+    description: 'Classification options for finance supporting documents',
+    iconName: 'FolderHeart'
+  },
+  {
+    key: 'financeVendorStatuses',
+    name: 'Finance Vendor Statuses',
+    department: 'Operations & Governance',
+    description: 'Active and inactive supplier registry states',
+    iconName: 'CheckCircle'
+  },
+  {
     key: 'councils',
     name: 'Responsible Councils & LAs',
     department: 'Operations & Governance',
@@ -592,7 +620,35 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   // 40. User System Roles
   { id: 'opt-urole-1', category: 'userRoles', label: 'Super Administrator', value: 'Super Admin', color: 'purple', description: 'Full system management and configuration permissions', isActive: true, isSystem: true, order: 1 },
   { id: 'opt-urole-2', category: 'userRoles', label: 'Administrator', value: 'Admin', color: 'blue', description: 'Operational administrator with management permissions', isActive: true, isSystem: true, order: 2 },
-  { id: 'opt-urole-3', category: 'userRoles', label: 'Duty Staff Officer', value: 'Staff', color: 'emerald', description: 'Standard daily operational and logging permissions', isActive: true, isSystem: true, order: 3 },
-  { id: 'opt-urole-4', category: 'userRoles', label: 'Compliance & Quality Auditor', value: 'Auditor', color: 'amber', description: 'Read-only audit and reporting inspector access', isActive: true, isSystem: true, order: 4 },
-  { id: 'opt-urole-5', category: 'userRoles', label: 'Security & Concierge Lead', value: 'Security', color: 'slate', description: 'Night concierge and physical perimeter logging', isActive: true, isSystem: true, order: 5 }
+  { id: 'opt-urole-3', category: 'userRoles', label: 'Finance Administrator', value: 'Finance Admin', color: 'amber', description: 'Finance administration and controlled destructive permissions', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-urole-4', category: 'userRoles', label: 'Finance Manager', value: 'Finance Manager', color: 'teal', description: 'Finance approval, review, and reconciliation permissions', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-urole-5', category: 'userRoles', label: 'Finance Staff', value: 'Finance Staff', color: 'emerald', description: 'Finance create, update, upload, and view permissions', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-urole-6', category: 'userRoles', label: 'Duty Staff Officer', value: 'Staff', color: 'emerald', description: 'Standard daily operational and logging permissions', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-urole-7', category: 'userRoles', label: 'Compliance & Quality Auditor', value: 'Auditor', color: 'amber', description: 'Read-only audit and reporting inspector access', isActive: true, isSystem: true, order: 7 },
+  { id: 'opt-urole-8', category: 'userRoles', label: 'Security & Concierge Lead', value: 'Security', color: 'slate', description: 'Night concierge and physical perimeter logging', isActive: true, isSystem: true, order: 8 }
+  ,
+  // 41. Finance document types
+  { id: 'opt-fin-type-1', category: 'financeBillTypes', label: 'Vendor Invoice', value: 'vendor_invoice', color: 'blue', description: 'Supplier invoice for goods or services', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fin-type-2', category: 'financeBillTypes', label: 'Credit Card Expense', value: 'credit_card_expense', color: 'purple', description: 'Corporate card bill or expense record', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-fin-type-3', category: 'financeBillTypes', label: 'Delivery Note', value: 'delivery_note', color: 'teal', description: 'Goods received or proof of delivery record', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-fin-type-4', category: 'financeBillTypes', label: 'Other Expense', value: 'other_expense', color: 'slate', description: 'Other finance expense record', isActive: true, isSystem: true, order: 4 },
+  // 42. Finance workflow statuses
+  ...[
+    ['Draft', 'draft', 'slate'], ['Submitted', 'submitted', 'blue'], ['Under Review', 'under_review', 'amber'],
+    ['Verification Pending', 'verification_pending', 'amber'], ['Query Raised', 'query_raised', 'red'],
+    ['Awaiting Approval', 'awaiting_approval', 'purple'], ['Approved', 'approved', 'emerald'],
+    ['Rejected', 'rejected', 'red'], ['Payment Pending', 'payment_pending', 'amber'], ['Partially Paid', 'partially_paid', 'blue'],
+    ['Paid', 'paid', 'emerald'], ['Reconciliation Pending', 'reconciliation_pending', 'amber'], ['Reconciled', 'reconciled', 'teal'], ['Cancelled', 'cancelled', 'slate']
+  ].map(([label, value, color], index) => ({
+    id: `opt-fin-status-${index + 1}`, category: 'financeBillStatuses' as const, label, value, color, description: `Finance workflow status: ${label}`, isActive: true, isSystem: true, order: index + 1
+  })),
+  // 43. Finance attachment types
+  { id: 'opt-fin-att-1', category: 'financeAttachmentTypes', label: 'Vendor Invoice', value: 'vendor_invoice', color: 'blue', description: 'Invoice document from a supplier', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fin-att-2', category: 'financeAttachmentTypes', label: 'Delivery Note / Proof', value: 'delivery_note', color: 'teal', description: 'Delivery note or proof of delivery', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-fin-att-3', category: 'financeAttachmentTypes', label: 'Credit Card Receipt', value: 'credit_card_receipt', color: 'purple', description: 'Receipt supporting a corporate card expense', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-fin-att-4', category: 'financeAttachmentTypes', label: 'Purchase Order', value: 'purchase_order', color: 'amber', description: 'Purchase order or procurement evidence', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-fin-att-5', category: 'financeAttachmentTypes', label: 'Other Document', value: 'other', color: 'slate', description: 'Other supporting finance document', isActive: true, isSystem: true, order: 5 },
+  // 44. Finance vendor statuses
+  { id: 'opt-fin-vendor-1', category: 'financeVendorStatuses', label: 'Active', value: 'active', color: 'emerald', description: 'Supplier is available for finance records', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fin-vendor-2', category: 'financeVendorStatuses', label: 'Inactive', value: 'inactive', color: 'slate', description: 'Supplier is retained but not currently available', isActive: true, isSystem: true, order: 2 }
 ];

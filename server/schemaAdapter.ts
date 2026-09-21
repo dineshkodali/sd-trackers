@@ -164,6 +164,7 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['canManageFiles', 'can_manage_files', 'bool'],
     ['canManageUsers', 'can_manage_users', 'bool'],
     ['canManageSettings', 'can_manage_settings', 'bool'],
+    ['canManageFinance', 'can_manage_finance', 'bool'],
   ],
   app_settings: [
     ['value', 'value', 'json'],
@@ -277,7 +278,7 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'action', 'status', 'error', 'created_by', 'created_at', 'updated_at'
   ]),
   role_permissions: new Set([
-    'id', 'role', 'permissions', 'can_delete_records', 'data', 'created_by', 'created_at', 'updated_at'
+    'id', 'role', 'permissions', 'can_delete_records', 'can_manage_finance', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   app_settings: new Set([
     'id', 'value', 'data', 'created_by', 'created_at', 'updated_at'

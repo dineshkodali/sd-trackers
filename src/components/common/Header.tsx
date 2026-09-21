@@ -195,6 +195,9 @@ export const Header: React.FC = () => {
   const rolesList: { role: RoleType; desc: string; accessLevel: string }[] = [
     { role: 'Super Admin', desc: 'Unrestricted system control, RBAC permissions, and database management', accessLevel: 'System Full' },
     { role: 'Admin', desc: 'Operational property management, user administration, and records', accessLevel: 'Operations Lead' },
+    { role: 'Finance Admin', desc: 'Finance administration, approvals, suppliers, and documents', accessLevel: 'Finance Full' },
+    { role: 'Finance Manager', desc: 'Finance review, approvals, and reconciliation', accessLevel: 'Finance Manager' },
+    { role: 'Finance Staff', desc: 'Finance bill and supplier operations', accessLevel: 'Finance Staff' },
     { role: 'Regional Manager', desc: 'Multi-property oversight, proof files CRUD, and compliance audits', accessLevel: 'Regional Level' },
     { role: 'General Manager', desc: 'Assigned property management, records creation & editing', accessLevel: 'Property Level' },
     { role: 'Employee', desc: 'Assigned property daily logging, resident support entries', accessLevel: 'Frontline Level' }

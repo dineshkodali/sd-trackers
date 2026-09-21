@@ -3,9 +3,53 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { getSupabaseAdmin } from '../supabase.js';
-import { requireAuth } from '../middleware/requireAuth.js';
+import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 
 const router = Router();
+
+
+function toSupabaseBillRecord(bill: any, validVendorIds?: Set<string>): any {
+  let vId = bill.vendor_id || bill.vendorId;
+  if (!isValidUuid(vId) || (validVendorIds && !validVendorIds.has(vId))) {
+    vId = null;
+  }
+
+  let subBy = bill.submitted_by || bill.submittedBy;
+  if (!isValidUuid(subBy)) subBy = null;
+
+  let finAppBy = bill.final_approved_by || bill.finalApprovedBy;
+  if (!isValidUuid(finAppBy)) finAppBy = null;
+
+  let rejBy = bill.rejected_by || bill.rejectedBy;
+  if (!isValidUuid(rejBy)) rejBy = null;
+
+  return {
+    id: bill.id,
+    organization_id: bill.organization_id || '00000000-0000-0000-0000-000000000001',
+    site_id: bill.site_id || bill.siteId,
+    vendor_id: vId,
+    bill_number: bill.bill_number || bill.billNumber,
+    bill_type: bill.bill_type || bill.billType || 'vendor_invoice',
+    bill_date: bill.bill_date || bill.billDate || new Date().toISOString().split('T')[0],
+    due_date: bill.due_date || bill.dueDate || null,
+    currency: bill.currency || 'GBP',
+    subtotal: Number(bill.subtotal || 0),
+    tax_amount: Number(bill.tax_amount ?? bill.taxAmount ?? 0),
+    total_amount: Number(bill.total_amount ?? bill.totalAmount ?? 0),
+    description: bill.description || '',
+    purchase_reference: bill.purchase_reference || bill.purchaseReference || null,
+    submitted_by: subBy,
+    submitted_at: bill.submitted_at || bill.submittedAt || bill.created_at || new Date().toISOString(),
+    status: bill.status || 'submitted',
+    final_approved_by: finAppBy,
+    final_approved_at: bill.final_approved_at || bill.finalApprovedAt || null,
+    rejected_by: rejBy,
+    rejected_at: bill.rejected_at || bill.rejectedAt || null,
+    rejection_reason: bill.rejection_reason || bill.rejectionReason || null,
+    created_at: bill.created_at || bill.createdAt || new Date().toISOString(),
+    updated_at: bill.updated_at || bill.updatedAt || new Date().toISOString()
+  };
+}
 
 // ============================================================================
 // File-backed Persistence Fallback for Finance Module
@@ -30,62 +74,12 @@ interface LocalFinanceStore {
 
 const DEFAULT_VENDORS = [
   {
-    id: 'fven-001',
+    id: '00000000-0000-0000-0001-000000000001',
     organization_id: '00000000-0000-0000-0000-000000000001',
     vendor_name: 'Apex Facilities & Commercial Cleaning Ltd',
     vendor_reference: 'APEX-FAC-01',
     contact_email: 'accounts@apexfacilities.co.uk',
     contact_phone: '+44 20 7946 0912',
-    status: 'active',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'fven-002',
-    organization_id: '00000000-0000-0000-0000-000000000001',
-    vendor_name: 'Brakes Foodservice Wholesale',
-    vendor_reference: 'BRAKES-UK-88',
-    contact_email: 'orders@brake.co.uk',
-    contact_phone: '+44 34 5606 9090',
-    status: 'active',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'fven-003',
-    organization_id: '00000000-0000-0000-0000-000000000001',
-    vendor_name: 'Total Commercial Laundry Solutions',
-    vendor_reference: 'TOT-LAU-09',
-    contact_email: 'billing@totallaundry.co.uk',
-    contact_phone: '+44 16 1496 0233',
-    status: 'active',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'fven-004',
-    organization_id: '00000000-0000-0000-0000-000000000001',
-    vendor_name: 'British Gas Business Energy',
-    vendor_reference: 'BG-UTIL-44',
-    contact_email: 'business@britishgas.co.uk',
-    contact_phone: '+44 33 0100 0050',
-    status: 'active',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'fven-005',
-    organization_id: '00000000-0000-0000-0000-000000000001',
-    vendor_name: 'Enterprise Rent-A-Car Commercial',
-    vendor_reference: 'ENT-FLEET-12',
-    contact_email: 'commercial@enterprise.co.uk',
-    contact_phone: '+44 80 0800 2277',
-    status: 'active',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'fven-006',
-    organization_id: '00000000-0000-0000-0000-000000000001',
-    vendor_name: 'Direct Site Supplies & Maintenance Ltd',
-    vendor_reference: 'DSS-MAINT-77',
-    contact_email: 'helpdesk@directsitesupplies.co.uk',
-    contact_phone: '+44 12 1496 0888',
     status: 'active',
     created_at: new Date().toISOString()
   }
@@ -326,6 +320,165 @@ function writeLocalStore(store: LocalFinanceStore, userId?: string): void {
 // Helper: Enrich Bill Record with Joined / Resolved Entity Names
 // ============================================================================
 
+function enrichBillRecordSync(
+  bill: any,
+  store: LocalFinanceStore,
+  caches?: { sitesMap?: Map<string, string>; vendorsMap?: Map<string, string>; profilesMap?: Map<string, string> }
+): any {
+  const enriched = { ...bill };
+
+  // Site Name
+  if (!enriched.siteName) {
+    if (enriched.site?.name) {
+      enriched.siteName = enriched.site.name;
+    } else if (enriched.site_name) {
+      enriched.siteName = enriched.site_name;
+    } else if (enriched.site_id && caches?.sitesMap?.has(enriched.site_id)) {
+      enriched.siteName = caches.sitesMap.get(enriched.site_id);
+    } else if (enriched.siteId && caches?.sitesMap?.has(enriched.siteId)) {
+      enriched.siteName = caches.sitesMap.get(enriched.siteId);
+    } else {
+      enriched.siteName = enriched.site_name || enriched.site_id || enriched.siteId || '—';
+    }
+  }
+
+  // Vendor Name
+  if (!enriched.vendorName) {
+    if (enriched.vendor?.vendor_name) {
+      enriched.vendorName = enriched.vendor.vendor_name;
+    } else if (enriched.vendor_name) {
+      enriched.vendorName = enriched.vendor_name;
+    } else if (enriched.vendor_id && caches?.vendorsMap?.has(enriched.vendor_id)) {
+      enriched.vendorName = caches.vendorsMap.get(enriched.vendor_id);
+    } else if (enriched.vendor_id) {
+      const v = store.vendors.find((item: any) => item.id === enriched.vendor_id);
+      if (v) enriched.vendorName = v.vendor_name;
+    }
+  }
+
+  // Submitter Name
+  if (!enriched.submitterName) {
+    if (enriched.submitter?.name) {
+      enriched.submitterName = enriched.submitter.name;
+    } else if (enriched.submitted_by && caches?.profilesMap?.has(enriched.submitted_by)) {
+      enriched.submitterName = caches.profilesMap.get(enriched.submitted_by);
+    }
+  }
+
+  // Final Approver Name
+  if (!enriched.finalApprovedByName) {
+    if (enriched.final_approver?.name) {
+      enriched.finalApprovedByName = enriched.final_approver.name;
+    } else if (enriched.final_approved_by && caches?.profilesMap?.has(enriched.final_approved_by)) {
+      enriched.finalApprovedByName = caches.profilesMap.get(enriched.final_approved_by);
+    }
+  }
+
+  // Assigned Approver
+  enriched.assignedApproverId = enriched.assigned_approver_id || enriched.assignedApproverId || null;
+  enriched.assignedApproverName = enriched.assigned_approver_name || enriched.assignedApproverName || null;
+  if (enriched.assignedApproverId && !enriched.assignedApproverName && caches?.profilesMap?.has(enriched.assignedApproverId)) {
+    enriched.assignedApproverName = caches.profilesMap.get(enriched.assignedApproverId);
+  }
+
+  // Attach items from store if missing
+  if (!enriched.items || enriched.items.length === 0) {
+    enriched.items = store.items.filter((i: any) => i.bill_id === enriched.id);
+  }
+
+  // Attach attachments from store if missing
+  if (!enriched.attachments || enriched.attachments.length === 0) {
+    enriched.attachments = store.attachments.filter((a: any) => a.bill_id === enriched.id);
+  }
+
+  // Attach queries from store if missing
+  if (!enriched.queries || enriched.queries.length === 0) {
+    enriched.queries = (store.queries || []).filter((q: any) => q.bill_id === enriched.id);
+  }
+
+  // Attach reconciliations from store if missing
+  if (!enriched.reconciliations || enriched.reconciliations.length === 0) {
+    enriched.reconciliations = (store.reconciliations || []).filter((r: any) => r.bill_id === enriched.id);
+  }
+
+  // Attach payments from store if missing
+  if (!enriched.payments || enriched.payments.length === 0) {
+    enriched.payments = (store.payments || []).filter((p: any) => p.bill_id === enriched.id);
+  }
+
+  // Attach history from store if missing
+  if (!enriched.history || enriched.history.length === 0) {
+    enriched.history = (store.history || []).filter((h: any) => h.bill_id === enriched.id);
+  }
+
+  return enriched;
+}
+
+async function resolveOrCreateVendorId(
+  vendorId: string | null | undefined,
+  vendorName: string | null | undefined,
+  supabase: any,
+  store: LocalFinanceStore
+): Promise<{ vendorId: string | null; vendorName: string | null }> {
+  const cleanName = (vendorName || '').trim();
+  if (vendorId && isValidUuid(vendorId)) {
+    const existing = store.vendors.find(v => v.id === vendorId);
+    return { vendorId, vendorName: cleanName || existing?.vendor_name || null };
+  }
+
+  if (!cleanName) {
+    return { vendorId: null, vendorName: null };
+  }
+
+  // Check store first
+  const fromStore = store.vendors.find(v => (v.vendor_name || '').toLowerCase() === cleanName.toLowerCase());
+  if (fromStore && isValidUuid(fromStore.id)) {
+    return { vendorId: fromStore.id, vendorName: fromStore.vendor_name };
+  }
+
+  // Check Supabase
+  if (supabase) {
+    try {
+      const { data: matched } = await supabase
+        .from('finance_vendors')
+        .select('id, vendor_name')
+        .ilike('vendor_name', cleanName)
+        .limit(1)
+        .maybeSingle();
+
+      if (matched?.id) {
+        return { vendorId: matched.id, vendorName: matched.vendor_name };
+      }
+
+      // Auto create new vendor in Supabase
+      const { data: created } = await supabase
+        .from('finance_vendors')
+        .insert([{
+          vendor_name: cleanName,
+          organization_id: '00000000-0000-0000-0000-000000000001',
+          status: 'active'
+        }])
+        .select('id, vendor_name')
+        .maybeSingle();
+
+      if (created?.id) {
+        store.vendors.push({
+          id: created.id,
+          organization_id: '00000000-0000-0000-0000-000000000001',
+          vendor_name: cleanName,
+          status: 'active',
+          created_at: new Date().toISOString()
+        });
+        return { vendorId: created.id, vendorName: created.vendor_name };
+      }
+    } catch (e) {
+      console.warn('[FinanceRoute] resolveOrCreateVendorId error:', e);
+    }
+  }
+
+  return { vendorId: null, vendorName: cleanName };
+}
+
 async function enrichBillRecord(bill: any, supabase: any, store: LocalFinanceStore): Promise<any> {
   const enriched = { ...bill };
 
@@ -497,9 +650,45 @@ router.get('/bills', requireAuth, async (req, res) => {
       rawList = rawList.filter(b => b.bill_type === billType || b.billType === billType);
     }
 
-    // Enrich all bills
-    const enrichedPromises = rawList.map(b => enrichBillRecord(b, supabase, store));
-    let results = await Promise.all(enrichedPromises);
+    // High performance batch pre-caching: zero N+1 latency
+    const sitesMap = new Map<string, string>();
+    const vendorsMap = new Map<string, string>();
+    const profilesMap = new Map<string, string>();
+
+    for (const v of store.vendors) {
+      if (v.id && v.vendor_name) vendorsMap.set(v.id, v.vendor_name);
+    }
+
+    const missingSiteIds = Array.from(new Set(rawList.map(b => b.site_id || b.siteId).filter(id => id && !sitesMap.has(id))));
+    const missingVendorIds = Array.from(new Set(rawList.map(b => b.vendor_id || b.vendorId).filter(id => id && !vendorsMap.has(id))));
+    const profileIds = Array.from(new Set(rawList.flatMap(b => [b.submitted_by, b.final_approved_by, b.rejected_by]).filter(Boolean)));
+
+    if (supabase) {
+      try {
+        const promises: (Promise<any> | PromiseLike<any>)[] = [];
+        if (missingSiteIds.length > 0) {
+          promises.push(supabase.from('sites').select('id, name').in('id', missingSiteIds).then((r: any) => {
+            if (r.data) r.data.forEach((s: any) => sitesMap.set(s.id, s.name));
+          }));
+        }
+        if (missingVendorIds.length > 0) {
+          promises.push(supabase.from('finance_vendors').select('id, vendor_name').in('id', missingVendorIds).then((r: any) => {
+            if (r.data) r.data.forEach((v: any) => vendorsMap.set(v.id, v.vendor_name));
+          }));
+        }
+        if (profileIds.length > 0) {
+          promises.push(supabase.from('profiles').select('id, name').in('id', profileIds).then((r: any) => {
+            if (r.data) r.data.forEach((p: any) => profilesMap.set(p.id, p.name));
+          }));
+        }
+        if (promises.length > 0) await Promise.all(promises);
+      } catch (e) {
+        // Continue with local maps
+      }
+    }
+
+    const caches = { sitesMap, vendorsMap, profilesMap };
+    let results = rawList.map(b => enrichBillRecordSync(b, store, caches));
 
     // Search filter
     if (search && String(search).trim()) {
@@ -543,19 +732,21 @@ router.get('/bills/:id', requireAuth, async (req, res) => {
 
         if (!error && data) {
           bill = data;
-          const { data: items } = await supabase.from('finance_bill_items').select('*').eq('bill_id', id);
-          const { data: attachments } = await supabase.from('finance_bill_attachments').select('*').eq('bill_id', id);
-          const { data: queries } = await supabase.from('finance_bill_queries').select('*').eq('bill_id', id);
-          const { data: reconciliations } = await supabase.from('finance_reconciliation_records').select('*').eq('bill_id', id);
-          const { data: payments } = await supabase.from('finance_payment_records').select('*').eq('bill_id', id);
-          const { data: history } = await supabase.from('finance_bill_status_history').select('*').eq('bill_id', id).order('created_at', { ascending: false });
+          const [itemsRes, attRes, queriesRes, recsRes, paysRes, histRes] = await Promise.all([
+            supabase.from('finance_bill_items').select('*').eq('bill_id', id),
+            supabase.from('finance_bill_attachments').select('*').eq('bill_id', id),
+            supabase.from('finance_bill_queries').select('*').eq('bill_id', id),
+            supabase.from('finance_reconciliation_records').select('*').eq('bill_id', id),
+            supabase.from('finance_payment_records').select('*').eq('bill_id', id),
+            supabase.from('finance_bill_status_history').select('*').eq('bill_id', id).order('created_at', { ascending: false })
+          ]);
 
-          bill.items = items || [];
-          bill.attachments = attachments || [];
-          bill.queries = queries || [];
-          bill.reconciliations = reconciliations || [];
-          bill.payments = payments || [];
-          bill.history = history || [];
+          bill.items = itemsRes.data || [];
+          bill.attachments = attRes.data || [];
+          bill.queries = queriesRes.data || [];
+          bill.reconciliations = recsRes.data || [];
+          bill.payments = paysRes.data || [];
+          bill.history = histRes.data || [];
         }
       } catch (e) {}
     }
@@ -576,7 +767,7 @@ router.get('/bills/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Bill not found' });
     }
 
-    const enriched = await enrichBillRecord(bill, supabase, store);
+    const enriched = enrichBillRecordSync(bill, store);
     return res.json({ success: true, data: enriched });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Internal server error' });
@@ -602,15 +793,22 @@ router.post('/bills', requireAuth, async (req, res) => {
     const taxAmount = Number(rawBill.taxAmount ?? rawBill.tax_amount ?? 0);
     const totalAmount = Number(rawBill.totalAmount ?? rawBill.total_amount ?? (subtotal + taxAmount));
 
+    const resolvedVendor = await resolveOrCreateVendorId(
+      rawBill.vendorId || rawBill.vendor_id,
+      rawBill.vendorName || rawBill.vendor_name,
+      supabase,
+      store
+    );
+
     const billRecord = {
       id: billId,
       organization_id: rawBill.organizationId || rawBill.organization_id || '00000000-0000-0000-0000-000000000001',
       site_id: rawBill.siteId || rawBill.site_id,
       site_name: rawBill.siteName || rawBill.site_name || null,
       siteName: rawBill.siteName || rawBill.site_name || null,
-      vendor_id: rawBill.vendorId || rawBill.vendor_id || null,
-      vendor_name: rawBill.vendorName || rawBill.vendor_name || null,
-      vendorName: rawBill.vendorName || rawBill.vendor_name || null,
+      vendor_id: resolvedVendor.vendorId,
+      vendor_name: resolvedVendor.vendorName,
+      vendorName: resolvedVendor.vendorName,
       bill_number: rawBill.billNumber || rawBill.bill_number || `BILL-${Date.now().toString().slice(-6)}`,
       bill_type: rawBill.billType || rawBill.bill_type || 'vendor_invoice',
       bill_date: rawBill.billDate || rawBill.bill_date || new Date().toISOString().split('T')[0],
@@ -629,11 +827,23 @@ router.post('/bills', requireAuth, async (req, res) => {
       updated_at: new Date().toISOString()
     };
 
-    // Format line items
+    // Format & reconcile line items
     const itemRows = (items || []).map((item: any, idx: number) => {
       const q = Number(item.quantity || 1);
-      const u = Number(item.unitPrice ?? item.unit_price ?? 0);
+      let u = Number(item.unitPrice ?? item.unit_price ?? 0);
       const t = Number(item.taxAmount ?? item.tax_amount ?? 0);
+      let lt = Number(item.lineTotal ?? item.line_total ?? (q * u + t));
+
+      if (items.length === 1 && q === 1) {
+        if (lt > 0 && (u === 0 || Math.abs(u + t - lt) > 0.01)) {
+          u = Number(Math.max(0, lt - t).toFixed(2));
+        } else if (u > 0 && lt === 0) {
+          lt = Number((u + t).toFixed(2));
+        }
+      } else if (q > 0 && lt > 0 && Math.abs(q * u + t - lt) > 0.01) {
+        u = Number(Math.max(0, (lt - t) / q).toFixed(2));
+      }
+
       return {
         id: item.id || `item-${billId}-${idx + 1}`,
         bill_id: billId,
@@ -641,7 +851,7 @@ router.post('/bills', requireAuth, async (req, res) => {
         quantity: q,
         unit_price: u,
         tax_amount: t,
-        line_total: Number(item.lineTotal ?? item.line_total ?? (q * u + t)),
+        line_total: lt,
         created_at: new Date().toISOString()
       };
     });
@@ -703,11 +913,11 @@ router.post('/bills', requireAuth, async (req, res) => {
           entity_id: billId
         }]);
 
-        const { submitterName, siteName, vendorName, ...cleanBillRecord } = billRecord as any;
-        if (!isValidUuid(cleanBillRecord.submitted_by)) cleanBillRecord.submitted_by = null;
-        if (!isValidUuid(cleanBillRecord.vendor_id)) cleanBillRecord.vendor_id = null;
+        const { data: curVens } = await supabase.from('finance_vendors').select('id');
+        const validVens = new Set((curVens || []).map((v: any) => v.id));
+        const cleanBillRecord = toSupabaseBillRecord(billRecord, validVens);
 
-        const { error: billError } = await supabase.from('finance_bills').insert([cleanBillRecord]);
+        const { error: billError } = await supabase.from('finance_bills').upsert([cleanBillRecord], { onConflict: 'id' });
         if (!billError) {
           if (itemRows.length > 0) {
             await supabase.from('finance_bill_items').insert(itemRows);
@@ -759,26 +969,79 @@ router.put('/bills/:id', requireAuth, async (req, res) => {
     const callerId = req.user?.id || '00000000-0000-0000-0000-000000000000';
     const callerName = req.user?.name || req.user?.email || 'Authenticated Staff';
 
-    const subtotal = items && Array.isArray(items)
-      ? items.reduce((sum: number, it: any) => sum + (Number(it.quantity || 1) * Number(it.unitPrice ?? it.unit_price ?? 0)), 0)
-      : (rawBill.subtotal !== undefined ? Number(rawBill.subtotal) : existing.subtotal);
+    // Format & reconcile line items if provided
+    let itemRows: any[] = [];
+    if (items && Array.isArray(items)) {
+      itemRows = items.map((item: any, idx: number) => {
+        const q = Number(item.quantity || 1);
+        let u = Number(item.unitPrice ?? item.unit_price ?? 0);
+        const t = Number(item.taxAmount ?? item.tax_amount ?? 0);
+        let lt = Number(item.lineTotal ?? item.line_total ?? (q * u + t));
 
-    const taxAmount = items && Array.isArray(items)
-      ? items.reduce((sum: number, it: any) => sum + Number(it.taxAmount ?? it.tax_amount ?? 0), 0)
-      : (rawBill.taxAmount !== undefined ? Number(rawBill.taxAmount) : (rawBill.tax_amount !== undefined ? Number(rawBill.tax_amount) : existing.tax_amount));
+        if (items.length === 1 && q === 1) {
+          if (lt > 0 && (u === 0 || Math.abs(u + t - lt) > 0.01)) {
+            u = Number(Math.max(0, lt - t).toFixed(2));
+          } else if (u > 0 && lt === 0) {
+            lt = Number((u + t).toFixed(2));
+          }
+        } else if (q > 0 && lt > 0 && Math.abs(q * u + t - lt) > 0.01) {
+          u = Number(Math.max(0, (lt - t) / q).toFixed(2));
+        }
+
+        return {
+          id: item.id || `item-${id}-${idx + 1}`,
+          bill_id: id,
+          description: item.description || 'General item',
+          quantity: q,
+          unit_price: u,
+          tax_amount: t,
+          line_total: lt,
+          created_at: new Date().toISOString()
+        };
+      });
+    }
 
     const totalAmount = rawBill.totalAmount !== undefined
       ? Number(rawBill.totalAmount)
-      : (rawBill.total_amount !== undefined ? Number(rawBill.total_amount) : (subtotal + taxAmount));
+      : (rawBill.total_amount !== undefined 
+          ? Number(rawBill.total_amount) 
+          : (itemRows.length > 0 ? itemRows.reduce((sum, it) => sum + it.line_total, 0) : existing.total_amount));
+
+    const taxAmount = itemRows.length > 0
+      ? itemRows.reduce((sum, it) => sum + it.tax_amount, 0)
+      : (rawBill.taxAmount !== undefined 
+          ? Number(rawBill.taxAmount) 
+          : (rawBill.tax_amount !== undefined ? Number(rawBill.tax_amount) : existing.tax_amount));
+
+    const subtotal = itemRows.length > 0
+      ? itemRows.reduce((sum, it) => sum + (it.quantity * it.unit_price), 0)
+      : (rawBill.subtotal !== undefined 
+          ? Number(rawBill.subtotal) 
+          : Number(Math.max(0, totalAmount - taxAmount).toFixed(2)));
 
     const updatedBill = {
       ...existing,
       site_id: rawBill.siteId || rawBill.site_id || existing.site_id,
       site_name: rawBill.siteName || rawBill.site_name || existing.site_name,
       siteName: rawBill.siteName || rawBill.site_name || existing.siteName,
-      vendor_id: rawBill.vendorId !== undefined ? (rawBill.vendorId || null) : existing.vendor_id,
-      vendor_name: rawBill.vendorName || rawBill.vendor_name || existing.vendor_name,
-      vendorName: rawBill.vendorName || rawBill.vendor_name || existing.vendorName,
+      vendor_id: (await resolveOrCreateVendorId(
+        rawBill.vendorId !== undefined ? rawBill.vendorId : existing.vendor_id,
+        rawBill.vendorName || rawBill.vendor_name || existing.vendor_name,
+        supabase,
+        store
+      )).vendorId,
+      vendor_name: (await resolveOrCreateVendorId(
+        rawBill.vendorId !== undefined ? rawBill.vendorId : existing.vendor_id,
+        rawBill.vendorName || rawBill.vendor_name || existing.vendor_name,
+        supabase,
+        store
+      )).vendorName,
+      vendorName: (await resolveOrCreateVendorId(
+        rawBill.vendorId !== undefined ? rawBill.vendorId : existing.vendor_id,
+        rawBill.vendorName || rawBill.vendor_name || existing.vendor_name,
+        supabase,
+        store
+      )).vendorName,
       bill_number: rawBill.billNumber || rawBill.bill_number || existing.bill_number,
       bill_type: rawBill.billType || rawBill.bill_type || existing.bill_type,
       bill_date: rawBill.billDate || rawBill.bill_date || existing.bill_date,
@@ -794,24 +1057,9 @@ router.put('/bills/:id', requireAuth, async (req, res) => {
 
     store.bills[existingIndex] = updatedBill;
 
-    // Update line items if provided
-    if (items && Array.isArray(items)) {
+    // Update line items in unified store
+    if (itemRows.length > 0) {
       store.items = store.items.filter(i => i.bill_id !== id);
-      const itemRows = items.map((item: any, idx: number) => {
-        const q = Number(item.quantity || 1);
-        const u = Number(item.unitPrice ?? item.unit_price ?? 0);
-        const t = Number(item.taxAmount ?? item.tax_amount ?? 0);
-        return {
-          id: item.id || `item-${id}-${idx + 1}`,
-          bill_id: id,
-          description: item.description || 'General item',
-          quantity: q,
-          unit_price: u,
-          tax_amount: t,
-          line_total: Number(item.lineTotal ?? item.line_total ?? (q * u + t)),
-          created_at: new Date().toISOString()
-        };
-      });
       store.items.push(...itemRows);
     }
 
@@ -828,24 +1076,18 @@ router.put('/bills/:id', requireAuth, async (req, res) => {
     });
 
     writeLocalStore(store);
+    await persistStore(store, supabase, callerId);
 
     if (supabase) {
       try {
-        await supabase.from('finance_bills').update({
-          site_id: updatedBill.site_id,
-          vendor_id: updatedBill.vendor_id,
-          bill_number: updatedBill.bill_number,
-          bill_type: updatedBill.bill_type,
-          bill_date: updatedBill.bill_date,
-          due_date: updatedBill.due_date,
-          subtotal: updatedBill.subtotal,
-          tax_amount: updatedBill.tax_amount,
-          total_amount: updatedBill.total_amount,
-          description: updatedBill.description,
-          purchase_reference: updatedBill.purchase_reference,
-          status: updatedBill.status,
-          updated_at: updatedBill.updated_at
-        }).eq('id', id);
+        const { data: curVensPut } = await supabase.from('finance_vendors').select('id');
+        const validVensPut = new Set((curVensPut || []).map((v: any) => v.id));
+        const cleanBillRecordPut = toSupabaseBillRecord(updatedBill, validVensPut);
+        await supabase.from('finance_bills').upsert([cleanBillRecordPut], { onConflict: 'id' });
+        if (itemRows.length > 0) {
+          await supabase.from('finance_bill_items').delete().eq('bill_id', id);
+          await supabase.from('finance_bill_items').insert(itemRows);
+        }
       } catch (e) {
         console.warn('[FinanceRoute] Supabase bill update failed:', e);
       }
@@ -909,9 +1151,25 @@ router.post('/bills/:id/submit', requireAuth, async (req, res) => {
 router.post('/bills/:id/approve', requireAuth, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const store = readLocalStore();
+    const store = await getUnifiedStore(supabase);
     const { id } = req.params;
     const { comments } = req.body || {};
+
+    const bill = store.bills.find(b => b.id === id);
+    if (!bill) return res.status(404).json({ error: 'Bill not found' });
+
+    const callerId = req.user?.id;
+    const callerRole = req.user?.role;
+    const assignedId = bill.assigned_approver_id || bill.assignedApproverId;
+    const assignedName = bill.assigned_approver_name || bill.assignedApproverName;
+
+    // Strict rule: if assigned to a specific approver, only they (or Super Admin) can approve!
+    if (assignedId && callerId && assignedId !== callerId && callerRole !== 'Super Admin') {
+      return res.status(403).json({
+        success: false,
+        error: `This bill is assigned to ${assignedName || 'another approver'}. Only the assigned approver may approve this record.`
+      });
+    }
 
     if (supabase) {
       try {
@@ -923,7 +1181,6 @@ router.post('/bills/:id/approve', requireAuth, async (req, res) => {
       } catch (e) {}
     }
 
-    const bill = store.bills.find(b => b.id === id);
     if (bill) {
       const oldStatus = bill.status;
       bill.status = 'approved';
@@ -956,10 +1213,26 @@ router.post('/bills/:id/approve', requireAuth, async (req, res) => {
 router.post('/bills/:id/reject', requireAuth, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const store = readLocalStore();
+    const store = await getUnifiedStore(supabase);
     const { id } = req.params;
     const { reason } = req.body || {};
     if (!reason) return res.status(400).json({ error: 'Rejection reason is required' });
+
+    const bill = store.bills.find(b => b.id === id);
+    if (!bill) return res.status(404).json({ error: 'Bill not found' });
+
+    const callerId = req.user?.id;
+    const callerRole = req.user?.role;
+    const assignedId = bill.assigned_approver_id || bill.assignedApproverId;
+    const assignedName = bill.assigned_approver_name || bill.assignedApproverName;
+
+    // Strict rule: if assigned to a specific approver, only they (or Super Admin) can reject!
+    if (assignedId && callerId && assignedId !== callerId && callerRole !== 'Super Admin') {
+      return res.status(403).json({
+        success: false,
+        error: `This bill is assigned to ${assignedName || 'another approver'}. Only the assigned approver may reject this record.`
+      });
+    }
 
     if (supabase) {
       try {
@@ -971,7 +1244,6 @@ router.post('/bills/:id/reject', requireAuth, async (req, res) => {
       } catch (e) {}
     }
 
-    const bill = store.bills.find(b => b.id === id);
     if (bill) {
       const oldStatus = bill.status;
       bill.status = 'rejected';
@@ -1373,13 +1645,15 @@ router.get('/bills/:id/history', requireAuth, async (req, res) => {
 router.post('/bills/:id/attachments', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const store = readLocalStore();
+    const supabase = getSupabaseAdmin();
+    const store = await getUnifiedStore(supabase);
     const { fileName, attachmentType, dataUrl, storagePath, fileSizeBytes, mimeType } = req.body || {};
 
     const callerId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const attachmentUuid = crypto.randomUUID();
 
     const attachmentRecord = {
-      id: `att-${id}-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      id: attachmentUuid,
       bill_id: id,
       file_name: fileName || 'document.pdf',
       attachment_type: attachmentType || 'vendor_invoice',
@@ -1394,10 +1668,110 @@ router.post('/bills/:id/attachments', requireAuth, async (req, res) => {
 
     store.attachments.push(attachmentRecord);
     writeLocalStore(store);
+    await persistStore(store, supabase, callerId);
+
+    if (supabase) {
+      try {
+        await supabase.from('finance_bill_attachments').insert([{
+          id: attachmentUuid,
+          bill_id: id,
+          file_name: attachmentRecord.file_name,
+          storage_bucket: attachmentRecord.storage_bucket,
+          storage_path: attachmentRecord.storage_path,
+          attachment_type: attachmentRecord.attachment_type,
+          mime_type: attachmentRecord.mime_type,
+          file_size_bytes: attachmentRecord.file_size_bytes,
+          uploaded_by: isValidUuid(callerId) ? callerId : null,
+          created_at: attachmentRecord.created_at
+        }]);
+      } catch (e) {
+        console.warn('[FinanceRoute] Supabase attachment insert skipped:', e);
+      }
+    }
 
     return res.status(201).json({ success: true, data: attachmentRecord });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/finance/bills/:id/attachments/:attachmentId
+// Restricted strictly to Admins and Super Admins
+router.delete('/bills/:id/attachments/:attachmentId', requireAuth, requireRole('Super Admin', 'Admin'), async (req, res) => {
+  try {
+    const { id, attachmentId } = req.params;
+    const supabase = getSupabaseAdmin();
+    const store = await getUnifiedStore(supabase);
+
+    const bill = store.bills.find(b => b.id === id);
+    const attIndex = store.attachments.findIndex(a => (a.id === attachmentId || a.id === `att-${attachmentId}`) && (a.bill_id === id || !a.bill_id));
+    const att = attIndex !== -1 ? store.attachments[attIndex] : store.attachments.find(a => a.id === attachmentId);
+
+    // 1. Remove from unified local store attachments
+    store.attachments = store.attachments.filter(a => a.id !== attachmentId && a.id !== `att-${attachmentId}`);
+
+    // 2. Remove from bill inline attachments if present
+    if (bill && Array.isArray(bill.attachments)) {
+      bill.attachments = bill.attachments.filter((a: any) => a.id !== attachmentId && a.id !== `att-${attachmentId}`);
+    }
+
+    // 3. Persist local store and cloud backup
+    writeLocalStore(store);
+    await persistStore(store, supabase, req.user?.id);
+
+    // 4. Clean up live Supabase storage and database table completely
+    if (supabase) {
+      try {
+        // Delete database row
+        if (isValidUuid(attachmentId)) {
+          await supabase.from('finance_bill_attachments').delete().eq('id', attachmentId);
+        } else {
+          await supabase.from('finance_bill_attachments').delete().match({ bill_id: id });
+        }
+
+        // Delete from Supabase Storage bucket
+        const storagePath = att?.storage_path || att?.storagePath;
+        if (storagePath) {
+          const bucket = att?.storage_bucket || att?.storageBucket || 'finance-documents';
+          await supabase.storage.from(bucket).remove([storagePath]);
+        }
+
+        // Record audit trail
+        await supabase.from('audit_trails').insert([{
+          id: `aud-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+          timestamp: new Date().toISOString(),
+          user: req.user?.name || req.user?.email || 'Administrator',
+          action: 'DELETE',
+          details: `Deleted attachment [${att?.file_name || attachmentId}] from bill [${bill?.bill_number || id}]`,
+          site: bill?.site_id,
+          module: 'Finance',
+          entity_type: 'finance_bill_attachments',
+          entity_id: attachmentId
+        }]);
+      } catch (e) {
+        console.warn('[FinanceRoute] Supabase attachment cleanup warning:', e);
+      }
+    }
+
+    // 5. Add status history audit
+    store.history.unshift({
+      id: `hist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      bill_id: id,
+      old_status: bill?.status || 'submitted',
+      new_status: bill?.status || 'submitted',
+      changed_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
+      changed_by_name: req.user?.name || 'Administrator',
+      reason: `Permanently deleted attachment: ${att?.file_name || attachmentId}`,
+      created_at: new Date().toISOString()
+    });
+    writeLocalStore(store);
+
+    return res.json({
+      success: true,
+      message: 'Attachment deleted and completely cleaned up from storage and database'
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
   }
 });
 
@@ -1433,7 +1807,7 @@ router.post('/vendors', requireAuth, async (req, res) => {
     const store = await getUnifiedStore(supabase);
     const vendorData = req.body || {};
 
-    const id = vendorData.id || `fven-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+    const id = (vendorData.id && isValidUuid(vendorData.id)) ? vendorData.id : crypto.randomUUID();
     const existing = store.vendors.find(v => v.id === id);
 
     const vendorRecord = {
@@ -1466,7 +1840,18 @@ router.post('/vendors', requireAuth, async (req, res) => {
           entity_type: 'finance_vendors',
           entity_id: id
         }]);
-        await supabase.from('finance_vendors').upsert([vendorRecord]);
+        const cleanUpsert = {
+          id: vendorRecord.id,
+          organization_id: isValidUuid(vendorRecord.organization_id) ? vendorRecord.organization_id : '00000000-0000-0000-0000-000000000001',
+          vendor_name: vendorRecord.vendor_name,
+          vendor_reference: vendorRecord.vendor_reference || null,
+          contact_email: vendorRecord.contact_email || null,
+          contact_phone: vendorRecord.contact_phone || null,
+          payment_details: vendorRecord.payment_details || {},
+          status: vendorRecord.status || 'active',
+          created_by: isValidUuid(vendorRecord.created_by) ? vendorRecord.created_by : null
+        };
+        await supabase.from('finance_vendors').upsert([cleanUpsert]);
       } catch (e) {}
     }
 
@@ -1522,7 +1907,7 @@ router.put('/vendors/:id', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/finance/vendors/:id
-router.delete('/vendors/:id', requireAuth, async (req, res) => {
+router.delete('/vendors/:id', requireAuth, requireRole('Super Admin', 'Admin'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const store = await getUnifiedStore(supabase);
@@ -1555,7 +1940,7 @@ router.delete('/vendors/:id', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/finance/bills/:id
-router.delete('/bills/:id', requireAuth, async (req, res) => {
+router.delete('/bills/:id', requireAuth, requireRole('Super Admin', 'Admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const supabase = getSupabaseAdmin();
@@ -1603,6 +1988,199 @@ router.delete('/bills/:id', requireAuth, async (req, res) => {
     }
 
     return res.json({ success: true, id });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+// ============================================================================
+// Regional Managers & Approvers List
+// ============================================================================
+router.get('/approvers', requireAuth, async (_req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return res.json({ success: true, approvers: [] });
+    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, role')
+      .in('role', ['Regional Manager', 'General Manager', 'Admin', 'Super Admin'])
+      .order('name', { ascending: true });
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+    return res.json({ success: true, approvers: data || [] });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// Move Bill to Approval / Route to RM
+// ============================================================================
+router.post('/bills/:id/request-approval', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = await getUnifiedStore(supabase);
+    const { id } = req.params;
+    const { approverId, approverName, notes } = req.body || {};
+    const callerId = req.user?.id || '00000000-0000-0000-0000-000000000000';
+    const callerName = req.user?.name || req.user?.email || 'Authenticated User';
+
+    const billIdx = store.bills.findIndex(b => b.id === id);
+    const existing = billIdx !== -1 ? store.bills[billIdx] : null;
+
+    const oldStatus = existing?.status || 'submitted';
+    const newStatus = 'awaiting_approval';
+
+    if (billIdx !== -1) {
+      store.bills[billIdx].status = newStatus;
+      store.bills[billIdx].updated_at = new Date().toISOString();
+      if (approverId) store.bills[billIdx].assigned_approver_id = approverId;
+      if (approverName) store.bills[billIdx].assigned_approver_name = approverName;
+    }
+
+    const noteText = notes 
+      ? `Moved to approval: ${notes}` 
+      : `Moved to approval for review by ${approverName || 'Regional Manager'}`;
+
+    const historyEntry = {
+      id: `hist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      bill_id: id,
+      old_status: oldStatus,
+      new_status: newStatus,
+      changed_by: callerId,
+      changed_by_name: callerName,
+      reason: noteText,
+      created_at: new Date().toISOString()
+    };
+    store.history.unshift(historyEntry);
+    await persistStore(store, supabase, callerId);
+
+    if (supabase) {
+      try {
+        await supabase.from('finance_bills').update({
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        }).eq('id', id);
+
+        await supabase.from('finance_bill_status_history').insert([{
+          bill_id: id,
+          old_status: oldStatus,
+          new_status: newStatus,
+          changed_by: isValidUuid(callerId) ? callerId : null,
+          reason: noteText
+        }]);
+      } catch (e) {
+        console.warn('[FinanceRoute] Error writing status history to Supabase:', e);
+      }
+    }
+
+    return res.json({ success: true, message: 'Bill moved to approval successfully' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// Suppliers CRUD (for Delivery Notes & Invoices)
+// ============================================================================
+router.get('/suppliers', requireAuth, async (_req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = await getUnifiedStore(supabase);
+
+    let dbVendors: any[] = [];
+    if (supabase) {
+      const { data } = await supabase.from('finance_vendors').select('*').order('vendor_name', { ascending: true });
+      if (Array.isArray(data)) dbVendors = data;
+    }
+    const map = new Map<string, any>();
+    for (const v of store.vendors) {
+      if (!v.id.startsWith('fven-') && !v.vendor_name?.includes('Apex Facilities') && !v.vendor_name?.includes('Direct Site Supplies')) {
+        map.set(v.id, v);
+      }
+    }
+    for (const v of dbVendors) {
+      if (!v.id.startsWith('fven-') && !v.vendor_name?.includes('Apex Facilities') && !v.vendor_name?.includes('Direct Site Supplies')) {
+        map.set(v.id, v);
+      }
+    }
+
+    return res.json({ success: true, data: Array.from(map.values()) });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/suppliers', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = await getUnifiedStore(supabase);
+    const { name, email, phone, reference } = req.body || {};
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ success: false, error: 'Supplier name is required' });
+    }
+
+    const cleanName = String(name).trim();
+    const supplierId = crypto.randomUUID();
+    const newSupplier = {
+      id: supplierId,
+      organization_id: '00000000-0000-0000-0000-000000000001',
+      vendor_name: cleanName,
+      vendor_reference: reference || `SUP-${Date.now().toString().slice(-4)}`,
+      contact_email: email || null,
+      contact_phone: phone || null,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    store.vendors.push(newSupplier);
+    await persistStore(store, supabase, req.user?.id);
+
+    if (supabase) {
+      try {
+        const { data: dbCreated } = await supabase.from('finance_vendors').insert([{
+          id: supplierId,
+          vendor_name: newSupplier.vendor_name,
+          vendor_reference: newSupplier.vendor_reference,
+          contact_email: newSupplier.contact_email,
+          contact_phone: newSupplier.contact_phone,
+          status: 'active',
+          organization_id: '00000000-0000-0000-0000-000000000001'
+        }]).select().single();
+
+        if (dbCreated) {
+          return res.status(201).json({ success: true, supplier: dbCreated });
+        }
+      } catch (e) {
+        console.warn('[FinanceRoute] Error creating supplier in Supabase:', e);
+      }
+    }
+
+    return res.status(201).json({ success: true, supplier: newSupplier });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/suppliers/:id', requireAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const store = await getUnifiedStore(supabase);
+    const { id } = req.params;
+
+    store.vendors = store.vendors.filter(v => v.id !== id);
+    await persistStore(store, supabase, req.user?.id);
+
+    if (supabase && isValidUuid(id)) {
+      await supabase.from('finance_vendors').delete().eq('id', id);
+    }
+    return res.json({ success: true, message: 'Supplier removed successfully' });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

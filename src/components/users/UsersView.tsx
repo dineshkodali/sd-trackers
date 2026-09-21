@@ -924,6 +924,9 @@ export const UsersView: React.FC = () => {
                 >
                   <option value="Super Admin">Super Admin</option>
                   <option value="Admin">Admin</option>
+                  <option value="Finance Admin">Finance Admin</option>
+                  <option value="Finance Manager">Finance Manager</option>
+                  <option value="Finance Staff">Finance Staff</option>
                   <option value="Regional Manager">Regional Manager</option>
                   <option value="General Manager">General Manager</option>
                   <option value="Site Manager">Site Manager</option>
@@ -1129,6 +1132,9 @@ export const UsersView: React.FC = () => {
                     <option value="Site Manager">Site Manager</option>
                     <option value="General Manager">General Manager</option>
                     <option value="Regional Manager">Regional Manager</option>
+                    <option value="Finance Admin">Finance Admin</option>
+                    <option value="Finance Manager">Finance Manager</option>
+                    <option value="Finance Staff">Finance Staff</option>
                     <option value="Admin">Admin</option>
                     <option value="Super Admin">Super Admin</option>
                   </select>

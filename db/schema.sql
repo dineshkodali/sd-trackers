@@ -543,6 +543,7 @@ CREATE TABLE IF NOT EXISTS public.role_permissions (
   can_manage_files BOOLEAN DEFAULT FALSE,
   can_manage_users BOOLEAN DEFAULT FALSE,
   can_manage_settings BOOLEAN DEFAULT FALSE,
+  can_manage_finance BOOLEAN DEFAULT FALSE,
   data JSONB,
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),

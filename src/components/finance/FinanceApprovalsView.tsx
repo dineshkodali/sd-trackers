@@ -48,12 +48,12 @@ const approvalExportColumns: ExportColumnOption[] = [
 ];
 
 export const FinanceApprovalsView: React.FC = () => {
-  const { properties, isFinanceUser, currentUserRole, requestConfirmation, closeConfirmation } = useApp();
+  const { properties, isFinanceUser, currentUserRole, authProfile, requestConfirmation, closeConfirmation } = useApp();
 
   const { columns, saveColumns, resetToDefault } = useTableSchema('finance_approvals', FINANCE_APPROVALS_TABLE_COLUMNS);
 
-  const [bills, setBills] = useState<FinanceBill[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [bills, setBills] = useState<FinanceBill[]>(() => financeService.getCachedBills());
+  const [isLoading, setIsLoading] = useState(() => financeService.getCachedBills().length === 0);
 
   // Filters
   const [siteFilter, setSiteFilter] = useState<string>('all');
@@ -67,6 +67,7 @@ export const FinanceApprovalsView: React.FC = () => {
 
   // Modals
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
+  const [selectedBill, setSelectedBill] = useState<FinanceBill | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [billToEdit, setBillToEdit] = useState<FinanceBill | null>(null);
@@ -390,7 +391,7 @@ export const FinanceApprovalsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {currentUserRole === 'Super Admin' && (
+          {(authProfile?.role || currentUserRole) === 'Super Admin' && (
             <button
               type="button"
               onClick={() => setIsSchemaModalOpen(true)}
@@ -496,10 +497,10 @@ export const FinanceApprovalsView: React.FC = () => {
       </div>
 
       {/* Main Data Table */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap">
+      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden flex flex-col justify-between min-h-[560px] lg:min-h-[calc(100vh-270px)]">
+        <div className="overflow-x-auto flex-1 overflow-y-auto">
+          <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
+            <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap sticky top-0 z-20 shadow-xs">
               <tr>
                 {visibleColumns.map(col => {
                   const isSorted = sortField === col.key;
@@ -530,13 +531,13 @@ export const FinanceApprovalsView: React.FC = () => {
             <tbody className="divide-y divide-[#edebe9]">
               {isLoading ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
+                  <td colSpan={visibleColumns.length + 1} className="py-24 text-center text-[#605e5c]">
                     Loading approval queue...
                   </td>
                 </tr>
               ) : paginatedBills.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
+                  <td colSpan={visibleColumns.length + 1} className="py-24 text-center text-[#605e5c]">
                     No bills currently awaiting approval matching the selected filters.
                   </td>
                 </tr>
@@ -561,6 +562,7 @@ export const FinanceApprovalsView: React.FC = () => {
                     <td className="py-2 px-3 text-center" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => {
+                          setSelectedBill(bill);
                           setSelectedBillId(bill.id);
                           setIsDetailModalOpen(true);
                         }}
@@ -601,8 +603,9 @@ export const FinanceApprovalsView: React.FC = () => {
       {selectedBillId && (
         <FinanceBillDetailModal
           billId={selectedBillId}
+          initialBill={selectedBill}
           isOpen={isDetailModalOpen}
-          onClose={() => setIsDetailModalOpen(false)}
+          onClose={() => { setIsDetailModalOpen(false); setSelectedBill(null); }}
           onRefresh={loadData}
         />
       )}
@@ -615,6 +618,7 @@ export const FinanceApprovalsView: React.FC = () => {
         onSaveColumns={saveColumns}
         onResetToDefault={resetToDefault}
         moduleTitle="Finance Approvals"
+        currentUserRole={authProfile?.role || currentUserRole}
       />
     </div>
   );

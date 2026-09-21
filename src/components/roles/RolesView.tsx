@@ -79,6 +79,30 @@ export const RolesView: React.FC = () => {
       badgeColor: 'bg-[#f0fdfa] text-[#0f766e] border-[#5eead4]',
       scope: 'Multi-Site Scope'
     },
+    {
+      role: 'Finance Admin',
+      title: 'Finance Admin',
+      subtitle: 'Finance Controller',
+      desc: 'Full Finance module administration, approvals, supplier records, and controlled document deletion.',
+      badgeColor: 'bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]',
+      scope: 'Finance Global Scope'
+    },
+    {
+      role: 'Finance Manager',
+      title: 'Finance Manager',
+      subtitle: 'Finance Approver',
+      desc: 'Finance review, approval, reconciliation, and operational bill management without destructive deletion.',
+      badgeColor: 'bg-[#fefce8] text-[#854d0e] border-[#fde68a]',
+      scope: 'Finance Global Scope'
+    },
+    {
+      role: 'Finance Staff',
+      title: 'Finance Staff',
+      subtitle: 'Finance Operator',
+      desc: 'Finance bills, suppliers, attachments, and approval submissions with controlled create and update access.',
+      badgeColor: 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]',
+      scope: 'Finance Global Scope'
+    },
     { 
       role: 'Regional Manager', 
       title: 'Regional Manager', 
@@ -168,6 +192,12 @@ export const RolesView: React.FC = () => {
       key: 'canManageFiles', 
       label: 'Document & Proof Files CRUD', 
       desc: 'Upload, replace, and delete document attachments and safeguarding evidence',
+      category: 'Visibility & Compliance'
+    },
+    {
+      key: 'canManageFinance',
+      label: 'Finance Module Access',
+      desc: 'View, create, and update finance bills, suppliers, attachments, and approvals',
       category: 'Visibility & Compliance'
     },
     // Governance & Administration

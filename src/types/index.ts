@@ -476,6 +476,10 @@ export type FieldOptionCategory =
   | 'dispersalTravelStatuses'
   | 'dispersalWarningStatuses'
   | 'userRoles'
+  | 'financeBillTypes'
+  | 'financeBillStatuses'
+  | 'financeAttachmentTypes'
+  | 'financeVendorStatuses'
   | 'councils';
 
 export interface CustomFieldOption {

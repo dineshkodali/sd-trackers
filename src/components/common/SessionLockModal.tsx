@@ -51,7 +51,7 @@ export const SessionLockModal: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-center gap-1.5 flex-wrap">
-            {(['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Employee'] as RoleType[]).map(role => (
+            {(['Super Admin', 'Admin', 'Finance Admin', 'Finance Manager', 'Finance Staff', 'Regional Manager', 'General Manager', 'Employee'] as RoleType[]).map(role => (
               <button
                 key={role}
                 onClick={() => {

@@ -33,6 +33,10 @@ const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
 const STORAGE_BUCKET = 'finance-documents';
 
 class FinanceService {
+  private cachedVendors: FinanceVendor[] | null = null;
+  private cachedVendorsTime: number = 0;
+  private cachedApprovers: Array<{ id: string; name: string; email: string; role: string }> | null = null;
+  private cachedApproversTime: number = 0;
   private get supabase() {
     return getBrowserSupabaseClient();
   }
@@ -40,6 +44,17 @@ class FinanceService {
   // ==========================================
   // LOCAL STORAGE CACHE HELPERS
   // ==========================================
+
+  
+  public getCachedBills(billType?: string): FinanceBill[] {
+    const all = this.loadLocalBillsCache();
+    if (!billType || billType === 'all') return all;
+    return all.filter(b => b.billType === billType);
+  }
+
+  public getCachedVendors(): FinanceVendor[] {
+    return this.cachedVendors || [];
+  }
 
   private loadLocalBillsCache(): FinanceBill[] {
     try {
@@ -62,14 +77,20 @@ class FinanceService {
   // VENDORS
   // ==========================================
 
-  async getVendors(): Promise<FinanceVendor[]> {
+  async getVendors(forceRefresh = false): Promise<FinanceVendor[]> {
+    if (!forceRefresh && this.cachedVendors && Date.now() - this.cachedVendorsTime < 60000) {
+      return this.cachedVendors;
+    }
     // 1. Try Express route
     try {
       const res = await fetch(getApiUrl('/api/finance/vendors'), { headers: authHeaders() });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
-          return json.data.map(this.mapVendorFromDb);
+          const vendors = json.data.map(this.mapVendorFromDb);
+          this.cachedVendors = vendors;
+          this.cachedVendorsTime = Date.now();
+          return vendors;
         }
       }
     } catch {}
@@ -100,6 +121,7 @@ class FinanceService {
   }
 
   async saveVendor(vendor: Partial<FinanceVendor>): Promise<{ success: boolean; vendor?: FinanceVendor; error?: string }> {
+    this.cachedVendors = null;
     const dbPayload = {
       id: vendor.id || undefined,
       organization_id: vendor.organizationId || DEFAULT_ORG_ID,
@@ -155,6 +177,32 @@ class FinanceService {
       const res = await apiService.saveEntityRecord('finance_vendors', dbPayload);
       return { success: res.success, error: res.error };
     }
+  }
+
+
+  public async deleteVendor(id: string): Promise<{ success: boolean; error?: string }> {
+    this.cachedVendors = null;
+    try {
+      const res = await fetch(getApiUrl(`/api/finance/vendors/${id}`), {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return { success: true };
+      }
+    } catch {}
+
+    const client = this.supabase;
+    if (client) {
+      try {
+        const { error } = await client.from('finance_vendors').delete().eq('id', id);
+        if (!error) return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e.message };
+      }
+    }
+    return { success: true };
   }
 
   // ==========================================
@@ -320,7 +368,7 @@ class FinanceService {
       description: bill.description || '',
       purchaseReference: bill.purchaseReference || null,
       submittedBy: bill.submittedBy || '00000000-0000-0000-0000-000000000000',
-      status: 'submitted'
+      status: bill.status || 'submitted'
     };
 
     // 1. Try Express backend route (/api/finance/bills)
@@ -663,8 +711,13 @@ class FinanceService {
   }
 
   async getAttachmentSignedUrl(storagePath: string, expiresIn: number = 3600): Promise<string | undefined> {
+    if (!storagePath) return undefined;
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://') || storagePath.startsWith('data:')) {
+      return storagePath;
+    }
+
     const client = this.supabase;
-    if (!client || !storagePath) return undefined;
+    if (!client) return undefined;
 
     try {
       const { data, error } = await client.storage
@@ -675,6 +728,67 @@ class FinanceService {
       }
     } catch {}
     return undefined;
+  }
+
+  async deleteAttachment(
+    billId: string,
+    attachmentId: string,
+    storagePath?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    // 1. Try Express backend route (enforces admin RBAC and comprehensive cleanup)
+    try {
+      const res = await fetch(getApiUrl(`/api/finance/bills/${billId}/attachments/${attachmentId}`), {
+        method: 'DELETE',
+        headers: { ...authHeaders() }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          this.removeAttachmentFromLocalCache(billId, attachmentId);
+          return { success: true };
+        } else if (json.error) {
+          return { success: false, error: json.error };
+        }
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        if (errJson.error) {
+          return { success: false, error: errJson.error };
+        }
+      }
+    } catch (err: any) {
+      console.warn('Backend attachment delete failed, trying direct Supabase fallback:', err);
+    }
+
+    // 2. Direct Supabase fallback
+    const client = this.supabase;
+    if (client) {
+      try {
+        await client.from('finance_bill_attachments').delete().eq('id', attachmentId);
+        if (storagePath) {
+          await client.storage.from(STORAGE_BUCKET).remove([storagePath]);
+        }
+        this.removeAttachmentFromLocalCache(billId, attachmentId);
+        return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e.message || 'Failed to delete attachment from Supabase' };
+      }
+    }
+
+    this.removeAttachmentFromLocalCache(billId, attachmentId);
+    return { success: true };
+  }
+
+  private removeAttachmentFromLocalCache(billId: string, attachmentId: string) {
+    try {
+      const current = this.loadLocalBillsCache();
+      const updated = current.map(b => {
+        if (b.id === billId && Array.isArray(b.attachments)) {
+          return { ...b, attachments: b.attachments.filter(a => a.id !== attachmentId) };
+        }
+        return b;
+      });
+      this.saveLocalBillsCache(updated);
+    } catch {}
   }
 
   // ==========================================
@@ -1203,6 +1317,66 @@ class FinanceService {
     };
   };
 
+  
+  public mapQueryFromDb = (q: any): FinanceBillQuery => ({
+    id: q.id || ('query-' + Date.now()),
+    billId: q.bill_id || q.billId || '',
+    raisedBy: q.raised_by || q.raisedBy || '',
+    raisedByName: q.raisedByName || q.raised_by_user?.name || 'Staff',
+    assignedTo: q.assigned_to || q.assignedTo,
+    assignedToName: q.assignedToName || q.assigned_to_user?.name,
+    queryType: q.query_type || q.queryType || 'amount_discrepancy',
+    question: q.question || '',
+    priority: q.priority || 'normal',
+    status: q.status || 'open',
+    dueAt: q.due_at || q.dueAt,
+    resolvedAt: q.resolved_at || q.resolvedAt,
+    createdAt: q.created_at || q.createdAt || new Date().toISOString(),
+    updatedAt: q.updated_at || q.updatedAt || new Date().toISOString(),
+    responses: Array.isArray(q.responses) ? q.responses : []
+  });
+
+  public mapReconciliationFromDb = (r: any): FinanceReconciliationRecord => ({
+    id: r.id || ('rec-' + Date.now()),
+    billId: r.bill_id || r.billId || '',
+    reconciliationType: r.reconciliation_type || r.reconciliationType || 'invoice_delivery_note',
+    referenceNumber: r.reference_number || r.referenceNumber || '',
+    expectedAmount: Number(r.expected_amount ?? r.expectedAmount ?? 0),
+    actualAmount: Number(r.actual_amount ?? r.actualAmount ?? 0),
+    varianceAmount: Number(r.variance_amount ?? r.varianceAmount ?? Math.abs(Number(r.expected_amount || 0) - Number(r.actual_amount || 0))),
+    status: r.status || 'matched',
+    notes: r.notes || '',
+    matchedBy: r.matched_by || r.matchedBy || '',
+    matchedByName: r.matcherName || r.matcher?.name || 'Staff',
+    reconciledAt: r.reconciled_at || r.reconciledAt || r.created_at || new Date().toISOString(),
+    createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+    updatedAt: r.updated_at || r.updatedAt || new Date().toISOString()
+  });
+
+  public mapPaymentFromDb = (p: any): FinancePaymentRecord => ({
+    id: p.id || ('pay-' + Date.now()),
+    billId: p.bill_id || p.billId || '',
+    paymentReference: p.payment_reference || p.paymentReference || 'PAY-REF',
+    paymentAmount: Number(p.payment_amount ?? p.paymentAmount ?? 0),
+    paymentDate: p.payment_date || p.paymentDate || new Date().toISOString().slice(0, 10),
+    paymentStatus: p.payment_status || p.paymentStatus || 'paid',
+    recordedBy: p.recorded_by || p.recordedBy || '',
+    recordedByName: p.recorderName || p.recorder?.name || 'Finance Staff',
+    createdAt: p.created_at || p.createdAt || new Date().toISOString(),
+    updatedAt: p.updated_at || p.updatedAt || new Date().toISOString()
+  });
+
+  public mapHistoryFromDb = (h: any): FinanceBillStatusHistory => ({
+    id: h.id || ('hist-' + Date.now()),
+    billId: h.bill_id || h.billId || '',
+    oldStatus: h.old_status || h.oldStatus,
+    newStatus: h.new_status || h.newStatus,
+    changedBy: h.changed_by || h.changedBy || '',
+    changedByName: h.changed_by_name || h.changedByName || h.user?.name || 'Staff',
+    reason: h.reason,
+    createdAt: h.created_at || h.createdAt || new Date().toISOString()
+  });
+
   private mapBillFromDb = (row: any): FinanceBill => {
     return {
       id: row.id || ('bill-' + Date.now()),
@@ -1225,6 +1399,8 @@ class FinanceService {
       submitterName: row.submitterName || row.submitter?.name || 'Staff',
       submittedAt: row.submitted_at || row.submittedAt || new Date().toISOString(),
       status: row.status || 'submitted',
+      assignedApproverId: row.assigned_approver_id || row.assignedApproverId || row.assigned_approver?.id,
+      assignedApproverName: row.assigned_approver_name || row.assignedApproverName || row.assigned_approver?.name,
       finalApprovedBy: row.final_approved_by || row.finalApprovedBy,
       finalApprovedByName: row.finalApprovedByName || row.final_approver?.name,
       finalApprovedAt: row.final_approved_at || row.finalApprovedAt,
@@ -1235,19 +1411,39 @@ class FinanceService {
       createdAt: row.created_at || row.createdAt || new Date().toISOString(),
       updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
       items: Array.isArray(row.items) ? row.items.map((i: any) => this.mapItemFromDb(i)) : [],
-      attachments: Array.isArray(row.attachments) ? row.attachments.map((a: any) => this.mapAttachmentFromDb(a)) : []
+      attachments: Array.isArray(row.attachments) ? row.attachments.map((a: any) => this.mapAttachmentFromDb(a)) : [],
+      queries: Array.isArray(row.queries) ? row.queries.map((q: any) => this.mapQueryFromDb(q)) : [],
+      reconciliations: Array.isArray(row.reconciliations) ? row.reconciliations.map((r: any) => this.mapReconciliationFromDb(r)) : [],
+      payments: Array.isArray(row.payments) ? row.payments.map((p: any) => this.mapPaymentFromDb(p)) : [],
+      history: Array.isArray(row.history) ? row.history.map((h: any) => this.mapHistoryFromDb(h)) : []
     };
   };
 
   private mapItemFromDb = (row: any): FinanceBillItem => {
+    const quantity = Number(row.quantity || 1);
+    let unitPrice = Number(row.unit_price ?? row.unitPrice ?? 0);
+    const taxAmount = Number(row.tax_amount ?? row.taxAmount ?? 0);
+    let lineTotal = Number(row.line_total ?? row.lineTotal ?? 0);
+
+    // Reconcile single item mismatch
+    if (quantity === 1) {
+      if (lineTotal > 0 && (unitPrice === 0 || Math.abs(unitPrice + taxAmount - lineTotal) > 0.01)) {
+        unitPrice = Number(Math.max(0, lineTotal - taxAmount).toFixed(2));
+      } else if (unitPrice > 0 && lineTotal === 0) {
+        lineTotal = Number((unitPrice + taxAmount).toFixed(2));
+      }
+    } else if (quantity > 0 && lineTotal > 0 && Math.abs((quantity * unitPrice + taxAmount) - lineTotal) > 0.01) {
+      unitPrice = Number(Math.max(0, (lineTotal - taxAmount) / quantity).toFixed(2));
+    }
+
     return {
       id: row.id || ('item-' + Date.now()),
       billId: row.bill_id || row.billId || '',
       description: row.description || '',
-      quantity: Number(row.quantity || 1),
-      unitPrice: Number(row.unit_price ?? row.unitPrice ?? 0),
-      taxAmount: Number(row.tax_amount ?? row.taxAmount ?? 0),
-      lineTotal: Number(row.line_total ?? row.lineTotal ?? 0),
+      quantity,
+      unitPrice,
+      taxAmount,
+      lineTotal: lineTotal || Number(((quantity * unitPrice) + taxAmount).toFixed(2)),
       createdAt: row.created_at || row.createdAt || new Date().toISOString()
     };
   };
@@ -1268,6 +1464,133 @@ class FinanceService {
       createdAt: row.created_at || row.createdAt || new Date().toISOString()
     };
   };
+
+  // ==========================================
+  // APPROVERS & RM ROUTING
+  // ==========================================
+
+  public async getApprovers(forceRefresh = false): Promise<Array<{ id: string; name: string; email: string; role: string }>> {
+    if (!forceRefresh && this.cachedApprovers && Date.now() - this.cachedApproversTime < 300000) {
+      return this.cachedApprovers;
+    }
+    try {
+      const res = await fetch(getApiUrl('/api/finance/approvers'), { headers: authHeaders() });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.approvers)) {
+          this.cachedApprovers = json.approvers;
+          this.cachedApproversTime = Date.now();
+          return json.approvers;
+        }
+      }
+    } catch {}
+
+    const client = this.supabase;
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('profiles')
+          .select('id, name, email, role')
+          .in('role', ['Regional Manager', 'General Manager', 'Admin', 'Super Admin'])
+          .order('name', { ascending: true });
+        if (!error && data) {
+          this.cachedApprovers = data;
+          this.cachedApproversTime = Date.now();
+          return data;
+        }
+      } catch {}
+    }
+    return this.cachedApprovers || [];
+  }
+
+  public async requestApproval(
+    billId: string,
+    approverId?: string,
+    approverName?: string,
+    notes?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await fetch(getApiUrl(`/api/finance/bills/${billId}/request-approval`), {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approverId, approverName, notes })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return { success: true };
+      }
+    } catch {}
+
+    const client = this.supabase;
+    if (client) {
+      try {
+        const { error } = await client
+          .from('finance_bills')
+          .update({ status: 'awaiting_approval', updated_at: new Date().toISOString() })
+          .eq('id', billId);
+        if (!error) return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e.message };
+      }
+    }
+    return { success: true };
+  }
+
+  // ==========================================
+  // SUPPLIERS CRUD (Delivery Notes & Goods)
+  // ==========================================
+
+  public async getSuppliers(): Promise<FinanceVendor[]> {
+    try {
+      const res = await fetch(getApiUrl('/api/finance/suppliers'), { headers: authHeaders() });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          return json.data.map(this.mapVendorFromDb);
+        }
+      }
+    } catch {}
+    return this.getVendors();
+  }
+
+  public async saveSupplier(supplier: { name: string; email?: string; phone?: string; reference?: string }): Promise<{ success: boolean; supplier?: FinanceVendor; error?: string }> {
+    this.cachedVendors = null;
+    try {
+      const res = await fetch(getApiUrl('/api/finance/suppliers'), {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(supplier)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.supplier) {
+          return { success: true, supplier: this.mapVendorFromDb(json.supplier) };
+        }
+      }
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+    return { success: false, error: 'Failed to create supplier' };
+  }
+
+  public async deleteSupplier(id: string): Promise<{ success: boolean; error?: string }> {
+    this.cachedVendors = null;
+    try {
+      const res = await fetch(getApiUrl(`/api/finance/suppliers/${id}`), {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return { success: true };
+      }
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+    return { success: false, error: 'Failed to delete supplier' };
+  }
+
 }
+
 
 export const financeService = new FinanceService();
