@@ -27,6 +27,9 @@ import { MaintenanceTrackerView } from './components/maintenance/MaintenanceTrac
 import { SPCDTrackerView } from './components/spcd/SPCDTrackerView';
 import { PublicTransportTrackerView } from './components/transport/PublicTransportTrackerView';
 import { SDComplianceTrackerView } from './components/compliance/SDComplianceTrackerView';
+import { IRTrackerView } from './components/ir/IRTrackerView';
+import { FoodWastageView } from './components/food/FoodWastageView';
+import { LiveDailyRegistersView } from './components/registers/LiveDailyRegistersView';
 import { GPAppointmentsView } from './components/gp/GPAppointmentsView';
 import { RFAWelfareChecksView } from './components/welfare/RFAWelfareChecksView';
 import { DispersalSheetView } from './components/dispersal/DispersalSheetView';
@@ -159,8 +162,14 @@ function AppLayout() {
         return <LaundryView />;
       case 'food':
         return <FoodView />;
+      case 'foodWastage':
+        return <FoodWastageView />;
+      case 'dailyRegisters':
+        return <LiveDailyRegistersView />;
       case 'escalations':
         return <EscalationsView />;
+      case 'irTracker':
+        return <IRTrackerView />;
       case 'finance':
         return <VendorInvoicesView />;
       case 'financeCreditCards':

@@ -175,13 +175,325 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['columns', 'columns', 'json'],
     ['updatedBy', 'updated_by', 'text'],
   ],
+  ir_records: [
+    ['site', 'site', 'text'],
+    ['date', 'date', 'text'],
+    ['suName', 'su_name', 'text'],
+    ['portRef', 'port_ref', 'text'],
+    ['irSummary', 'ir_summary', 'text'],
+    ['incidentTime', 'incident_time', 'text'],
+    ['inFor1stReview', 'in_for_1st_review', 'text'],
+    ['ct1stReview', 'ct_1st_review', 'text'],
+    ['inFor2ndReview', 'in_for_2nd_review', 'text'],
+    ['ct2ndReview', 'ct_2nd_review', 'text'],
+    ['submittedToCrh', 'submitted_to_crh', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  food_wastage_records: [
+    ['site', 'site', 'text'],
+    ['date', 'date', 'text'],
+    ['foodWastage', 'food_wastage', 'text'],
+    ['quantity', 'quantity', 'text'],
+    ['comments', 'comments', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  daily_register_rooms: [
+    ['hotel', 'hotel', 'text'],
+    ['roomNo', 'room_no', 'text'],
+    ['floor', 'floor', 'text'],
+    ['roomType', 'room_type', 'text'],
+    ['currentMaxOccupancy', 'current_max_occupancy', 'int'],
+    ['currentOccupancy', 'current_occupancy', 'int'],
+    ['suCohort', 'su_cohort', 'text'],
+    ['bedspacesAvailable', 'bedspaces_available', 'int'],
+    ['voidBedspaces', 'void_bedspaces', 'int'],
+    ['voidReason', 'void_reason', 'text'],
+    ['sizeSqm', 'size_sqm', 'num'],
+    ['maxRoomType', 'max_room_type', 'text'],
+    ['potentialMaxCapacity', 'potential_max_capacity', 'int'],
+    ['stepsToIncreaseCapacity', 'steps_to_increase_capacity', 'text'],
+    ['date', 'date', 'text'],
+    ['attachments', 'attachments', 'json'],
+  ],
+  daily_register_records: [
+    ['hotel', 'hotel', 'text'],
+    ['roomNo', 'room_no', 'text'],
+    ['floor', 'floor', 'text'],
+    ['roomMakeup', 'room_makeup', 'text'],
+    ['singleBed', 'single_bed', 'int'],
+    ['doubleBed', 'double_bed', 'int'],
+    ['singleBunk', 'single_bunk', 'int'],
+    ['doubleBunk', 'double_bunk', 'int'],
+    ['cot', 'cot', 'int'],
+    ['suMakeup', 'su_makeup', 'text'],
+    ['portRef', 'port_ref', 'text'],
+    ['name', 'name', 'text'],
+    ['checkInDate', 'check_in_date', 'text'],
+    ['contactNo', 'contact_no', 'text'],
+    ['email', 'email', 'text'],
+    ['dob', 'dob', 'text'],
+    ['age', 'age', 'int'],
+    ['ageGroup', 'age_group', 'text'],
+    ['nationality', 'nationality', 'text'],
+    ['language', 'language', 'text'],
+    ['gender', 'gender', 'text'],
+    ['suComments', 'su_comments', 'text'],
+    ['availableToBook', 'available_to_book', 'text'],
+    ['isVoid', 'is_void', 'text'],
+    ['voidReason', 'void_reason', 'text'],
+    ['maintenanceDateFrom', 'maintenance_date_from', 'text'],
+    ['allocationToBeReviewed', 'allocation_to_be_reviewed', 'text'],
+    ['occupied', 'occupied', 'text'],
+    ['registerDate', 'register_date', 'text'],
+    ['dailyOccupancy', 'daily_occupancy', 'json'],
+    ['attachments', 'attachments', 'json'],
+  ],
+  new_arrivals_records: [
+    ['portReference', 'port_reference', 'text'],
+    ['name', 'name', 'text'],
+    ['dob', 'dob', 'text'],
+    ['country', 'country', 'text'],
+    ['language', 'language', 'text'],
+    ['contactNumber', 'contact_number', 'text'],
+    ['hotel', 'hotel', 'text'],
+    ['room', 'room', 'text'],
+    ['email', 'email', 'text'],
+    ['aspenCard', 'aspen_card', 'text'],
+    ['status', 'status', 'text'],
+    ['attachments', 'attachments', 'json'],
+  ],
+  eviction_records: [
+    ['hotel', 'hotel', 'text'],
+    ['roomNo', 'room_no', 'text'],
+    ['portRef', 'port_ref', 'text'],
+    ['suName', 'su_name', 'text'],
+    ['noticeDate', 'notice_date', 'text'],
+    ['evictionDate', 'eviction_date', 'text'],
+    ['evictionReason', 'eviction_reason', 'text'],
+    ['status', 'status', 'text'],
+    ['notes', 'notes', 'text'],
+    ['attachments', 'attachments', 'json'],
+  ],
+  finance_bills: [
+    ['organizationId', 'organization_id', 'text'],
+    ['siteId', 'site_id', 'text'],
+    ['site', 'site_id', 'text'],
+    ['vendorId', 'vendor_id', 'text'],
+    ['billNumber', 'bill_number', 'text'],
+    ['billType', 'bill_type', 'text'],
+    ['billDate', 'bill_date', 'text'],
+    ['dueDate', 'due_date', 'text'],
+    ['receivedDate', 'received_date', 'text'],
+    ['currency', 'currency', 'text'],
+    ['subtotal', 'subtotal', 'num'],
+    ['taxAmount', 'tax_amount', 'num'],
+    ['totalAmount', 'total_amount', 'num'],
+    ['status', 'status', 'text'],
+    ['paymentStatus', 'payment_status', 'text'],
+    ['paymentReference', 'payment_reference', 'text'],
+    ['paymentMethod', 'payment_method', 'text'],
+    ['paidAt', 'paid_at', 'text'],
+    ['description', 'description', 'text'],
+    ['purchaseReference', 'purchase_reference', 'text'],
+    ['poReference', 'po_reference', 'text'],
+    ['disputeReason', 'dispute_reason', 'text'],
+    ['notes', 'notes', 'text'],
+    ['internalReference', 'internal_reference', 'text'],
+    ['rejectionReason', 'rejection_reason', 'text'],
+    ['rejectedAt', 'rejected_at', 'text'],
+    ['rejectedBy', 'rejected_by', 'text'],
+    ['finalApprovedBy', 'final_approved_by', 'text'],
+    ['finalApprovedAt', 'final_approved_at', 'text'],
+    ['submittedBy', 'submitted_by', 'text'],
+    ['submittedAt', 'submitted_at', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  vendor_invoices: [
+    ['organizationId', 'organization_id', 'text'],
+    ['siteId', 'site_id', 'text'],
+    ['site', 'site_id', 'text'],
+    ['vendorId', 'vendor_id', 'text'],
+    ['billNumber', 'bill_number', 'text'],
+    ['billType', 'bill_type', 'text'],
+    ['billDate', 'bill_date', 'text'],
+    ['dueDate', 'due_date', 'text'],
+    ['receivedDate', 'received_date', 'text'],
+    ['currency', 'currency', 'text'],
+    ['subtotal', 'subtotal', 'num'],
+    ['taxAmount', 'tax_amount', 'num'],
+    ['totalAmount', 'total_amount', 'num'],
+    ['status', 'status', 'text'],
+    ['paymentStatus', 'payment_status', 'text'],
+    ['paymentReference', 'payment_reference', 'text'],
+    ['paymentMethod', 'payment_method', 'text'],
+    ['paidAt', 'paid_at', 'text'],
+    ['description', 'description', 'text'],
+    ['purchaseReference', 'purchase_reference', 'text'],
+    ['poReference', 'po_reference', 'text'],
+    ['disputeReason', 'dispute_reason', 'text'],
+    ['notes', 'notes', 'text'],
+    ['internalReference', 'internal_reference', 'text'],
+    ['rejectionReason', 'rejection_reason', 'text'],
+    ['rejectedAt', 'rejected_at', 'text'],
+    ['rejectedBy', 'rejected_by', 'text'],
+    ['finalApprovedBy', 'final_approved_by', 'text'],
+    ['finalApprovedAt', 'final_approved_at', 'text'],
+    ['submittedBy', 'submitted_by', 'text'],
+    ['submittedAt', 'submitted_at', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  credit_card_bills: [
+    ['organizationId', 'organization_id', 'text'],
+    ['siteId', 'site_id', 'text'],
+    ['site', 'site_id', 'text'],
+    ['vendorId', 'vendor_id', 'text'],
+    ['billNumber', 'bill_number', 'text'],
+    ['billType', 'bill_type', 'text'],
+    ['billDate', 'bill_date', 'text'],
+    ['dueDate', 'due_date', 'text'],
+    ['receivedDate', 'received_date', 'text'],
+    ['currency', 'currency', 'text'],
+    ['subtotal', 'subtotal', 'num'],
+    ['taxAmount', 'tax_amount', 'num'],
+    ['totalAmount', 'total_amount', 'num'],
+    ['status', 'status', 'text'],
+    ['paymentStatus', 'payment_status', 'text'],
+    ['paymentReference', 'payment_reference', 'text'],
+    ['paymentMethod', 'payment_method', 'text'],
+    ['paidAt', 'paid_at', 'text'],
+    ['description', 'description', 'text'],
+    ['purchaseReference', 'purchase_reference', 'text'],
+    ['poReference', 'po_reference', 'text'],
+    ['disputeReason', 'dispute_reason', 'text'],
+    ['notes', 'notes', 'text'],
+    ['internalReference', 'internal_reference', 'text'],
+    ['rejectionReason', 'rejection_reason', 'text'],
+    ['rejectedAt', 'rejected_at', 'text'],
+    ['rejectedBy', 'rejected_by', 'text'],
+    ['finalApprovedBy', 'final_approved_by', 'text'],
+    ['finalApprovedAt', 'final_approved_at', 'text'],
+    ['submittedBy', 'submitted_by', 'text'],
+    ['submittedAt', 'submitted_at', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  delivery_notes: [
+    ['organizationId', 'organization_id', 'text'],
+    ['siteId', 'site_id', 'text'],
+    ['site', 'site_id', 'text'],
+    ['vendorId', 'vendor_id', 'text'],
+    ['billNumber', 'bill_number', 'text'],
+    ['billType', 'bill_type', 'text'],
+    ['billDate', 'bill_date', 'text'],
+    ['dueDate', 'due_date', 'text'],
+    ['receivedDate', 'received_date', 'text'],
+    ['currency', 'currency', 'text'],
+    ['subtotal', 'subtotal', 'num'],
+    ['taxAmount', 'tax_amount', 'num'],
+    ['totalAmount', 'total_amount', 'num'],
+    ['status', 'status', 'text'],
+    ['paymentStatus', 'payment_status', 'text'],
+    ['paymentReference', 'payment_reference', 'text'],
+    ['paymentMethod', 'payment_method', 'text'],
+    ['paidAt', 'paid_at', 'text'],
+    ['description', 'description', 'text'],
+    ['purchaseReference', 'purchase_reference', 'text'],
+    ['poReference', 'po_reference', 'text'],
+    ['disputeReason', 'dispute_reason', 'text'],
+    ['notes', 'notes', 'text'],
+    ['internalReference', 'internal_reference', 'text'],
+    ['rejectionReason', 'rejection_reason', 'text'],
+    ['rejectedAt', 'rejected_at', 'text'],
+    ['rejectedBy', 'rejected_by', 'text'],
+    ['finalApprovedBy', 'final_approved_by', 'text'],
+    ['finalApprovedAt', 'final_approved_at', 'text'],
+    ['submittedBy', 'submitted_by', 'text'],
+    ['submittedAt', 'submitted_at', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
 };
+
+const DEFAULT_ORG_UUID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_PROFILE_UUID = 'ce98b46b-4a6a-4a66-a70a-72e6c56d7691';
+
+const SITE_NAME_TO_ID: Record<string, string> = {
+  'Brit Hotel': 'site-519',
+  'Leigham Court Hotel': 'site-712',
+  'Maida Vale Aparthotel': 'site-483',
+  'Clapham South Dudley Hotel': 'site-640',
+  'Holiday Inn Lambeth': 'site-443',
+  'Stansted Hotel (Ibis Budget Bisop Stortford)': 'site-632',
+  'Holiday Inn Old Street': 'site-449',
+  'Holiday Inn Swiss Cottage': 'site-546',
+  'Ibis Cardiff City Centre': 'site-715',
+  'Hilton Hampton - Ealing': 'site-665',
+  'Ibis Styles - Seven Kings': 'site-562',
+  'Clacton Pier Avenue': 'site-741',
+  'Lea Halls': 'site-776',
+  'Mercure Heathrow Hotel': 'site-820',
+  'Parmiter PDA': 'site-545',
+  'Burrows Court': 'site-burrows',
+};
+
+function resolveSiteId(siteInput?: string): string {
+  if (!siteInput) return 'site-519';
+  const trimmed = String(siteInput).trim();
+  if (trimmed.startsWith('site-')) return trimmed;
+  return SITE_NAME_TO_ID[trimmed] || 'site-519';
+}
 
 /** NOT NULL typed columns on FIELD_SPECS tables, with the fallback used when a record omits them. */
 const REQUIRED_SPEC_COLUMNS: Record<string, Record<string, (record: any) => any>> = {
   field_options: { category: () => 'general' },
   role_permissions: { role: (r) => r.id },
   table_schemas: { module_key: (r) => r.id },
+  finance_bills: {
+    site_id: (r) => resolveSiteId(r.siteId || r.site),
+    bill_number: (r) => r.billNumber || `BILL-${Date.now()}`,
+    bill_type: (r) => r.billType || r.bill_type || 'vendor_invoice',
+    bill_date: (r) => r.billDate || r.date || new Date().toISOString().split('T')[0],
+    total_amount: (r) => r.totalAmount ?? r.amount ?? 0,
+    organization_id: (r) => (isValidUuid(r.organizationId) ? r.organizationId : DEFAULT_ORG_UUID),
+    submitted_by: (r) => (isValidUuid(r.submittedBy) ? r.submittedBy : DEFAULT_PROFILE_UUID),
+  },
+  vendor_invoices: {
+    site_id: (r) => resolveSiteId(r.siteId || r.site),
+    bill_number: (r) => r.billNumber || `INV-${Date.now()}`,
+    bill_type: () => 'vendor_invoice',
+    bill_date: (r) => r.billDate || r.date || new Date().toISOString().split('T')[0],
+    total_amount: (r) => r.totalAmount ?? r.amount ?? 0,
+    organization_id: (r) => (isValidUuid(r.organizationId) ? r.organizationId : DEFAULT_ORG_UUID),
+    submitted_by: (r) => (isValidUuid(r.submittedBy) ? r.submittedBy : DEFAULT_PROFILE_UUID),
+  },
+  credit_card_bills: {
+    site_id: (r) => resolveSiteId(r.siteId || r.site),
+    bill_number: (r) => r.billNumber || `CC-${Date.now()}`,
+    bill_type: () => 'credit_card_expense',
+    bill_date: (r) => r.billDate || r.date || new Date().toISOString().split('T')[0],
+    total_amount: (r) => r.totalAmount ?? r.amount ?? 0,
+    organization_id: (r) => (isValidUuid(r.organizationId) ? r.organizationId : DEFAULT_ORG_UUID),
+    submitted_by: (r) => (isValidUuid(r.submittedBy) ? r.submittedBy : DEFAULT_PROFILE_UUID),
+  },
+  delivery_notes: {
+    site_id: (r) => resolveSiteId(r.siteId || r.site),
+    bill_number: (r) => r.billNumber || `DN-${Date.now()}`,
+    bill_type: () => 'delivery_note',
+    bill_date: (r) => r.billDate || r.date || new Date().toISOString().split('T')[0],
+    total_amount: (r) => r.totalAmount ?? r.amount ?? 0,
+    organization_id: (r) => (isValidUuid(r.organizationId) ? r.organizationId : DEFAULT_ORG_UUID),
+    submitted_by: (r) => (isValidUuid(r.submittedBy) ? r.submittedBy : DEFAULT_PROFILE_UUID),
+  },
 };
 
 const AUDIT_COLS = ['created_by', 'created_at', 'updated_at'];
@@ -349,7 +661,13 @@ export const ENTITY_MODULE_LABELS: Record<string, string> = {
   rfaWelfare: 'Vulnerable SUs', laundry: 'Laundry', laundry_logs: 'Laundry', property_laundry_logs: 'Laundry',
   food: 'Hot Food', hot_food_logs: 'Hot Food', food_vendor_buffet_logs: 'Hot Food', escalations: 'Escalations',
   documents: 'Documents', sites: 'Properties', users: 'Users', profiles: 'Users', userGroups: 'Users',
-  property_user_assignments: 'Users', rolePermissions: 'Roles', gpAppointments: 'Referrals', dispersal: 'Referrals'
+  property_user_assignments: 'Users', rolePermissions: 'Roles', gpAppointments: 'Referrals', dispersal: 'Referrals',
+  irRecords: 'IR Tracker', ir_records: 'IR Tracker',
+  foodWastage: 'Food Wastage', food_wastage_records: 'Food Wastage',
+  dailyRegisterRooms: 'Live Daily Registers', daily_register_rooms: 'Live Daily Registers',
+  dailyRegisterRecords: 'Live Daily Registers', daily_register_records: 'Live Daily Registers',
+  newArrivals: 'Live Daily Registers', new_arrivals_records: 'Live Daily Registers',
+  evictions: 'Live Daily Registers', eviction_records: 'Live Daily Registers'
 };
 export const moduleLabelFor = (entity?: string | null) => (entity && ENTITY_MODULE_LABELS[entity]) || entity || 'Settings';
 
@@ -438,16 +756,27 @@ export function toDatabaseRow(
   const nowIso = new Date().toISOString();
   const dbRow: Record<string, any> = {};
 
-  // Preserve ID — profiles MUST use the auth.users UUID (never generate a random one)
+  // Preserve ID — profiles and UUID-backed finance tables must use valid UUIDs
+  const isUuidTable = tableName === 'finance_bills' ||
+    tableName === 'vendor_invoices' ||
+    tableName === 'credit_card_bills' ||
+    tableName === 'delivery_notes' ||
+    tableName === 'finance_vendors' ||
+    tableName === 'finance_approvals';
+
   if (record.id) {
     const rawId = String(record.id).trim();
     if (tableName === 'profiles') {
       if (isValidUuid(rawId)) {
         dbRow.id = rawId;
       }
+    } else if (isUuidTable) {
+      dbRow.id = isValidUuid(rawId) ? rawId : crypto.randomUUID();
     } else {
       dbRow.id = rawId;
     }
+  } else if (isUuidTable) {
+    dbRow.id = crypto.randomUUID();
   }
 
   // Safe caller UUID for created_by
@@ -465,6 +794,38 @@ export function toDatabaseRow(
     for (const [column, fallback] of Object.entries(REQUIRED_SPEC_COLUMNS[tableName] || {})) {
       if (dbRow[column] === undefined || dbRow[column] === null || dbRow[column] === '') {
         dbRow[column] = fallback(record);
+      }
+    }
+    if (isUuidTable) {
+      if (isValidUuid(callerUserId)) {
+        dbRow.submitted_by = callerUserId;
+      } else if (isValidUuid(record.submittedBy || record.submitted_by)) {
+        dbRow.submitted_by = record.submittedBy || record.submitted_by;
+      } else if (!isValidUuid(dbRow.submitted_by)) {
+        dbRow.submitted_by = DEFAULT_PROFILE_UUID;
+      }
+      if (dbRow.site_id) {
+        dbRow.site_id = resolveSiteId(dbRow.site_id);
+      }
+      if (dbRow.status) {
+        const s = String(dbRow.status).trim().toLowerCase().replace(/[\s-]+/g, '_');
+        const validFinanceStatuses = new Set([
+          'draft', 'submitted', 'under_review', 'verification_pending',
+          'query_raised', 'awaiting_approval', 'approved', 'rejected',
+          'payment_pending', 'partially_paid', 'paid',
+          'reconciliation_pending', 'reconciled', 'cancelled'
+        ]);
+        if (validFinanceStatuses.has(s)) {
+          dbRow.status = s;
+        } else if (s === 'pending') {
+          dbRow.status = 'submitted';
+        } else if (s === 'received') {
+          dbRow.status = 'under_review';
+        } else if (s === 'active') {
+          dbRow.status = 'approved';
+        } else {
+          dbRow.status = 'draft';
+        }
       }
     }
   }
@@ -1177,8 +1538,10 @@ export function fromDatabaseRow(tableName: string, row: any): any {
     if (fromData) {
       if (FIELD_SPECS[tableName]) {
         const typed: Record<string, any> = {};
-        for (const [field, column] of FIELD_SPECS[tableName]) {
-          if (row[column] !== undefined && row[column] !== null) typed[field] = row[column];
+        for (const [field, column, type] of FIELD_SPECS[tableName]) {
+          if (column in row) {
+            typed[field] = row[column] !== null ? coerce(row[column], type) : (type === 'int' || type === 'num' ? null : '');
+          }
         }
         let atts = typed.attachments !== undefined ? typed.attachments : fromData.attachments;
         if (typeof atts === 'string' && atts.trim().startsWith('[')) {
@@ -1210,8 +1573,10 @@ export function fromDatabaseRow(tableName: string, row: any): any {
 
   if (FIELD_SPECS[tableName]) {
     const obj: Record<string, any> = { id: row.id };
-    for (const [field, column] of FIELD_SPECS[tableName]) {
-      if (row[column] !== undefined && row[column] !== null) obj[field] = row[column];
+    for (const [field, column, type] of FIELD_SPECS[tableName]) {
+      if (row[column] !== undefined && row[column] !== null) {
+        obj[field] = coerce(row[column], type);
+      }
     }
     let atts = obj.attachments;
     if (typeof atts === 'string' && atts.trim().startsWith('[')) {

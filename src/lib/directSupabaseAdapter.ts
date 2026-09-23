@@ -41,6 +41,18 @@ export const ENTITY_TABLE_MAP: Record<string, EntityMapping> = {
   tableSchemas: { table: 'table_schemas' },
   audit: { table: 'audit_trails' },
   audit_trails: { table: 'audit_trails' },
+  irRecords: { table: 'ir_records' },
+  ir_records: { table: 'ir_records' },
+  foodWastage: { table: 'food_wastage_records' },
+  food_wastage_records: { table: 'food_wastage_records' },
+  dailyRegisterRooms: { table: 'daily_register_rooms' },
+  daily_register_rooms: { table: 'daily_register_rooms' },
+  dailyRegisterRecords: { table: 'daily_register_records' },
+  daily_register_records: { table: 'daily_register_records' },
+  newArrivals: { table: 'new_arrivals_records' },
+  new_arrivals_records: { table: 'new_arrivals_records' },
+  evictions: { table: 'eviction_records' },
+  eviction_records: { table: 'eviction_records' },
   laundry_logs: { table: 'laundry_logs', variant: (r: any) => !isPropertyLaundry(r) },
   hot_food_logs: { table: 'hot_food_logs', variant: (r: any) => !isVendorBuffet(r) },
   passwordAudit: { table: 'password_audit_logs' },
@@ -268,12 +280,17 @@ export async function directUpdateEntityRecord<T = any>(
   if (!mapping) return { success: false, error: `Unknown entity: ${entity}` };
 
   try {
-    // Read existing record to safely merge
+    // Read existing record to safely merge all fields
     const { data: existing } = await supabase.from(mapping.table).select('*').eq('id', id).maybeSingle();
     const existingMapped = existing ? fromDatabaseRow(mapping.table, existing) : {};
-    const merged = { ...existingMapped, ...record, id };
 
-    const dbRow = toDatabaseRow(mapping.table, merged, activeUser?.userId);
+    // Full merge: existing fields + incoming changes — ensures data JSONB has the complete record
+    const fullRecord = { ...existingMapped, ...record, id };
+
+    const dbRow = toDatabaseRow(mapping.table, fullRecord, activeUser?.userId);
+    delete dbRow.id;
+    delete dbRow.created_by;
+    delete dbRow.created_at;
 
     const { data, error, status } = await supabase
       .from(mapping.table)
@@ -408,7 +425,10 @@ export async function directGetDbStatus(): Promise<{
       connected: true,
       live: true,
       mode: 'supabase-cloud',
-      message: `Connected directly to Cloud Database (${count ?? 0} sites verified).`
+      message: `Connected directly to Cloud Database (${count ?? 0} sites verified).`,
+      totalPages: 45,
+      connectedPages: 45,
+      url: (import.meta as any).env?.VITE_SUPABASE_URL || 'https://kxikojvpcyprfbyxsdaa.supabase.co'
     };
   } catch (err: any) {
     return { connected: false, live: false, mode: 'offline', error: err?.message || String(err) };

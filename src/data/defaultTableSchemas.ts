@@ -13,7 +13,13 @@ import {
   DocumentRecord,
   PropertyLaundryLog,
   PropertyFoodVendorBuffetLog,
-  FinanceBill
+  FinanceBill,
+  IRRecord,
+  FoodWastageRecord,
+  DailyRegisterRoom,
+  DailyRegisterRecord,
+  NewArrivalRecord,
+  EvictionRecord
 } from '../types';
 
 export const renderSchemaAttachmentCell = (val: any, row: any) =>
@@ -533,6 +539,7 @@ export const FINANCE_INVOICES_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = 
 ];
 
 export const FINANCE_CREDIT_CARD_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] = [
+  { key: 'billNumber', label: 'Receipt / Ref #', type: 'text', section: 'Details' },
   { key: 'siteId', label: 'Site / Property', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location' },
   { key: 'vendorName' as any, label: 'Merchant / Store', type: 'text', section: 'Merchant' },
   { key: 'billDate', label: 'Transaction Date', type: 'date', required: true, section: 'Details' },
@@ -587,5 +594,146 @@ export const FINANCE_APPROVALS_TABLE_COLUMNS: TableColumnConfig<FinanceBill>[] =
   { key: 'submitterName' as any, label: 'Submitted By', type: 'text', section: 'Submitter' },
   { key: 'finalApprovedByName' as any, label: 'Approved By', type: 'text', section: 'Approval Status' }
 ];
+
+export const IR_TRACKER_TABLE_COLUMNS: TableColumnConfig<IRRecord>[] = [
+  { key: 'site', label: 'SITE', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Incident Information' },
+  { key: 'date', label: 'DATE', type: 'date', required: true, section: 'Incident Information' },
+  { key: 'suName', label: 'SU NAME', type: 'text', required: true, section: 'Incident Information' },
+  { key: 'portRef', label: 'Port Ref', type: 'text', section: 'Incident Information' },
+  { key: 'incidentTime', label: 'Incident Time', type: 'text', placeholder: 'HH:MM e.g. 14:30', section: 'Incident Information' },
+  { key: 'irSummary', label: 'IR SUMMARY', type: 'textarea', required: true, colSpan: 2, section: 'Incident Information' },
+  { key: 'inFor1stReview', label: 'IN for 1st review', type: 'text', placeholder: 'YYYY-MM-DD HH:MM', section: 'First Review' },
+  { key: 'ct1stReview', label: 'CT 1ST Review', type: 'text', placeholder: 'YYYY-MM-DD HH:MM', section: 'First Review' },
+  { key: 'inFor2ndReview', label: 'In for 2nd review', type: 'text', placeholder: 'YYYY-MM-DD HH:MM', section: 'Second Review' },
+  { key: 'ct2ndReview', label: 'CT 2nd review', type: 'text', placeholder: 'YYYY-MM-DD HH:MM', section: 'Second Review' },
+  { 
+    key: 'submittedToCrh', 
+    label: 'Submitted to CRH', 
+    type: 'select', 
+    optionCategory: 'crhSubmissionStatuses',
+    allowQuickAdd: true,
+    options: ['Pending', 'Submitted', 'Under Review', 'CRH Approved', 'CRH Rejected', 'Not Applicable'],
+    badgeColors: {
+      'Submitted': 'bg-blue-100 text-blue-800 border border-blue-200',
+      'CRH Approved': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      'Pending': 'bg-amber-100 text-amber-800 border border-amber-200',
+      'Under Review': 'bg-purple-100 text-purple-800 border border-purple-200',
+      'CRH Rejected': 'bg-red-100 text-red-800 border border-red-200',
+      'Not Applicable': 'bg-gray-100 text-gray-700'
+    },
+    section: 'CRH Submission & Attachments'
+  },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'CRH Submission & Attachments', renderCell: renderSchemaAttachmentCell }
+];
+
+export const FOOD_WASTAGE_TABLE_COLUMNS: TableColumnConfig<FoodWastageRecord>[] = [
+  { key: 'site', label: 'SITE', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Wastage Information' },
+  { key: 'date', label: 'DATE', type: 'date', required: true, section: 'Wastage Information' },
+  { key: 'foodWastage', label: 'FOOD WASTAGE', type: 'text', required: true, placeholder: 'e.g. Unserved lunch buffet, Spoilage, Over-order', section: 'Wastage Information' },
+  { key: 'quantity', label: 'QUANTITY', type: 'text', required: true, placeholder: 'e.g. 5 kg, 12 portions, 3 trays', section: 'Wastage Information' },
+  { key: 'comments', label: 'COMMENTS', type: 'textarea', colSpan: 2, section: 'Wastage Information' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Wastage Information', renderCell: renderSchemaAttachmentCell }
+];
+
+export const ROOM_LIST_TABLE_COLUMNS: TableColumnConfig<DailyRegisterRoom>[] = [
+  { key: 'date', label: 'Date', type: 'date', section: 'Room Inventory' },
+  { key: 'hotel', label: 'Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Room Inventory' },
+  { key: 'roomNo', label: 'Room No.', type: 'text', required: true, section: 'Room Inventory' },
+  { key: 'floor', label: 'Floor', type: 'text', section: 'Room Inventory' },
+  { key: 'roomType', label: 'Room Type', type: 'select', options: ['Single', 'Double', 'Twin', 'Family', 'Accessible', 'Studio'], section: 'Room Inventory' },
+  { key: 'currentMaxOccupancy', label: 'Current Max Occupancy', type: 'number', section: 'Occupancy & Bedspaces' },
+  { key: 'currentOccupancy', label: 'Current Occupancy', type: 'number', section: 'Occupancy & Bedspaces' },
+  { key: 'suCohort', label: 'SU Cohort', type: 'select', options: ['Single Male', 'Single Female', 'Family', 'Couples', 'Mother & Baby', 'Vulnerable Adult'], section: 'Occupancy & Bedspaces' },
+  { key: 'bedspacesAvailable', label: 'Bedspaces Available', type: 'number', section: 'Occupancy & Bedspaces' },
+  { key: 'voidBedspaces', label: 'Void Bedspaces', type: 'number', section: 'Void Status' },
+  { key: 'voidReason', label: 'Void Reason', type: 'textarea', section: 'Void Status' },
+  { key: 'sizeSqm', label: 'Size of Room (sq. metre, excluding bathroom)', type: 'number', section: 'Capacity & Physical Specifications' },
+  { key: 'maxRoomType', label: 'Max Room Type (Room Size & Inventory)', type: 'text', section: 'Capacity & Physical Specifications' },
+  { key: 'potentialMaxCapacity', label: 'Potential Max Capacity', type: 'number', section: 'Capacity & Physical Specifications' },
+  { key: 'stepsToIncreaseCapacity', label: 'Steps to Increase Capacity', type: 'textarea', colSpan: 2, section: 'Capacity & Physical Specifications' }
+];
+
+export const DAILY_REGISTER_TABLE_COLUMNS: TableColumnConfig<DailyRegisterRecord>[] = [
+  { key: 'roomNo', label: 'Room No.', type: 'text', required: true, section: 'Room & Beds' },
+  { key: 'floor', label: 'Floor', type: 'text', section: 'Room & Beds' },
+  { key: 'roomMakeup', label: 'Room Makeup', type: 'text', section: 'Room & Beds' },
+  { key: 'singleBed', label: 'Single Bed', type: 'number', section: 'Room & Beds' },
+  { key: 'doubleBed', label: 'Double Bed', type: 'number', section: 'Room & Beds' },
+  { key: 'singleBunk', label: 'Single Bunk', type: 'number', section: 'Room & Beds' },
+  { key: 'doubleBunk', label: 'Double Bunk', type: 'number', section: 'Room & Beds' },
+  { key: 'cot', label: 'Cot', type: 'number', section: 'Room & Beds' },
+  { key: 'suMakeup', label: 'SU Make Up', type: 'text', section: 'Resident Profile' },
+  { key: 'portRef', label: 'Port Ref', type: 'text', required: true, section: 'Resident Profile' },
+  { key: 'name', label: 'Name', type: 'text', required: true, section: 'Resident Profile' },
+  { key: 'checkInDate', label: 'Check In Date', type: 'date', required: true, section: 'Resident Profile' },
+  { key: 'contactNo', label: 'Contact No.', type: 'text', section: 'Resident Profile' },
+  { key: 'email', label: 'Email', type: 'text', section: 'Resident Profile' },
+  { key: 'dob', label: 'D.O.B.', type: 'date', section: 'Demographics' },
+  { key: 'age', label: 'Age', type: 'number', section: 'Demographics' },
+  { key: 'ageGroup', label: 'Age Group', type: 'select', options: ['0-17', '18-25', '26-40', '41-60', '60+'], section: 'Demographics' },
+  { key: 'nationality', label: 'Nationality', type: 'text', section: 'Demographics' },
+  { key: 'language', label: 'Language', type: 'text', section: 'Demographics' },
+  { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other', 'Prefer not to say'], section: 'Demographics' },
+  { key: 'suComments', label: 'SU Comments', type: 'textarea', colSpan: 2, section: 'Operational Notes' },
+  { key: 'availableToBook', label: 'Available to Book', type: 'select', options: ['Yes', 'No'], section: 'Occupancy Controls' },
+  { key: 'isVoid', label: 'Void', type: 'select', options: ['Yes', 'No'], section: 'Occupancy Controls' },
+  { key: 'voidReason', label: 'Void Reason', type: 'text', section: 'Occupancy Controls' },
+  { key: 'maintenanceDateFrom', label: 'Maintenance Date From', type: 'date', section: 'Occupancy Controls' },
+  { key: 'allocationToBeReviewed', label: 'Allocation to be Reviewed', type: 'select', options: ['Yes', 'No'], section: 'Occupancy Controls' },
+  { key: 'occupied', label: 'Occupied', type: 'select', options: ['Yes', 'No'], required: true, section: 'Occupancy Controls' }
+];
+
+export const NEW_ARRIVALS_TABLE_COLUMNS: TableColumnConfig<NewArrivalRecord>[] = [
+  { key: 'portReference', label: 'Port Reference', type: 'text', required: true, section: 'Arrival Information' },
+  { key: 'name', label: 'Name', type: 'text', required: true, section: 'Arrival Information' },
+  { key: 'dob', label: 'Date of Birth', type: 'date', section: 'Arrival Information' },
+  { key: 'country', label: 'Country', type: 'text', section: 'Arrival Information' },
+  { key: 'language', label: 'Language', type: 'text', section: 'Arrival Information' },
+  { key: 'contactNumber', label: 'Contact Number', type: 'text', section: 'Arrival Information' },
+  { key: 'hotel', label: 'Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Allocation' },
+  { key: 'room', label: 'Room', type: 'text', section: 'Allocation' },
+  { key: 'email', label: 'Email', type: 'text', section: 'Allocation' },
+  { key: 'aspenCard', label: 'Aspen Card', type: 'text', section: 'Allocation' },
+  { 
+    key: 'status', 
+    label: 'Arrival Status', 
+    type: 'select', 
+    options: ['Arrived', 'Pending Room Assignment', 'Checked In', 'Transferred', 'Cancelled'],
+    badgeColors: {
+      'Arrived': 'bg-blue-100 text-blue-800',
+      'Pending Room Assignment': 'bg-amber-100 text-amber-800',
+      'Checked In': 'bg-emerald-100 text-emerald-800',
+      'Transferred': 'bg-purple-100 text-purple-800',
+      'Cancelled': 'bg-gray-100 text-gray-700'
+    },
+    section: 'Allocation' 
+  }
+];
+
+export const EVICTION_TABLE_COLUMNS: TableColumnConfig<EvictionRecord>[] = [
+  { key: 'hotel', label: 'Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Eviction Details' },
+  { key: 'roomNo', label: 'Room No.', type: 'text', section: 'Eviction Details' },
+  { key: 'portRef', label: 'Port Ref', type: 'text', required: true, section: 'Resident Details' },
+  { key: 'suName', label: 'SU Name', type: 'text', required: true, section: 'Resident Details' },
+  { key: 'noticeDate', label: 'Notice Date', type: 'date', section: 'Eviction Timeline' },
+  { key: 'evictionDate', label: 'Eviction Date', type: 'date', required: true, section: 'Eviction Timeline' },
+  { key: 'evictionReason', label: 'Eviction Reason', type: 'textarea', required: true, section: 'Eviction Details' },
+  { 
+    key: 'status', 
+    label: 'Status', 
+    type: 'select', 
+    options: ['Notice Issued', 'Pending Appeal', 'Evicted', 'Cancelled'],
+    badgeColors: {
+      'Notice Issued': 'bg-amber-100 text-amber-800',
+      'Pending Appeal': 'bg-purple-100 text-purple-800',
+      'Evicted': 'bg-red-100 text-red-800',
+      'Cancelled': 'bg-gray-100 text-gray-700'
+    },
+    section: 'Eviction Timeline' 
+  },
+  { key: 'notes', label: 'Notes', type: 'textarea', colSpan: 2, section: 'Eviction Details' }
+];
+
+
 
 

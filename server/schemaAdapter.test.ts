@@ -165,6 +165,140 @@ const RECORDS: Record<string, { table: string; record: Record<string, any> }> = 
   tableSchemas: {
     table: 'table_schemas',
     record: { id: 'referrals', moduleKey: 'referrals', columns: [{ key: 'customRiskScore', label: 'Risk Score', type: 'number', isCustom: true }] }
+  },
+  irRecords: {
+    table: 'ir_records',
+    record: {
+      id: 'ir-t1',
+      site: 'Brit Hotel',
+      date: '2026-09-15',
+      suName: 'QA Service User',
+      portRef: 'PR-12345',
+      irSummary: 'Incident report summary for testing',
+      incidentTime: '14:30',
+      inFor1stReview: '2026-09-15 15:00',
+      ct1stReview: '2026-09-15 16:30',
+      inFor2ndReview: '2026-09-15 17:00',
+      ct2ndReview: '2026-09-15 18:00',
+      submittedToCrh: 'Submitted',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  foodWastage: {
+    table: 'food_wastage_records',
+    record: {
+      id: 'fw-t1',
+      site: 'Brit Hotel',
+      date: '2026-09-15',
+      foodWastage: 'Dinner Rice & Chicken',
+      quantity: '15',
+      comments: 'Surplus catering',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  dailyRegisterRooms: {
+    table: 'daily_register_rooms',
+    record: {
+      id: 'drr-t1',
+      date: '2026-09-15',
+      hotel: 'Brit Hotel',
+      roomNo: '101',
+      floor: '1st Floor',
+      roomType: 'Double',
+      currentMaxOccupancy: 2,
+      currentOccupancy: 1,
+      suCohort: 'Family',
+      bedspacesAvailable: 1,
+      voidBedspaces: 0,
+      voidReason: '',
+      sizeSqm: 18.5,
+      maxRoomType: 'Double Bed',
+      potentialMaxCapacity: 2,
+      stepsToIncreaseCapacity: 'None',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  dailyRegisterRecords: {
+    table: 'daily_register_records',
+    record: {
+      id: 'reg-t1',
+      roomNo: '101',
+      floor: '1st Floor',
+      roomMakeup: 'Double Bed',
+      singleBed: 0,
+      doubleBed: 1,
+      singleBunk: 0,
+      doubleBunk: 0,
+      cot: 0,
+      suMakeup: 'Single Male',
+      portRef: 'PR-999',
+      name: 'John Doe',
+      checkInDate: '2026-09-10',
+      contactNo: '07123456789',
+      email: 'john@example.com',
+      dob: '1995-05-12',
+      age: 31,
+      ageGroup: 'Adult',
+      nationality: 'Eritrean',
+      language: 'Tigrinya / English',
+      gender: 'Male',
+      suComments: 'Dietary req',
+      availableToBook: 'No',
+      void: 'No',
+      voidReason: '',
+      maintenanceDateFrom: '',
+      allocationToBeReviewed: 'No',
+      occupied: 'Yes',
+      dailyOccupancy: { '2026-09-15': 'Present' },
+      voidValidation: 'Valid',
+      bedValidation: 'Valid',
+      hotel: 'Brit Hotel',
+      registerDate: '2026-09-15',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  newArrivals: {
+    table: 'new_arrivals_records',
+    record: {
+      id: 'arr-t1',
+      portReference: 'PR-888',
+      name: 'Sara Smith',
+      dob: '2000-01-01',
+      country: 'Iran',
+      language: 'Farsi',
+      contactNumber: '07999888777',
+      hotel: 'Brit Hotel',
+      room: '102',
+      email: 'sara@example.com',
+      aspenCard: 'Issued',
+      arrivalDate: '2026-09-15',
+      status: 'Arrived',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  evictions: {
+    table: 'eviction_records',
+    record: {
+      id: 'ev-t1',
+      hotel: 'Brit Hotel',
+      roomNo: '103',
+      suName: 'Mark Doe',
+      portRef: 'PR-777',
+      noticeServedDate: '2026-09-01',
+      evictionDate: '2026-09-15',
+      reason: 'ASB Non-compliance',
+      status: 'Completed',
+      roomVacated: 'Yes',
+      policeInvolved: 'No',
+      notes: 'Vacated peacefully',
+      createdAt: ts,
+      updatedAt: ts
+    }
   }
 };
 
@@ -193,6 +327,8 @@ test('typed columns are populated for reporting on the new tables', () => {
   assert.equal(toDatabaseRow('vcs_agencies', RECORDS.vcsAgencies.record).is_verified, true);
   assert.equal(toDatabaseRow('rfa_welfare_checks', RECORDS.rfaWelfare.record).group_name, 'Family');
   assert.equal(toDatabaseRow('field_options', RECORDS.fieldOptions.record).sort_order, 4);
+  assert.equal(toDatabaseRow('ir_records', RECORDS.irRecords.record).su_name, 'QA Service User');
+  assert.equal(toDatabaseRow('ir_records', RECORDS.irRecords.record).submitted_to_crh, 'Submitted');
 });
 
 test('documents and food now populate their typed columns (were dropped before)', () => {

@@ -83,12 +83,24 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   financeVendors: { page: 'Finance Vendors', table: 'finance_vendors' },
   financeBillItems: { page: 'Finance Bill Items', table: 'finance_bill_items' },
   financeBillAttachments: { page: 'Finance Bill Attachments', table: 'finance_bill_attachments' },
+  irRecords: { page: 'IR Tracker', table: 'ir_records' },
+  foodWastage: { page: 'Food Wastage Tracker', table: 'food_wastage_records' },
+  dailyRegisterRooms: { page: 'Live Daily Registers - Room List', table: 'daily_register_rooms' },
+  dailyRegisterRecords: { page: 'Live Daily Registers - Daily Register', table: 'daily_register_records' },
+  newArrivals: { page: 'Live Daily Registers - New Arrivals', table: 'new_arrivals_records' },
+  evictions: { page: 'Live Daily Registers - Evictions', table: 'eviction_records' },
 
   // Aliases used by existing clients
   audit: { page: 'Audit Security Trail', table: 'audit_trails', write: 'append', remove: 'superadmin', alias: true },
   laundry_logs: { page: 'Laundry Support - resident intake', table: 'laundry_logs', variant: r => !isPropertyLaundry(r), alias: true },
   hot_food_logs: { page: 'Hot Meals Tracker - deliveries', table: 'hot_food_logs', variant: r => !isVendorBuffet(r), alias: true },
   profiles: { page: 'Staff & User Accounts', table: 'profiles', write: 'admin', remove: 'none', alias: true },
+  ir_records: { page: 'IR Tracker', table: 'ir_records', alias: true },
+  food_wastage_records: { page: 'Food Wastage Tracker', table: 'food_wastage_records', alias: true },
+  daily_register_rooms: { page: 'Live Daily Registers - Room List', table: 'daily_register_rooms', alias: true },
+  daily_register_records: { page: 'Live Daily Registers - Daily Register', table: 'daily_register_records', alias: true },
+  new_arrivals_records: { page: 'Live Daily Registers - New Arrivals', table: 'new_arrivals_records', alias: true },
+  eviction_records: { page: 'Live Daily Registers - Evictions', table: 'eviction_records', alias: true },
   finance_bills: { page: 'Finance Bills & Invoices', table: 'finance_bills', alias: true },
   vendor_invoices: { page: 'Vendor Invoices', table: 'vendor_invoices', alias: true },
   credit_card_bills: { page: 'Credit Card Bills', table: 'credit_card_bills', alias: true },
@@ -216,7 +228,7 @@ function readClientAuditContext(req: Request): ClientAuditContext | null {
 function callerIdentity(req: Request) {
   const u = req.user;
   return {
-    validUuid: (u?.provider === 'supabase' && isValidUuid(u?.id)) ? u.id : null,
+    validUuid: isValidUuid(u?.id) ? u.id : null,
     displayName: u?.name || u?.email || 'Authenticated Staff',
     role: u?.role || 'Staff',
     site: (req.headers['x-user-site'] as string) || u?.assignedSite || 'All Sites',
@@ -493,6 +505,16 @@ router.get('/finance-migration-sql', (_req: Request, res: Response) => {
   res.type('text/plain').send(sql);
 });
 
+// GET /api/db/registers-migration-sql - returns the 6 new tables migration script
+router.get('/registers-migration-sql', (_req: Request, res: Response) => {
+  const migPath = path.join(process.cwd(), 'db', 'migrations', '007_ir_food_and_registers.sql');
+  if (!fs.existsSync(migPath)) {
+    return res.status(404).json({ success: false, error: 'Migration script db/migrations/007_ir_food_and_registers.sql not found' });
+  }
+  const sql = fs.readFileSync(migPath, 'utf8');
+  res.type('text/plain').send(sql);
+});
+
 router.get('/migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
   const sql = loadSchemaSql();
   if (!sql) return res.status(404).json({ success: false, error: 'db/schema.sql not found' });
@@ -548,12 +570,50 @@ router.post('/seed', requireRole(...ADMIN_ROLES), async (_req: Request, res: Res
 // Write helpers shared by single, bulk and sync routes
 // ---------------------------------------------------------------------------
 
+const UUID_PRIMARY_KEY_TABLES = new Set([
+  'finance_bills',
+  'finance_vendors',
+  'finance_approvals',
+  'finance_bill_items',
+  'finance_bill_attachments',
+  'organizations',
+  'vendor_invoices',
+  'credit_card_bills',
+  'delivery_notes'
+]);
+
+const VIEW_WRITE_TARGETS: Record<string, { table: string; defaultBillType?: string }> = {
+  vendor_invoices: { table: 'finance_bills', defaultBillType: 'vendor_invoice' },
+  credit_card_bills: { table: 'finance_bills', defaultBillType: 'credit_card_expense' },
+  delivery_notes: { table: 'finance_bills', defaultBillType: 'delivery_note' },
+};
+
+
 function ensureId(entityDef: EntityDef, record: any) {
   if (entityDef.table === 'profiles') return record;
+  const isUuid = UUID_PRIMARY_KEY_TABLES.has(entityDef.table) ||
+    (VIEW_WRITE_TARGETS[entityDef.table] && UUID_PRIMARY_KEY_TABLES.has(VIEW_WRITE_TARGETS[entityDef.table].table));
+  if (isUuid) {
+    if (!isValidUuid(record.id)) {
+      return { ...record, id: crypto.randomUUID() };
+    }
+    return record;
+  }
   if (record.id === undefined || record.id === null || String(record.id).trim() === '') {
     return { ...record, id: crypto.randomUUID() };
   }
   return record;
+}
+
+function getWriteTarget(entityDef: EntityDef, record?: any): { table: string; record: any } {
+  const target = VIEW_WRITE_TARGETS[entityDef.table];
+  if (!target) return { table: entityDef.table, record };
+  const enriched = { ...record };
+  if (target.defaultBillType && !enriched.bill_type && !enriched.billType) {
+    enriched.bill_type = target.defaultBillType;
+    enriched.billType = target.defaultBillType;
+  }
+  return { table: target.table, record: enriched };
 }
 
 /** Identity on client-submitted audit entries always comes from the session. */
@@ -579,12 +639,18 @@ async function bulkUpsert(
   liveCols: Set<string>
 ): Promise<{ data: any[]; error: any }> {
   const caller = callerIdentity(req);
-  const rows = records.map(r =>
-    toDatabaseRow(entityDef.table, withVerifiedAuditIdentity(req, entityDef, ensureId(entityDef, r)), caller.validUuid, liveCols)
-  );
+  const writeTarget = VIEW_WRITE_TARGETS[entityDef.table];
+  const writeTable = writeTarget?.table || entityDef.table;
+  const writeCols = writeTarget ? (await getLiveColumns(writeTable) || TABLE_COLUMNS[writeTable] || liveCols) : liveCols;
+
+  const rows = records.map(r => {
+    const withAudit = withVerifiedAuditIdentity(req, entityDef, ensureId(entityDef, r));
+    const { record } = getWriteTarget(entityDef, withAudit);
+    return toDatabaseRow(writeTable, record, caller.validUuid, writeCols);
+  });
   const saved: any[] = [];
   for (let i = 0; i < rows.length; i += 500) {
-    const { data, error } = await client.from(entityDef.table).upsert(rows.slice(i, i + 500)).select();
+    const { data, error } = await client.from(writeTable).upsert(rows.slice(i, i + 500)).select();
     if (error) return { data: saved, error };
     saved.push(...(data || []));
   }
@@ -697,11 +763,12 @@ router.post('/:entity/bulk-delete', async (req: Request, res: Response) => {
   }
   if (ids.length === 0) return res.json({ success: true, deleted: 0 });
 
+  const writeTable = VIEW_WRITE_TARGETS[def.table]?.table || def.table;
   let deleted = 0;
   for (let i = 0; i < ids.length; i += 200) {
-    const { data, error } = await client.from(def.table).delete().in('id', ids.slice(i, i + 200)).select('id');
+    const { data, error } = await client.from(writeTable).delete().in('id', ids.slice(i, i + 200)).select('id');
     if (error) {
-      if (isMissingTableError(error)) return tableMissing(res, def.table);
+      if (isMissingTableError(error)) return tableMissing(res, writeTable);
       return res.status(500).json({ success: false, error: error.message, deleted });
     }
     deleted += data?.length || 0;
@@ -735,12 +802,14 @@ router.post('/:entity', async (req: Request, res: Response) => {
     if (liveCols && liveCols.size === 0) return tableMissing(res, def.table);
 
     const caller = callerIdentity(req);
-    const record = withVerifiedAuditIdentity(req, def, ensureId(def, req.body));
-    const dbRow = toDatabaseRow(def.table, record, caller.validUuid, liveCols || TABLE_COLUMNS[def.table]);
+    const withAudit = withVerifiedAuditIdentity(req, def, ensureId(def, req.body));
+    const { table: writeTable, record } = getWriteTarget(def, withAudit);
+    const writeCols = await getLiveColumns(writeTable);
+    const dbRow = toDatabaseRow(writeTable, record, caller.validUuid, writeCols || TABLE_COLUMNS[writeTable] || liveCols);
 
-    const { data, error } = await client.from(def.table).upsert(dbRow).select().single();
+    const { data, error } = await client.from(writeTable).upsert(dbRow).select().single();
     if (error) {
-      if (isMissingTableError(error)) return tableMissing(res, def.table);
+      if (isMissingTableError(error)) return tableMissing(res, writeTable);
       console.error(`[DB POST /api/db/${req.params.entity}] ${error.message}`);
       return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
     }
@@ -778,23 +847,24 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
   try {
     const liveCols = await getLiveColumns(def.table);
     if (liveCols && liveCols.size === 0) return tableMissing(res, def.table);
-    const allowed = liveCols || TABLE_COLUMNS[def.table];
+    const writeTarget = VIEW_WRITE_TARGETS[def.table];
+    const writeTable = writeTarget?.table || def.table;
+    const writeCols = writeTarget ? (await getLiveColumns(writeTable) || TABLE_COLUMNS[writeTable]) : null;
+    const allowed = writeCols || liveCols || TABLE_COLUMNS[writeTable] || TABLE_COLUMNS[def.table];
     const caller = callerIdentity(req);
 
-    // `toDatabaseRow` builds a COMPLETE row, so mapping a partial body directly
-    // would blank every column the caller did not send (BUG-004). Merge onto
-    // the stored record first so untouched fields survive.
     // Read full existing record so untouched columns survive merging
-    const { data: existingRow, error: readError } = await client.from(def.table).select('*').eq('id', id).maybeSingle();
+    const { data: existingRow, error: readError } = await client.from(writeTable).select('*').eq('id', id).maybeSingle();
     if (readError) {
-      if (isMissingTableError(readError)) return tableMissing(res, def.table);
+      if (isMissingTableError(readError)) return tableMissing(res, writeTable);
       return res.status(500).json({ success: false, error: readError.message });
     }
 
     if (!existingRow) {
       // Not stored yet: persist the full record now.
-      const dbRow = toDatabaseRow(def.table, { ...req.body, id }, caller.validUuid, allowed);
-      const { data, error } = await client.from(def.table).upsert(dbRow).select().single();
+      const withTarget = getWriteTarget(def, { ...req.body, id });
+      const dbRow = toDatabaseRow(writeTable, withTarget.record, caller.validUuid, allowed);
+      const { data, error } = await client.from(writeTable).upsert(dbRow).select().single();
       if (error) return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
       recordAuditTrailEntry(req, {
         defaultAction: 'CREATE',
@@ -806,12 +876,14 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
       return res.json({ success: true, record: fromDatabaseRow(def.table, data || dbRow) });
     }
 
-    const merged = { ...fromDatabaseRow(def.table, existingRow), ...req.body, id };
-    const dbRow = toDatabaseRow(def.table, merged, caller.validUuid, allowed);
+    const merged = { ...fromDatabaseRow(writeTable, existingRow), ...req.body, id };
+    const withTarget = getWriteTarget(def, merged);
+    const dbRow = toDatabaseRow(writeTable, withTarget.record, caller.validUuid, allowed);
     delete dbRow.id;
     delete dbRow.created_by; // the creator never changes on update
+    delete dbRow.created_at; // creation timestamp never changes on update
 
-    const { data, error } = await client.from(def.table).update(dbRow).eq('id', id).select().single();
+    const { data, error } = await client.from(writeTable).update(dbRow).eq('id', id).select().single();
     if (error) {
       console.error(`[DB PUT /api/db/${req.params.entity}/${id}] ${error.message}`);
       return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
@@ -841,8 +913,9 @@ router.delete('/:entity/:id', async (req: Request, res: Response) => {
   if (!client) return;
 
   const { id } = req.params;
+  const writeTable = VIEW_WRITE_TARGETS[def.table]?.table || def.table;
   try {
-    const { data, error } = await client.from(def.table).delete().eq('id', id).select('id');
+    const { data, error } = await client.from(writeTable).delete().eq('id', id).select('id');
     if (error) {
       if (isMissingTableError(error)) return tableMissing(res, def.table);
       return res.status(500).json({ success: false, error: error.message });

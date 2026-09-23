@@ -573,6 +573,151 @@ CREATE TABLE IF NOT EXISTS public.table_schemas (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 30. IR Tracker (Incident Reports)
+CREATE TABLE IF NOT EXISTS public.ir_records (
+  id TEXT PRIMARY KEY,
+  site TEXT,
+  date TEXT,
+  su_name TEXT,
+  port_ref TEXT,
+  ir_summary TEXT,
+  incident_time TEXT,
+  in_for_1st_review TEXT,
+  ct_1st_review TEXT,
+  in_for_2nd_review TEXT,
+  ct_2nd_review TEXT,
+  submitted_to_crh TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  file_url TEXT,
+  data JSONB,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 31. Food Wastage Records
+CREATE TABLE IF NOT EXISTS public.food_wastage_records (
+  id TEXT PRIMARY KEY,
+  site TEXT,
+  date TEXT,
+  food_wastage TEXT,
+  quantity TEXT,
+  comments TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  file_url TEXT,
+  data JSONB,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 32. Daily Register Rooms (Room List & Static Inventory)
+CREATE TABLE IF NOT EXISTS public.daily_register_rooms (
+  id TEXT PRIMARY KEY,
+  hotel TEXT,
+  room_no TEXT,
+  floor TEXT,
+  room_type TEXT,
+  current_max_occupancy INT DEFAULT 0,
+  current_occupancy INT DEFAULT 0,
+  su_cohort TEXT,
+  bedspaces_available INT DEFAULT 0,
+  void_bedspaces INT DEFAULT 0,
+  void_reason TEXT,
+  size_sqm NUMERIC,
+  max_room_type TEXT,
+  potential_max_capacity INT DEFAULT 0,
+  steps_to_increase_capacity TEXT,
+  date TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  data JSONB,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 33. Daily Register Records (Occupancy & Resident Roster)
+CREATE TABLE IF NOT EXISTS public.daily_register_records (
+  id TEXT PRIMARY KEY,
+  hotel TEXT,
+  room_no TEXT,
+  floor TEXT,
+  room_makeup TEXT,
+  single_bed INT DEFAULT 0,
+  double_bed INT DEFAULT 0,
+  single_bunk INT DEFAULT 0,
+  double_bunk INT DEFAULT 0,
+  cot INT DEFAULT 0,
+  su_makeup TEXT,
+  port_ref TEXT,
+  name TEXT,
+  check_in_date TEXT,
+  contact_no TEXT,
+  email TEXT,
+  dob TEXT,
+  age INT,
+  age_group TEXT,
+  nationality TEXT,
+  language TEXT,
+  gender TEXT,
+  su_comments TEXT,
+  available_to_book TEXT DEFAULT 'No',
+  is_void TEXT DEFAULT 'No',
+  void_reason TEXT,
+  maintenance_date_from TEXT,
+  allocation_to_be_reviewed TEXT DEFAULT 'No',
+  occupied TEXT DEFAULT 'Yes',
+  register_date TEXT,
+  daily_occupancy JSONB DEFAULT '{}'::jsonb,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  data JSONB,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 34. New Arrivals Records
+CREATE TABLE IF NOT EXISTS public.new_arrivals_records (
+  id TEXT PRIMARY KEY,
+  port_reference TEXT,
+  name TEXT,
+  dob TEXT,
+  country TEXT,
+  language TEXT,
+  contact_number TEXT,
+  hotel TEXT,
+  room TEXT,
+  email TEXT,
+  aspen_card TEXT,
+  status TEXT DEFAULT 'Arrived',
+  attachments JSONB DEFAULT '[]'::jsonb,
+  data JSONB,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 35. Eviction Records
+CREATE TABLE IF NOT EXISTS public.eviction_records (
+  id TEXT PRIMARY KEY,
+  hotel TEXT,
+  room_no TEXT,
+  port_ref TEXT,
+  su_name TEXT,
+  notice_date TEXT,
+  eviction_date TEXT,
+  eviction_reason TEXT,
+  status TEXT DEFAULT 'Notice Issued',
+  notes TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  data JSONB,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- =====================================================================
 -- PART 3: ADDITIVE COLUMNS ON EXISTING TABLES
 -- Full-fidelity record copy. Nullable, so existing rows are unaffected and
@@ -654,7 +799,8 @@ BEGIN
     'documents', 'data_change_requests', 'password_audit_logs', 'email_notification_rules',
     'public_transport_records', 'compliance_records', 'gp_appointments', 'rfa_welfare_checks',
     'dispersal_records', 'booklet_collections', 'vcs_agencies', 'field_options',
-    'role_permissions', 'app_settings', 'table_schemas'
+    'role_permissions', 'app_settings', 'table_schemas', 'ir_records',
+    'food_wastage_records', 'daily_register_rooms', 'daily_register_records', 'new_arrivals_records', 'eviction_records'
   ]
   LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I', 'trg_' || t || '_updated_at', t);
@@ -701,6 +847,20 @@ CREATE INDEX IF NOT EXISTS idx_dispersal_site ON public.dispersal_records(site_n
 CREATE INDEX IF NOT EXISTS idx_booklets_hotel ON public.booklet_collections(hotel_name);
 CREATE INDEX IF NOT EXISTS idx_vcs_hotel ON public.vcs_agencies(hotel_name);
 CREATE INDEX IF NOT EXISTS idx_field_options_category ON public.field_options(category, sort_order);
+CREATE INDEX IF NOT EXISTS idx_ir_site ON public.ir_records(site);
+CREATE INDEX IF NOT EXISTS idx_ir_date ON public.ir_records(date);
+CREATE INDEX IF NOT EXISTS idx_ir_su_name ON public.ir_records(su_name);
+CREATE INDEX IF NOT EXISTS idx_food_wastage_site ON public.food_wastage_records(site);
+CREATE INDEX IF NOT EXISTS idx_food_wastage_date ON public.food_wastage_records(date);
+CREATE INDEX IF NOT EXISTS idx_reg_rooms_hotel ON public.daily_register_rooms(hotel);
+CREATE INDEX IF NOT EXISTS idx_reg_rooms_room_no ON public.daily_register_rooms(room_no);
+CREATE INDEX IF NOT EXISTS idx_reg_records_hotel ON public.daily_register_records(hotel);
+CREATE INDEX IF NOT EXISTS idx_reg_records_room_no ON public.daily_register_records(room_no);
+CREATE INDEX IF NOT EXISTS idx_reg_records_port_ref ON public.daily_register_records(port_ref);
+CREATE INDEX IF NOT EXISTS idx_arrivals_hotel ON public.new_arrivals_records(hotel);
+CREATE INDEX IF NOT EXISTS idx_arrivals_port_ref ON public.new_arrivals_records(port_reference);
+CREATE INDEX IF NOT EXISTS idx_evictions_hotel ON public.eviction_records(hotel);
+CREATE INDEX IF NOT EXISTS idx_evictions_port_ref ON public.eviction_records(port_ref);
 
 -- =====================================================================
 -- PART 7: ROW LEVEL SECURITY
@@ -726,6 +886,8 @@ DECLARE
     'email_notification_logs', 'public_transport_records', 'compliance_records',
     'gp_appointments', 'rfa_welfare_checks', 'dispersal_records', 'booklet_collections',
     'vcs_agencies', 'field_options', 'role_permissions', 'app_settings', 'table_schemas',
+    'ir_records', 'food_wastage_records', 'daily_register_rooms', 'daily_register_records',
+    'new_arrivals_records', 'eviction_records',
     -- legacy tables from 001_modules_migration.sql, kept for their data but locked down
     'audit_logs', 'food_records', 'laundry_records'
   ];
@@ -762,7 +924,8 @@ DECLARE
     'referrals', 'vulnerable_residents', 'challenging_behavior', 'maintenance_records',
     'spcd_records', 'sites', 'laundry_logs', 'hot_food_logs', 'escalations', 'documents',
     'data_change_requests', 'public_transport_records', 'compliance_records', 'gp_appointments',
-    'rfa_welfare_checks', 'dispersal_records', 'booklet_collections', 'vcs_agencies'
+    'rfa_welfare_checks', 'dispersal_records', 'booklet_collections', 'vcs_agencies', 'ir_records',
+    'food_wastage_records', 'daily_register_rooms', 'daily_register_records', 'new_arrivals_records', 'eviction_records'
   ];
   t TEXT;
 BEGIN

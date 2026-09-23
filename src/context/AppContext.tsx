@@ -33,7 +33,13 @@ import {
   SDVCSAgency,
   NotificationEventCode,
   NotificationRule,
-  EmailNotificationLog
+  EmailNotificationLog,
+  IRRecord,
+  FoodWastageRecord,
+  DailyRegisterRoom,
+  DailyRegisterRecord,
+  NewArrivalRecord,
+  EvictionRecord
 } from '../types';
 import {
   INITIAL_SITES,
@@ -331,7 +337,40 @@ interface AppContextType {
   deleteVCSAgency: (id: string) => void;
   resetVCSToDefault: () => void;
 
-  // 8. Finance Bills state
+  // 8. CRUD for IR Tracker (Incident Reports)
+  irRecords: IRRecord[];
+  addIRRecord: (record: Omit<IRRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateIRRecord: (id: string, updates: Partial<IRRecord>) => void;
+  deleteIRRecord: (id: string) => void;
+
+  // 9. CRUD for Food Wastage Tracker
+  foodWastageRecords: FoodWastageRecord[];
+  addFoodWastageRecord: (record: Omit<FoodWastageRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateFoodWastageRecord: (id: string, updates: Partial<FoodWastageRecord>) => void;
+  deleteFoodWastageRecord: (id: string) => void;
+
+  // 10. CRUD for Live Daily Registers
+  dailyRegisterRooms: DailyRegisterRoom[];
+  addDailyRegisterRoom: (record: Omit<DailyRegisterRoom, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateDailyRegisterRoom: (id: string, updates: Partial<DailyRegisterRoom>) => void;
+  deleteDailyRegisterRoom: (id: string) => void;
+
+  dailyRegisterRecords: DailyRegisterRecord[];
+  addDailyRegisterRecord: (record: Omit<DailyRegisterRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateDailyRegisterRecord: (id: string, updates: Partial<DailyRegisterRecord>) => void;
+  deleteDailyRegisterRecord: (id: string) => void;
+
+  newArrivalsRecords: NewArrivalRecord[];
+  addNewArrivalRecord: (record: Omit<NewArrivalRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateNewArrivalRecord: (id: string, updates: Partial<NewArrivalRecord>) => void;
+  deleteNewArrivalRecord: (id: string) => void;
+
+  evictionRecords: EvictionRecord[];
+  addEvictionRecord: (record: Omit<EvictionRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateEvictionRecord: (id: string, updates: Partial<EvictionRecord>) => void;
+  deleteEvictionRecord: (id: string) => void;
+
+  // 11. Finance Bills state
   financeBills: FinanceBill[];
   refreshFinanceBills: () => Promise<void>;
 
@@ -570,6 +609,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dispersalRecords, setDispersalRecords] = useState<DispersalRecord[]>([]);
   const [bookletRecords, setBookletRecords] = useState<BookletCollectionRecord[]>([]);
   const [vcsAgencies, setVcsAgencies] = useState<SDVCSAgency[]>(INITIAL_VCS_AGENCIES);
+  const [irRecords, setIrRecords] = useState<IRRecord[]>([]);
+  const [foodWastageRecords, setFoodWastageRecords] = useState<FoodWastageRecord[]>([]);
+  const [dailyRegisterRooms, setDailyRegisterRooms] = useState<DailyRegisterRoom[]>([]);
+  const [dailyRegisterRecords, setDailyRegisterRecords] = useState<DailyRegisterRecord[]>([]);
+  const [newArrivalsRecords, setNewArrivalsRecords] = useState<NewArrivalRecord[]>([]);
+  const [evictionRecords, setEvictionRecords] = useState<EvictionRecord[]>([]);
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
   const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>([]);
   const [users, setUsers] = useState<UserAccount[]>(() => INITIAL_USERS);
@@ -1189,6 +1234,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGpAppointmentRecords([]);
     setRfaWelfareRecords([]);
     setDispersalRecords([]);
+    setIrRecords([]);
+    setFoodWastageRecords([]);
+    setDailyRegisterRooms([]);
+    setDailyRegisterRecords([]);
+    setNewArrivalsRecords([]);
+    setEvictionRecords([]);
     setDataChangeRequests([]);
     setAuditLogs([]);
     setEmailNotificationLogs([]);
@@ -1370,6 +1421,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       { key: 'dispersal', entity: 'dispersal', label: 'Dispersal Sheet' },
       { key: 'booklets', entity: 'booklets', label: 'Booklets' },
       { key: 'vcsAgencies', entity: 'vcsAgencies', label: 'SD VCS Directory' },
+      { key: 'irRecords', entity: 'irRecords', label: 'IR Tracker' },
+      { key: 'foodWastage', entity: 'foodWastage', label: 'Food Wastage Tracker' },
+      { key: 'dailyRegisterRooms', entity: 'dailyRegisterRooms', label: 'Daily Register Rooms' },
+      { key: 'dailyRegisterRecords', entity: 'dailyRegisterRecords', label: 'Daily Register Records' },
+      { key: 'newArrivals', entity: 'newArrivals', label: 'New Arrivals' },
+      { key: 'evictions', entity: 'evictions', label: 'Evictions' },
       { key: 'requests', entity: 'requests', label: 'Requests & Approvals' },
       { key: 'fieldOptions', entity: 'fieldOptions', label: 'Field Options' },
       { key: 'rolePermissions', entity: 'rolePermissions', label: 'Roles & RBAC' },
@@ -1430,6 +1487,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setVcsAgencies(prev => (prev.length > 0 ? prev : INITIAL_VCS_AGENCIES));
         }
       });
+      apply<IRRecord>('irRecords', setIrRecords);
+      apply<FoodWastageRecord>('foodWastage', setFoodWastageRecords);
+      apply<DailyRegisterRoom>('dailyRegisterRooms', setDailyRegisterRooms);
+      apply<DailyRegisterRecord>('dailyRegisterRecords', setDailyRegisterRecords);
+      apply<NewArrivalRecord>('newArrivals', setNewArrivalsRecords);
+      apply<EvictionRecord>('evictions', setEvictionRecords);
       apply<DataChangeRequest>('requests', rows =>
         setDataChangeRequests([...rows].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))))
       );
@@ -3097,6 +3160,289 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [dispersalRecords, persistDelete, requestConfirmation, closeConfirmation]);
 
+  // --- CRUD: IR Tracker (ir_records) ---
+  const addIRRecord = useCallback((data: Omit<IRRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: IRRecord = {
+      ...data,
+      id: 'ir-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    const site = newRecord.site || 'Site';
+    setIrRecords(prev => [newRecord, ...prev]);
+    persistCreate('irRecords', 'Incident report', setIrRecords, newRecord, {
+      action: 'CREATE', module: 'IR Tracker', targetItem: `IR: ${newRecord.suName || newRecord.id}`, site,
+      details: `Created IR record for ${newRecord.suName || 'Service User'} at ${site}.`
+    });
+  }, [persistCreate]);
+
+  const updateIRRecord = useCallback((id: string, updates: Partial<IRRecord>) => {
+    const current = irRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<IRRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setIrRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('irRecords', 'IR changes', setIrRecords, current, changes, {
+      action: 'UPDATE', module: 'IR Tracker', targetItem: `IR: ${current.suName || current.id}`, site: current.site || 'Site',
+      details: `Updated IR record ${id}.`
+    });
+  }, [irRecords, persistUpdate]);
+
+  const deleteIRRecord = useCallback((id: string) => {
+    const current = irRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Incident Report',
+      message: `Are you sure you want to remove the incident report for ${current.suName || 'this record'}?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: async () => {
+        setIrRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('irRecords', 'IR deletion', setIrRecords, current, {
+          action: 'DELETE', module: 'IR Tracker', targetItem: `IR: ${current.suName || current.id}`, site: current.site || 'Site',
+          details: `Deleted IR record ${id}.`
+        });
+      }
+    });
+  }, [irRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- CRUD: Food Wastage Tracker (food_wastage_records) ---
+  const addFoodWastageRecord = useCallback((data: Omit<FoodWastageRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: FoodWastageRecord = {
+      ...data,
+      id: 'fw-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    const site = newRecord.site || 'Site';
+    setFoodWastageRecords(prev => [newRecord, ...prev]);
+    persistCreate('foodWastage', 'Food wastage log', setFoodWastageRecords, newRecord, {
+      action: 'CREATE', module: 'Food Wastage', targetItem: `Wastage: ${newRecord.foodWastage}`, site,
+      details: `Logged food wastage entry: ${newRecord.foodWastage} (${newRecord.quantity}) at ${site}.`
+    });
+  }, [persistCreate]);
+
+  const updateFoodWastageRecord = useCallback((id: string, updates: Partial<FoodWastageRecord>) => {
+    const current = foodWastageRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<FoodWastageRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setFoodWastageRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('foodWastage', 'Food wastage changes', setFoodWastageRecords, current, changes, {
+      action: 'UPDATE', module: 'Food Wastage', targetItem: `Wastage: ${current.foodWastage}`, site: current.site || 'Site',
+      details: `Updated food wastage log ${id}.`
+    });
+  }, [foodWastageRecords, persistUpdate]);
+
+  const deleteFoodWastageRecord = useCallback((id: string) => {
+    const current = foodWastageRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Food Wastage Record',
+      message: `Are you sure you want to remove the food wastage record for ${current.foodWastage}?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: async () => {
+        setFoodWastageRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('foodWastage', 'Food wastage deletion', setFoodWastageRecords, current, {
+          action: 'DELETE', module: 'Food Wastage', targetItem: `Wastage: ${current.foodWastage}`, site: current.site || 'Site',
+          details: `Deleted food wastage log ${id}.`
+        });
+      }
+    });
+  }, [foodWastageRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- CRUD: Daily Register Rooms (daily_register_rooms) ---
+  const addDailyRegisterRoom = useCallback((data: Omit<DailyRegisterRoom, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: DailyRegisterRoom = {
+      ...data,
+      id: 'room-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    const hotel = newRecord.hotel || 'Hotel';
+    setDailyRegisterRooms(prev => [newRecord, ...prev]);
+    persistCreate('dailyRegisterRooms', 'Room record', setDailyRegisterRooms, newRecord, {
+      action: 'CREATE', module: 'Live Daily Registers', targetItem: `Room: ${newRecord.roomNo}`, site: hotel,
+      details: `Added room ${newRecord.roomNo} at ${hotel}.`
+    });
+  }, [persistCreate]);
+
+  const updateDailyRegisterRoom = useCallback((id: string, updates: Partial<DailyRegisterRoom>) => {
+    const current = dailyRegisterRooms.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<DailyRegisterRoom> = { ...updates, updatedAt: new Date().toISOString() };
+    setDailyRegisterRooms(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('dailyRegisterRooms', 'Room changes', setDailyRegisterRooms, current, changes, {
+      action: 'UPDATE', module: 'Live Daily Registers', targetItem: `Room: ${current.roomNo}`, site: current.hotel || 'Hotel',
+      details: `Updated room ${current.roomNo}.`
+    });
+  }, [dailyRegisterRooms, persistUpdate]);
+
+  const deleteDailyRegisterRoom = useCallback((id: string) => {
+    const current = dailyRegisterRooms.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Room Record',
+      message: `Are you sure you want to delete room ${current.roomNo} from ${current.hotel}?`,
+      confirmLabel: 'Delete Room',
+      isDanger: true,
+      onConfirm: async () => {
+        setDailyRegisterRooms(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('dailyRegisterRooms', 'Room deletion', setDailyRegisterRooms, current, {
+          action: 'DELETE', module: 'Live Daily Registers', targetItem: `Room: ${current.roomNo}`, site: current.hotel || 'Hotel',
+          details: `Deleted room ${current.roomNo}.`
+        });
+      }
+    });
+  }, [dailyRegisterRooms, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- CRUD: Daily Register Records (daily_register_records) ---
+  const addDailyRegisterRecord = useCallback((data: Omit<DailyRegisterRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: DailyRegisterRecord = {
+      ...data,
+      id: 'dr-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    const hotel = newRecord.hotel || 'Hotel';
+    setDailyRegisterRecords(prev => [newRecord, ...prev]);
+    persistCreate('dailyRegisterRecords', 'Register entry', setDailyRegisterRecords, newRecord, {
+      action: 'CREATE', module: 'Live Daily Registers', targetItem: `Register: ${newRecord.name} (Room ${newRecord.roomNo})`, site: hotel,
+      details: `Logged register occupancy for ${newRecord.name} in Room ${newRecord.roomNo}.`
+    });
+  }, [persistCreate]);
+
+  const updateDailyRegisterRecord = useCallback((id: string, updates: Partial<DailyRegisterRecord>) => {
+    const current = dailyRegisterRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<DailyRegisterRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setDailyRegisterRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('dailyRegisterRecords', 'Register changes', setDailyRegisterRecords, current, changes, {
+      action: 'UPDATE', module: 'Live Daily Registers', targetItem: `Register: ${current.name}`, site: current.hotel || 'Hotel',
+      details: `Updated daily register record for ${current.name}.`
+    });
+  }, [dailyRegisterRecords, persistUpdate]);
+
+  const deleteDailyRegisterRecord = useCallback((id: string) => {
+    const current = dailyRegisterRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Register Entry',
+      message: `Are you sure you want to remove ${current.name} (Room ${current.roomNo}) from the daily register?`,
+      confirmLabel: 'Delete Entry',
+      isDanger: true,
+      onConfirm: async () => {
+        setDailyRegisterRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('dailyRegisterRecords', 'Register deletion', setDailyRegisterRecords, current, {
+          action: 'DELETE', module: 'Live Daily Registers', targetItem: `Register: ${current.name}`, site: current.hotel || 'Hotel',
+          details: `Deleted daily register entry ${id}.`
+        });
+      }
+    });
+  }, [dailyRegisterRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- CRUD: New Arrivals Records (new_arrivals_records) ---
+  const addNewArrivalRecord = useCallback((data: Omit<NewArrivalRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: NewArrivalRecord = {
+      ...data,
+      id: 'arr-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    const hotel = newRecord.hotel || 'Hotel';
+    setNewArrivalsRecords(prev => [newRecord, ...prev]);
+    persistCreate('newArrivals', 'New arrival log', setNewArrivalsRecords, newRecord, {
+      action: 'CREATE', module: 'Live Daily Registers', targetItem: `Arrival: ${newRecord.name}`, site: hotel,
+      details: `Recorded arrival of ${newRecord.name} (Port Ref: ${newRecord.portReference}) at ${hotel}.`
+    });
+  }, [persistCreate]);
+
+  const updateNewArrivalRecord = useCallback((id: string, updates: Partial<NewArrivalRecord>) => {
+    const current = newArrivalsRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<NewArrivalRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setNewArrivalsRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('newArrivals', 'Arrival changes', setNewArrivalsRecords, current, changes, {
+      action: 'UPDATE', module: 'Live Daily Registers', targetItem: `Arrival: ${current.name}`, site: current.hotel || 'Hotel',
+      details: `Updated arrival record ${id}.`
+    });
+  }, [newArrivalsRecords, persistUpdate]);
+
+  const deleteNewArrivalRecord = useCallback((id: string) => {
+    const current = newArrivalsRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Arrival Record',
+      message: `Are you sure you want to remove the arrival record for ${current.name}?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: async () => {
+        setNewArrivalsRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('newArrivals', 'Arrival deletion', setNewArrivalsRecords, current, {
+          action: 'DELETE', module: 'Live Daily Registers', targetItem: `Arrival: ${current.name}`, site: current.hotel || 'Hotel',
+          details: `Deleted arrival record ${id}.`
+        });
+      }
+    });
+  }, [newArrivalsRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- CRUD: Eviction Records (eviction_records) ---
+  const addEvictionRecord = useCallback((data: Omit<EvictionRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: EvictionRecord = {
+      ...data,
+      id: 'evict-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    const hotel = newRecord.hotel || 'Hotel';
+    setEvictionRecords(prev => [newRecord, ...prev]);
+    persistCreate('evictions', 'Eviction record', setEvictionRecords, newRecord, {
+      action: 'CREATE', module: 'Live Daily Registers', targetItem: `Eviction: ${newRecord.suName}`, site: hotel,
+      details: `Recorded eviction notice for ${newRecord.suName} at ${hotel}.`
+    });
+  }, [persistCreate]);
+
+  const updateEvictionRecord = useCallback((id: string, updates: Partial<EvictionRecord>) => {
+    const current = evictionRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<EvictionRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setEvictionRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('evictions', 'Eviction changes', setEvictionRecords, current, changes, {
+      action: 'UPDATE', module: 'Live Daily Registers', targetItem: `Eviction: ${current.suName}`, site: current.hotel || 'Hotel',
+      details: `Updated eviction record ${id}.`
+    });
+  }, [evictionRecords, persistUpdate]);
+
+  const deleteEvictionRecord = useCallback((id: string) => {
+    const current = evictionRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Eviction Record',
+      message: `Are you sure you want to remove the eviction record for ${current.suName}?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: async () => {
+        setEvictionRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('evictions', 'Eviction deletion', setEvictionRecords, current, {
+          action: 'DELETE', module: 'Live Daily Registers', targetItem: `Eviction: ${current.suName}`, site: current.hotel || 'Hotel',
+          details: `Deleted eviction record ${id}.`
+        });
+      }
+    });
+  }, [evictionRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+
   /**
    * Replace a whole module with its bundled master dataset: records not in the
    * dataset are deleted, the dataset is upserted. On failure the live data is
@@ -3506,7 +3852,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       escalations, documents, maintenance: maintenanceRecords, spcd: spcdRecords,
       publicTransport: publicTransportRecords, compliance: complianceRecords,
       gpAppointments: gpAppointmentRecords, rfaWelfare: rfaWelfareRecords,
-      dispersal: dispersalRecords, booklets: bookletRecords, vcsAgencies,
+      dispersal: dispersalRecords, booklets: bookletRecords, vcsAgencies, irRecords,
+      foodWastage: foodWastageRecords, dailyRegisterRooms, dailyRegisterRecords, newArrivals: newArrivalsRecords, evictions: evictionRecords,
       requests: dataChangeRequests, userGroups, fieldOptions,
       rolePermissions: Object.entries(rolePermissions).map(([role, perms]) => ({ id: role, role, ...perms })),
       appSettings: [{ id: 'global', value: settings }]
@@ -3514,7 +3861,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }), [
     authProfile, currentUserName, sites, referrals, vulnerableSUs, challengingSUs, laundryRecords, propertyLaundryLogs,
     foodRecords, foodVendorBuffetLogs, escalations, documents, maintenanceRecords, spcdRecords, publicTransportRecords,
-    complianceRecords, gpAppointmentRecords, rfaWelfareRecords, dispersalRecords, bookletRecords, vcsAgencies,
+    complianceRecords, gpAppointmentRecords, rfaWelfareRecords, dispersalRecords, bookletRecords, vcsAgencies, irRecords,
+    foodWastageRecords, dailyRegisterRooms, dailyRegisterRecords, newArrivalsRecords, evictionRecords,
     dataChangeRequests, userGroups, fieldOptions, rolePermissions, settings
   ]);
 
@@ -4061,6 +4409,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateVCSAgency,
       deleteVCSAgency,
       resetVCSToDefault,
+      irRecords,
+      addIRRecord,
+      updateIRRecord,
+      deleteIRRecord,
+      foodWastageRecords,
+      addFoodWastageRecord,
+      updateFoodWastageRecord,
+      deleteFoodWastageRecord,
+      dailyRegisterRooms,
+      addDailyRegisterRoom,
+      updateDailyRegisterRoom,
+      deleteDailyRegisterRoom,
+      dailyRegisterRecords,
+      addDailyRegisterRecord,
+      updateDailyRegisterRecord,
+      deleteDailyRegisterRecord,
+      newArrivalsRecords,
+      addNewArrivalRecord,
+      updateNewArrivalRecord,
+      deleteNewArrivalRecord,
+      evictionRecords,
+      addEvictionRecord,
+      updateEvictionRecord,
+      deleteEvictionRecord,
       financeBills,
       refreshFinanceBills,
       properties,

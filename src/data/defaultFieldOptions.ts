@@ -336,6 +336,13 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'CreditCard'
   },
   {
+    key: 'crhSubmissionStatuses',
+    name: 'CRH Submission Statuses',
+    department: 'Operations & Governance',
+    description: 'Submission and approval status tracking for CRH incident reports',
+    iconName: 'ClipboardList'
+  },
+  {
     key: 'councils',
     name: 'Responsible Councils & LAs',
     department: 'Operations & Governance',
@@ -657,5 +664,12 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-fin-att-5', category: 'financeAttachmentTypes', label: 'Other Document', value: 'other', color: 'slate', description: 'Other supporting finance document', isActive: true, isSystem: true, order: 5 },
   // 44. Finance vendor statuses
   { id: 'opt-fin-vendor-1', category: 'financeVendorStatuses', label: 'Active', value: 'active', color: 'emerald', description: 'Supplier is available for finance records', isActive: true, isSystem: true, order: 1 },
-  { id: 'opt-fin-vendor-2', category: 'financeVendorStatuses', label: 'Inactive', value: 'inactive', color: 'slate', description: 'Supplier is retained but not currently available', isActive: true, isSystem: true, order: 2 }
+  { id: 'opt-fin-vendor-2', category: 'financeVendorStatuses', label: 'Inactive', value: 'inactive', color: 'slate', description: 'Supplier is retained but not currently available', isActive: true, isSystem: true, order: 2 },
+  // 45. CRH Submission Statuses
+  { id: 'opt-crh-1', category: 'crhSubmissionStatuses', label: 'Pending', value: 'Pending', color: 'amber', description: 'Awaiting submission to CRH', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-crh-2', category: 'crhSubmissionStatuses', label: 'Submitted', value: 'Submitted', color: 'blue', description: 'Submitted to CRH for review', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-crh-3', category: 'crhSubmissionStatuses', label: 'Under Review', value: 'Under Review', color: 'purple', description: 'Currently under review by CRH', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-crh-4', category: 'crhSubmissionStatuses', label: 'CRH Approved', value: 'CRH Approved', color: 'emerald', description: 'Approved by CRH', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-crh-5', category: 'crhSubmissionStatuses', label: 'CRH Rejected', value: 'CRH Rejected', color: 'red', description: 'Rejected or returned by CRH', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-crh-6', category: 'crhSubmissionStatuses', label: 'Not Applicable', value: 'Not Applicable', color: 'slate', description: 'CRH submission not required', isActive: true, isSystem: true, order: 6 }
 ];

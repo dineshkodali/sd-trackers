@@ -30,15 +30,57 @@ import {
   HandHeart,
   BellRing,
   Receipt,
-  FileCheck,
   CreditCard,
   Truck,
   Scale,
   Building2,
+  ClipboardList,
+  Trash2,
   X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from './Logo';
+
+interface NavItemProps {
+  id: string;
+  page: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor?: string;
+  badge?: number | string | null;
+  badgeClass?: string;
+  active: boolean;
+  onClick: (page: string) => void;
+  extraBadge?: React.ReactNode;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ 
+  id, page, label, icon: Icon, iconColor, badge, badgeClass, active, onClick, extraBadge
+}) => (
+  <button
+    id={id}
+    type="button"
+    onClick={() => onClick(page)}
+    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
+      active ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
+    }`}
+  >
+    <div className="flex items-center gap-2.5 truncate">
+      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : iconColor || 'text-neutral-600'}`} />
+      <span className="truncate">{label}</span>
+    </div>
+    <div className="flex items-center gap-1 shrink-0 ml-1.5">
+      {extraBadge}
+      {badge !== undefined && badge !== null && badge !== 0 && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+          active ? 'bg-white/20 text-white' : badgeClass || 'bg-[#eef3f7] text-[#0f766e]'
+        }`}>
+          {badge}
+        </span>
+      )}
+    </div>
+  </button>
+);
 
 export const Sidebar: React.FC = () => {
   const { 
@@ -59,8 +101,12 @@ export const Sidebar: React.FC = () => {
     gpAppointmentRecords,
     rfaWelfareRecords,
     dispersalRecords,
+    evictionRecords,
     bookletRecords,
     vcsAgencies,
+    irRecords,
+    foodWastageRecords,
+    dailyRegisterRecords,
     notificationRules,
     canManageSettings,
     canManageRoles,
@@ -88,13 +134,10 @@ export const Sidebar: React.FC = () => {
 
   const openReferrals = referrals.filter(r => r.status !== 'Archived').length;
   const archivedReferrals = referrals.filter(r => r.status === 'Archived').length;
-
   const openVulnerable = vulnerableSUs.filter(v => v.status !== 'Archived').length;
   const archivedVulnerable = vulnerableSUs.filter(v => v.status === 'Archived').length;
-
   const openChallenging = challengingSUs.filter(c => c.status !== 'Archived').length;
   const archivedChallenging = challengingSUs.filter(c => c.status === 'Archived').length;
-
   const activeEscalations = escalations.filter(e => e.status !== 'Resolved').length;
   const openMaintenance = maintenanceRecords.filter(m => m.defectStatus !== 'Completed').length;
   const cat1Count = maintenanceRecords.filter(m => m.priority === 'CAT 1' && m.defectStatus !== 'Completed').length;
@@ -115,10 +158,13 @@ export const Sidebar: React.FC = () => {
   const deliveryNotesCount = scopedBills.filter(b => b.billType === 'delivery_note').length;
   const financeApprovalsCount = scopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length;
 
-  const isSuperAdmin = currentUserRole === 'Super Admin';
   const isAdminOrSuperAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
-
   const isNavActive = (page: string) => activePage === page;
+
+  const handleNavClick = (pageId: string) => {
+    setActivePage(pageId as any);
+    if (setIsMobileSidebarOpen) setIsMobileSidebarOpen(false);
+  };
 
   return (
     <>
@@ -141,7 +187,7 @@ export const Sidebar: React.FC = () => {
           ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        {/* Mobile-Only Drawer Header with Logo & Close Button */}
+        {/* Mobile Header with Logo & Close Button */}
         <div className="flex lg:hidden items-center justify-between px-3.5 py-3 border-b border-[#e5e5e5] bg-white">
           <div className="flex items-center gap-2">
             <Logo size="sm" />
@@ -152,811 +198,220 @@ export const Sidebar: React.FC = () => {
             onClick={() => setIsMobileSidebarOpen(false)}
             className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer"
             aria-label="Close navigation menu"
-            title="Close menu"
           >
             <X className="w-5 h-5 text-neutral-600" />
           </button>
         </div>
 
-        {/* Navigation List */}
+        {/* Navigation List - Old Menu Model with Flat Sections */}
         <nav className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto custom-scrollbar text-xs">
-        
-        {/* Section: Overview */}
-        <div className="space-y-0.5">
-          <button
-            id="nav-dashboard"
-            onClick={() => setActivePage('dashboard')}
-            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-md transition-all text-left ${
-              isNavActive('dashboard')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb] hover:text-[#111111]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Compass className={`w-4 h-4 ${isNavActive('dashboard') ? 'text-white' : 'text-[#0d9488]'}`} />
-              <span>Dashboard</span>
-            </div>
-            {isNavActive('dashboard') ? (
-              <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded font-semibold">
-                ACTIVE
-              </span>
-            ) : null}
-          </button>
-        </div>
-
-        {/* Section: Safeguarding Records */}
-        <div className="space-y-1">
-          <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-            Safeguarding
+          
+          {/* Section: Overview */}
+          <div className="space-y-1">
+            <NavItem id="nav-dashboard" page="dashboard" label="Dashboard" icon={Compass} iconColor="text-[#0d9488]" badge={isNavActive('dashboard') ? 'ACTIVE' : null} badgeClass="bg-white/20 text-white text-[9px] font-semibold" active={isNavActive('dashboard')} onClick={handleNavClick} />
+            <NavItem id="nav-daily-registers" page="dailyRegisters" label="Live Daily Registers" icon={Building2} iconColor="text-blue-600" badge={dailyRegisterRecords.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('dailyRegisters')} onClick={handleNavClick} />
           </div>
 
-          {/* SG Referrals */}
-          <div>
-            <div className="flex items-center">
-              <button
-                id="nav-referrals-main"
-                onClick={() => setActivePage('referrals')}
-                className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('referrals')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <FolderHeart className={`w-4 h-4 ${isNavActive('referrals') ? 'text-white' : 'text-teal-600'}`} />
-                  <span>SG Referrals</span>
-                </div>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                  isNavActive('referrals') ? 'bg-white/20 text-white' : 'bg-[#eef3f7] text-[#0f766e]'
-                }`}>
-                  {openReferrals}
-                </span>
-              </button>
-              <button
-                onClick={(e) => toggleGroup('referrals', e)}
-                title="Toggle Archive View"
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5"
-              >
-                {openGroups.referrals ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-              </button>
+          {/* Section: Safeguarding Records */}
+          <div className="space-y-1">
+            <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
+              Safeguarding
             </div>
 
-            {openGroups.referrals && (
-              <div className="pl-6 pt-0.5 space-y-0.5">
+            {/* SG Referrals with Drawer */}
+            <div>
+              <div className="flex items-center">
                 <button
-                  id="nav-referrals-archive"
-                  onClick={() => setActivePage('referralsArchive')}
-                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[11px] transition-all ${
-                    isNavActive('referralsArchive')
-                      ? 'bg-[#0d9488] text-white font-medium'
-                      : 'text-[#555555] hover:bg-[#f0efeb]'
+                  id="nav-referrals-main"
+                  onClick={() => handleNavClick('referrals')}
+                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                    isNavActive('referrals') ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <FolderArchive className="w-3.5 h-3.5 opacity-70" />
-                    <span>Archived Referrals</span>
+                  <div className="flex items-center gap-2.5 truncate">
+                    <FolderHeart className={`w-4 h-4 shrink-0 ${isNavActive('referrals') ? 'text-white' : 'text-teal-600'}`} />
+                    <span className="truncate">SG Referrals</span>
                   </div>
-                  {archivedReferrals > 0 && (
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded ${
-                      isNavActive('referralsArchive') ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-700'
-                    }`}>
-                      {archivedReferrals}
-                    </span>
-                  )}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ml-1.5 ${
+                    isNavActive('referrals') ? 'bg-white/20 text-white' : 'bg-[#eef3f7] text-[#0f766e]'
+                  }`}>
+                    {openReferrals}
+                  </span>
                 </button>
-              </div>
-            )}
-          </div>
-
-          {/* Vulnerable SUs */}
-          <div>
-            <div className="flex items-center">
-              <button
-                id="nav-vulnerable-main"
-                onClick={() => setActivePage('vulnerable')}
-                className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('vulnerable')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <HeartHandshake className={`w-4 h-4 ${isNavActive('vulnerable') ? 'text-white' : 'text-amber-600'}`} />
-                  <span className="truncate">Vulnerable SUs</span>
-                </div>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                  isNavActive('vulnerable') ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-900 border border-amber-200'
-                }`}>
-                  {openVulnerable}
-                </span>
-              </button>
-              <button
-                onClick={(e) => toggleGroup('vulnerable', e)}
-                title="Toggle Archive View"
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5"
-              >
-                {openGroups.vulnerable ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-
-            {openGroups.vulnerable && (
-              <div className="pl-6 pt-0.5 space-y-0.5">
                 <button
-                  id="nav-vulnerable-archive"
-                  onClick={() => setActivePage('vulnerableArchive')}
-                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[11px] transition-all ${
-                    isNavActive('vulnerableArchive')
-                      ? 'bg-[#0d9488] text-white font-medium'
-                      : 'text-[#555555] hover:bg-[#f0efeb]'
-                  }`}
+                  onClick={(e) => toggleGroup('referrals', e)}
+                  title="Toggle Archive View"
+                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5 cursor-pointer"
                 >
-                  <div className="flex items-center gap-2">
-                    <FolderArchive className="w-3.5 h-3.5 opacity-70" />
-                    <span>Archived Vulnerable</span>
-                  </div>
-                  {archivedVulnerable > 0 && (
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded ${
-                      isNavActive('vulnerableArchive') ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-700'
-                    }`}>
-                      {archivedVulnerable}
-                    </span>
-                  )}
+                  {openGroups.referrals ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
               </div>
-            )}
-          </div>
 
-          {/* Challenging SUs */}
-          <div>
-            <div className="flex items-center">
-              <button
-                id="nav-challenging-main"
-                onClick={() => setActivePage('challenging')}
-                className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('challenging')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <AlertTriangle className={`w-4 h-4 ${isNavActive('challenging') ? 'text-white' : 'text-purple-600'}`} />
-                  <span>Challenging SUs</span>
+              {openGroups.referrals && (
+                <div className="pl-6 pt-0.5 space-y-0.5">
+                  <NavItem id="nav-referrals-archive" page="referralsArchive" label="Archived Referrals" icon={FolderArchive} iconColor="text-neutral-500" badge={archivedReferrals || null} badgeClass="bg-neutral-200 text-neutral-700" active={isNavActive('referralsArchive')} onClick={handleNavClick} />
                 </div>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                  isNavActive('challenging') ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-900 border border-purple-200'
-                }`}>
-                  {openChallenging}
-                </span>
-              </button>
-              <button
-                onClick={(e) => toggleGroup('challenging', e)}
-                title="Toggle Archive View"
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5"
-              >
-                {openGroups.challenging ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-
-            {openGroups.challenging && (
-              <div className="pl-6 pt-0.5 space-y-0.5">
-                <button
-                  id="nav-challenging-archive"
-                  onClick={() => setActivePage('challengingArchive')}
-                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[11px] transition-all ${
-                    isNavActive('challengingArchive')
-                      ? 'bg-[#0d9488] text-white font-medium'
-                      : 'text-[#555555] hover:bg-[#f0efeb]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <FolderArchive className="w-3.5 h-3.5 opacity-70" />
-                    <span>Archived Incidents</span>
-                  </div>
-                  {archivedChallenging > 0 && (
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded ${
-                      isNavActive('challengingArchive') ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-700'
-                    }`}>
-                      {archivedChallenging}
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* RFA Welfare Checks */}
-          <button
-            id="nav-rfa-welfare"
-            onClick={() => setActivePage('rfaWelfare')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('rfaWelfare')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <UserCheck className={`w-4 h-4 ${isNavActive('rfaWelfare') ? 'text-white' : 'text-rose-600'}`} />
-              <span>RFA Welfare Checks</span>
-            </div>
-            {rfaWelfareRecords.length > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('rfaWelfare') ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-800'
-              }`}>
-                {rfaWelfareRecords.length}
-              </span>
-            )}
-          </button>
-
-          {/* GP Appointments */}
-          <button
-            id="nav-gp-appointments"
-            onClick={() => setActivePage('gpAppointments')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('gpAppointments')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Stethoscope className={`w-4 h-4 ${isNavActive('gpAppointments') ? 'text-white' : 'text-blue-600'}`} />
-              <span>GP Appointments</span>
-            </div>
-            {gpAppointmentRecords.length > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('gpAppointments') ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-800'
-              }`}>
-                {gpAppointmentRecords.length}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Section: Facilities & Welfare */}
-        <div className="space-y-1">
-          <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-            Facilities & Welfare
-          </div>
-
-          {/* Maintenance Tracker */}
-          <button
-            id="nav-maintenance"
-            onClick={() => setActivePage('maintenance')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('maintenance')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <HardHat className={`w-4 h-4 ${isNavActive('maintenance') ? 'text-white' : 'text-amber-700'}`} />
-              <span>Maintenance Tracker</span>
-            </div>
-            <div className="flex items-center gap-1">
-              {cat1Count > 0 && (
-                <span className="text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.2 rounded animate-pulse">
-                  {cat1Count} CAT 1
-                </span>
               )}
-              {openMaintenance > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                  isNavActive('maintenance') ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-900 border border-amber-200'
-                }`}>
-                  {openMaintenance}
+            </div>
+
+            {/* Vulnerable SUs with Drawer */}
+            <div>
+              <div className="flex items-center">
+                <button
+                  id="nav-vulnerable-main"
+                  onClick={() => handleNavClick('vulnerable')}
+                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                    isNavActive('vulnerable') ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    <HeartHandshake className={`w-4 h-4 shrink-0 ${isNavActive('vulnerable') ? 'text-white' : 'text-amber-600'}`} />
+                    <span className="truncate">Vulnerable SUs</span>
+                  </div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ml-1.5 ${
+                    isNavActive('vulnerable') ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-900 border border-amber-200'
+                  }`}>
+                    {openVulnerable}
+                  </span>
+                </button>
+                <button
+                  onClick={(e) => toggleGroup('vulnerable', e)}
+                  title="Toggle Archive View"
+                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5 cursor-pointer"
+                >
+                  {openGroups.vulnerable ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {openGroups.vulnerable && (
+                <div className="pl-6 pt-0.5 space-y-0.5">
+                  <NavItem id="nav-vulnerable-archive" page="vulnerableArchive" label="Archived Vulnerable" icon={FolderArchive} iconColor="text-neutral-500" badge={archivedVulnerable || null} badgeClass="bg-neutral-200 text-neutral-700" active={isNavActive('vulnerableArchive')} onClick={handleNavClick} />
+                </div>
+              )}
+            </div>
+
+            {/* Challenging SUs with Drawer */}
+            <div>
+              <div className="flex items-center">
+                <button
+                  id="nav-challenging-main"
+                  onClick={() => handleNavClick('challenging')}
+                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                    isNavActive('challenging') ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    <AlertTriangle className={`w-4 h-4 shrink-0 ${isNavActive('challenging') ? 'text-white' : 'text-purple-600'}`} />
+                    <span className="truncate">Challenging SUs</span>
+                  </div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ml-1.5 ${
+                    isNavActive('challenging') ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-900 border border-purple-200'
+                  }`}>
+                    {openChallenging}
+                  </span>
+                </button>
+                <button
+                  onClick={(e) => toggleGroup('challenging', e)}
+                  title="Toggle Archive View"
+                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5 cursor-pointer"
+                >
+                  {openGroups.challenging ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {openGroups.challenging && (
+                <div className="pl-6 pt-0.5 space-y-0.5">
+                  <NavItem id="nav-challenging-archive" page="challengingArchive" label="Archived Incidents" icon={FolderArchive} iconColor="text-neutral-500" badge={archivedChallenging || null} badgeClass="bg-neutral-200 text-neutral-700" active={isNavActive('challengingArchive')} onClick={handleNavClick} />
+                </div>
+              )}
+            </div>
+
+            <NavItem id="nav-rfa-welfare" page="rfaWelfare" label="RFA Welfare Checks" icon={UserCheck} iconColor="text-rose-600" badge={rfaWelfareRecords.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('rfaWelfare')} onClick={handleNavClick} />
+            <NavItem id="nav-gp-appointments" page="gpAppointments" label="GP Appointments" icon={Stethoscope} iconColor="text-blue-600" badge={gpAppointmentRecords.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('gpAppointments')} onClick={handleNavClick} />
+          </div>
+
+          {/* Section: Facilities & Welfare */}
+          <div className="space-y-1">
+            <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
+              Facilities & Welfare
+            </div>
+
+            <NavItem id="nav-maintenance" page="maintenance" label="Maintenance Tracker" icon={HardHat} iconColor="text-amber-700" extraBadge={cat1Count > 0 ? (<span className="text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded animate-pulse">{cat1Count} CAT 1</span>) : null} badge={openMaintenance || null} badgeClass="bg-amber-50 text-amber-900 border border-amber-200" active={isNavActive('maintenance')} onClick={handleNavClick} />
+            <NavItem id="nav-spcd" page="spcd" label="SPCD Tracker" icon={ScrollText} iconColor="text-emerald-700" badge={spcdCount || null} badgeClass="bg-emerald-50 text-emerald-900 border border-emerald-200" active={isNavActive('spcd')} onClick={handleNavClick} />
+            <NavItem id="nav-ir-tracker" page="irTracker" label="IR Tracker" icon={ClipboardList} iconColor="text-teal-700" badge={irRecords.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('irTracker')} onClick={handleNavClick} />
+            <NavItem id="nav-transport" page="publicTransport" label="Public Transport" icon={Bus} iconColor="text-teal-700" badge={publicTransportRecords.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('publicTransport')} onClick={handleNavClick} />
+            <NavItem id="nav-dispersal" page="dispersal" label="Dispersal Sheet" icon={PlaneTakeoff} iconColor="text-indigo-700" badge={(dispersalRecords.length + (evictionRecords?.length || 0)) || null} badgeClass="bg-indigo-50 text-indigo-800" active={isNavActive('dispersal')} onClick={handleNavClick} />
+            <NavItem id="nav-booklets" page="booklets" label="Booklet Inventory" icon={BookOpen} iconColor="text-amber-700" badge={bookletRecords.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('booklets')} onClick={handleNavClick} />
+            <NavItem id="nav-laundry" page="laundry" label="Laundry Support" icon={Waves} iconColor="text-cyan-700" active={isNavActive('laundry')} onClick={handleNavClick} />
+            <NavItem id="nav-food" page="food" label="Hot Meals Tracker" icon={Soup} iconColor="text-emerald-600" active={isNavActive('food')} onClick={handleNavClick} />
+            <NavItem id="nav-food-wastage" page="foodWastage" label="Food Wastage Tracker" icon={Trash2} iconColor="text-amber-700" badge={foodWastageRecords.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodWastage')} onClick={handleNavClick} />
+            <NavItem id="nav-escalations" page="escalations" label="Escalations Log" icon={Siren} iconColor="text-red-600" badge={activeEscalations || null} badgeClass="bg-red-100 text-red-800 font-bold" active={isNavActive('escalations')} onClick={handleNavClick} />
+            <NavItem id="nav-documents" page="documents" label="Proof Documents" icon={FolderLock} iconColor="text-slate-600" active={isNavActive('documents')} onClick={handleNavClick} />
+          </div>
+
+          {/* Section: Finance Management */}
+          <div className="space-y-1">
+            <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider flex items-center justify-between">
+              <span>Finance</span>
+              {isFinanceUser() && (
+                <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">
+                  CENTRAL
                 </span>
               )}
             </div>
-          </button>
 
-          {/* SPCD Tracker */}
-          <button
-            id="nav-spcd"
-            onClick={() => setActivePage('spcd')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('spcd')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <ScrollText className={`w-4 h-4 ${isNavActive('spcd') ? 'text-white' : 'text-emerald-700'}`} />
-              <span>SPCD Tracker</span>
-            </div>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-              isNavActive('spcd') ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-            }`}>
-              {spcdCount}
-            </span>
-          </button>
-
-          {/* Public Transport Tracker */}
-          <button
-            id="nav-transport"
-            onClick={() => setActivePage('publicTransport')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('publicTransport')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Bus className={`w-4 h-4 ${isNavActive('publicTransport') ? 'text-white' : 'text-teal-700'}`} />
-              <span>Public Transport</span>
-            </div>
-            {publicTransportRecords.length > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('publicTransport') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
-              }`}>
-                {publicTransportRecords.length}
-              </span>
-            )}
-          </button>
-
-          {/* Dispersal Sheet */}
-          <button
-            id="nav-dispersal"
-            onClick={() => setActivePage('dispersal')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('dispersal')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <PlaneTakeoff className={`w-4 h-4 ${isNavActive('dispersal') ? 'text-white' : 'text-indigo-700'}`} />
-              <span>Dispersal Sheet</span>
-            </div>
-            {dispersalRecords.length > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('dispersal') ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-800'
-              }`}>
-                {dispersalRecords.length}
-              </span>
-            )}
-          </button>
-
-          {/* Booklets to be Collected */}
-          <button
-            id="nav-booklets"
-            onClick={() => setActivePage('booklets')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('booklets')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <BookOpen className={`w-4 h-4 ${isNavActive('booklets') ? 'text-white' : 'text-amber-700'}`} />
-              <span>Booklet Inventory</span>
-            </div>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-              isNavActive('booklets') ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-800'
-            }`}>
-              {bookletRecords.length}
-            </span>
-          </button>
-
-          {/* Laundry Support */}
-          <button
-            id="nav-laundry"
-            onClick={() => setActivePage('laundry')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('laundry')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Waves className={`w-4 h-4 ${isNavActive('laundry') ? 'text-white' : 'text-cyan-700'}`} />
-              <span>Laundry Support</span>
-            </div>
-          </button>
-
-          {/* Hot Food Tracker */}
-          <button
-            id="nav-food"
-            onClick={() => setActivePage('food')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('food')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Soup className={`w-4 h-4 ${isNavActive('food') ? 'text-white' : 'text-emerald-600'}`} />
-              <span>Hot Meals Tracker</span>
-            </div>
-          </button>
-
-          {/* Escalations Log */}
-          <button
-            id="nav-escalations"
-            onClick={() => setActivePage('escalations')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('escalations')
-                ? 'bg-red-600 text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Siren className={`w-4 h-4 ${isNavActive('escalations') ? 'text-white' : 'text-red-600'}`} />
-              <span>Escalations Log</span>
-            </div>
-            {activeEscalations > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                isNavActive('escalations') ? 'bg-white/20 text-white' : 'bg-red-100 text-red-800'
-              }`}>
-                {activeEscalations}
-              </span>
-            )}
-          </button>
-
-          {/* Documents */}
-          <button
-            id="nav-documents"
-            onClick={() => setActivePage('documents')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('documents')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <FolderLock className={`w-4 h-4 ${isNavActive('documents') ? 'text-white' : 'text-slate-600'}`} />
-              <span>Proof Documents</span>
-            </div>
-          </button>
-        </div>
-
-        {/* Section: Finance Management */}
-        <div className="space-y-1">
-          <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider flex items-center justify-between">
-            <span>Finance</span>
-            {isFinanceUser() && (
-              <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded font-semibold border border-emerald-200">
-                CENTRAL
-              </span>
-            )}
+            <NavItem id="nav-finance-invoices" page="finance" label="Vendor Invoices" icon={Receipt} iconColor="text-emerald-700" badge={vendorInvoicesCount || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('finance')} onClick={handleNavClick} />
+            <NavItem id="nav-finance-credit-cards" page="financeCreditCards" label="Credit Card Bills" icon={CreditCard} iconColor="text-purple-700" badge={creditCardBillsCount || null} badgeClass="bg-purple-50 text-purple-800" active={isNavActive('financeCreditCards')} onClick={handleNavClick} />
+            <NavItem id="nav-finance-delivery-notes" page="financeDeliveryNotes" label="Delivery Notes" icon={Truck} iconColor="text-blue-700" badge={deliveryNotesCount || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('financeDeliveryNotes')} onClick={handleNavClick} />
+            <NavItem id="nav-finance-approvals" page="financeApprovals" label="Finance Approvals" icon={Scale} iconColor="text-teal-700" badge={financeApprovalsCount || null} badgeClass="bg-amber-100 text-amber-800 font-bold" active={isNavActive('financeApprovals')} onClick={handleNavClick} />
           </div>
 
-          {/* 1. Vendor Invoices */}
-          <button
-            type="button"
-            id="nav-finance-invoices"
-            onClick={() => setActivePage('finance')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
-              isNavActive('finance')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Receipt className={`w-4 h-4 ${isNavActive('finance') ? 'text-white' : 'text-emerald-700'}`} />
-              <span>Vendor Invoices</span>
+          {/* Section: Compliance & Community */}
+          <div className="space-y-1">
+            <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
+              Compliance &amp; Community
             </div>
-            {vendorInvoicesCount > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('finance') ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800'
-              }`}>
-                {vendorInvoicesCount}
-              </span>
-            )}
-          </button>
 
-          {/* 2. Credit Card Bills */}
-          <button
-            type="button"
-            id="nav-finance-credit-cards"
-            onClick={() => setActivePage('financeCreditCards')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
-              isNavActive('financeCreditCards')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <CreditCard className={`w-4 h-4 ${isNavActive('financeCreditCards') ? 'text-white' : 'text-purple-700'}`} />
-              <span>Credit Card Bills</span>
-            </div>
-            {creditCardBillsCount > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('financeCreditCards') ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-800'
-              }`}>
-                {creditCardBillsCount}
-              </span>
+            <NavItem id="nav-compliance" page="compliance" label="SD-Compliance Tracker" icon={ShieldCheck} iconColor="text-emerald-700" badge={complianceRecords.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('compliance')} onClick={handleNavClick} />
+            <NavItem id="nav-vcs" page="vcsDirectory" label="SD VCS Directory" icon={HandHeart} iconColor="text-teal-700" badge={vcsAgencies.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('vcsDirectory')} onClick={handleNavClick} />
+            {(rolePermissions[currentUserRole]?.canExportData || canManageSettings()) && (
+              <NavItem id="nav-reports" page="reports" label="Reports & SharePoint" icon={CloudUpload} iconColor="text-[#0d9488]" active={isNavActive('reports')} onClick={handleNavClick} />
             )}
-          </button>
-
-          {/* 3. Delivery Notes */}
-          <button
-            type="button"
-            id="nav-finance-delivery-notes"
-            onClick={() => setActivePage('financeDeliveryNotes')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
-              isNavActive('financeDeliveryNotes')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Truck className={`w-4 h-4 ${isNavActive('financeDeliveryNotes') ? 'text-white' : 'text-blue-700'}`} />
-              <span>Delivery Notes</span>
-            </div>
-            {deliveryNotesCount > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('financeDeliveryNotes') ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-800'
-              }`}>
-                {deliveryNotesCount}
-              </span>
+            {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && (
+              <NavItem id="nav-audit" page="audit" label="Audit Security Trail" icon={Fingerprint} iconColor="text-amber-700" active={isNavActive('audit')} onClick={handleNavClick} />
             )}
-          </button>
-
-          {/* 4. Finance Approvals */}
-          <button
-            type="button"
-            id="nav-finance-approvals"
-            onClick={() => setActivePage('financeApprovals')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
-              isNavActive('financeApprovals')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <FileCheck className={`w-4 h-4 ${isNavActive('financeApprovals') ? 'text-white' : 'text-teal-700'}`} />
-              <span>Finance Approvals</span>
-            </div>
-            {financeApprovalsCount > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                isNavActive('financeApprovals') ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
-              }`}>
-                {financeApprovalsCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Section: Compliance & SharePoint */}
-        <div className="space-y-1">
-          <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-            Compliance &amp; Community
+            <NavItem id="nav-requests" page="requests" label="Requests & Approvals" icon={MessageSquareQuote} iconColor="text-blue-600" badge={dataChangeRequests?.filter(r => r.status === 'Pending').length || null} badgeClass="bg-amber-100 text-amber-800 font-bold" active={isNavActive('requests')} onClick={handleNavClick} />
           </div>
 
-          {/* SD-Compliance Tracker */}
-          <button
-            id="nav-compliance"
-            onClick={() => setActivePage('compliance')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('compliance')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck className={`w-4 h-4 ${isNavActive('compliance') ? 'text-white' : 'text-emerald-700'}`} />
-              <span>SD-Compliance Tracker</span>
-            </div>
-            {complianceRecords.length > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                isNavActive('compliance') ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800'
-              }`}>
-                {complianceRecords.length}
-              </span>
-            )}
-          </button>
-
-          {/* SD VCS Support Agencies */}
-          <button
-            id="nav-vcs"
-            onClick={() => setActivePage('vcsDirectory')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('vcsDirectory')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <HandHeart className={`w-4 h-4 ${isNavActive('vcsDirectory') ? 'text-white' : 'text-teal-700'}`} />
-              <span>SD VCS Directory</span>
-            </div>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-              isNavActive('vcsDirectory') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
-            }`}>
-              {vcsAgencies.length}
-            </span>
-          </button>
-
-
-
-          {(rolePermissions[currentUserRole]?.canExportData || canManageSettings()) && (
-            <button
-              id="nav-reports"
-              onClick={() => setActivePage('reports')}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                isNavActive('reports')
-                  ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                  : 'text-[#333333] hover:bg-[#f0efeb]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <CloudUpload className={`w-4 h-4 ${isNavActive('reports') ? 'text-white' : 'text-[#0d9488]'}`} />
-                <span>Reports & SharePoint</span>
+          {/* Section: Admin & Governance (Super Admin & Admin Only) */}
+          {isAdminOrSuperAdmin && (
+            <div className="space-y-1 pt-2 border-t border-[#ecebe8]">
+              <div className="px-2 flex items-center justify-between text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
+                <span>Admin & Governance</span>
               </div>
-            </button>
-          )}
 
-          {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && (
-            <button
-              id="nav-audit"
-              onClick={() => setActivePage('audit')}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                isNavActive('audit')
-                  ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                  : 'text-[#333333] hover:bg-[#f0efeb]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Fingerprint className={`w-4 h-4 ${isNavActive('audit') ? 'text-white' : 'text-amber-700'}`} />
-                <span>Audit Security Trail</span>
-              </div>
-            </button>
-          )}
-
-          <button
-            id="nav-requests"
-            onClick={() => setActivePage('requests')}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-              isNavActive('requests')
-                ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                : 'text-[#333333] hover:bg-[#f0efeb]'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <MessageSquareQuote className={`w-4 h-4 ${isNavActive('requests') ? 'text-white' : 'text-blue-600'}`} />
-              <span>Requests &amp; Approvals</span>
+              {canManageProperties() && (
+                <NavItem id="nav-properties" page="properties" label="Properties Directory" icon={Landmark} iconColor="text-[#0d9488]" badge={properties.length || null} badgeClass="bg-[#eef3f7] text-[#0f766e]" active={isNavActive('properties')} onClick={handleNavClick} />
+              )}
+              {canManageUsers() && (
+                <NavItem id="nav-users" page="users" label="Staff & User Accounts" icon={UsersRound} iconColor="text-teal-700" badge={users.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('users')} onClick={handleNavClick} />
+              )}
+              {canManageRoles() && (
+                <NavItem id="nav-roles" page="roles" label="Roles & RBAC Matrix" icon={KeyRound} iconColor="text-purple-700" active={isNavActive('roles')} onClick={handleNavClick} />
+              )}
+              {canManageRoles() && (
+                <NavItem id="nav-setup-options" page="setupOptions" label="Field Options & Setup" icon={ListFilter} iconColor="text-blue-600" active={isNavActive('setupOptions')} onClick={handleNavClick} />
+              )}
+              {canManageSettings() && (
+                <NavItem id="nav-settings" page="settings" label="System Preferences" icon={SlidersHorizontal} iconColor="text-slate-700" active={isNavActive('settings')} onClick={handleNavClick} />
+              )}
+              {canManageSettings() && (
+                <NavItem id="nav-notifications" page="notifications" label="Email Notifications" icon={BellRing} iconColor="text-[#0d9488]" badge={notificationRules.filter(r => r.enabled).length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('notifications')} onClick={handleNavClick} />
+              )}
             </div>
-            {dataChangeRequests.filter(r => r.status === 'Pending').length > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                isNavActive('requests') ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
-              }`}>
-                {dataChangeRequests.filter(r => r.status === 'Pending').length}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Section: Admin & Governance (Super Admin & Admin Only) */}
-        {isAdminOrSuperAdmin && (
-          <div className="space-y-1 pt-2 border-t border-[#ecebe8]">
-            <div className="px-2 flex items-center justify-between text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-              <span>Admin & Governance</span>
-            </div>
-
-            {/* Properties Directory */}
-            {canManageProperties() && (
-              <button
-                id="nav-properties"
-                onClick={() => setActivePage('properties')}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('properties')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Landmark className={`w-4 h-4 ${isNavActive('properties') ? 'text-white' : 'text-[#0d9488]'}`} />
-                  <span>Properties Directory</span>
-                </div>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                  isNavActive('properties') ? 'bg-white/20 text-white' : 'bg-[#eef3f7] text-[#0f766e]'
-                }`}>
-                  {properties.length}
-                </span>
-              </button>
-            )}
-
-            {/* Staff & User Accounts */}
-            {canManageUsers() && (
-              <button
-                id="nav-users"
-                onClick={() => setActivePage('users')}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('users')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <UsersRound className={`w-4 h-4 ${isNavActive('users') ? 'text-white' : 'text-teal-700'}`} />
-                  <span>Staff & User Accounts</span>
-                </div>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                  isNavActive('users') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
-                }`}>
-                  {users.length}
-                </span>
-              </button>
-            )}
-
-            {/* Roles & RBAC Matrix (Super Admin Only) */}
-            {canManageRoles() && (
-              <button
-                id="nav-roles"
-                onClick={() => setActivePage('roles')}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('roles')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <KeyRound className={`w-4 h-4 ${isNavActive('roles') ? 'text-white' : 'text-purple-700'}`} />
-                  <span>Roles & RBAC Matrix</span>
-                </div>
-              </button>
-            )}
-
-            {/* Field Options & Form Setup (Super Admin Only) */}
-            {canManageRoles() && (
-              <button
-                id="nav-setup-options"
-                onClick={() => setActivePage('setupOptions')}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('setupOptions')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <ListFilter className={`w-4 h-4 ${isNavActive('setupOptions') ? 'text-white' : 'text-blue-600'}`} />
-                  <span>Field Options &amp; Setup</span>
-                </div>
-              </button>
-            )}
-
-            {/* System Preferences (Admin & Super Admin) */}
-            {canManageSettings() && (
-              <button
-                id="nav-settings"
-                onClick={() => setActivePage('settings')}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('settings')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <SlidersHorizontal className={`w-4 h-4 ${isNavActive('settings') ? 'text-white' : 'text-slate-700'}`} />
-                  <span>System Preferences</span>
-                </div>
-              </button>
-            )}
-
-            {/* Email Notifications Management (Admin & Super Admin) */}
-            {canManageSettings() && (
-              <button
-                id="nav-notifications"
-                onClick={() => setActivePage('notifications')}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
-                  isNavActive('notifications')
-                    ? 'bg-[#0d9488] text-white font-medium shadow-xs'
-                    : 'text-[#333333] hover:bg-[#f0efeb]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <BellRing className={`w-4 h-4 ${isNavActive('notifications') ? 'text-white' : 'text-[#0d9488]'}`} />
-                  <span>Email Notifications</span>
-                </div>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                  isNavActive('notifications') ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-800'
-                }`}>
-                  {notificationRules.filter(r => r.enabled).length}
-                </span>
-              </button>
-            )}
-          </div>
-        )}
-      </nav>
-    </aside>
-  </>
+          )}
+        </nav>
+      </aside>
+    </>
   );
 };

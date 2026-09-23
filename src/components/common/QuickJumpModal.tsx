@@ -21,7 +21,8 @@ import {
   UserCheck,
   PlaneTakeoff,
   BookOpen,
-  HeartHandshake
+  HeartHandshake,
+  ClipboardList
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -59,7 +60,10 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
     { id: 'vcsDirectory', name: 'SD VCS Support Agencies', category: 'Compliance', icon: HeartHandshake, desc: 'Local voluntary, food banks & charity directory' },
     { id: 'laundry', name: 'Laundry Operations', category: 'Services', icon: FileText, desc: 'Weekly linen & laundry schedules' },
     { id: 'food', name: 'Hot Food & Catering', category: 'Services', icon: Utensils, desc: 'Meal distribution & dietary logging' },
+    { id: 'foodWastage', name: 'Food Wastage Tracker', category: 'Services', icon: Utensils, desc: 'Hot meals & food wastage daily logs and quantities' },
     { id: 'escalations', name: 'Escalations & Incidents', category: 'Safety', icon: AlertTriangle, desc: 'Critical incident reporting' },
+    { id: 'irTracker', name: 'IR Tracker', category: 'Operations', icon: ClipboardList, desc: 'Incident reviews, 1st & 2nd review completion & CRH submission' },
+    { id: 'dailyRegisters', name: 'Live Daily Registers', category: 'Operations', icon: Building2, desc: 'Live register statistics, rooms, intake, attendance & capacity summary' },
     { id: 'documents', name: 'Document Vault', category: 'Compliance', icon: FolderLock, desc: 'Secure operational file repository' },
     { id: 'properties', name: 'Properties Directory', category: 'Infrastructure', icon: Building2, desc: 'Managed hotel cluster directory' },
     { id: 'users', name: 'User Directory & Password Audit', category: 'Administration', icon: Users, desc: 'Staff RBAC & credential management' },

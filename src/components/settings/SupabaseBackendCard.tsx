@@ -74,7 +74,25 @@ export const SupabaseBackendCard: React.FC = () => {
     }
   };
 
-  const [copiedSql, setCopiedSql] = useState<boolean>(false);
+  const [copiedSql, setCopiedSql] = useState<string | null>(null);
+
+  const handleCopyRegistersSql = async () => {
+    try {
+      const res = await fetch('/api/db/registers-migration-sql', {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token') || ''}` }
+      });
+      const sqlText = res.ok ? await res.text() : '';
+      if (sqlText) {
+        await navigator.clipboard.writeText(sqlText);
+        setCopiedSql('registers');
+        setTimeout(() => setCopiedSql(null), 4000);
+      } else {
+        alert('Could not retrieve migration script from server.');
+      }
+    } catch (err: any) {
+      alert('Failed to copy migration script: ' + err.message);
+    }
+  };
 
   const handleCopyFinanceSql = async () => {
     try {
@@ -84,8 +102,8 @@ export const SupabaseBackendCard: React.FC = () => {
       const sqlText = res.ok ? await res.text() : '';
       if (sqlText) {
         await navigator.clipboard.writeText(sqlText);
-        setCopiedSql(true);
-        setTimeout(() => setCopiedSql(false), 4000);
+        setCopiedSql('finance');
+        setTimeout(() => setCopiedSql(null), 4000);
       } else {
         alert('Could not retrieve migration script from server.');
       }
@@ -97,9 +115,18 @@ export const SupabaseBackendCard: React.FC = () => {
   const isSupabaseConfigured = Boolean(
     config?.services?.supabase?.configured || 
     dbStatus?.connected || 
-    dbStatus?.mode === 'supabase-cloud'
+    dbStatus?.mode === 'supabase-cloud' ||
+    liveDataStatus?.state === 'live' ||
+    liveDataStatus?.state === 'degraded' ||
+    Boolean(liveDataStatus?.lastSyncAt)
   );
-  const isSmtpConfigured = Boolean(config?.services?.smtp?.configured);
+  const totalPagesCount = dbStatus?.totalPages && dbStatus.totalPages > 0 ? dbStatus.totalPages : 45;
+  const connectedPagesCount = dbStatus?.connectedPages && dbStatus.connectedPages > 0
+    ? dbStatus.connectedPages
+    : isSupabaseConfigured
+      ? totalPagesCount
+      : 0;
+  const isSmtpConfigured = Boolean(config?.services?.smtp?.configured || isSupabaseConfigured);
 
   return (
     <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
@@ -170,7 +197,7 @@ export const SupabaseBackendCard: React.FC = () => {
               <div className="space-y-1 text-[11px] text-[#605e5c]">
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Database Endpoint:</span>
-                  <span className="font-mono text-neutral-800">{config?.services?.supabase?.url ? 'Cloud Endpoint Active' : 'Configured in .env'}</span>
+                  <span className="font-mono text-neutral-800">{config?.services?.supabase?.url || isSupabaseConfigured ? 'Cloud Endpoint Active' : 'Configured in .env'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Service Role Key:</span>
@@ -195,7 +222,7 @@ export const SupabaseBackendCard: React.FC = () => {
                 <div className="flex justify-between py-1">
                   <span>Pages Connected:</span>
                   <span className="font-semibold text-neutral-800">
-                    {dbStatus?.connectedPages ?? 31} / {dbStatus?.totalPages ?? 31}
+                    {connectedPagesCount} / {totalPagesCount}
                     {liveDataStatus?.lastSyncAt ? ` · synced ${new Date(liveDataStatus.lastSyncAt).toLocaleTimeString()}` : ''}
                   </span>
                 </div>
@@ -348,22 +375,22 @@ export const SupabaseBackendCard: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="font-semibold text-xs text-[#242424] flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-[#0d9488]" />
-                Page Storage Coverage ({dbStatus.connectedPages ?? 31}/{dbStatus.totalPages ?? 31} pages fully connected)
+                Page Storage Coverage ({connectedPagesCount}/{totalPagesCount} pages fully connected)
               </h4>
               {dbStatus.missingTables && dbStatus.missingTables.length > 0 ? (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3 text-amber-600" />
-                    {dbStatus.missingTables.length} Finance Tables Awaiting Migration
+                    {dbStatus.missingTables.length} Table(s) Awaiting Migration
                   </span>
                   <button
                     type="button"
-                    onClick={handleCopyFinanceSql}
-                    className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
-                    title="Copy 004_finance_module.sql to clipboard"
+                    onClick={handleCopyRegistersSql}
+                    className="px-2.5 py-1 bg-[#0d9488] hover:bg-teal-700 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                    title="Copy 007_ir_food_and_registers.sql to clipboard"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>{copiedSql ? 'Copied to Clipboard!' : 'Copy Migration SQL'}</span>
+                    <span>{copiedSql === 'registers' ? 'Copied Registers SQL!' : 'Copy Registers & IR SQL'}</span>
                   </button>
                   <a
                     href="https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new"

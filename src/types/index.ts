@@ -481,6 +481,7 @@ export type FieldOptionCategory =
   | 'financeAttachmentTypes'
   | 'financeVendorStatuses'
   | 'financeCardMerchants'
+  | 'crhSubmissionStatuses'
   | 'councils';
 
 export interface CustomFieldOption {
@@ -660,7 +661,166 @@ export interface SDVCSAgency {
   createdAt: string;
 }
 
-// 8. Centralized Email Notification Types & Rules
+// 8. IR Tracker Record (Incident Reports)
+export interface IRRecord {
+  id: string;
+  site: string; // SITE
+  date: string; // DATE
+  suName: string; // SU NAME
+  portRef?: string; // Port Ref
+  irSummary: string; // IR SUMMARY
+  incidentTime?: string; // Incident Time
+  inFor1stReview?: string; // IN for 1st review
+  ct1stReview?: string; // CT 1ST Review
+  inFor2ndReview?: string; // In for 2nd review
+  ct2ndReview?: string; // CT 2nd review
+  submittedToCrh?: string; // Submitted to CRH
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 9. Food Wastage Record
+export interface FoodWastageRecord {
+  id: string;
+  site: string; // SITE
+  date: string; // DATE
+  foodWastage: string; // FOOD WASTAGE
+  quantity: string; // QUANTITY
+  comments?: string; // COMMENTS
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 10. Live Daily Registers: Room List & Inventory
+export interface DailyRegisterRoom {
+  id: string;
+  hotel: string; // Hotel / Site
+  roomNo: string; // Room No.
+  floor: string; // Floor
+  roomType: string; // Room Type
+  currentMaxOccupancy: number; // Current Max Occupancy
+  currentOccupancy: number; // Current Occupancy
+  suCohort?: string; // SU Cohort
+  bedspacesAvailable: number; // Bedspaces Available
+  voidBedspaces: number; // Void Bedspaces
+  voidReason?: string; // Void Reason
+  sizeSqm?: number; // Size of Room (sq. metre, excluding bathroom)
+  maxRoomType?: string; // Max Room Type (Room Size & Inventory)
+  potentialMaxCapacity: number; // Potential Max Capacity
+  stepsToIncreaseCapacity?: string; // Steps to Increase Capacity
+  date?: string; // Date
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 11. Live Daily Registers: Daily Register Record (Service User & Occupancy)
+export interface DailyRegisterRecord {
+  id: string;
+  hotel: string; // Hotel / Site
+  roomNo: string; // Room No.
+  floor?: string; // Floor
+  roomMakeup?: string; // Room Makeup
+  singleBed: number; // Single Bed
+  doubleBed: number; // Double Bed
+  singleBunk: number; // Single Bunk
+  doubleBunk: number; // Double Bunk
+  cot: number; // Cot
+  suMakeup?: string; // SU Make Up
+  portRef: string; // Port Ref
+  name: string; // Name
+  checkInDate: string; // Check In Date
+  contactNo?: string; // Contact No.
+  email?: string; // Email
+  dob?: string; // D.O.B.
+  age?: number; // Age
+  ageGroup?: string; // Age Group
+  nationality?: string; // Nationality
+  language?: string; // Language
+  gender?: string; // Gender
+  suComments?: string; // SU Comments
+  availableToBook?: string; // Available to Book (Yes/No)
+  isVoid?: string; // Void (Yes/No)
+  voidReason?: string; // Void Reason
+  maintenanceDateFrom?: string; // Maintenance Date From
+  allocationToBeReviewed?: string; // Allocation to be Reviewed (Yes/No)
+  occupied: string; // Occupied (Yes/No)
+  registerDate?: string; // Register Date
+  dailyOccupancy?: Record<string, string>; // Historical daily occupancy status
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 12. Live Daily Registers: New Arrivals Record
+export interface NewArrivalRecord {
+  id: string;
+  portReference: string; // Port Reference
+  name: string; // Name
+  dob?: string; // Date of Birth
+  country?: string; // Country
+  language?: string; // Language
+  contactNumber?: string; // Contact Number
+  hotel: string; // Hotel
+  room?: string; // Room
+  email?: string; // Email
+  aspenCard?: string; // Aspen Card
+  status?: string; // Status (e.g. Arrived, Checked In)
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 13. Live Daily Registers: Eviction Record
+export interface EvictionRecord {
+  id: string;
+  hotel: string; // Hotel
+  roomNo?: string; // Room No.
+  portRef: string; // Port Ref
+  suName: string; // SU Name
+  noticeDate?: string; // Notice Date
+  evictionDate: string; // Eviction Date
+  evictionReason: string; // Eviction Reason
+  status: string; // Notice Issued | Evicted | Appeal Pending | Cancelled
+  notes?: string; // Notes
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  attachment_url?: string;
+  fileUrl?: string;
+  file_url?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 14. Centralized Email Notification Types & Rules
 export type NotificationEventCode =
   | 'referral.created'
   | 'referral.urgent'

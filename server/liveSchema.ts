@@ -61,8 +61,13 @@ export const KNOWN_TABLES = [
   'finance_bill_queries',
   'finance_reconciliation_records',
   'finance_payment_records',
-  'finance_bill_status_history',
-  'finance_workflow_events'
+  'finance_workflow_events',
+  'ir_records',
+  'food_wastage_records',
+  'daily_register_rooms',
+  'daily_register_records',
+  'new_arrivals_records',
+  'eviction_records'
 ];
 
 async function probeDatabaseFallback(): Promise<LiveSchema | null> {
@@ -136,7 +141,7 @@ export async function getLiveSchema(force = false): Promise<LiveSchema | null> {
 export async function getLiveColumns(table: string): Promise<Set<string> | null> {
   const schema = await getLiveSchema();
   if (!schema) return null;
-  return schema.get(table) || new Set();
+  return schema.get(table) || null;
 }
 
 export function invalidateLiveSchema() {
