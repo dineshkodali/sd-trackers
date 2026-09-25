@@ -1,0 +1,35 @@
+[
+  {
+    "id": "dbr-b78dd28d",
+    "templateId": "tmpl-risk-assessment",
+    "templateVersionId": "tver-risk-v1",
+    "site": "Hilton Hampton - Ealing",
+    "title": "Risk Assessment — 25/09/2026",
+    "documentNumber": "DOC-2026-057496",
+    "status": "final",
+    "fieldValues": {
+      "residentName": "Dinesh",
+      "portRef": "078621",
+      "location": "Hilton",
+      "riskCategory": "Personal Safety",
+      "overallRiskLevel": "Low",
+      "hazardDescription": "NA",
+      "personsAtRisk": "NA",
+      "existingControls": "NA",
+      "additionalControls": "NA",
+      "reviewDate": "2026-09-25",
+      "reviewedBy": "IT "
+    },
+    "createdBy": "ce98b46b-4a6a-4a66-a70a-72e6c56d7691",
+    "createdByName": "Stack Master",
+    "createdByRole": "Super Admin",
+    "createdByEmail": "stackmaster@sdcommercial.co.uk",
+    "updatedBy": "ce98b46b-4a6a-4a66-a70a-72e6c56d7691",
+    "updatedByName": "Stack Master",
+    "updatedByRole": "Super Admin",
+    "createdAt": "2026-09-24T23:54:17.495Z",
+    "updatedAt": "2026-09-24T23:54:53.172Z",
+    "finalizedAt": "2026-09-24T23:54:53.172Z",
+    "finalizedBy": "Stack Master"
+  }
+]

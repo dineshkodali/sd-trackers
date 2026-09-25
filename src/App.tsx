@@ -49,6 +49,7 @@ import { VendorInvoicesView } from './components/finance/VendorInvoicesView';
 import { CreditCardBillsView } from './components/finance/CreditCardBillsView';
 import { DeliveryNotesView } from './components/finance/DeliveryNotesView';
 import { FinanceApprovalsView } from './components/finance/FinanceApprovalsView';
+import { DocumentBuilderView } from './components/documentBuilder/DocumentBuilderView';
 
 function AppLayout() {
   const { 
@@ -180,6 +181,8 @@ function AppLayout() {
         return <FinanceApprovalsView />;
       case 'documents':
         return <DocumentsView />;
+      case 'documentBuilder':
+        return <DocumentBuilderView />;
       case 'properties':
         return canManageProperties()
           ? <PropertiesView />

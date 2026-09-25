@@ -36,7 +36,8 @@ import {
   Building2,
   ClipboardList,
   Trash2,
-  X
+  X,
+  FilePlus
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from './Logo';
@@ -347,6 +348,7 @@ export const Sidebar: React.FC = () => {
             <NavItem id="nav-food-wastage" page="foodWastage" label="Food Wastage Tracker" icon={Trash2} iconColor="text-amber-700" badge={foodWastageRecords.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodWastage')} onClick={handleNavClick} />
             <NavItem id="nav-escalations" page="escalations" label="Escalations Log" icon={Siren} iconColor="text-red-600" badge={activeEscalations || null} badgeClass="bg-red-100 text-red-800 font-bold" active={isNavActive('escalations')} onClick={handleNavClick} />
             <NavItem id="nav-documents" page="documents" label="Proof Documents" icon={FolderLock} iconColor="text-slate-600" active={isNavActive('documents')} onClick={handleNavClick} />
+            <NavItem id="nav-document-builder" page="documentBuilder" label="Document Builder" icon={FilePlus} iconColor="text-[#0d9488]" active={isNavActive('documentBuilder')} onClick={handleNavClick} />
           </div>
 
           {/* Section: Finance Management */}

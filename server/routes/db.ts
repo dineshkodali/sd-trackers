@@ -90,6 +90,10 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   newArrivals: { page: 'Live Daily Registers - New Arrivals', table: 'new_arrivals_records' },
   evictions: { page: 'Live Daily Registers - Evictions', table: 'eviction_records' },
 
+  // Document Builder module (single unified table)
+  docBuilder: { page: 'Document Builder', table: 'doc_builder' },
+  doc_builder: { page: 'Document Builder', table: 'doc_builder', alias: true },
+
   // Aliases used by existing clients
   audit: { page: 'Audit Security Trail', table: 'audit_trails', write: 'append', remove: 'superadmin', alias: true },
   laundry_logs: { page: 'Laundry Support - resident intake', table: 'laundry_logs', variant: r => !isPropertyLaundry(r), alias: true },

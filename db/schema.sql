@@ -1788,5 +1788,44 @@ ON CONFLICT (id) DO UPDATE SET
   contact_email = EXCLUDED.contact_email,
   contact_phone = EXCLUDED.contact_phone;
 
+-- =====================================================================
+-- PART 10: DOCUMENT BUILDER MODULE (Single Unified Table: doc_builder)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.doc_builder (
+  id TEXT PRIMARY KEY,
+  record_type TEXT NOT NULL DEFAULT 'document', -- 'template' | 'document' | 'audit'
+  template_id TEXT,
+  site TEXT NOT NULL DEFAULT 'All Sites',
+  title TEXT NOT NULL,
+  document_number TEXT,
+  category TEXT DEFAULT 'General',
+  status TEXT DEFAULT 'draft',
+  field_values JSONB DEFAULT '{}',
+  created_by TEXT,
+  created_by_name TEXT,
+  created_by_role TEXT,
+  created_by_email TEXT,
+  updated_by TEXT,
+  updated_by_name TEXT,
+  updated_by_role TEXT,
+  finalized_at TIMESTAMPTZ,
+  finalized_by TEXT,
+  data JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'update_doc_builder_updated_at'
+  ) THEN
+    CREATE TRIGGER update_doc_builder_updated_at
+      BEFORE UPDATE ON public.doc_builder
+      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+  END IF;
+END $$;
+
 NOTIFY pgrst, 'reload schema';
 

@@ -652,6 +652,12 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'final_approved_by', 'final_approved_at', 'finance_released_at', 'audit_trail',
     'data', 'created_by', 'submitted_by', 'submitted_at', 'created_at', 'updated_at'
   ]),
+  doc_builder: new Set([
+    'id', 'record_type', 'template_id', 'site', 'title', 'document_number', 'category', 'status',
+    'field_values', 'created_by', 'created_by_name', 'created_by_role', 'created_by_email',
+    'updated_by', 'updated_by_name', 'updated_by_role', 'finalized_at', 'finalized_by',
+    'data', 'created_at', 'updated_at'
+  ]),
   ...Object.fromEntries(Object.keys(FIELD_SPECS).map(t => [t, new Set(specColumns(t))])),
 };
 

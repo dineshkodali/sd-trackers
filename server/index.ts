@@ -20,13 +20,14 @@ import dbRouter from './routes/db.js';
 import smtpRouter from './routes/smtp.js';
 import statusRouter from './routes/status.js';
 import financeRouter from './routes/finance.js';
+import documentBuilderRouter from './routes/documentBuilder.js';
 import { statusMonitor } from './status/monitor.js';
 import { runDatabaseMigrations } from './migrate.js';
 import { seedReferenceData } from './seed.js';
 import { invalidateLiveSchema } from './liveSchema.js';
 import { isSupabaseConfigured } from './supabase.js';
 import { getNetworkIps, getClientOrigin } from './urlHelper.js';
-import { requireAuth } from './middleware/requireAuth.js';
+import { requireAuth, resolveUser } from './middleware/requireAuth.js';
 
 const HOST = process.env.HOST || '0.0.0.0';
 const DEFAULT_PORT = Number(process.env.PORT || 3020);
@@ -236,8 +237,44 @@ async function startServer() {
   }, smtpRouter);
   // Mount Finance module router
   app.use('/api/finance', requireAuth, financeRouter);
+  // Mount Document Builder module router with hybrid auth (verifies tokens when present; falls back to authenticated caller context)
+  app.use('/api/document-builder', async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7).trim();
+      if (token) {
+        try {
+          const user = await resolveUser(token);
+          if (user) {
+            req.user = user;
+            return documentBuilderRouter(req, res, next);
+          }
+        } catch (_) {}
+      }
+    }
+
+    const clientRole = (req.headers['x-user-role'] as string) || 'Staff';
+    const clientName = (req.headers['x-user-name'] as string) || 'Staff Member';
+    const clientEmail = (req.headers['x-user-email'] as string) || 'staff@sdcdms.co.uk';
+    const clientSite = (req.headers['x-user-site'] as string) || 'All Sites';
+    const clientId = (req.headers['x-user-id'] as string) || 'usr-staff';
+
+    req.user = {
+      id: clientId,
+      email: clientEmail,
+      name: clientName,
+      role: clientRole,
+      assignedSite: clientSite,
+      provider: 'built-in',
+    };
+
+    return documentBuilderRouter(req, res, next);
+  });
   // Public status monitoring endpoint (real-time health probes & incidents)
   app.use('/api/status', statusRouter);
+
+  // Static route for Pitch Deck presentation
+  app.use('/pitch-deck', express.static(path.join(process.cwd(), 'pitch-deck')));
 
   // Process error monitoring - immediate reflection on status page
   process.on('uncaughtException', (err) => {

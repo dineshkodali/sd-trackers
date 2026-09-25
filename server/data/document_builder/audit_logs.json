@@ -1,0 +1,41 @@
+[
+  {
+    "id": "aud-7739e42a-c",
+    "documentId": "dbr-b78dd28d",
+    "templateId": "tmpl-risk-assessment",
+    "action": "DOCUMENT_FINALIZED",
+    "userId": "ce98b46b-4a6a-4a66-a70a-72e6c56d7691",
+    "userName": "Stack Master",
+    "userRole": "Super Admin",
+    "userEmail": "stackmaster@sdcommercial.co.uk",
+    "site": "Hilton Hampton - Ealing",
+    "details": "Updated document: \"Risk Assessment — 25/09/2026\" (DOC-2026-057496) - Status: final",
+    "timestamp": "2026-09-24T23:54:53.221Z"
+  },
+  {
+    "id": "aud-15929ed6-c",
+    "documentId": "dbr-b78dd28d",
+    "templateId": "tmpl-risk-assessment",
+    "action": "DOCUMENT_UPDATED",
+    "userId": "ce98b46b-4a6a-4a66-a70a-72e6c56d7691",
+    "userName": "Stack Master",
+    "userRole": "Super Admin",
+    "userEmail": "stackmaster@sdcommercial.co.uk",
+    "site": "Hilton Hampton - Ealing",
+    "details": "Updated document: \"Risk Assessment — 25/09/2026\" (DOC-2026-057496) - Status: draft",
+    "timestamp": "2026-09-24T23:54:50.794Z"
+  },
+  {
+    "id": "aud-b04be404-1",
+    "documentId": "dbr-b78dd28d",
+    "templateId": "tmpl-risk-assessment",
+    "action": "DOCUMENT_CREATED",
+    "userId": "ce98b46b-4a6a-4a66-a70a-72e6c56d7691",
+    "userName": "Stack Master",
+    "userRole": "Super Admin",
+    "userEmail": "stackmaster@sdcommercial.co.uk",
+    "site": "Hilton Hampton - Ealing",
+    "details": "Created document: \"Risk Assessment — 25/09/2026\" (DOC-2026-057496) - Status: draft",
+    "timestamp": "2026-09-24T23:54:17.586Z"
+  }
+]
