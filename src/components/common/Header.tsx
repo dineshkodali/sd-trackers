@@ -153,20 +153,17 @@ export const Header: React.FC = () => {
 
   const tabFilteredNotifications = useMemo(() => {
     let list = notifications;
-    if (isStaff && assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
-      list = list.filter(n => {
-        if (n.category === 'profile_personal') return true;
-        return n.site && isSiteMatch(assignedSite, n.site);
-      });
-    }
 
     if (notifTab === 'urgent') {
-      return list.filter(n => n.type === 'urgent' || n.type === 'security' || n.category === 'critical_security');
+      return list.filter(n => n.type === 'urgent' || n.type === 'security' || n.category === 'critical_security' || n.action === 'URGENT' || n.action === 'ALERT');
     }
     if (notifTab === 'requests') {
       return list.filter(n => n.category === 'approval_workflow' || n.category === 'profile_personal' || n.module === 'Requests' || n.module === 'Users');
     }
     if (notifTab === 'site') {
+      if (isStaff) {
+        return list;
+      }
       if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
         return list.filter(n => n.site && isSiteMatch(assignedSite, n.site));
       }
@@ -398,14 +395,20 @@ export const Header: React.FC = () => {
                       <span>Read all</span>
                     </button>
                   )}
-                  {notifications.length > 0 && (
-                    <button 
-                      onClick={clearAllNotifications}
-                      className="text-[11px] text-neutral-400 hover:text-red-600 transition-colors"
-                      title="Clear notifications"
-                    >
-                      Clear
-                    </button>
+                  {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') ? (
+                    notifications.length > 0 && (
+                      <button 
+                        onClick={clearAllNotifications}
+                        className="text-[11px] text-neutral-400 hover:text-red-600 transition-colors"
+                        title="Clear notifications (Admin)"
+                      >
+                        Clear
+                      </button>
+                    )
+                  ) : (
+                    <span className="text-[10px] text-neutral-400 font-medium px-1.5 py-0.5 rounded bg-neutral-100 border border-neutral-200">
+                      View Only
+                    </span>
                   )}
                 </div>
               </div>
@@ -430,10 +433,10 @@ export const Header: React.FC = () => {
                   className={`px-2.5 py-1 rounded-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 ${
                     notifTab === 'site' ? 'bg-[#0d9488] text-white' : 'text-neutral-600 hover:bg-neutral-100'
                   }`}
-                  title={isStaff ? `Notifications strictly for ${assignedSite || 'your assigned site'}` : 'Site Activity'}
+                  title={isStaff ? 'My Activity & Property' : 'Site Activity'}
                 >
                   <Building2 className="w-3 h-3" />
-                  <span>{isStaff ? (assignedSite && assignedSite !== 'All Sites' ? assignedSite : 'My Assigned Property') : 'My Site'}</span>
+                  <span>{isStaff ? 'My Activity' : (assignedSite && assignedSite !== 'All Sites' ? assignedSite : 'My Site')}</span>
                 </button>
                 <button
                   onClick={() => setNotifTab('urgent')}
@@ -451,7 +454,7 @@ export const Header: React.FC = () => {
                   }`}
                 >
                   <UserCheck className="w-3 h-3" />
-                  <span>Requests</span>
+                  <span>{isStaff ? 'My Requests' : 'Requests'}</span>
                 </button>
               </div>
 
@@ -545,16 +548,22 @@ export const Header: React.FC = () => {
                   <Shield className="w-3 h-3 text-teal-600" />
                   <span>Role: <strong>{currentUserRole}</strong></span>
                 </span>
-                <button
-                  onClick={() => {
-                    setActivePage('audit');
-                    setShowNotifications(false);
-                  }}
-                  className="text-[#0d9488] hover:underline font-semibold flex items-center gap-0.5"
-                >
-                  <span>Full Activity Log</span>
-                  <ArrowRight className="w-2.5 h-2.5" />
-                </button>
+                {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') ? (
+                  <button
+                    onClick={() => {
+                      setActivePage('audit');
+                      setShowNotifications(false);
+                    }}
+                    className="text-[#0d9488] hover:underline font-semibold flex items-center gap-0.5"
+                  >
+                    <span>Full Activity Log</span>
+                    <ArrowRight className="w-2.5 h-2.5" />
+                  </button>
+                ) : (
+                  <span className="text-neutral-400 italic">
+                    Strict User Isolation (View Only)
+                  </span>
+                )}
               </div>
             </div>
           )}

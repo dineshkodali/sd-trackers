@@ -123,16 +123,17 @@ function readLocalTemplates(): StoredTemplate[] {
   try {
     ensureDataDirs();
     if (!fs.existsSync(TEMPLATES_FILE)) {
-      const initial = getDefaultTemplates();
+      const initial = getDefaultTemplates().filter(t => t.id === 'tmpl-incident-report' || t.name.toLowerCase().includes('incident'));
       writeLocalTemplates(initial);
       return initial;
     }
     const content = fs.readFileSync(TEMPLATES_FILE, 'utf-8');
     const parsed = JSON.parse(content);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : getDefaultTemplates();
+    const list = Array.isArray(parsed) && parsed.length > 0 ? parsed : getDefaultTemplates();
+    return list.filter(t => t.id === 'tmpl-incident-report' || t.name.toLowerCase().includes('incident'));
   } catch (err) {
     console.warn('[HOReporterStorage] Error reading ho_report_templates.json:', err);
-    return getDefaultTemplates();
+    return getDefaultTemplates().filter(t => t.id === 'tmpl-incident-report' || t.name.toLowerCase().includes('incident'));
   }
 }
 
@@ -322,8 +323,12 @@ export async function getTemplates(): Promise<StoredTemplate[]> {
         };
       });
 
-      writeLocalTemplates(mapped);
-      return mapped;
+      const filtered = mapped.filter(t => t.id === 'tmpl-incident-report' || t.name.toLowerCase().includes('incident'));
+      if (filtered.length > 0) {
+        writeLocalTemplates(filtered);
+        return filtered;
+      }
+      return localTemplates;
     }
 
     // 2. Fallback to `doc_builder` where record_type = 'template'
@@ -361,8 +366,12 @@ export async function getTemplates(): Promise<StoredTemplate[]> {
         };
       });
 
-      writeLocalTemplates(mapped);
-      return mapped;
+      const filtered = mapped.filter(t => t.id === 'tmpl-incident-report' || t.name.toLowerCase().includes('incident'));
+      if (filtered.length > 0) {
+        writeLocalTemplates(filtered);
+        return filtered;
+      }
+      return localTemplates;
     }
 
     return localTemplates;

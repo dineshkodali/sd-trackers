@@ -105,23 +105,26 @@ export function isSiteMatch(siteA?: string, siteB?: string): boolean {
 }
 
 /**
- * Check if a role corresponds to frontline staff / employee
+ * Check if a role corresponds to frontline staff / non-admin standard users
  */
 export function isStaffLevel(role?: string): boolean {
-  if (!role) return false;
+  if (!role) return true;
   const r = role.toLowerCase().trim();
-  return r === 'staff' || r === 'employee';
+  const adminRoles = ['super admin', 'admin'];
+  return !adminRoles.includes(r);
 }
 
 /**
- * Check if a user string matches the current user's name or email
+ * Check if a user string matches the current user's name, email, or auth ID
  */
-export function isUserMatch(targetUser?: string, currentUserName?: string, userEmail?: string): boolean {
+export function isUserMatch(targetUser?: string, currentUserName?: string, userEmail?: string, authProfileId?: string): boolean {
   if (!targetUser) return false;
   const t = targetUser.trim().toLowerCase();
   if (currentUserName && t === currentUserName.trim().toLowerCase()) return true;
   if (userEmail && t === userEmail.trim().toLowerCase()) return true;
   if (userEmail && t === userEmail.split('@')[0].toLowerCase()) return true;
+  if (authProfileId && t === authProfileId.trim().toLowerCase()) return true;
+  if (currentUserName && currentUserName.length >= 3 && (t.includes(currentUserName.trim().toLowerCase()) || currentUserName.trim().toLowerCase().includes(t))) return true;
   return false;
 }
 
@@ -383,71 +386,62 @@ export function filterNotificationsForRole(
       return true;
     }
 
-    // 3. Regional Manager: Permitted across all regional sites in allowedSites
+    // -------------------------------------------------------------------------
+    // Strict User-Level RBAC Isolation:
+    // Non-admin users must NEVER see cross-user logs (routine audit items by other users).
+    // They are strictly isolated to:
+    // 1. Actions performed by themselves
+    // 2. Actions/profile events directly targeting themselves
+    // 3. Workflow change requests submitted by or concerning themselves
+    // 4. Critical emergency safety escalations / alerts at their assigned site
+    // -------------------------------------------------------------------------
+
+    // Never expose administrative security, roles, or internal system config logs to non-admins
+    if (n.action === 'SECURITY' || (n.module && ['roles', 'permissions', 'settings', 'appsettings', 'schemas'].includes(n.module.toLowerCase()))) {
+      return false;
+    }
+
+    const isSelfAction = isUserMatch(n.performedByUser, currentUserName, userEmail, authProfileId);
+    const isSelfTarget = isUserMatch(n.targetItem, currentUserName, userEmail, authProfileId);
+    const isSelfProfile = n.category === 'profile_personal' && (isSelfTarget || isSelfAction);
+    const isSelfRequest = n.category === 'approval_workflow' && (isSelfTarget || isSelfAction);
+
+    // Critical urgent site safety alert (must match assigned property)
+    const isSiteSafetyAlert = (n.type === 'urgent' || n.action === 'URGENT' || n.action === 'ALERT') &&
+      Boolean(effectiveAssignedSite && n.site && isSiteMatch(effectiveAssignedSite, n.site));
+
+    // 3. Regional Manager: Permitted across regional urgent safety alerts & regional approval requests
     if (userRole === 'Regional Manager') {
-      if (!n.site || n.site === 'All Sites' || n.site === 'System') return true;
-      if (allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site))) {
-        return true;
-      }
-      if (effectiveAssignedSite && isSiteMatch(effectiveAssignedSite, n.site)) {
-        return true;
-      }
-      // Personal actions by the Regional Manager
-      if (isUserMatch(n.performedByUser, currentUserName, userEmail)) return true;
+      if (isSelfAction || isSelfTarget || isSelfProfile || isSelfRequest) return true;
+      const isRegionalAlert = (n.type === 'urgent' || n.action === 'URGENT' || n.action === 'ALERT') &&
+        allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site));
+      const isRegionalRequest = n.category === 'approval_workflow' &&
+        allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site));
+      if (isRegionalAlert || isRegionalRequest) return true;
       return false;
     }
 
-    // 4. Site Manager / General Manager: Strictly scoped to their managed site
+    // 4. Site Manager / General Manager: Permitted across managed site safety alerts & site approval requests
     if (userRole === 'Site Manager' || userRole === 'General Manager') {
-      // Personal actions by the manager
-      if (isUserMatch(n.performedByUser, currentUserName, userEmail)) return true;
-
-      // Personal profile changes regarding this manager
-      if (n.category === 'profile_personal' && isUserMatch(n.targetItem, currentUserName, userEmail)) {
-        return true;
-      }
-
-      // Actions occurring at their managed site
-      if (effectiveAssignedSite && isSiteMatch(effectiveAssignedSite, n.site)) {
-        // Exclude internal enterprise role permission modifications
-        if (n.module === 'Roles' || n.action === 'SECURITY') return false;
-        return true;
-      }
-
+      if (isSelfAction || isSelfTarget || isSelfProfile || isSelfRequest) return true;
+      const isManagedSiteRequest = n.category === 'approval_workflow' &&
+        Boolean(effectiveAssignedSite && n.site && isSiteMatch(effectiveAssignedSite, n.site));
+      if (isSiteSafetyAlert || isManagedSiteRequest) return true;
       return false;
     }
 
-    // 5. Staff / Employee (Frontline Level): Strictly restricted to their assigned property only
-    if (isStaffLevel(userRole)) {
-      if (!effectiveAssignedSite) {
-        return false;
-      }
-
-      // Frontline staff should NEVER see sensitive role permissions, system settings, or enterprise security audits
-      if (n.action === 'SECURITY' || (n.module && ['roles', 'permissions', 'settings', 'appsettings', 'schemas'].includes(n.module.toLowerCase()))) {
-        return false;
-      }
-
-      // Personal profile changes regarding this staff member
-      const isPersonalProfile = n.category === 'profile_personal' && (
-        isUserMatch(n.targetItem, currentUserName, userEmail) || 
-        isUserMatch(n.performedByUser, currentUserName, userEmail)
-      );
-      if (isPersonalProfile) {
-        return true;
-      }
-
-      // Must strictly match their assigned property
-      if (!n.site || !isSiteMatch(effectiveAssignedSite, n.site)) {
-        return false;
-      }
-
+    // 5. Frontline Staff / Employee / All other non-admin users:
+    // Strictly user-level isolated: only own actions, own profile, own requests, and critical safety alerts.
+    // Zero cross-user audit logs!
+    if (isSelfAction || isSelfProfile || isSelfRequest) {
       return true;
     }
 
-    // Fallback default: only strictly assigned site
-    return Boolean(
-      effectiveAssignedSite && n.site && isSiteMatch(effectiveAssignedSite, n.site)
-    );
+    if (isSiteSafetyAlert) {
+      return true;
+    }
+
+    // Absolutely no cross-user logs or unpermitted items
+    return false;
   });
 }

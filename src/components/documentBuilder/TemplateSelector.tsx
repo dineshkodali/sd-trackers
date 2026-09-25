@@ -172,26 +172,30 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
           <FileText className="w-10 h-10 text-neutral-300 mb-3" />
           <p className="text-sm font-semibold text-[#242424]">No matching templates found</p>
           <p className="text-xs text-[#94a3b8] mt-1 mb-4">
-            Create a new template using our modular builder or import one from Word / PDF.
+            {isAdminOrManager
+              ? 'Create a new template using our modular builder or import one from Word / PDF.'
+              : 'Try clearing your search or category filter to view approved report templates.'}
           </p>
-          <div className="flex gap-2">
-            {onCreateTemplate && (
-              <button
-                onClick={onCreateTemplate}
-                className="px-3 py-1.5 bg-[#0d9488] text-white text-xs font-bold rounded-xs"
-              >
-                + Create Template Now
-              </button>
-            )}
-            {onImportTemplate && (
-              <button
-                onClick={onImportTemplate}
-                className="px-3 py-1.5 bg-[#f1f5f9] border border-[#cbd5e1] text-[#334155] text-xs font-bold rounded-xs"
-              >
-                Import from DOCX/PDF
-              </button>
-            )}
-          </div>
+          {isAdminOrManager && (
+            <div className="flex gap-2">
+              {onCreateTemplate && (
+                <button
+                  onClick={onCreateTemplate}
+                  className="px-3 py-1.5 bg-[#0d9488] text-white text-xs font-bold rounded-xs cursor-pointer"
+                >
+                  + Create Template Now
+                </button>
+              )}
+              {onImportTemplate && (
+                <button
+                  onClick={onImportTemplate}
+                  className="px-3 py-1.5 bg-[#f1f5f9] border border-[#cbd5e1] text-[#334155] text-xs font-bold rounded-xs cursor-pointer"
+                >
+                  Import from DOCX/PDF
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -271,7 +275,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                       onClick={() => onSelect(template)}
                       className="px-2.5 py-1 text-xs font-bold text-white bg-[#0d9488] hover:bg-[#0f766e] rounded-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1"
                     >
-                      <span>Generate Report</span>
+                      <span>Log Report</span>
                       <span>→</span>
                     </button>
                   </div>

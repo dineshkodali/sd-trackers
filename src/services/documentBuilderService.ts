@@ -115,7 +115,10 @@ import { CLIENT_SEED_TEMPLATES } from '../data/seedTemplates';
 export async function fetchTemplates(): Promise<DocumentBuilderApiResponse<TemplateWithVersion[]>> {
   const res = await apiFetch<TemplateWithVersion[]>('/templates');
   if (res.success && res.data && res.data.length > 0) {
-    return res;
+    const filtered = res.data.filter(t => t.id === 'tmpl-incident-report' || t.name.toLowerCase().includes('incident'));
+    if (filtered.length > 0) {
+      return { success: true, data: filtered };
+    }
   }
   // Resilient fallback: return client seed templates so UI is never empty
   return { success: true, data: CLIENT_SEED_TEMPLATES };

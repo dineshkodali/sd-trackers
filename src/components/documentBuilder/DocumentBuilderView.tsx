@@ -9,7 +9,7 @@
  * 5. Direct Upload modal for "Create Own Template"
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   FileText,
   FilePlus,
@@ -27,6 +27,7 @@ import {
   GripVertical,
   Sliders,
   ArrowLeft,
+  UserCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { TemplateSelector } from './TemplateSelector';
@@ -61,7 +62,16 @@ interface Toast {
 type MainTab = 'generator' | 'documents';
 
 export const DocumentBuilderView: React.FC = () => {
-  const { assignedSite, allowedSites, canAccessAllSites, currentUserRole } = useApp();
+  const {
+    assignedSite,
+    allowedSites,
+    canAccessAllSites,
+    currentUserRole,
+    vulnerableSUs,
+    challengingSUs,
+    referrals,
+    dailyRegisterRecords,
+  } = useApp();
   const isAdmin = ['Super Admin', 'Admin', 'Regional Manager', 'Operations Manager'].includes(currentUserRole);
   const isSuperAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
 
@@ -82,6 +92,7 @@ export const DocumentBuilderView: React.FC = () => {
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
   const [documentTitle, setDocumentTitle] = useState('');
   const [selectedSite, setSelectedSite] = useState(assignedSite || allowedSites[0] || 'Site A');
+  const [selectedSUKey, setSelectedSUKey] = useState<string>('');
   const [currentRecord, setCurrentRecord] = useState<DocumentBuilderRecord | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -163,12 +174,110 @@ export const DocumentBuilderView: React.FC = () => {
     setLoadingTemplates(false);
   };
 
+  // Enforce strict RBAC: non-admin users can NEVER enter template customization mode
+  useEffect(() => {
+    if (!isAdmin && isCustomizing) {
+      setIsCustomizing(false);
+    }
+  }, [isAdmin, isCustomizing]);
+
+  // Aggregate Service Users (SUs) across site records to enable 1-click report auto-fill
+  const siteSUs = useMemo<{
+    id: string;
+    name: string;
+    portRef: string;
+    room?: string;
+    site?: string;
+    source: string;
+  }[]>(() => {
+    const list: Array<{ id: string; name: string; portRef: string; room?: string; site?: string; source: string }> = [];
+    const seen = new Set<string>();
+
+    const addSU = (name?: string, portRef?: string, room?: string, site?: string, source = 'SU') => {
+      const trimmedName = (name || '').trim();
+      const trimmedPort = (portRef || '').trim();
+      if (!trimmedName) return;
+      const key = `${trimmedName.toLowerCase()}|${trimmedPort.toLowerCase()}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      list.push({
+        id: key,
+        name: trimmedName,
+        portRef: trimmedPort,
+        room: (room || '').trim(),
+        site: site || selectedSite,
+        source,
+      });
+    };
+
+    const siteMatch = (s?: string) =>
+      !s || !selectedSite || selectedSite === 'All Sites' || s.toLowerCase() === selectedSite.toLowerCase();
+
+    (vulnerableSUs || []).filter(v => siteMatch(v.site)).forEach(v => addSU(v.suName, v.portOrNassRef, v.roomOrFlatNo, v.site, 'Vulnerable SU'));
+    (challengingSUs || []).filter(c => siteMatch(c.site)).forEach(c => addSU(c.name, c.portRef, '', c.site, 'Challenging SU'));
+    (referrals || []).filter(r => siteMatch(r.site)).forEach(r => addSU(r.suName, r.portRef, '', r.site, 'Safeguarding'));
+    (dailyRegisterRecords || []).filter(d => siteMatch(d.hotel)).forEach(d => addSU(d.name, d.portRef, d.roomNo, d.hotel, 'Register'));
+
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [vulnerableSUs, challengingSUs, referrals, dailyRegisterRecords, selectedSite]);
+
+  const handleSelectSU = useCallback((suKey: string) => {
+    setSelectedSUKey(suKey);
+    if (!suKey) return;
+
+    const su = siteSUs.find(s => s.id === suKey);
+    if (!su || !selectedTemplate) return;
+
+    const updatedValues: Record<string, any> = { ...fieldValues };
+    const defs = selectedTemplate.currentVersion?.fieldDefinitions || [];
+
+    defs.forEach(field => {
+      const fn = field.name.toLowerCase();
+      const fl = field.label.toLowerCase();
+
+      if (fn.includes('resident') || fn.includes('suname') || fn === 'name' || fl.includes('resident') || fl.includes('subject name')) {
+        if (!updatedValues[field.name]) updatedValues[field.name] = su.name;
+      }
+      if (fn.includes('port') || fn.includes('nass') || fl.includes('port') || fl.includes('nass')) {
+        if (!updatedValues[field.name] && su.portRef) updatedValues[field.name] = su.portRef;
+      }
+      if (fn.includes('room') || fn.includes('flat') || fl.includes('room') || fl.includes('flat')) {
+        if (!updatedValues[field.name] && su.room) updatedValues[field.name] = su.room;
+      }
+      if (fn === 'location' || fl === 'location / area') {
+        if (!updatedValues[field.name]) {
+          updatedValues[field.name] = su.room ? `Room ${su.room}, ${selectedSite}` : selectedSite;
+        }
+      }
+      if (fn === 'propertyid' || fl === 'property id') {
+        if (!updatedValues[field.name]) updatedValues[field.name] = selectedSite;
+      }
+      if (field.type === 'repeating_group' && (fn.includes('victim') || fl.includes('victim'))) {
+        const entry = `${su.name}${su.portRef ? ` (${su.portRef})` : ''}`;
+        const existing = Array.isArray(updatedValues[field.name]) ? updatedValues[field.name] : [];
+        if (!existing.includes(entry)) {
+          updatedValues[field.name] = [entry, ...existing];
+        }
+      }
+    });
+
+    setFieldValues(updatedValues);
+
+    if (!documentTitle || documentTitle.includes('—') || documentTitle.startsWith(selectedTemplate.name)) {
+      setDocumentTitle(`${selectedTemplate.name} — ${su.name}${su.portRef ? ` (${su.portRef})` : ''}`);
+    }
+
+    setIsDirty(true);
+    showToast(`Loaded details for Service User: ${su.name}`);
+  }, [siteSUs, selectedTemplate, fieldValues, documentTitle, selectedSite, showToast]);
+
   const handleSelectTemplate = useCallback(async (template: TemplateWithVersion) => {
     if (isDirty && !window.confirm('You have unsaved changes. Switch template?')) return;
 
     setSelectedTemplate(template);
     setFieldValues({});
     setCurrentRecord(null);
+    setSelectedSUKey('');
     setIsDirty(false);
     setIsCustomizing(false);
     setDocumentTitle(`${template.name} — ${new Date().toLocaleDateString('en-GB')}`);
@@ -182,11 +291,16 @@ export const DocumentBuilderView: React.FC = () => {
   }, [isDirty]);
 
   const handleCustomizeTemplate = useCallback(async (template: TemplateWithVersion) => {
+    if (!isAdmin) {
+      showToast('Standard users cannot edit master templates or forms.', 'error');
+      return;
+    }
     if (isDirty && !window.confirm('You have unsaved changes. Switch to template customization?')) return;
 
     setSelectedTemplate(template);
     setFieldValues({});
     setCurrentRecord(null);
+    setSelectedSUKey('');
     setIsDirty(false);
     setIsCustomizing(true);
     setDocumentTitle(`${template.name} (Template Schema)`);
@@ -197,7 +311,7 @@ export const DocumentBuilderView: React.FC = () => {
         setSelectedTemplate({ ...template, currentVersion: res.data as any });
       }
     }
-  }, [isDirty]);
+  }, [isAdmin, isDirty, showToast]);
 
   // Dedicated Exit to Home Forms handler
   const handleExitToHome = () => {
@@ -205,6 +319,7 @@ export const DocumentBuilderView: React.FC = () => {
     setSelectedTemplate(null);
     setFieldValues({});
     setCurrentRecord(null);
+    setSelectedSUKey('');
     setIsDirty(false);
     setIsCustomizing(false);
     setDocumentTitle('');
@@ -648,10 +763,10 @@ export const DocumentBuilderView: React.FC = () => {
               <div className="h-4 w-px bg-[#cbd5e1] mx-0.5" />
 
               <span className="text-xs font-bold text-[#1e293b] max-w-[260px] truncate" title={selectedTemplate.name}>
-                {isCustomizing ? `HO Report Designer: ${selectedTemplate.name}` : `HO Report Generator: ${selectedTemplate.name}`}
+                {isCustomizing && isAdmin ? `HO Report Designer: ${selectedTemplate.name}` : `HO Report Generator: ${selectedTemplate.name}`}
               </span>
 
-              {isCustomizing ? (
+              {isCustomizing && isAdmin ? (
                 <span className="px-2 py-0.5 text-[10px] font-bold bg-[#fef3c7] text-[#92400e] border border-[#fde68a] rounded-xs flex items-center gap-1">
                   <Sliders className="w-2.5 h-2.5" />
                   <span>Master Template Mode</span>
@@ -717,7 +832,7 @@ export const DocumentBuilderView: React.FC = () => {
             ) : null
           ) : (
             <>
-              {isCustomizing ? (
+              {isCustomizing && isAdmin ? (
                 /* TEMPLATE DESIGNER ACTIONS (Save to Master Template) */
                 <>
                   <button
@@ -821,10 +936,10 @@ export const DocumentBuilderView: React.FC = () => {
               templates={templates}
               loading={loadingTemplates}
               onSelect={handleSelectTemplate}
-              onEditTemplate={handleCustomizeTemplate}
-              onCreateTemplate={() => setShowCreateOwnModal(true)}
-              onImportTemplate={() => setShowImportModal(true)}
-              onDeleteTemplate={handleDeleteTemplate}
+              onEditTemplate={isAdmin ? handleCustomizeTemplate : undefined}
+              onCreateTemplate={isAdmin ? () => setShowCreateOwnModal(true) : undefined}
+              onImportTemplate={isAdmin ? () => setShowImportModal(true) : undefined}
+              onDeleteTemplate={isAdmin ? handleDeleteTemplate : undefined}
             />
           ) : (
             <div id="builder-split-container" className="flex flex-col lg:flex-row items-start gap-1 min-h-[calc(100vh-170px)] relative">
@@ -835,7 +950,7 @@ export const DocumentBuilderView: React.FC = () => {
               >
                 <div className="bg-white border border-[#cbd5e1] rounded-xs shadow-xs flex-1">
                   {/* Header Row: Template Metadata (Customize Mode) vs Report Details (Generate Mode) */}
-                  {isCustomizing ? (
+                  {isCustomizing && isAdmin ? (
                     <div className="px-3 py-2.5 border-b border-[#99f6e4] bg-[#f0fdfa] space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold text-[#0f766e] flex items-center gap-1.5">
@@ -905,7 +1020,40 @@ export const DocumentBuilderView: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="px-3 py-2 border-b border-[#e2e8f0] bg-[#fafafa]">
+                    <div className="px-3 py-2 border-b border-[#e2e8f0] bg-[#fafafa] space-y-2">
+                      {/* Service User (SU) Quick Selector for Staff / Users */}
+                      <div className="bg-[#f0fdfa] border border-[#99f6e4] rounded-xs p-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shadow-2xs">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <UserCheck className="w-3.5 h-3.5 text-[#0d9488]" />
+                          <span className="text-[11px] font-bold text-[#0f766e]">
+                            Service User (SU):
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <select
+                            value={selectedSUKey}
+                            onChange={e => handleSelectSU(e.target.value)}
+                            className="w-full text-xs border border-[#99f6e4] rounded-xs px-2 py-1 bg-white text-[#1e293b] focus:outline-none focus:border-[#0d9488] font-medium"
+                          >
+                            <option value="">-- Choose Resident / SU to Auto-Fill Report (Optional) --</option>
+                            {siteSUs.map(su => (
+                              <option key={su.id} value={su.id}>
+                                {su.name} {su.portRef ? `(${su.portRef})` : ''} {su.room ? `• Room ${su.room}` : ''} [{su.source}]
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {selectedSUKey && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSUKey('')}
+                            className="text-[10px] text-[#64748b] hover:text-[#0f766e] underline shrink-0 cursor-pointer"
+                          >
+                            Clear SU
+                          </button>
+                        )}
+                      </div>
+
                       <div className="grid grid-cols-3 gap-2">
                         <div className="col-span-2">
                           <label className="block text-[10px] font-bold text-[#475569] uppercase mb-0.5">
@@ -950,13 +1098,13 @@ export const DocumentBuilderView: React.FC = () => {
                     layoutConfig={layoutConfig}
                     fieldValues={fieldValues}
                     onFieldChange={handleFieldChange}
-                    isCustomizing={isCustomizing}
-                    onAddField={handleAddField}
-                    onRemoveField={handleRemoveField}
-                    onUpdateField={handleUpdateField}
-                    onAddSection={handleAddSection}
-                    onRemoveSection={handleRemoveSection}
-                    onUpdateSection={handleUpdateSection}
+                    isCustomizing={isAdmin && isCustomizing}
+                    onAddField={isAdmin ? handleAddField : undefined}
+                    onRemoveField={isAdmin ? handleRemoveField : undefined}
+                    onUpdateField={isAdmin ? handleUpdateField : undefined}
+                    onAddSection={isAdmin ? handleAddSection : undefined}
+                    onRemoveSection={isAdmin ? handleRemoveSection : undefined}
+                    onUpdateSection={isAdmin ? handleUpdateSection : undefined}
                   />
                 </div>
               </div>

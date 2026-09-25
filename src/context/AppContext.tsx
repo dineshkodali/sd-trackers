@@ -1880,6 +1880,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [notifications]);
 
   const clearAllNotifications = useCallback(() => {
+    if (currentUserRole !== 'Super Admin' && currentUserRole !== 'Admin') {
+      console.warn('[Notifications] Non-admin users have view-only permissions and cannot clear notifications.');
+      return;
+    }
     const now = Date.now();
     setClearedBeforeTimestamp(now);
     setExtraNotifications([]);
@@ -1888,7 +1892,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.warn('Could not save cleared notification state:', e);
     }
-  }, []);
+  }, [currentUserRole]);
 
   const unreadNotificationCount = useMemo(() => {
     return notifications.filter(n => !n.read).length;
