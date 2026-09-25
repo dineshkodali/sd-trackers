@@ -237,8 +237,8 @@ async function startServer() {
   }, smtpRouter);
   // Mount Finance module router
   app.use('/api/finance', requireAuth, financeRouter);
-  // Mount Document Builder module router with hybrid auth (verifies tokens when present; falls back to authenticated caller context)
-  app.use('/api/document-builder', async (req, res, next) => {
+  // Mount HO Report Generator module router (concurrently supporting /api/document-builder and /api/ho-reports)
+  app.use(['/api/document-builder', '/api/ho-reports'], async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7).trim();

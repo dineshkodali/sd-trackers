@@ -1,0 +1,78 @@
+[
+  {
+    "id": "aud-23a66d1e-e",
+    "documentId": "dbr-17380995",
+    "templateId": "tmpl-incident-report",
+    "action": "DOCUMENT_DELETED",
+    "userId": "usr-staff",
+    "userName": "Staff Member",
+    "userRole": "Super Admin",
+    "userEmail": "staff@sdcdms.co.uk",
+    "site": "741- Clacton Pier Avenue",
+    "details": "Deleted report: \"Incident Report — E2E Test Verification (Updated)\"",
+    "timestamp": "2026-09-25T04:14:31.815Z"
+  },
+  {
+    "id": "aud-61e3c4c2-3",
+    "templateId": "tmpl-incident-report",
+    "action": "TEMPLATE_UPDATED",
+    "userId": "usr-staff",
+    "userName": "Stack Master",
+    "userRole": "Super Admin",
+    "userEmail": "staff@sdcdms.co.uk",
+    "details": "Updated master HO template: \"Incident Report\"",
+    "timestamp": "2026-09-25T04:14:31.461Z"
+  },
+  {
+    "id": "aud-53f71468-6",
+    "documentId": "dbr-17380995",
+    "templateId": "tmpl-incident-report",
+    "action": "PDF_EXPORTED",
+    "userId": "usr-staff",
+    "userName": "Staff Member",
+    "userRole": "Staff",
+    "userEmail": "staff@sdcdms.co.uk",
+    "site": "741- Clacton Pier Avenue",
+    "details": "Generated and exported PDF for \"Incident Report — E2E Test Verification (Updated)\" (DOC-2026-669371)",
+    "timestamp": "2026-09-25T04:14:30.995Z"
+  },
+  {
+    "id": "aud-76ddabb3-e",
+    "documentId": "dbr-17380995",
+    "templateId": "tmpl-incident-report",
+    "action": "DOCX_EXPORTED",
+    "userId": "usr-staff",
+    "userName": "Staff Member",
+    "userRole": "Staff",
+    "userEmail": "staff@sdcdms.co.uk",
+    "site": "741- Clacton Pier Avenue",
+    "details": "Generated and exported DOCX for \"Incident Report — E2E Test Verification (Updated)\" (DOC-2026-669371)",
+    "timestamp": "2026-09-25T04:14:30.400Z"
+  },
+  {
+    "id": "aud-95b3f870-2",
+    "documentId": "dbr-17380995",
+    "templateId": "tmpl-incident-report",
+    "action": "DOCUMENT_FINALIZED",
+    "userId": "usr-staff",
+    "userName": "Staff Member",
+    "userRole": "Staff",
+    "userEmail": "staff@sdcdms.co.uk",
+    "site": "741- Clacton Pier Avenue",
+    "details": "Updated report: \"Incident Report — E2E Test Verification (Updated)\" (DOC-2026-669371)",
+    "timestamp": "2026-09-25T04:14:29.978Z"
+  },
+  {
+    "id": "aud-25d83a21-5",
+    "documentId": "dbr-17380995",
+    "templateId": "tmpl-incident-report",
+    "action": "DOCUMENT_CREATED",
+    "userId": "usr-staff",
+    "userName": "Test Staff Member",
+    "userRole": "Staff",
+    "userEmail": "staff@sdcdms.co.uk",
+    "site": "741- Clacton Pier Avenue",
+    "details": "Created report: \"Incident Report — E2E Test Verification\" (DOC-2026-669371)",
+    "timestamp": "2026-09-25T04:14:29.498Z"
+  }
+]

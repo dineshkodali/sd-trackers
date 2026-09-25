@@ -1,0 +1,863 @@
+[
+  {
+    "id": "tmpl-incident-report",
+    "name": "Incident Report",
+    "category": "Operations",
+    "isActive": true,
+    "createdAt": "2026-01-01T00:00:00Z",
+    "createdBy": "system",
+    "updatedAt": "2026-09-25T04:14:31.331Z",
+    "description": "Official UKVI & Clearsprings compliant incident report form with full factual disclosure, authority notifications, and evidence tracking (Super Admin Verified).",
+    "currentVersion": {
+      "id": "tver-447fb79b",
+      "version": 16,
+      "createdAt": "2026-09-25T04:14:31.331Z",
+      "createdBy": "usr-staff",
+      "isCurrent": true,
+      "templateId": "tmpl-incident-report",
+      "footerConfig": {
+        "customText": "Please attach photos of any evidence where possible when submitting to CST.",
+        "showPageNumbers": true,
+        "showGeneratedTimestamp": true
+      },
+      "headerConfig": {
+        "showDate": true,
+        "showLogo": true,
+        "subtitle": "Please complete with as much detail as possible, stating only facts. Please email CST@Clearsprings.co.uk who will review and send it to UKVI where appropriate.",
+        "showCompanyName": true,
+        "showDocumentNumber": true,
+        "confidentialityLevel": "Confidential"
+      },
+      "layoutConfig": {
+        "margins": {
+          "top": 25,
+          "left": 20,
+          "right": 20,
+          "bottom": 25
+        },
+        "pageSize": "A4",
+        "sections": [
+          {
+            "id": "incident",
+            "order": 1,
+            "title": "Property & Reporting Details",
+            "columns": 2
+          },
+          {
+            "id": "persons",
+            "order": 2,
+            "title": "Persons Involved (Offenders / Victims / Witnesses)",
+            "columns": 1
+          },
+          {
+            "id": "description",
+            "order": 3,
+            "title": "Incident Description",
+            "columns": 1
+          },
+          {
+            "id": "actions",
+            "order": 4,
+            "title": "Action Taken",
+            "columns": 1
+          },
+          {
+            "id": "warnings",
+            "order": 5,
+            "title": "Warning Letter",
+            "columns": 2
+          },
+          {
+            "id": "authorities",
+            "order": 6,
+            "title": "Reported Authorities",
+            "columns": 2
+          },
+          {
+            "id": "evidence",
+            "order": 7,
+            "title": "Evidence & Photos",
+            "columns": 1
+          },
+          {
+            "id": "sec-1790300503117",
+            "order": 8,
+            "title": " ",
+            "columns": 2
+          },
+          {
+            "id": "sec-1790303164473",
+            "order": 9,
+            "title": "Tester",
+            "columns": 2
+          }
+        ]
+      },
+      "fieldDefinitions": [
+        {
+          "id": "f-ir-1",
+          "name": "propertyId",
+          "type": "text",
+          "label": "Property ID",
+          "order": 1,
+          "width": "half",
+          "section": "incident",
+          "required": true,
+          "placeholder": "e.g. 741- Clacton Pier Avenue"
+        },
+        {
+          "id": "f-ir-2",
+          "name": "personReporting",
+          "type": "text",
+          "label": "Person Reporting",
+          "order": 2,
+          "width": "half",
+          "section": "incident",
+          "required": true,
+          "placeholder": "Full name of reporter"
+        },
+        {
+          "id": "f-ir-3",
+          "name": "dateOfIncident",
+          "type": "date",
+          "label": "Date of Incident",
+          "order": 3,
+          "width": "half",
+          "section": "incident",
+          "required": true
+        },
+        {
+          "id": "f-ir-4",
+          "name": "offenders",
+          "type": "repeating_group",
+          "label": "Offenders (Name/Port)",
+          "order": 1,
+          "width": "full",
+          "section": "persons",
+          "required": false,
+          "itemLabel": "+ Add Offender",
+          "repeatable": true,
+          "placeholder": "Name/Port or N/A"
+        },
+        {
+          "id": "f-ir-5",
+          "name": "victims",
+          "type": "repeating_group",
+          "label": "Victims (Name/Port)",
+          "order": 2,
+          "width": "full",
+          "section": "persons",
+          "required": true,
+          "itemLabel": "+ Add Victim",
+          "repeatable": true,
+          "placeholder": "e.g. Mohammed Kaw Rasul (MST/9157022)"
+        },
+        {
+          "id": "f-ir-6",
+          "name": "witnesses",
+          "type": "repeating_group",
+          "label": "Witnesses (SUs) (Name/Port)",
+          "order": 3,
+          "width": "full",
+          "section": "persons",
+          "required": false,
+          "itemLabel": "+ Add Witness",
+          "repeatable": true,
+          "placeholder": "e.g. Welfare officer (Emeka Opara) or N/A"
+        },
+        {
+          "id": "f-ir-7",
+          "name": "incidentDescription",
+          "type": "textarea",
+          "label": "Incident Description",
+          "order": 1,
+          "width": "full",
+          "section": "description",
+          "required": true,
+          "placeholder": "Please complete with as much detail as possible, stating only facts..."
+        },
+        {
+          "id": "f-ir-8",
+          "name": "actionTaken",
+          "type": "textarea",
+          "label": "Action Taken",
+          "order": 1,
+          "width": "full",
+          "section": "actions",
+          "required": true,
+          "placeholder": "Describe exact action and steps taken..."
+        },
+        {
+          "id": "f-ir-9",
+          "name": "warningLetterIssued",
+          "type": "select",
+          "label": "Warning Letter Issued?",
+          "order": 1,
+          "width": "half",
+          "options": [
+            "N/A",
+            "No",
+            "Yes"
+          ],
+          "section": "warnings",
+          "required": false
+        },
+        {
+          "id": "f-ir-10",
+          "name": "warningLetterToWhom",
+          "type": "text",
+          "label": "To Whom?",
+          "order": 2,
+          "width": "half",
+          "section": "warnings",
+          "required": false,
+          "placeholder": "Name/Port or N/A"
+        },
+        {
+          "id": "f-ir-11",
+          "name": "safeguardingInformed",
+          "type": "select",
+          "label": "Safeguarding Informed?",
+          "order": 1,
+          "width": "half",
+          "options": [
+            "N/A",
+            "No",
+            "Yes"
+          ],
+          "section": "authorities",
+          "required": false
+        },
+        {
+          "id": "f-ir-12",
+          "name": "safeguardingWho",
+          "type": "text",
+          "label": "Who?",
+          "order": 2,
+          "width": "half",
+          "section": "authorities",
+          "required": false,
+          "placeholder": "Name or N/A"
+        },
+        {
+          "id": "f-ir-13",
+          "name": "policeInvolved",
+          "type": "select",
+          "label": "Police Involved?",
+          "order": 3,
+          "width": "half",
+          "options": [
+            "N/A",
+            "No",
+            "Yes"
+          ],
+          "section": "authorities",
+          "required": false
+        },
+        {
+          "id": "f-ir-14",
+          "name": "policeCadRef",
+          "type": "text",
+          "label": "CAD Ref (Police)",
+          "order": 4,
+          "width": "half",
+          "section": "authorities",
+          "required": false,
+          "placeholder": "CAD Reference or N/A"
+        },
+        {
+          "id": "f-ir-15",
+          "name": "ambulanceInvolved",
+          "type": "select",
+          "label": "Ambulance Involved?",
+          "order": 5,
+          "width": "half",
+          "options": [
+            "N/A",
+            "No",
+            "Yes"
+          ],
+          "section": "authorities",
+          "required": false
+        },
+        {
+          "id": "f-ir-16",
+          "name": "ambulanceCadRef",
+          "type": "text",
+          "label": "CAD Ref (Ambulance)",
+          "order": 6,
+          "width": "half",
+          "section": "authorities",
+          "required": false,
+          "placeholder": "CAD Reference or N/A"
+        },
+        {
+          "id": "f-ir-17",
+          "name": "fireServiceInvolved",
+          "type": "select",
+          "label": "Fire Service Involved?",
+          "order": 7,
+          "width": "half",
+          "options": [
+            "N/A",
+            "No",
+            "Yes"
+          ],
+          "section": "authorities",
+          "required": false
+        },
+        {
+          "id": "f-ir-18",
+          "name": "fireCadRef",
+          "type": "text",
+          "label": "CAD Ref (Fire)",
+          "order": 8,
+          "width": "half",
+          "section": "authorities",
+          "required": false,
+          "placeholder": "CAD Reference or N/A"
+        },
+        {
+          "id": "f-ir-19",
+          "name": "evidencePhotos",
+          "type": "attachment",
+          "label": "Evidence Photos & Attachments",
+          "order": 1,
+          "width": "full",
+          "section": "evidence",
+          "required": false,
+          "itemLabel": "+ Add Evidence Photo",
+          "repeatable": true,
+          "placeholder": "Upload or link evidence photos"
+        },
+        {
+          "id": "field-1790300506337-wjyl",
+          "name": "customField_20_6337",
+          "type": "date",
+          "label": "Event Date",
+          "order": 20,
+          "width": "half",
+          "section": "sec-1790300503117",
+          "required": false,
+          "placeholder": ""
+        },
+        {
+          "id": "field-1790306791903-rlp4",
+          "name": "customField_21_1903",
+          "type": "textarea",
+          "label": "Details / Narrative",
+          "order": 21,
+          "width": "full",
+          "section": "sec-1790303164473",
+          "required": false,
+          "placeholder": "Enter details..."
+        }
+      ]
+    }
+  },
+  {
+    "id": "tmpl-risk-assessment",
+    "name": "Risk Assessment",
+    "category": "Safeguarding",
+    "isActive": true,
+    "createdAt": "2026-01-01T00:00:00Z",
+    "createdBy": "system",
+    "updatedAt": "2026-01-01T00:00:00Z",
+    "description": "Standard risk assessment document with hazard identification, risk rating, control measures, and review scheduling.",
+    "currentVersion": {
+      "id": "tver-risk-v1",
+      "version": 1,
+      "isCurrent": true,
+      "templateId": "tmpl-risk-assessment",
+      "footerConfig": {
+        "customText": "SD Commercial — Confidential Document",
+        "showPageNumbers": true,
+        "showGeneratedTimestamp": true
+      },
+      "headerConfig": {
+        "showDate": true,
+        "showLogo": true,
+        "subtitle": "Accommodation Services Risk Assessment",
+        "showCompanyName": true,
+        "showDocumentNumber": true,
+        "confidentialityLevel": "Restricted"
+      },
+      "layoutConfig": {
+        "margins": {
+          "top": 25,
+          "left": 20,
+          "right": 20,
+          "bottom": 25
+        },
+        "pageSize": "A4",
+        "sections": [
+          {
+            "id": "details",
+            "order": 1,
+            "title": "Assessment Details",
+            "columns": 2
+          },
+          {
+            "id": "hazards",
+            "order": 2,
+            "title": "Hazard Identification",
+            "columns": 1
+          },
+          {
+            "id": "controls",
+            "order": 3,
+            "title": "Control Measures",
+            "columns": 1
+          },
+          {
+            "id": "review",
+            "order": 4,
+            "title": "Review & Sign-Off",
+            "columns": 2
+          }
+        ]
+      },
+      "fieldDefinitions": [
+        {
+          "id": "f-ra-1",
+          "name": "assessmentDate",
+          "type": "date",
+          "label": "Assessment Date",
+          "order": 1,
+          "width": "half",
+          "section": "details",
+          "required": true
+        },
+        {
+          "id": "f-ra-2",
+          "name": "assessorName",
+          "type": "text",
+          "label": "Assessor Name",
+          "order": 2,
+          "width": "half",
+          "section": "details",
+          "required": true,
+          "placeholder": "Full name of assessor"
+        },
+        {
+          "id": "f-ra-3",
+          "name": "residentName",
+          "type": "text",
+          "label": "Resident / Subject Name",
+          "order": 3,
+          "width": "half",
+          "section": "details",
+          "required": true,
+          "placeholder": "Full name"
+        },
+        {
+          "id": "f-ra-4",
+          "name": "portRef",
+          "type": "text",
+          "label": "Port / NASS Reference",
+          "order": 4,
+          "width": "half",
+          "section": "details",
+          "required": false,
+          "placeholder": "e.g. PORT-123456"
+        },
+        {
+          "id": "f-ra-5",
+          "name": "location",
+          "type": "text",
+          "label": "Location / Area",
+          "order": 5,
+          "width": "full",
+          "section": "details",
+          "required": true,
+          "placeholder": "Building, floor, room"
+        },
+        {
+          "id": "f-ra-6",
+          "name": "riskCategory",
+          "type": "select",
+          "label": "Risk Category",
+          "order": 6,
+          "width": "half",
+          "options": [
+            "Personal Safety",
+            "Fire",
+            "Environmental",
+            "Health & Hygiene",
+            "Security",
+            "Mental Health",
+            "Safeguarding"
+          ],
+          "section": "details",
+          "required": true
+        },
+        {
+          "id": "f-ra-7",
+          "name": "overallRiskLevel",
+          "type": "select",
+          "label": "Overall Risk Level",
+          "order": 7,
+          "width": "half",
+          "options": [
+            "Low",
+            "Medium",
+            "High",
+            "Critical"
+          ],
+          "section": "details",
+          "required": true
+        },
+        {
+          "id": "f-ra-8",
+          "name": "hazardDescription",
+          "type": "textarea",
+          "label": "Hazard Description",
+          "order": 1,
+          "width": "full",
+          "section": "hazards",
+          "required": true,
+          "placeholder": "Describe the identified hazards and potential harm..."
+        },
+        {
+          "id": "f-ra-9",
+          "name": "personsAtRisk",
+          "type": "textarea",
+          "label": "Persons at Risk",
+          "order": 2,
+          "width": "full",
+          "section": "hazards",
+          "required": true,
+          "placeholder": "Who may be harmed and how..."
+        },
+        {
+          "id": "f-ra-10",
+          "name": "existingControls",
+          "type": "textarea",
+          "label": "Existing Control Measures",
+          "order": 1,
+          "width": "full",
+          "section": "controls",
+          "required": true,
+          "placeholder": "Current measures in place..."
+        },
+        {
+          "id": "f-ra-11",
+          "name": "additionalControls",
+          "type": "textarea",
+          "label": "Additional Controls Required",
+          "order": 2,
+          "width": "full",
+          "section": "controls",
+          "required": false,
+          "placeholder": "Further actions needed..."
+        },
+        {
+          "id": "f-ra-12",
+          "name": "reviewDate",
+          "type": "date",
+          "label": "Review Date",
+          "order": 1,
+          "width": "half",
+          "section": "review",
+          "required": true
+        },
+        {
+          "id": "f-ra-13",
+          "name": "reviewedBy",
+          "type": "text",
+          "label": "To Be Reviewed By",
+          "order": 2,
+          "width": "half",
+          "section": "review",
+          "required": false,
+          "placeholder": "Name of reviewer"
+        },
+        {
+          "id": "f-ra-14",
+          "name": "additionalNotes",
+          "type": "textarea",
+          "label": "Additional Notes",
+          "order": 3,
+          "width": "full",
+          "section": "review",
+          "required": false,
+          "placeholder": "Any further notes or observations..."
+        }
+      ]
+    }
+  },
+  {
+    "id": "tmpl-safeguarding-referral",
+    "name": "Safeguarding Referral",
+    "category": "Safeguarding",
+    "isActive": true,
+    "createdAt": "2026-01-01T00:00:00Z",
+    "createdBy": "system",
+    "updatedAt": "2026-01-01T00:00:00Z",
+    "description": "Formal safeguarding referral document with resident details, concerns, evidence, and multi-agency notifications.",
+    "currentVersion": {
+      "id": "tver-safeguarding-v1",
+      "version": 1,
+      "isCurrent": true,
+      "templateId": "tmpl-safeguarding-referral",
+      "footerConfig": {
+        "customText": "SD Commercial — Safeguarding Referral — Restricted",
+        "showPageNumbers": true,
+        "showGeneratedTimestamp": true
+      },
+      "headerConfig": {
+        "showDate": true,
+        "showLogo": true,
+        "subtitle": "Safeguarding Referral Form",
+        "showCompanyName": true,
+        "showDocumentNumber": true,
+        "confidentialityLevel": "Restricted"
+      },
+      "layoutConfig": {
+        "margins": {
+          "top": 25,
+          "left": 20,
+          "right": 20,
+          "bottom": 25
+        },
+        "pageSize": "A4",
+        "sections": [
+          {
+            "id": "referral",
+            "order": 1,
+            "title": "Referral Information",
+            "columns": 2
+          },
+          {
+            "id": "resident",
+            "order": 2,
+            "title": "Resident Details",
+            "columns": 2
+          },
+          {
+            "id": "concerns",
+            "order": 3,
+            "title": "Safeguarding Concerns",
+            "columns": 1
+          },
+          {
+            "id": "agencies",
+            "order": 4,
+            "title": "Agency Notifications & Actions",
+            "columns": 2
+          }
+        ]
+      },
+      "fieldDefinitions": [
+        {
+          "id": "f-sg-1",
+          "name": "referralDate",
+          "type": "date",
+          "label": "Referral Date",
+          "order": 1,
+          "width": "half",
+          "section": "referral",
+          "required": true
+        },
+        {
+          "id": "f-sg-2",
+          "name": "referringOfficer",
+          "type": "text",
+          "label": "Referring Officer",
+          "order": 2,
+          "width": "half",
+          "section": "referral",
+          "required": true,
+          "placeholder": "Name and role"
+        },
+        {
+          "id": "f-sg-3",
+          "name": "referralType",
+          "type": "select",
+          "label": "Referral Type",
+          "order": 3,
+          "width": "half",
+          "options": [
+            "Safeguarding Adult",
+            "Safeguarding Child",
+            "Mental Health",
+            "Domestic Abuse",
+            "Self-Harm / Suicide Risk",
+            "Modern Slavery"
+          ],
+          "section": "referral",
+          "required": true
+        },
+        {
+          "id": "f-sg-4",
+          "name": "urgency",
+          "type": "select",
+          "label": "Urgency",
+          "order": 4,
+          "width": "half",
+          "options": [
+            "Low",
+            "Medium",
+            "High",
+            "Critical"
+          ],
+          "section": "referral",
+          "required": true
+        },
+        {
+          "id": "f-sg-5",
+          "name": "residentName",
+          "type": "text",
+          "label": "Resident Full Name",
+          "order": 1,
+          "width": "half",
+          "section": "resident",
+          "required": true,
+          "placeholder": "Full legal name"
+        },
+        {
+          "id": "f-sg-6",
+          "name": "dateOfBirth",
+          "type": "date",
+          "label": "Date of Birth",
+          "order": 2,
+          "width": "half",
+          "section": "resident",
+          "required": true
+        },
+        {
+          "id": "f-sg-7",
+          "name": "portRef",
+          "type": "text",
+          "label": "Port / NASS Reference",
+          "order": 3,
+          "width": "half",
+          "section": "resident",
+          "required": false,
+          "placeholder": "e.g. PORT-123456"
+        },
+        {
+          "id": "f-sg-8",
+          "name": "roomNumber",
+          "type": "text",
+          "label": "Room / Flat Number",
+          "order": 4,
+          "width": "half",
+          "section": "resident",
+          "required": false,
+          "placeholder": "e.g. Room 12B"
+        },
+        {
+          "id": "f-sg-9",
+          "name": "gender",
+          "type": "select",
+          "label": "Gender",
+          "order": 5,
+          "width": "half",
+          "options": [
+            "Male",
+            "Female",
+            "Other",
+            "Prefer not to say"
+          ],
+          "section": "resident",
+          "required": true
+        },
+        {
+          "id": "f-sg-10",
+          "name": "nationality",
+          "type": "text",
+          "label": "Nationality",
+          "order": 6,
+          "width": "half",
+          "section": "resident",
+          "required": false,
+          "placeholder": "Country of origin"
+        },
+        {
+          "id": "f-sg-11",
+          "name": "concerns",
+          "type": "textarea",
+          "label": "Nature of Concerns",
+          "order": 1,
+          "width": "full",
+          "section": "concerns",
+          "required": true,
+          "placeholder": "Describe the safeguarding concerns in detail..."
+        },
+        {
+          "id": "f-sg-12",
+          "name": "evidence",
+          "type": "textarea",
+          "label": "Evidence / Observations",
+          "order": 2,
+          "width": "full",
+          "section": "concerns",
+          "required": true,
+          "placeholder": "Documented evidence, witness statements, visible indicators..."
+        },
+        {
+          "id": "f-sg-13",
+          "name": "previousConcerns",
+          "type": "textarea",
+          "label": "Previous Concerns / History",
+          "order": 3,
+          "width": "full",
+          "section": "concerns",
+          "required": false,
+          "placeholder": "Any prior incidents or existing care plans..."
+        },
+        {
+          "id": "f-sg-14",
+          "name": "localAuthority",
+          "type": "text",
+          "label": "Local Authority",
+          "order": 1,
+          "width": "half",
+          "section": "agencies",
+          "required": true,
+          "placeholder": "Council name"
+        },
+        {
+          "id": "f-sg-15",
+          "name": "methodOfReferral",
+          "type": "select",
+          "label": "Method of Referral",
+          "order": 2,
+          "width": "half",
+          "options": [
+            "Mosaic Portal",
+            "Encrypted Email",
+            "Phone Call",
+            "In Person",
+            "Online Form"
+          ],
+          "section": "agencies",
+          "required": true
+        },
+        {
+          "id": "f-sg-16",
+          "name": "agenciesNotified",
+          "type": "textarea",
+          "label": "Agencies Notified",
+          "order": 3,
+          "width": "full",
+          "section": "agencies",
+          "required": false,
+          "placeholder": "List all agencies contacted with dates and reference numbers..."
+        },
+        {
+          "id": "f-sg-17",
+          "name": "immediateActions",
+          "type": "textarea",
+          "label": "Immediate Actions Taken",
+          "order": 4,
+          "width": "full",
+          "section": "agencies",
+          "required": true,
+          "placeholder": "Steps taken to ensure immediate safety..."
+        }
+      ]
+    }
+  }
+]

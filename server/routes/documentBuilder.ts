@@ -22,6 +22,7 @@ import {
   deleteRecord,
   recordAudit,
   getAuditLogs,
+  updateRecordPreparedFormat,
 } from './documentBuilderStorage.js';
 
 const router = Router();
@@ -270,7 +271,18 @@ router.get('/records/:id', async (req: Request, res: Response) => {
 
 router.post('/records', async (req: Request, res: Response) => {
   const author = getUserIdentity(req);
-  const { templateId, templateVersionId, site, title, fieldValues, status } = req.body;
+  const {
+    templateId,
+    templateVersionId,
+    site,
+    title,
+    fieldValues,
+    status,
+    fieldDefinitions,
+    layoutConfig,
+    headerConfig,
+    footerConfig,
+  } = req.body;
 
   if (!templateId || !site || !title) {
     return res.status(400).json({ success: false, error: 'templateId, site, and title are required' });
@@ -284,6 +296,10 @@ router.post('/records', async (req: Request, res: Response) => {
       title,
       fieldValues: fieldValues || {},
       status: status || 'draft',
+      fieldDefinitions: fieldDefinitions || [],
+      layoutConfig: layoutConfig || {},
+      headerConfig: headerConfig || {},
+      footerConfig: footerConfig || {},
     }, author);
 
     res.json({ success: true, data: saved });
@@ -395,10 +411,10 @@ router.get('/audit-logs', async (req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /records/:id/generate/:format — generate DOCX or PDF
+// POST /records/:id/generate/:format and POST /generate/:format — generate DOCX or PDF
 // ---------------------------------------------------------------------------
 
-router.post('/records/:id/generate/:format', async (req: Request, res: Response) => {
+async function handleGenerateRequest(req: Request, res: Response) {
   const { id, format } = req.params;
   const author = getUserIdentity(req);
 
@@ -406,56 +422,61 @@ router.post('/records/:id/generate/:format', async (req: Request, res: Response)
     return res.status(400).json({ success: false, error: 'Format must be docx or pdf' });
   }
 
-  const record = await getRecordById(id);
-  if (!record) {
-    return res.status(404).json({ success: false, error: 'Document record not found' });
-  }
+  const body = req.body || {};
+  const record = (id && id !== 'direct') ? await getRecordById(id) : null;
 
   // Load template version
-  const template = await getTemplateById(record.templateId);
+  let template = record ? await getTemplateById(record.templateId) : null;
+  if (!template && body.templateId) {
+    template = await getTemplateById(body.templateId);
+  }
   const templateVersion = template?.currentVersion;
 
-  if (!templateVersion) {
-    return res.status(404).json({ success: false, error: 'Template version not found for document' });
+  if (!record && !body.fieldValues && !body.title) {
+    return res.status(404).json({ success: false, error: 'Document data or record not found' });
   }
 
   try {
     const docData = {
-      title: record.title,
-      documentNumber: record.documentNumber || '',
-      site: record.site,
-      fieldValues: record.fieldValues || {},
-      templateName: template?.name || 'Document',
-      fieldDefinitions: templateVersion.fieldDefinitions || [],
-      layoutConfig: templateVersion.layoutConfig || {},
-      headerConfig: templateVersion.headerConfig || {},
-      footerConfig: templateVersion.footerConfig || {},
-      createdByName: record.createdByName || author.name,
-      createdAt: record.createdAt,
+      title: body.title || record?.title || 'Document',
+      documentNumber: body.documentNumber || record?.documentNumber || 'DOC-2026-DRAFT',
+      site: body.site || record?.site || '',
+      fieldValues: body.fieldValues || record?.fieldValues || {},
+      templateName: body.templateName || template?.name || 'Document',
+      fieldDefinitions: body.fieldDefinitions || (record as any)?.fieldDefinitions || templateVersion?.fieldDefinitions || [],
+      layoutConfig: body.layoutConfig || (record as any)?.layoutConfig || templateVersion?.layoutConfig || {},
+      headerConfig: body.headerConfig || (record as any)?.headerConfig || templateVersion?.headerConfig || {},
+      footerConfig: body.footerConfig || (record as any)?.footerConfig || templateVersion?.footerConfig || {},
+      createdByName: record?.createdByName || body.createdByName || author.name,
+      createdAt: record?.createdAt || body.createdAt || new Date().toISOString(),
     };
 
-    // Log the download action in audit trail
-    await recordAudit({
-      documentId: record.id,
-      templateId: record.templateId,
-      action: format === 'docx' ? 'DOCX_EXPORTED' : 'PDF_EXPORTED',
-      userId: author.id,
-      userName: author.name,
-      userRole: author.role,
-      userEmail: author.email,
-      site: record.site,
-      details: `Generated and exported ${format.toUpperCase()} for "${record.title}" (${record.documentNumber})`,
-    });
+    // Log the download action in audit trail and update record prepared format
+    if (record) {
+      await updateRecordPreparedFormat(record.id, format);
+      await recordAudit({
+        documentId: record.id,
+        templateId: record.templateId,
+        action: format === 'docx' ? 'DOCX_EXPORTED' : 'PDF_EXPORTED',
+        userId: author.id,
+        userName: author.name,
+        userRole: author.role,
+        userEmail: author.email,
+        site: record.site,
+        details: `Generated and exported ${format.toUpperCase()} for "${docData.title}" (${docData.documentNumber})`,
+      });
+    }
+
+    const safeTitle = (docData.title || 'document').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_') || 'document';
+    const filename = `${safeTitle}.${format}`;
 
     if (format === 'docx') {
       const buffer = await generateDocx(docData);
-      const filename = `${record.title.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_')}.docx`;
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(Buffer.from(buffer));
     } else {
       const buffer = await generatePdf(docData);
-      const filename = `${record.title.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_')}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(buffer);
@@ -464,6 +485,9 @@ router.post('/records/:id/generate/:format', async (req: Request, res: Response)
     console.error(`[DocumentBuilder] Generate ${format} error:`, err.message);
     res.status(500).json({ success: false, error: `Failed to generate ${format.toUpperCase()}` });
   }
-});
+}
+
+router.post('/records/:id/generate/:format', handleGenerateRequest);
+router.post('/generate/:format', handleGenerateRequest);
 
 export default router;

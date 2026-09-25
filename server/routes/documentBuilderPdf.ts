@@ -2,8 +2,9 @@
  * Document Builder — PDF Generation
  *
  * Generates professional PDF documents using pdfkit.
- * Produces multi-page PDFs with headers, footers, page numbers,
- * authentic Ready Homes / Clearsprings branding, and flow-based tables.
+ * Matches DocumentPreview / DocumentPreviewPage pixel-for-pixel:
+ * authentic Ready Homes & Clearsprings branding, precise column alignments,
+ * evidence photos gallery, multi-line bullet calculations, and running continuation headers.
  */
 
 import PDFDocument from 'pdfkit';
@@ -24,7 +25,7 @@ interface DocData {
   createdAt: string;
 }
 
-// SD Brand colors in RGB arrays
+// Brand Colors
 const BRAND_TEAL: [number, number, number] = [13, 148, 136];
 const BRAND_DARK: [number, number, number] = [17, 94, 89];
 const FLUENT_BLACK: [number, number, number] = [36, 36, 36];
@@ -35,11 +36,102 @@ function formatDate(dateStr?: string): string {
   if (!dateStr) return new Date().toLocaleDateString('en-GB');
   try {
     return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: '2-digit', month: 'long', year: 'numeric',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
     });
   } catch {
     return dateStr;
   }
+}
+
+function cleanVal(val: any): string {
+  if (val === undefined || val === null || val === 'N/A' || val === 'n/a' || val === 'None') return '';
+  return String(val).trim();
+}
+
+function parsePeople(val: any): { name: string; portRef?: string }[] {
+  if (!val) return [];
+  if (Array.isArray(val)) {
+    return val
+      .filter(item => item && (item.name || typeof item === 'string'))
+      .map(item => {
+        if (typeof item === 'string') {
+          const parts = item.split(/[/(]/);
+          return {
+            name: parts[0]?.trim() || item,
+            portRef: parts[1]?.replace(/[)\]]/g, '').trim() || '',
+          };
+        }
+        return {
+          name: item.name || '',
+          portRef: item.portRef || '',
+        };
+      });
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed || trimmed === 'N/A' || trimmed === 'n/a') return [];
+    const lines = trimmed.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+    return lines.map(line => {
+      const parts = line.split(/[/(]/);
+      return {
+        name: parts[0]?.trim() || line,
+        portRef: parts[1]?.replace(/[)\]]/g, '').trim() || '',
+      };
+    });
+  }
+  return [];
+}
+
+function parseLines(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map(String).filter(s => s.trim().length > 0);
+  const str = String(val).trim();
+  if (!str || str === 'N/A' || str === 'n/a') return [];
+  return str
+    .split('\n')
+    .map(l => l.trim().replace(/^[•\-\*]\s*/, ''))
+    .filter(l => l.length > 0);
+}
+
+function getPhotoBuffer(photo: any): { buffer: Buffer; caption: string } | null {
+  const urlOrData = typeof photo === 'string' ? photo : (photo?.url || photo?.dataUrl || '');
+  const caption = (typeof photo === 'object' ? (photo?.caption || photo?.name) : '') || 'Evidence Photograph';
+
+  let buf: Buffer | null = null;
+  if (urlOrData && urlOrData.startsWith('data:image/')) {
+    const commaIdx = urlOrData.indexOf(',');
+    if (commaIdx !== -1) {
+      try {
+        buf = Buffer.from(urlOrData.slice(commaIdx + 1), 'base64');
+      } catch {}
+    }
+  } else if (urlOrData && (urlOrData.startsWith('/templates/') || urlOrData.startsWith('templates/'))) {
+    const cleanPath = urlOrData.startsWith('/') ? urlOrData.slice(1) : urlOrData;
+    const fullPath = path.join(process.cwd(), 'public', cleanPath);
+    if (fs.existsSync(fullPath)) {
+      try {
+        buf = fs.readFileSync(fullPath);
+      } catch {}
+    }
+  } else if (urlOrData && fs.existsSync(urlOrData)) {
+    try {
+      buf = fs.readFileSync(urlOrData);
+    } catch {}
+  }
+
+  // Fallback to sample template image if photo exists but has no valid buffer
+  if (!buf) {
+    const fallbackPath = path.join(process.cwd(), 'public', 'templates', 'incident', 'image1.png');
+    if (fs.existsSync(fallbackPath)) {
+      try {
+        buf = fs.readFileSync(fallbackPath);
+      } catch {}
+    }
+  }
+
+  return buf ? { buffer: buf, caption } : null;
 }
 
 export async function generatePdf(data: DocData): Promise<Buffer> {
@@ -50,8 +142,8 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
       (data.fieldDefinitions || []).some((f: any) => f.name === 'propertyId');
 
     const margins = isIncident
-      ? { top: 30, right: 36, bottom: 35, left: 36 }
-      : (data.layoutConfig?.margins || { top: 25, right: 20, bottom: 25, left: 20 });
+      ? { top: 26, right: 36, bottom: 26, left: 36 }
+      : (data.layoutConfig?.margins || { top: 25, right: 28, bottom: 25, left: 28 });
 
     const doc = new PDFDocument({
       size: 'A4',
@@ -85,52 +177,56 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
     const logo2Path = path.join(process.cwd(), 'public', 'templates', 'incident', 'image2.png');
 
     // =========================================================================
-    // INCIDENT REPORT PDF RENDERING (Matching User Screenshot & Dynamic Flow)
+    // 1. INCIDENT REPORT PDF RENDERING (100% PREVIEW FIDELITY)
     // =========================================================================
     if (isIncident) {
       const v = data.fieldValues || {};
-
-      const parsePeople = (val: any) => {
-        if (!val) return [];
-        if (Array.isArray(val)) {
-          return val.map((it: any) => typeof it === 'string' ? { name: it } : it).filter(it => it && it.name);
-        }
-        if (typeof val === 'string' && val.trim() && val !== 'N/A') {
-          return val.split(/[\n,;]+/).map(s => ({ name: s.trim() })).filter(x => x.name.length > 0);
-        }
-        return [];
-      };
+      const propertyId = cleanVal(v.propertyId || v.locationDetail || data.site);
+      const personReporting = cleanVal(v.personReporting || v.reportedBy);
+      const dateOfIncident = cleanVal(v.dateOfIncident || v.incidentDate);
 
       const offenders = parsePeople(v.offenders);
       const victims = parsePeople(v.victims);
       const witnesses = parsePeople(v.witnesses);
 
-      const parseLines = (val: any): string[] => {
-        if (!val) return [];
-        if (Array.isArray(val)) return val.map(String).filter(s => s.trim().length > 0);
-        const str = String(val).trim();
-        if (!str || str === 'N/A') return [];
-        return str.split('\n').map(l => l.trim().replace(/^[•\-\*]\s*/, '')).filter(Boolean);
-      };
-
       const descLines = parseLines(v.incidentDescription || v.description);
       const actionLines = parseLines(v.actionTaken || v.immediateAction);
 
-      // Draw top header on first page
-      function drawIncidentFirstHeader() {
+      const rawPhotos =
+        v.evidencePhotos ||
+        v.attachments ||
+        v.photos ||
+        Object.values(v).find(
+          val => Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && ('url' in val[0] || 'dataUrl' in val[0])
+        ) ||
+        [];
+
+      // Column widths matching Preview exactly: 35.02%, 21.66%, 17.29%, 26.03%
+      const col0W = Math.round(contentWidth * 0.3502 * 10) / 10;
+      const c1W = Math.round(contentWidth * 0.2166 * 10) / 10;
+      const c2W = Math.round(contentWidth * 0.1729 * 10) / 10;
+      const c3W = Math.round((contentWidth - col0W - c1W - c2W) * 10) / 10;
+      const colRestW = contentWidth - col0W;
+
+      // Safe content boundary to avoid ANY collision with footer
+      const FOOTER_RESERVED_HEIGHT = 58;
+      const maxContentY = pageHeight - margins.bottom - FOOTER_RESERVED_HEIGHT;
+
+      // Draw Top Page 1 Header
+      function drawFirstPageHeader() {
+        // Ready Homes Logo at top right
         if (fs.existsSync(logo1Path)) {
           try {
-            doc.image(logo1Path, pageWidth - pageRight - 110, margins.top, { width: 110 });
-          } catch {
-            // fallback text
-          }
+            doc.image(logo1Path, pageWidth - pageRight - 82, margins.top, { height: 50 });
+          } catch {}
         }
-        doc.y = margins.top + 46;
 
-        // Title
+        doc.y = margins.top + 34;
+
+        // Title: "Incident Report"
         doc.font('Helvetica-Bold').fontSize(14).fillColor(FLUENT_BLACK);
         doc.text('Incident Report', pageLeft, doc.y, { width: contentWidth, align: 'center' });
-        doc.moveDown(0.3);
+        doc.moveDown(0.25);
 
         // Subtitle instructions
         doc.font('Helvetica').fontSize(8).fillColor(FLUENT_BLACK);
@@ -140,24 +236,394 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
           doc.y,
           { width: contentWidth, align: 'center' }
         );
-        doc.moveDown(0.8);
+        doc.moveDown(0.7);
       }
 
-      // Draw continuation header on subsequent pages
-      function drawIncidentRunningHeader(pageIdx: number, totalPages: number) {
+      // Start on page 1
+      drawFirstPageHeader();
+
+      function ensureSpace(neededHeight: number) {
+        if (doc.y + neededHeight > maxContentY) {
+          doc.addPage();
+          // Running header space reserved on page 2+
+          doc.y = margins.top + 24;
+        }
+      }
+
+      // Draw 2-Cell Row (Col 0 Label text-center bold, ColRest text-left)
+      function draw2CellRow(
+        label: string,
+        content: string | string[],
+        options: { isBullet?: boolean; minH?: number; isPerson?: boolean; portRef?: string } = {}
+      ) {
+        const isBullet = options.isBullet ?? false;
+        const minH = options.minH ?? 20;
+
+        let calculatedContentH = 0;
+        doc.font('Helvetica').fontSize(8.5);
+
+        if (Array.isArray(content)) {
+          if (content.length === 0) {
+            calculatedContentH = 16;
+          } else {
+            content.forEach(line => {
+              const h = doc.heightOfString(`• ${line}`, { width: colRestW - 16, lineGap: 1.5 });
+              calculatedContentH += Math.max(14, h + 3);
+            });
+          }
+        } else {
+          const textH = doc.heightOfString(content || '', { width: colRestW - 16, lineGap: 1.5 });
+          calculatedContentH = Math.max(12, textH);
+        }
+
+        const rowH = Math.max(minH, calculatedContentH + 8);
+        ensureSpace(rowH);
+
+        const curY = doc.y;
+
+        // 1. Draw Cell Borders
+        doc.rect(pageLeft, curY, col0W, rowH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
+        doc.rect(pageLeft + col0W, curY, colRestW, rowH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
+
+        // 2. Col 0 Label (Centered horizontally & vertically)
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor(FLUENT_BLACK);
+        const labelH = doc.heightOfString(label, { width: col0W - 8 });
+        const labelY = curY + Math.max(3, (rowH - labelH) / 2);
+        doc.text(label, pageLeft + 4, labelY, { width: col0W - 8, align: 'center' });
+
+        // 3. ColRest Value (Left aligned)
+        doc.font('Helvetica').fontSize(8.5).fillColor(FLUENT_BLACK);
+        if (Array.isArray(content)) {
+          if (content.length === 0) {
+            doc.font('Helvetica-Bold').text('•', pageLeft + col0W + 8, curY + 5);
+          } else {
+            let bulletY = curY + 5;
+            content.forEach(line => {
+              const textH = doc.heightOfString(line, { width: colRestW - 22, lineGap: 1.5 });
+              doc.font('Helvetica-Bold').fontSize(8.5).text('•', pageLeft + col0W + 7, bulletY);
+              doc.font('Helvetica').fontSize(8.5).text(line, pageLeft + col0W + 16, bulletY, {
+                width: colRestW - 24,
+                lineGap: 1.5,
+              });
+              bulletY += Math.max(14, textH + 3);
+            });
+          }
+        } else if (options.isPerson) {
+          doc.font('Helvetica-Bold').text(content || '', pageLeft + col0W + 8, curY + 5, {
+            width: colRestW - (options.portRef ? 100 : 16),
+          });
+          if (options.portRef) {
+            doc.font('Helvetica').fontSize(8).fillColor([75, 85, 99]);
+            doc.text(`Port: ${options.portRef}`, pageLeft + colRestW + col0W - 90, curY + 5, {
+              width: 80,
+              align: 'right',
+            });
+            doc.fillColor(FLUENT_BLACK);
+          }
+        } else {
+          doc.text(content || '', pageLeft + col0W + 8, curY + 5, {
+            width: colRestW - 16,
+            lineGap: 1.5,
+          });
+        }
+
+        doc.y = curY + rowH;
+      }
+
+      // Draw 4-Column Row for Authorities
+      function draw4ColRow(label: string, v1 = '', v2 = '', v3 = '') {
+        const rowH = 20;
+        ensureSpace(rowH);
+        const curY = doc.y;
+
+        // Draw 4 borders
+        doc.rect(pageLeft, curY, col0W, rowH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
+        doc.rect(pageLeft + col0W, curY, c1W, rowH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
+        doc.rect(pageLeft + col0W + c1W, curY, c2W, rowH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
+        doc.rect(pageLeft + col0W + c1W + c2W, curY, c3W, rowH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
+
+        // Col 0: Bold Center
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor(FLUENT_BLACK);
+        doc.text(label, pageLeft + 4, curY + 5, { width: col0W - 8, align: 'center' });
+
+        // Col 1, 2, 3: Center
+        doc.font('Helvetica').fontSize(8.5).fillColor(FLUENT_BLACK);
+        doc.text(cleanVal(v1), pageLeft + col0W + 2, curY + 5, { width: c1W - 4, align: 'center' });
+        doc.text(cleanVal(v2), pageLeft + col0W + c1W + 2, curY + 5, { width: c2W - 4, align: 'center' });
+        doc.text(cleanVal(v3), pageLeft + col0W + c1W + c2W + 2, curY + 5, { width: c3W - 4, align: 'center' });
+
+        doc.y = curY + rowH;
+      }
+
+      // Draw Full Grey Divider Bar
+      function drawGreyDividerBar() {
+        const divH = 14;
+        ensureSpace(divH);
+        const divY = doc.y;
+
         doc.save();
-        doc.font('Helvetica-Bold').fontSize(8).fillColor(FLUENT_BLACK);
-        doc.text('INCIDENT REPORT (Continuation)', pageLeft, margins.top, { continued: true });
-        doc.font('Helvetica').fontSize(8).fillColor(FLUENT_MUTED);
-        doc.text(`   |   Property ID: ${v.propertyId || data.site || '—'}   |   Page ${pageIdx + 1} of ${totalPages}`, { align: 'right' });
-
-        const lineY = margins.top + 14;
-        doc.moveTo(pageLeft, lineY).lineTo(pageWidth - pageRight, lineY).strokeColor(FLUENT_BLACK).lineWidth(0.5).stroke();
+        doc.rect(pageLeft, divY, contentWidth, divH).fillColor([191, 191, 191]).fill();
+        doc.rect(pageLeft, divY, contentWidth, divH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
         doc.restore();
+
+        doc.y = divY + divH;
       }
 
-      // Draw Clearsprings footer on every page
-      function drawIncidentFooter(pageIdx: number, totalPages: number) {
+      // 1. Initial Metadata Rows
+      draw2CellRow('Property ID', propertyId);
+      draw2CellRow('Person Reporting', personReporting);
+      draw2CellRow('Date of Incident', dateOfIncident);
+
+      // 2. Offenders
+      if (offenders.length === 0) {
+        draw2CellRow('Offenders (Name/Port)', '');
+      } else {
+        offenders.forEach((o, idx) => {
+          const lbl = idx === 0 ? 'Offenders (Name/Port)' : `Offender (${idx + 1})`;
+          draw2CellRow(lbl, o.name, { isPerson: true, portRef: o.portRef });
+        });
+      }
+
+      // 3. Victims
+      if (victims.length === 0) {
+        draw2CellRow('Victims (Name/Port)', '');
+      } else {
+        victims.forEach((vic, idx) => {
+          const lbl = idx === 0 ? 'Victims (Name/Port)' : `Victim (${idx + 1})`;
+          draw2CellRow(lbl, vic.name, { isPerson: true, portRef: vic.portRef });
+        });
+      }
+
+      // 4. Witnesses
+      if (witnesses.length === 0) {
+        draw2CellRow('Witnesses (SUs) (Name/Port)', '');
+      } else {
+        witnesses.forEach((w, idx) => {
+          const lbl = idx === 0 ? 'Witnesses (SUs) (Name/Port)' : `Witness (${idx + 1})`;
+          draw2CellRow(lbl, w.name, { isPerson: true, portRef: w.portRef });
+        });
+      }
+
+      // 5. Incident Description & Action Taken (Full bullet multi-line fidelity)
+      draw2CellRow('Incident Description', descLines, { isBullet: true, minH: 48 });
+      draw2CellRow('Action Taken', actionLines, { isBullet: true, minH: 38 });
+
+      // 6. Authorities Table
+      draw4ColRow('Warning Letter Issued?', v.warningLetterIssued, v.warningLetterToWhom, v.warningLetterNotes);
+      drawGreyDividerBar();
+      draw4ColRow('Safeguarding Informed?', v.safeguardingInformed, v.safeguardingWho, v.safeguardingNotes);
+      draw4ColRow('Police Involved?', v.policeInvolved, v.policeCadRef, v.policeNotes);
+      draw4ColRow('Ambulance Involved?', v.ambulanceInvolved, v.ambulanceCadRef, v.ambulanceNotes);
+      draw4ColRow('Fire Service Involved?', v.fireServiceInvolved, v.fireCadRef, v.fireNotes);
+
+      // 6b. Custom Sections & Fields from Customize Template
+      const standardSectionIds = new Set([
+        'incident',
+        'property',
+        'persons',
+        'description',
+        'actions',
+        'warnings',
+        'authorities',
+        'evidence',
+      ]);
+      const layoutSections = data.layoutConfig?.sections || [];
+      const customSectionDefs = layoutSections.filter((s: any) => !standardSectionIds.has(s.id));
+
+      const standardNames = new Set([
+        'date', 'time', 'propertyId', 'locationDetail', 'address', 'personReporting', 'reportedBy',
+        'reporterName', 'dateOfIncident', 'incidentDate', 'incidentType', 'incidentSubcategory',
+        'offenders', 'victims', 'witnesses', 'incidentDescription', 'description', 'actionTaken',
+        'immediateAction', 'warningLetterIssued', 'warningLetterToWhom', 'warningLetterNotes',
+        'safeguardingInformed', 'safeguardingWho', 'safeguardingNotes',
+        'policeInvolved', 'policeCadRef', 'policeNotes',
+        'ambulanceInvolved', 'ambulanceCadRef', 'ambulanceNotes',
+        'fireServiceInvolved', 'fireCadRef', 'fireNotes',
+        'evidencePhotos', 'attachments', 'photos',
+      ]);
+
+      const customFields = (data.fieldDefinitions || []).filter((f: any) => !standardNames.has(f.name));
+      const secFieldMap = new Map<string, any[]>();
+      customFields.forEach((f: any) => {
+        const secId = f.section || f.sectionId || 'custom';
+        if (!secFieldMap.has(secId)) secFieldMap.set(secId, []);
+        secFieldMap.get(secId)!.push(f);
+      });
+
+      Object.keys(v).forEach(k => {
+        if (!standardNames.has(k) && !customFields.some((f: any) => f.name === k) && !k.startsWith('_')) {
+          const item = {
+            id: k,
+            name: k,
+            label: k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+            section: 'custom',
+          };
+          if (!secFieldMap.has('custom')) secFieldMap.set('custom', []);
+          secFieldMap.get('custom')!.push(item);
+        }
+      });
+
+      const processedSecIds = new Set<string>();
+      const sectionsToRender: Array<{ id: string; title: string; fields: any[] }> = [];
+
+      // 1. Add all explicitly created user sections (even if empty!)
+      customSectionDefs.forEach((s: any) => {
+        processedSecIds.add(s.id);
+        sectionsToRender.push({
+          id: s.id,
+          title: s.title || 'Section',
+          fields: secFieldMap.get(s.id) || [],
+        });
+      });
+
+      // 2. Add any custom fields assigned to existing or orphan sections
+      secFieldMap.forEach((fields, secId) => {
+        if (!processedSecIds.has(secId)) {
+          const existingSec = layoutSections.find((s: any) => s.id === secId);
+          sectionsToRender.push({
+            id: secId,
+            title: existingSec?.title ? `${existingSec.title} (Additional Fields)` : 'Additional Information',
+            fields,
+          });
+        }
+      });
+
+      sectionsToRender.forEach(sec => {
+        ensureSpace(24 + 20);
+        const barY = doc.y;
+        doc.rect(pageLeft, barY, contentWidth, 18).fillColor([243, 244, 246]).strokeColor([0, 0, 0]).lineWidth(0.75).fillAndStroke();
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor(FLUENT_BLACK);
+        // Centered section heading
+        doc.text(sec.title.toUpperCase(), pageLeft, barY + 5, { width: contentWidth, align: 'center' });
+        doc.y = barY + 18;
+
+        if (sec.fields.length === 0) {
+          draw2CellRow('—', '(Empty section — no fields specified)');
+        } else {
+          sec.fields.forEach((f: any) => {
+            const rawVal = v[f.name];
+            const hasVal = rawVal !== undefined && rawVal !== null && rawVal !== '';
+            const displayVal = hasVal ? (Array.isArray(rawVal) ? `${rawVal.length} items` : String(rawVal)) : '—';
+            draw2CellRow(f.label || f.name, displayVal);
+          });
+        }
+      });
+
+      // 7. Sub-table Instruction Note
+      doc.moveDown(0.4);
+      doc.font('Helvetica-Oblique').fontSize(8).fillColor(FLUENT_BLACK);
+      doc.text('Please attach photos of any evidence where possible when submitting to CST.', pageLeft, doc.y, {
+        width: contentWidth,
+        align: 'center',
+      });
+
+      // 8. Evidence Photographs Gallery (Matches Preview Exactly)
+      if (Array.isArray(rawPhotos) && rawPhotos.length > 0) {
+        const photoBuffers = rawPhotos
+          .map(p => getPhotoBuffer(p))
+          .filter((p): p is { buffer: Buffer; caption: string } => p !== null);
+
+        if (photoBuffers.length > 0) {
+          ensureSpace(120);
+
+          doc.moveDown(0.6);
+          const galleryStartY = doc.y;
+
+          // Header
+          doc.font('Helvetica-Bold').fontSize(9).fillColor(FLUENT_BLACK);
+          doc.text('EVIDENCE PHOTOGRAPHS & ATTACHMENTS', pageLeft + 4, galleryStartY + 4);
+          doc.font('Helvetica-Oblique').fontSize(7.5).fillColor([100, 116, 139]);
+          doc.text('UKVI / Clearsprings Documentation', pageLeft + contentWidth - 160, galleryStartY + 5, {
+            width: 156,
+            align: 'right',
+          });
+
+          const divY = galleryStartY + 16;
+          doc.moveTo(pageLeft + 4, divY).lineTo(pageWidth - pageRight - 4, divY).strokeColor([0, 0, 0]).lineWidth(0.5).stroke();
+
+          let photoY = divY + 8;
+          const photoCardW = Math.floor((contentWidth - 16) / 2);
+          const photoCardH = 110;
+
+          for (let i = 0; i < photoBuffers.length; i += 2) {
+            ensureSpace(photoCardH + 12);
+            photoY = doc.y;
+
+            // Photo 1
+            const p1 = photoBuffers[i];
+            const p1X = pageLeft + 4;
+            doc.rect(p1X, photoY, photoCardW, photoCardH).strokeColor([209, 213, 219]).lineWidth(0.5).stroke();
+            try {
+              doc.image(p1.buffer, p1X + 4, photoY + 4, {
+                fit: [photoCardW - 8, 86],
+                align: 'center',
+                valign: 'center',
+              });
+            } catch {}
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor([31, 41, 55]);
+            doc.text(p1.caption, p1X + 4, photoY + 94, { width: photoCardW - 8, align: 'center' });
+
+            // Photo 2 (if present)
+            if (i + 1 < photoBuffers.length) {
+              const p2 = photoBuffers[i + 1];
+              const p2X = pageLeft + photoCardW + 12;
+              doc.rect(p2X, photoY, photoCardW, photoCardH).strokeColor([209, 213, 219]).lineWidth(0.5).stroke();
+              try {
+                doc.image(p2.buffer, p2X + 4, photoY + 4, {
+                  fit: [photoCardW - 8, 86],
+                  align: 'center',
+                  valign: 'center',
+                });
+              } catch {}
+              doc.font('Helvetica-Bold').fontSize(7.5).fillColor([31, 41, 55]);
+              doc.text(p2.caption, p2X + 4, photoY + 94, { width: photoCardW - 8, align: 'center' });
+            }
+
+            doc.y = photoY + photoCardH + 8;
+          }
+        }
+      }
+
+      // =======================================================================
+      // Post-Processing: Running Headers & Footers Across All Pages
+      // =======================================================================
+      const range = doc.bufferedPageRange();
+      const totalPages = range.count;
+
+      for (let i = 0; i < totalPages; i++) {
+        doc.switchToPage(i);
+
+        // Page 2+ Running Header
+        if (i > 0) {
+          doc.save();
+          const headY = margins.top;
+
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(FLUENT_BLACK);
+          doc.text('INCIDENT REPORT', pageLeft, headY, { continued: true });
+          doc.font('Helvetica-Oblique').fontSize(8).fillColor([75, 85, 99]);
+          doc.text(' (Continuation)', { continued: true });
+
+          if (data.documentNumber) {
+            doc.font('Helvetica-Bold').fontSize(8).fillColor(BRAND_TEAL);
+            doc.text(`  [${data.documentNumber}]`, { continued: false });
+          } else {
+            doc.text('', { continued: false });
+          }
+
+          doc.font('Helvetica').fontSize(8).fillColor([75, 85, 99]);
+          doc.text(`Property ID: `, pageLeft + 220, headY, { continued: true });
+          doc.font('Helvetica-Bold').fillColor(FLUENT_BLACK);
+          doc.text(propertyId || '—', { continued: false });
+
+          doc.font('Helvetica-Bold').fontSize(8).fillColor(FLUENT_BLACK);
+          doc.text(`Page ${i + 1} of ${totalPages}`, pageWidth - pageRight - 80, headY, { width: 80, align: 'right' });
+
+          const lineY = headY + 12;
+          doc.moveTo(pageLeft, lineY).lineTo(pageWidth - pageRight, lineY).strokeColor([0, 0, 0]).lineWidth(0.5).stroke();
+          doc.restore();
+        }
+
+        // Official Clearsprings Group Footer on Every Page
         doc.save();
         const footerY = pageHeight - margins.bottom - 28;
 
@@ -167,172 +633,17 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
           } catch {}
         }
 
-        // Center page number
+        // Center page counter
         doc.font('Helvetica').fontSize(7.5).fillColor(FLUENT_MUTED);
-        doc.text(`Page ${pageIdx + 1} of ${totalPages}`, pageLeft, footerY + 8, { width: contentWidth, align: 'center' });
+        doc.text(`Page ${i + 1} of ${totalPages}`, pageLeft, footerY + 8, { width: contentWidth, align: 'center' });
 
-        // Right registered entity
-        doc.font('Helvetica').fontSize(6).fillColor([75, 85, 99]);
-        const rightText = 'A Clearsprings Group company\nReady Homes Limited\nRegistered office address: 26 Brook Road, Rayleigh SS6 7XJ\nRegistered in England and Wales 7921508';
+        // Right legal registration text
+        doc.font('Helvetica').fontSize(6.5).fillColor([75, 85, 99]);
+        const rightText =
+          'A Clearsprings Group company\nReady Homes Limited\nRegistered office address:\n26 Brook Road, Rayleigh SS6 7XJ\nRegistered in England and Wales 7921508';
         doc.text(rightText, pageWidth - pageRight - 180, footerY, { width: 180, align: 'right', lineGap: 1 });
 
         doc.restore();
-      }
-
-      // Table layout helper
-      const col0W = contentWidth * 0.3502;
-      const colRestW = contentWidth - col0W;
-
-      function drawRow(label: string, content: string | string[], minH = 20) {
-        const startY = doc.y;
-        if (startY + minH > pageHeight - margins.bottom - 45) {
-          doc.addPage();
-          doc.y = margins.top + 25;
-        }
-
-        const y = doc.y;
-        doc.save();
-
-        // Left label cell
-        doc.rect(pageLeft, y, col0W, minH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
-        doc.font('Helvetica-Bold').fontSize(8.5).fillColor(FLUENT_BLACK);
-        doc.text(label, pageLeft + 4, y + 5, { width: col0W - 8, align: 'center' });
-
-        // Right cell
-        doc.rect(pageLeft + col0W, y, colRestW, minH).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
-        doc.font('Helvetica').fontSize(8.5).fillColor(FLUENT_BLACK);
-
-        if (Array.isArray(content)) {
-          let textY = y + 5;
-          content.forEach(line => {
-            doc.text(`• ${line}`, pageLeft + col0W + 8, textY, { width: colRestW - 16 });
-            textY += 14;
-          });
-        } else {
-          doc.text(content || '', pageLeft + col0W + 8, y + 5, { width: colRestW - 16 });
-        }
-
-        doc.restore();
-        doc.y = y + minH;
-      }
-
-      // 1. First Page Header
-      drawIncidentFirstHeader();
-
-      // 2. Table Rows
-      drawRow('Property ID', String(v.propertyId || data.site || ''));
-      drawRow('Person Reporting', String(v.personReporting || ''));
-      drawRow('Date of Incident', String(v.dateOfIncident || ''));
-
-      // Offenders
-      if (offenders.length === 0) {
-        drawRow('Offenders (Name/Port)', '');
-      } else {
-        offenders.forEach((o: any, idx: number) => {
-          const lbl = idx === 0 ? 'Offenders (Name/Port)' : `Offender (${idx + 1})`;
-          const val = `${o.name || ''} ${o.portRef ? `(${o.portRef})` : ''}`.trim();
-          drawRow(lbl, val);
-        });
-      }
-
-      // Victims
-      if (victims.length === 0) {
-        drawRow('Victims (Name/Port)', '');
-      } else {
-        victims.forEach((vic: any, idx: number) => {
-          const lbl = idx === 0 ? 'Victims (Name/Port)' : `Victim (${idx + 1})`;
-          const val = `${vic.name || ''} ${vic.portRef ? `(${vic.portRef})` : ''}`.trim();
-          drawRow(lbl, val);
-        });
-      }
-
-      // Witnesses
-      if (witnesses.length === 0) {
-        drawRow('Witnesses (SUs) (Name/Port)', '');
-      } else {
-        witnesses.forEach((w: any, idx: number) => {
-          const lbl = idx === 0 ? 'Witnesses (SUs) (Name/Port)' : `Witness (${idx + 1})`;
-          const val = `${w.name || ''} ${w.portRef ? `(${w.portRef})` : ''}`.trim();
-          drawRow(lbl, val);
-        });
-      }
-
-      // Incident Description (Calculated height)
-      const descH = Math.max(50, (descLines.length || 1) * 15 + 16);
-      drawRow('Incident Description', descLines.length > 0 ? descLines : [''], descH);
-
-      // Action Taken (Calculated height)
-      const actH = Math.max(40, (actionLines.length || 1) * 15 + 16);
-      drawRow('Action Taken', actionLines.length > 0 ? actionLines : [''], actH);
-
-      // Warning Letter Row (4 columns)
-      const warnY = doc.y;
-      if (warnY + 120 > pageHeight - margins.bottom - 45) {
-        doc.addPage();
-        doc.y = margins.top + 25;
-      }
-
-      const wY = doc.y;
-      const c1W = contentWidth * 0.2166;
-      const c2W = contentWidth * 0.1729;
-      const c3W = contentWidth * 0.2603;
-
-      function draw4ColRow(label: string, v1: string, v2: string, v3: string) {
-        const curY = doc.y;
-        doc.save();
-        // Col 0
-        doc.rect(pageLeft, curY, col0W, 20).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
-        doc.font('Helvetica-Bold').fontSize(8.5).fillColor(FLUENT_BLACK);
-        doc.text(label, pageLeft + 4, curY + 5, { width: col0W - 8, align: 'center' });
-
-        // Col 1
-        doc.rect(pageLeft + col0W, curY, c1W, 20).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
-        doc.font('Helvetica').fontSize(8.5).fillColor(FLUENT_BLACK);
-        doc.text(v1 || '', pageLeft + col0W, curY + 5, { width: c1W, align: 'center' });
-
-        // Col 2
-        doc.rect(pageLeft + col0W + c1W, curY, c2W, 20).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
-        doc.text(v2 || '', pageLeft + col0W + c1W, curY + 5, { width: c2W, align: 'center' });
-
-        // Col 3
-        doc.rect(pageLeft + col0W + c1W + c2W, curY, c3W, 20).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
-        doc.text(v3 || '', pageLeft + col0W + c1W + c2W, curY + 5, { width: c3W, align: 'center' });
-
-        doc.restore();
-        doc.y = curY + 20;
-      }
-
-      draw4ColRow('Warning Letter Issued?', v.warningLetterIssued === 'N/A' ? '' : v.warningLetterIssued, v.warningLetterToWhom === 'N/A' ? '' : v.warningLetterToWhom, '');
-
-      // Grey Divider Bar
-      const divY = doc.y;
-      doc.save();
-      doc.rect(pageLeft, divY, contentWidth, 14).fillColor([191, 191, 191]).fill();
-      doc.rect(pageLeft, divY, contentWidth, 14).lineWidth(0.75).strokeColor([0, 0, 0]).stroke();
-      doc.restore();
-      doc.y = divY + 14;
-
-      // Authority Rows
-      draw4ColRow('Safeguarding Informed?', v.safeguardingInformed === 'N/A' ? '' : v.safeguardingInformed, v.safeguardingWho === 'N/A' ? '' : v.safeguardingWho, '');
-      draw4ColRow('Police Involved?', v.policeInvolved === 'N/A' ? '' : v.policeInvolved, v.policeCadRef === 'N/A' ? '' : v.policeCadRef, '');
-      draw4ColRow('Ambulance Involved?', v.ambulanceInvolved === 'N/A' ? '' : v.ambulanceInvolved, v.ambulanceCadRef === 'N/A' ? '' : v.ambulanceCadRef, '');
-      draw4ColRow('Fire Service Involved?', v.fireServiceInvolved === 'N/A' ? '' : v.fireServiceInvolved, v.fireCadRef === 'N/A' ? '' : v.fireCadRef, '');
-
-      // Evidence Instruction Note
-      doc.moveDown(0.6);
-      doc.font('Helvetica-Oblique').fontSize(8).fillColor(FLUENT_BLACK);
-      doc.text('Please attach photos of any evidence where possible when submitting to CST.', pageLeft, doc.y, { width: contentWidth, align: 'center' });
-
-      // Apply running headers and footers across all buffered pages
-      const range = doc.bufferedPageRange();
-      const totalPages = range.count;
-
-      for (let i = 0; i < totalPages; i++) {
-        doc.switchToPage(i);
-        if (i > 0) {
-          drawIncidentRunningHeader(i, totalPages);
-        }
-        drawIncidentFooter(i, totalPages);
       }
 
       doc.end();
@@ -340,101 +651,178 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
     }
 
     // =========================================================================
-    // STANDARD TEMPLATE PDF RENDERING
+    // 2. STANDARD TEMPLATE PDF RENDERING (2-Column & Visual Header Support)
     // =========================================================================
-    function drawHeader() {
+    function drawStandardHeader() {
       const hc = data.headerConfig || {};
       let y = margins.top;
 
       doc.save();
       if (hc.showCompanyName !== false) {
-        doc.font('Helvetica-Bold').fontSize(14).fillColor(BRAND_DARK);
-        doc.text('SD COMMERCIAL', pageLeft, y, { continued: true });
-        doc.font('Helvetica').fontSize(10).fillColor(BRAND_TEAL);
-        doc.text('  Operations & Compliance', { continued: false });
-        y += 20;
+        // SD Commercial Teal Logo Badge
+        doc.rect(pageLeft, y, 22, 22).fillColor(BRAND_TEAL).fill();
+        doc.font('Helvetica-Bold').fontSize(9).fillColor([255, 255, 255]);
+        doc.text('SD', pageLeft + 3, y + 6, { width: 16, align: 'center' });
+
+        // Company title & portal subtitle
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(BRAND_DARK);
+        doc.text('SD ', pageLeft + 28, y + 2, { continued: true });
+        doc.fillColor(BRAND_TEAL).text('COMMERCIAL', { continued: false });
+
+        doc.font('Helvetica').fontSize(7).fillColor(FLUENT_MUTED);
+        doc.text('Operations & Compliance Portal', pageLeft + 28, y + 13);
+        y += 28;
       }
+
       if (hc.subtitle) {
-        doc.font('Helvetica-Oblique').fontSize(9).fillColor(FLUENT_MUTED);
+        doc.font('Helvetica-Oblique').fontSize(8).fillColor(FLUENT_MUTED);
         doc.text(hc.subtitle, pageLeft, y);
-        y += 14;
+        y += 12;
       }
-      y += 4;
+
+      // Divider line
+      y += 2;
       doc.moveTo(pageLeft, y).lineTo(pageWidth - pageRight, y).strokeColor(BRAND_TEAL).lineWidth(1.5).stroke();
       doc.restore();
+      return y + 10;
     }
 
-    function drawFooter(pageIndex: number, totalPages: number) {
+    function drawStandardFooter(pageIndex: number, totalPages: number) {
       const fc = data.footerConfig || {};
-      const footerY = doc.page.height - margins.bottom - 20;
+      const footerY = pageHeight - margins.bottom - 20;
 
       doc.save();
       doc.moveTo(pageLeft, footerY).lineTo(pageWidth - pageRight, footerY).strokeColor(FLUENT_BORDER).lineWidth(0.5).stroke();
 
-      const textY = footerY + 8;
+      const textY = footerY + 6;
       if (fc.customText) {
-        doc.font('Helvetica').fontSize(7).fillColor(FLUENT_MUTED);
+        doc.font('Helvetica').fontSize(6.5).fillColor(FLUENT_MUTED);
         doc.text(fc.customText, pageLeft, textY, { width: contentWidth / 2 });
       }
       if (fc.showPageNumbers !== false) {
-        doc.font('Helvetica').fontSize(7).fillColor(FLUENT_MUTED);
+        doc.font('Helvetica').fontSize(6.5).fillColor(FLUENT_MUTED);
         doc.text(`Page ${pageIndex + 1} of ${totalPages}`, pageLeft, textY, { width: contentWidth, align: 'right' });
+      }
+      if (fc.showGeneratedTimestamp !== false) {
+        doc.font('Helvetica-Oblique').fontSize(5.5).fillColor([161, 159, 157]);
+        doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`, pageLeft, textY + 9, {
+          width: contentWidth,
+          align: 'right',
+        });
       }
       doc.restore();
     }
 
-    function ensureSpace(needed: number) {
-      const available = doc.page.height - doc.page.margins.bottom - doc.y;
-      if (available < needed) {
-        doc.addPage();
-        drawHeader();
-      }
+    const startY = drawStandardHeader();
+    doc.y = startY;
+
+    // Document Title
+    doc.font('Helvetica-Bold').fontSize(16).fillColor(FLUENT_BLACK);
+    doc.text(data.title, { align: 'left' });
+    doc.moveDown(0.25);
+
+    // Meta bar
+    const metaParts: string[] = [];
+    if (data.documentNumber) metaParts.push(`Document No: ${data.documentNumber}`);
+    metaParts.push(`Site: ${data.site || '—'}`);
+    metaParts.push(`Date: ${formatDate(data.createdAt)}`);
+
+    doc.font('Helvetica').fontSize(7.5).fillColor(FLUENT_MUTED);
+    doc.text(metaParts.join('   |   '), { continued: false });
+
+    // Confidentiality Badge
+    const confLevel = data.headerConfig?.confidentialityLevel;
+    if (confLevel) {
+      doc.moveDown(0.2);
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor([220, 38, 38]);
+      doc.text(`[${confLevel.toUpperCase()}]`);
     }
 
-    drawHeader();
-    doc.y = margins.top + 50;
-
-    doc.font('Helvetica-Bold').fontSize(18).fillColor(FLUENT_BLACK);
-    doc.text(data.title, { align: 'left' });
-    doc.moveDown(0.3);
-
-    const metaItems: string[] = [];
-    if (data.documentNumber) metaItems.push(`Document No: ${data.documentNumber}`);
-    metaItems.push(`Site: ${data.site}`);
-    metaItems.push(`Date: ${formatDate(data.createdAt)}`);
-    if (data.createdByName) metaItems.push(`Created by: ${data.createdByName}`);
-
-    doc.font('Helvetica').fontSize(8).fillColor(FLUENT_MUTED);
-    doc.text(metaItems.join('   |   '));
     doc.moveDown(0.4);
+    const divMetaY = doc.y;
+    doc.moveTo(pageLeft, divMetaY).lineTo(pageWidth - pageRight, divMetaY).strokeColor(FLUENT_BORDER).lineWidth(0.5).stroke();
+    doc.y = divMetaY + 10;
 
     const sections = [...(data.layoutConfig?.sections || [])].sort((a: any, b: any) => a.order - b.order);
     const fields = data.fieldDefinitions || [];
     const values = data.fieldValues || {};
 
+    const maxStdContentY = pageHeight - margins.bottom - 35;
+
     for (const section of sections) {
-      ensureSpace(60);
-      doc.moveDown(0.4);
-      doc.font('Helvetica-Bold').fontSize(13).fillColor(BRAND_DARK);
-      doc.text(section.title);
-      doc.moveDown(0.1);
+      if (doc.y + 40 > maxStdContentY) {
+        doc.addPage();
+        drawStandardHeader();
+        doc.y = margins.top + 45;
+      }
 
-      const sectionLineY = doc.y;
-      doc.moveTo(pageLeft, sectionLineY).lineTo(pageLeft + contentWidth * 0.4, sectionLineY).strokeColor(BRAND_TEAL).lineWidth(1).stroke();
-      doc.y = sectionLineY + 6;
       doc.moveDown(0.3);
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(BRAND_DARK);
+      doc.text(section.title.toUpperCase(), pageLeft, doc.y, { width: contentWidth, align: 'center' });
 
-      const sectionFields = fields.filter((f: any) => f.section === section.id).sort((a: any, b: any) => a.order - b.order);
+      const secLineY = doc.y + 1;
+      const lineWidth = contentWidth * 0.35;
+      const lineX = pageLeft + (contentWidth - lineWidth) / 2;
+      doc.moveTo(lineX, secLineY).lineTo(lineX + lineWidth, secLineY).strokeColor(BRAND_TEAL).lineWidth(1).stroke();
+      doc.y = secLineY + 6;
 
-      for (const field of sectionFields) {
-        const value = values[field.name];
-        const displayValue = value !== undefined && value !== null && value !== '' ? String(value) : '—';
-        ensureSpace(35);
-        doc.font('Helvetica-Bold').fontSize(9).fillColor(FLUENT_BLACK);
-        doc.text(field.label);
-        doc.font('Helvetica').fontSize(10).fillColor(FLUENT_BLACK);
-        doc.text(displayValue);
-        doc.moveDown(0.3);
+      const secFields = fields.filter((f: any) => f.section === section.id).sort((a: any, b: any) => a.order - b.order);
+      const is2Col = (section.columns || 1) > 1;
+      const colW = (contentWidth - 16) / 2;
+
+      for (let fIdx = 0; fIdx < secFields.length; fIdx++) {
+        const field = secFields[fIdx];
+        const val = values[field.name];
+        const dispVal = val !== undefined && val !== null && val !== '' ? (Array.isArray(val) ? `${val.length} items` : String(val)) : '—';
+        const isFullWidth = !is2Col || field.width === 'full' || field.type === 'textarea';
+
+        if (doc.y + 35 > maxStdContentY) {
+          doc.addPage();
+          drawStandardHeader();
+          doc.y = margins.top + 45;
+        }
+
+        if (isFullWidth || !is2Col) {
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor(FLUENT_MUTED);
+          doc.text(field.label.toUpperCase());
+          doc.font('Helvetica').fontSize(9).fillColor(dispVal === '—' ? [161, 159, 157] : FLUENT_BLACK);
+          if (field.type === 'textarea') {
+            const boxY = doc.y + 1;
+            const textH = doc.heightOfString(dispVal, { width: contentWidth - 12 });
+            const boxH = Math.max(26, textH + 8);
+            doc.rect(pageLeft, boxY, contentWidth, boxH).strokeColor(FLUENT_BORDER).lineWidth(0.5).stroke();
+            doc.text(dispVal, pageLeft + 6, boxY + 4, { width: contentWidth - 12 });
+            doc.y = boxY + boxH + 4;
+          } else {
+            doc.text(dispVal);
+            doc.moveDown(0.25);
+          }
+        } else {
+          // 2-Column Pair Handling
+          const nextField = secFields[fIdx + 1];
+          const canPair = nextField && nextField.width !== 'full' && nextField.type !== 'textarea';
+
+          const curY = doc.y;
+          // Col 1
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor(FLUENT_MUTED);
+          doc.text(field.label.toUpperCase(), pageLeft, curY, { width: colW });
+          doc.font('Helvetica').fontSize(9).fillColor(dispVal === '—' ? [161, 159, 157] : FLUENT_BLACK);
+          doc.text(dispVal, pageLeft, curY + 10, { width: colW });
+
+          // Col 2
+          if (canPair) {
+            const nextVal = values[nextField.name];
+            const nextDisp = nextVal !== undefined && nextVal !== null && nextVal !== '' ? String(nextVal) : '—';
+            const col2X = pageLeft + colW + 16;
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor(FLUENT_MUTED);
+            doc.text(nextField.label.toUpperCase(), col2X, curY, { width: colW });
+            doc.font('Helvetica').fontSize(9).fillColor(nextDisp === '—' ? [161, 159, 157] : FLUENT_BLACK);
+            doc.text(nextDisp, col2X, curY + 10, { width: colW });
+            fIdx++; // Consumed pair
+          }
+
+          doc.y = curY + 28;
+        }
       }
     }
 
@@ -442,7 +830,7 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
     const totalPages = range.count;
     for (let i = 0; i < totalPages; i++) {
       doc.switchToPage(i);
-      drawFooter(i, totalPages);
+      drawStandardFooter(i, totalPages);
     }
 
     doc.end();

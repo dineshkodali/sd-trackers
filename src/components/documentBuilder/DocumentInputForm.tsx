@@ -619,7 +619,10 @@ export const DocumentInputForm: React.FC<DocumentInputFormProps> = ({
                           </div>
                         )}
 
-                        <div>{renderField(field)}</div>
+                        <div className="text-[10px] text-[#64748b] bg-white border border-dashed border-[#cbd5e1] rounded-xs px-2 py-1 flex items-center justify-between">
+                          <span>Field Type: <strong className="text-[#0f766e] uppercase font-bold">{field.type}</strong></span>
+                          <span className="italic text-[#94a3b8]">Live layout rendered in document on right</span>
+                        </div>
                       </div>
                     ) : (
                       <>

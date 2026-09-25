@@ -171,56 +171,10 @@ export async function importDocumentTemplate(
 
 export async function fetchDocumentRecords(): Promise<DocumentBuilderApiResponse<DocumentBuilderRecord[]>> {
   const res = await apiFetch<DocumentBuilderRecord[]>('/records');
-  if (res.success && res.data && res.data.length > 0) {
+  if (res.success && res.data) {
     return res;
   }
-
-  // Resilient fallback with official UKVI / Clearsprings incident report
-  return {
-    success: true,
-    data: [
-      {
-        id: 'doc-incident-rasul-741',
-        templateId: 'tmpl-incident-report',
-        templateVersionId: 'tver-incident-v1',
-        site: '741- Clacton Pier Avenue',
-        title: 'Incident Report — Removal of Soft Seating (Mohammed Kaw Rasul)',
-        documentNumber: 'DOC-2026-741001',
-        status: 'final',
-        fieldValues: {
-          propertyId: '741- Clacton Pier Avenue',
-          personReporting: 'Rishi Begari',
-          dateOfIncident: '2026-07-07',
-          offenders: 'N/A',
-          victims: 'Mohammed Kaw Rasul (MST/9157022)',
-          witnesses: 'Welfare officer (Emeka Opara)',
-          incidentDescription: "Removal of Soft Seating Following an OT Assessment.\n\nOn 07/07/2026, SU Mohammed Kaw Rasul (MST/9157022) had an Occupational Therapy (OT) appointment, during which an assessment was completed.\nFollowing the assessment, the OT recommended removing the soft chair from the SU's room to create additional space and support safe mobility.\nThe SU is a wheelchair user and has a profiling bed in his room.\nThe SU stated that he requires sufficient space to move around safely and uses either his wheelchair or profiling bed for seating.\nThe SU declined the soft chair, as it was not required and reduced the available space within the room.\nStaff removed the soft chair in line with the OT recommendation and the SU’s preference.\nThe SU was informed that soft seating can be provided again at any time should his needs or preferences change.",
-          actionTaken: 'Staff informed the SU that the soft seating can be provided for him at any time if he requires it in future.',
-          warningLetterIssued: 'N/A',
-          warningLetterToWhom: 'N/A',
-          safeguardingInformed: 'N/A',
-          safeguardingWho: 'N/A',
-          policeInvolved: 'N/A',
-          policeCadRef: 'N/A',
-          ambulanceInvolved: 'N/A',
-          ambulanceCadRef: 'N/A',
-          fireServiceInvolved: 'N/A',
-          fireCadRef: 'N/A',
-        },
-        createdBy: 'rishi.begari@sdcommercial.co.uk',
-        createdByName: 'Rishi Begari',
-        createdByRole: 'Welfare Officer',
-        createdByEmail: 'rishi.begari@sdcommercial.co.uk',
-        updatedBy: 'rishi.begari@sdcommercial.co.uk',
-        updatedByName: 'Rishi Begari',
-        updatedByRole: 'Welfare Officer',
-        createdAt: '2026-07-07T09:30:00.000Z',
-        updatedAt: '2026-07-07T10:15:00.000Z',
-        finalizedAt: '2026-07-07T10:15:00.000Z',
-        finalizedBy: 'Rishi Begari',
-      },
-    ],
-  };
+  return { success: true, data: [] };
 }
 
 export async function fetchDocumentRecord(id: string): Promise<DocumentBuilderApiResponse<DocumentBuilderRecord>> {
@@ -267,13 +221,22 @@ export async function fetchDocumentAuditTrail(
 
 export async function generateDocument(
   recordId: string,
-  format: 'docx' | 'pdf'
+  format: 'docx' | 'pdf',
+  liveData?: Record<string, any>
 ): Promise<{ success: boolean; blob?: Blob; filename?: string; error?: string }> {
   try {
     const authHeaders = await getAuthHeaders();
-    const res = await fetch(`/api/document-builder/records/${recordId}/generate/${format}`, {
+    const endpoint = recordId && recordId !== 'direct'
+      ? `/api/document-builder/records/${recordId}/generate/${format}`
+      : `/api/document-builder/generate/${format}`;
+
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: authHeaders,
+      headers: {
+        ...authHeaders,
+        ...(liveData ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: liveData ? JSON.stringify(liveData) : undefined,
     });
 
     if (!res.ok) {

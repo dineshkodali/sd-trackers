@@ -181,6 +181,24 @@ export const DocumentBuilderView: React.FC = () => {
     }
   }, [isDirty]);
 
+  const handleCustomizeTemplate = useCallback(async (template: TemplateWithVersion) => {
+    if (isDirty && !window.confirm('You have unsaved changes. Switch to template customization?')) return;
+
+    setSelectedTemplate(template);
+    setFieldValues({});
+    setCurrentRecord(null);
+    setIsDirty(false);
+    setIsCustomizing(true);
+    setDocumentTitle(`${template.name} (Template Schema)`);
+
+    if (!template.currentVersion?.fieldDefinitions?.length) {
+      const res = await fetchTemplateFields(template.id);
+      if (res.success && res.data) {
+        setSelectedTemplate({ ...template, currentVersion: res.data as any });
+      }
+    }
+  }, [isDirty]);
+
   // Dedicated Exit to Home Forms handler
   const handleExitToHome = () => {
     if (isDirty && !window.confirm('You have unsaved changes. Exit to Forms Home?')) return;
@@ -198,8 +216,13 @@ export const DocumentBuilderView: React.FC = () => {
     setIsDirty(true);
   }, []);
 
-  const handleSaveDraft = async (status: 'draft' | 'final' = 'draft') => {
-    if (!selectedTemplate) return;
+  const handleSaveDraft = async (status: 'draft' | 'final' = 'draft'): Promise<DocumentBuilderRecord | null> => {
+    if (!selectedTemplate) return null;
+    const currentDefs = selectedTemplate.currentVersion?.fieldDefinitions || [];
+    const currentLayout = selectedTemplate.currentVersion?.layoutConfig;
+    const currentHeader = selectedTemplate.currentVersion?.headerConfig;
+    const currentFooter = selectedTemplate.currentVersion?.footerConfig;
+
     setSaving(true);
     try {
       if (currentRecord) {
@@ -208,13 +231,30 @@ export const DocumentBuilderView: React.FC = () => {
           fieldValues,
           site: selectedSite,
           status,
+          fieldDefinitions: currentDefs,
+          layoutConfig: currentLayout,
+          headerConfig: currentHeader,
+          footerConfig: currentFooter,
         });
         if (res.success) {
-          showToast(status === 'final' ? 'Document finalized' : 'Draft saved');
+          showToast(status === 'final' ? 'Document finalized and saved' : 'Draft saved');
           setIsDirty(false);
-          setCurrentRecord(prev => (prev ? { ...prev, title: documentTitle, fieldValues, status, site: selectedSite } : null));
+          const updated: DocumentBuilderRecord = {
+            ...currentRecord,
+            title: documentTitle,
+            fieldValues,
+            status,
+            site: selectedSite,
+            fieldDefinitions: currentDefs,
+            layoutConfig: currentLayout,
+            headerConfig: currentHeader,
+            footerConfig: currentFooter,
+          };
+          setCurrentRecord(updated);
+          return updated;
         } else {
           showToast(res.error || 'Failed to save', 'error');
+          return currentRecord;
         }
       } else {
         const res = await saveDocumentDraft({
@@ -224,13 +264,19 @@ export const DocumentBuilderView: React.FC = () => {
           title: documentTitle,
           fieldValues,
           status,
+          fieldDefinitions: currentDefs,
+          layoutConfig: currentLayout,
+          headerConfig: currentHeader,
+          footerConfig: currentFooter,
         });
         if (res.success && res.data) {
           setCurrentRecord(res.data);
           showToast(status === 'final' ? 'Document created and finalized' : 'Draft saved');
           setIsDirty(false);
+          return res.data;
         } else {
           showToast(res.error || 'Failed to save draft', 'error');
+          return null;
         }
       }
     } finally {
@@ -241,19 +287,29 @@ export const DocumentBuilderView: React.FC = () => {
   const handleGenerate = async (format: 'docx' | 'pdf') => {
     if (generating) return;
 
-    if (!currentRecord || isDirty) {
-      await handleSaveDraft('draft');
+    let activeRecord = currentRecord;
+    if (!activeRecord || isDirty) {
+      activeRecord = await handleSaveDraft('draft');
     }
 
-    const recordId = currentRecord?.id;
-    if (!recordId) {
-      showToast('Please save document first', 'error');
-      return;
-    }
+    const recordId = activeRecord?.id || currentRecord?.id || 'direct';
 
     setGenerating(format);
     try {
-      const res = await generateDocument(recordId, format);
+      const liveData = {
+        title: documentTitle,
+        site: selectedSite,
+        documentNumber: activeRecord?.documentNumber || currentRecord?.documentNumber || '',
+        fieldValues,
+        templateId: selectedTemplate?.id,
+        templateName: selectedTemplate?.name,
+        fieldDefinitions: fieldDefs,
+        layoutConfig,
+        headerConfig,
+        footerConfig,
+      };
+
+      const res = await generateDocument(recordId, format, liveData);
       if (res.success && res.blob) {
         downloadBlob(res.blob, res.filename || `document.${format}`);
         showToast(`${format.toUpperCase()} downloaded`);
@@ -272,11 +328,9 @@ export const DocumentBuilderView: React.FC = () => {
   };
 
   const handleEditSavedRecord = async (record: DocumentBuilderRecord) => {
-    const tmpl = templates.find(t => t.id === record.templateId);
-    if (tmpl) {
-      setSelectedTemplate(tmpl);
-    } else {
-      setSelectedTemplate({
+    let tmpl = templates.find(t => t.id === record.templateId);
+    if (!tmpl) {
+      tmpl = {
         id: record.templateId,
         name: record.title.split('—')[0]?.trim() || 'Document',
         description: '',
@@ -285,8 +339,30 @@ export const DocumentBuilderView: React.FC = () => {
         createdBy: record.createdBy,
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
-      });
+      };
     }
+
+    // Restore the exact template structure/fields that were saved with this document snapshot
+    const effectiveFieldDefs = record.fieldDefinitions || tmpl.currentVersion?.fieldDefinitions || [];
+    const effectiveLayout = record.layoutConfig || tmpl.currentVersion?.layoutConfig;
+    const effectiveHeader = record.headerConfig || tmpl.currentVersion?.headerConfig;
+    const effectiveFooter = record.footerConfig || tmpl.currentVersion?.footerConfig;
+
+    setSelectedTemplate({
+      ...tmpl,
+      currentVersion: {
+        id: record.templateVersionId || tmpl.currentVersion?.id || `tver-${record.id}`,
+        templateId: record.templateId,
+        version: tmpl.currentVersion?.version || 1,
+        isCurrent: true,
+        fieldDefinitions: effectiveFieldDefs,
+        layoutConfig: effectiveLayout,
+        headerConfig: effectiveHeader,
+        footerConfig: effectiveFooter,
+        createdBy: record.createdBy,
+        createdAt: record.createdAt,
+      },
+    });
 
     setFieldValues(record.fieldValues || {});
     setDocumentTitle(record.title);
@@ -509,9 +585,10 @@ export const DocumentBuilderView: React.FC = () => {
       }
 
       if (res.success && res.data) {
+        setSelectedTemplate(res.data as any);
         showToast(`Master template "${selectedTemplate.name}" updated in database!`);
         await loadTemplates();
-        setIsCustomizing(false);
+        setIsDirty(false);
       } else {
         setTemplates(prev => {
           const idx = prev.findIndex(t => t.id === selectedTemplate.id);
@@ -523,7 +600,7 @@ export const DocumentBuilderView: React.FC = () => {
           return [selectedTemplate, ...prev];
         });
         showToast(res.error ? `Updated locally: ${res.error}` : `Master template updated!`);
-        setIsCustomizing(false);
+        setIsDirty(false);
       }
     } catch (err: any) {
       showToast(err.message || 'Failed to update template', 'error');
@@ -570,20 +647,21 @@ export const DocumentBuilderView: React.FC = () => {
 
               <div className="h-4 w-px bg-[#cbd5e1] mx-0.5" />
 
-              <span className="text-xs font-bold text-[#1e293b] max-w-[220px] truncate" title={selectedTemplate.name}>
-                Report: {selectedTemplate.name}
+              <span className="text-xs font-bold text-[#1e293b] max-w-[260px] truncate" title={selectedTemplate.name}>
+                {isCustomizing ? `HO Report Designer: ${selectedTemplate.name}` : `HO Report Generator: ${selectedTemplate.name}`}
               </span>
 
-              {isCustomizing && isSuperAdmin && (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#fef3c7] text-[#92400e] border border-[#fde68a] rounded-xs">
-                  Super Admin Customizing
+              {isCustomizing ? (
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-[#fef3c7] text-[#92400e] border border-[#fde68a] rounded-xs flex items-center gap-1">
+                  <Sliders className="w-2.5 h-2.5" />
+                  <span>Master Template Mode</span>
                 </span>
-              )}
+              ) : null}
             </>
           ) : (
             <div className="flex items-center gap-1.5">
               <FilePlus className="w-4 h-4 text-[#0d9488]" />
-              <span className="text-xs font-bold text-[#1e293b]">Report Generator</span>
+              <span className="text-xs font-bold text-[#1e293b]">HO Report Generator</span>
 
               {/* Tabs */}
               <div className="flex items-center gap-1 ml-2 bg-[#f1f5f9] p-0.5 rounded-xs text-[11px]">
@@ -607,7 +685,7 @@ export const DocumentBuilderView: React.FC = () => {
                       : 'text-[#64748b] hover:text-[#1e293b]'
                   }`}
                 >
-                  Saved Reports & Downloads
+                  Saved HO Reports & Downloads
                 </button>
               </div>
             </div>
@@ -639,76 +717,81 @@ export const DocumentBuilderView: React.FC = () => {
             ) : null
           ) : (
             <>
-              {/* Customization Toggle (Super Admin Only) */}
-              {isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setIsCustomizing(prev => !prev)}
-                  className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-xs transition-colors cursor-pointer ${
-                    isCustomizing
-                      ? 'bg-[#0f766e] text-white'
-                      : 'bg-white hover:bg-[#f0fdfa] text-[#0d9488] border border-[#0d9488]'
-                  }`}
-                  title={isCustomizing ? 'Done customizing form' : 'Super Admin: Add or remove fields from master template'}
-                >
-                  <Sliders className="w-3 h-3" />
-                  <span>{isCustomizing ? 'Done Editing' : 'Customize Master Form'}</span>
-                </button>
+              {isCustomizing ? (
+                /* TEMPLATE DESIGNER ACTIONS (Save to Master Template) */
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSaveAsTemplate}
+                    disabled={saving}
+                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors cursor-pointer"
+                    title="Save customized fields and sections to master template in database"
+                  >
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>Save Template</span>
+                  </button>
+                </>
+              ) : (
+                /* REPORT GENERATOR ACTIONS (Fill Data, Save Draft, Finalize, Export) */
+                <>
+
+                  {/* Save Draft */}
+                  <button
+                    type="button"
+                    onClick={() => handleSaveDraft('draft')}
+                    disabled={saving || !documentTitle}
+                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold bg-white hover:bg-[#f8fafc] text-[#334155] border border-[#cbd5e1] rounded-xs transition-colors cursor-pointer disabled:opacity-50"
+                    title="Save current progress as a draft report"
+                  >
+                    {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                    <span>Draft</span>
+                  </button>
+
+                  {/* Finalize */}
+                  <button
+                    type="button"
+                    onClick={() => handleSaveDraft('final')}
+                    disabled={saving || !documentTitle}
+                    className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                    title="Finalize report and freeze snapshot"
+                  >
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Finalize</span>
+                  </button>
+
+                  {/* Export DOCX & PDF */}
+                  <div className="flex items-center border border-[#cbd5e1] rounded-xs overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerate('docx')}
+                      disabled={!!generating || !documentTitle}
+                      className="px-2 py-1 text-[11px] font-bold bg-[#0078d4] hover:bg-[#106ebe] text-white transition-colors cursor-pointer disabled:opacity-50"
+                      title="Download DOCX"
+                    >
+                      {generating === 'docx' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'DOCX'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleGenerate('pdf')}
+                      disabled={!!generating || !documentTitle}
+                      className="px-2 py-1 text-[11px] font-bold bg-[#dc2626] hover:bg-[#b91c1c] text-white transition-colors cursor-pointer disabled:opacity-50 border-l border-white/20"
+                      title="Download PDF"
+                    >
+                      {generating === 'pdf' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'PDF'}
+                    </button>
+                  </div>
+
+                  {/* Clear */}
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="p-1 text-[#64748b] hover:text-[#ef4444] hover:bg-[#fee2e2] rounded-xs transition-colors cursor-pointer"
+                    title="Clear all field inputs"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </>
               )}
-
-              {/* Save Draft */}
-              <button
-                type="button"
-                onClick={() => handleSaveDraft('draft')}
-                disabled={saving || !documentTitle}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold bg-white hover:bg-[#f8fafc] text-[#334155] border border-[#cbd5e1] rounded-xs transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                <span>Draft</span>
-              </button>
-
-              {/* Finalize */}
-              <button
-                type="button"
-                onClick={() => handleSaveDraft('final')}
-                disabled={saving || !documentTitle}
-                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Finalize</span>
-              </button>
-
-              {/* Export DOCX & PDF */}
-              <div className="flex items-center border border-[#cbd5e1] rounded-xs overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => handleGenerate('docx')}
-                  disabled={!!generating || !documentTitle}
-                  className="px-2 py-1 text-[11px] font-bold bg-[#0078d4] hover:bg-[#106ebe] text-white transition-colors cursor-pointer disabled:opacity-50"
-                  title="Download DOCX"
-                >
-                  {generating === 'docx' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'DOCX'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleGenerate('pdf')}
-                  disabled={!!generating || !documentTitle}
-                  className="px-2 py-1 text-[11px] font-bold bg-[#dc2626] hover:bg-[#b91c1c] text-white transition-colors cursor-pointer disabled:opacity-50 border-l border-white/20"
-                  title="Download PDF"
-                >
-                  {generating === 'pdf' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'PDF'}
-                </button>
-              </div>
-
-              {/* Clear */}
-              <button
-                type="button"
-                onClick={handleClear}
-                className="p-1 text-[#64748b] hover:text-[#ef4444] hover:bg-[#fee2e2] rounded-xs transition-colors cursor-pointer"
-                title="Clear all field inputs"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
             </>
           )}
         </div>
@@ -738,6 +821,7 @@ export const DocumentBuilderView: React.FC = () => {
               templates={templates}
               loading={loadingTemplates}
               onSelect={handleSelectTemplate}
+              onEditTemplate={handleCustomizeTemplate}
               onCreateTemplate={() => setShowCreateOwnModal(true)}
               onImportTemplate={() => setShowImportModal(true)}
               onDeleteTemplate={handleDeleteTemplate}
@@ -750,61 +834,113 @@ export const DocumentBuilderView: React.FC = () => {
                 style={isDesktop ? { flex: `0 0 ${leftPanelWidth}%`, maxWidth: `${leftPanelWidth}%` } : undefined}
               >
                 <div className="bg-white border border-[#cbd5e1] rounded-xs shadow-xs flex-1">
-                  {/* Compact Title & Site Row */}
-                  <div className="px-3 py-2 border-b border-[#e2e8f0] bg-[#fafafa]">
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-2">
+                  {/* Header Row: Template Metadata (Customize Mode) vs Report Details (Generate Mode) */}
+                  {isCustomizing ? (
+                    <div className="px-3 py-2.5 border-b border-[#99f6e4] bg-[#f0fdfa] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-[#0f766e] flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-[#0d9488]" />
+                          Master Template Configuration
+                        </span>
+                        <span className="text-[10px] text-[#0d9488] font-semibold bg-white px-2 py-0.5 border border-[#99f6e4] rounded-xs">
+                          Template Designer Mode
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-2">
+                          <label className="block text-[10px] font-bold text-[#475569] uppercase mb-0.5">
+                            Template Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedTemplate.name}
+                            onChange={e => {
+                              const newName = e.target.value;
+                              setSelectedTemplate(prev => prev ? { ...prev, name: newName } : prev);
+                              setIsDirty(true);
+                            }}
+                            placeholder="Template name..."
+                            className="w-full px-2.5 py-1 text-xs border border-[#cbd5e1] rounded-xs bg-white text-[#1e293b] focus:outline-none focus:border-[#0d9488]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#475569] uppercase mb-0.5">
+                            Category *
+                          </label>
+                          <select
+                            value={selectedTemplate.category || 'Operations'}
+                            onChange={e => {
+                              const newCat = e.target.value;
+                              setSelectedTemplate(prev => prev ? { ...prev, category: newCat } : prev);
+                              setIsDirty(true);
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-[#cbd5e1] rounded-xs bg-white text-[#1e293b]"
+                          >
+                            <option value="Operations">Operations</option>
+                            <option value="Security">Security</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Health & Safety">Health & Safety</option>
+                            <option value="Compliance">Compliance</option>
+                            <option value="General">General</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
                         <label className="block text-[10px] font-bold text-[#475569] uppercase mb-0.5">
-                          Document Title *
+                          Template Description
                         </label>
                         <input
                           type="text"
-                          value={documentTitle}
+                          value={selectedTemplate.description || ''}
                           onChange={e => {
-                            setDocumentTitle(e.target.value);
+                            const newDesc = e.target.value;
+                            setSelectedTemplate(prev => prev ? { ...prev, description: newDesc } : prev);
                             setIsDirty(true);
                           }}
-                          placeholder="Document title..."
+                          placeholder="Brief description of template purpose..."
                           className="w-full px-2.5 py-1 text-xs border border-[#cbd5e1] rounded-xs bg-white text-[#1e293b] focus:outline-none focus:border-[#0d9488]"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-[#475569] uppercase mb-0.5">
-                          Hotel / Site *
-                        </label>
-                        <select
-                          value={selectedSite}
-                          onChange={e => {
-                            setSelectedSite(e.target.value);
-                            setIsDirty(true);
-                          }}
-                          disabled={!canAccessAllSites()}
-                          className="w-full px-2 py-1 text-xs border border-[#cbd5e1] rounded-xs bg-white text-[#1e293b]"
-                        >
-                          {allowedSites.map(s => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Customizing Info Banner (Super Admin Only) */}
-                  {isCustomizing && isSuperAdmin && (
-                    <div className="bg-[#f0fdfa] border-b border-[#99f6e4] px-3 py-1.5 flex items-center justify-between text-[11px] text-[#0f766e]">
-                      <span className="font-semibold flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-[#0d9488]" />
-                        Super Admin Mode: Modifying master form structure. Add or remove fields below.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleSaveAsTemplate}
-                        disabled={saving}
-                        className="font-bold text-[#0d9488] hover:text-[#0f766e] bg-white border border-[#99f6e4] px-2.5 py-0.5 rounded-xs flex items-center gap-1 cursor-pointer shadow-2xs hover:bg-[#f0fdfa]"
-                      >
-                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                        <span>Save Changes to Master Template</span>
-                      </button>
+                  ) : (
+                    <div className="px-3 py-2 border-b border-[#e2e8f0] bg-[#fafafa]">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-2">
+                          <label className="block text-[10px] font-bold text-[#475569] uppercase mb-0.5">
+                            Document Title *
+                          </label>
+                          <input
+                            type="text"
+                            value={documentTitle}
+                            onChange={e => {
+                              setDocumentTitle(e.target.value);
+                              setIsDirty(true);
+                            }}
+                            placeholder="Document title..."
+                            className="w-full px-2.5 py-1 text-xs border border-[#cbd5e1] rounded-xs bg-white text-[#1e293b] focus:outline-none focus:border-[#0d9488]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-[#475569] uppercase mb-0.5">
+                            Hotel / Site *
+                          </label>
+                          <select
+                            value={selectedSite}
+                            onChange={e => {
+                              setSelectedSite(e.target.value);
+                              setIsDirty(true);
+                            }}
+                            disabled={!canAccessAllSites()}
+                            className="w-full px-2 py-1 text-xs border border-[#cbd5e1] rounded-xs bg-white text-[#1e293b]"
+                          >
+                            {allowedSites.map(s => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -840,9 +976,9 @@ export const DocumentBuilderView: React.FC = () => {
                 style={isDesktop ? { flex: `1 1 ${100 - leftPanelWidth}%`, maxWidth: `${100 - leftPanelWidth}%` } : undefined}
               >
                 <DocumentPreview
-                  title={documentTitle}
-                  documentNumber={currentRecord?.documentNumber || 'DOC-2026-DRAFT'}
-                  site={selectedSite}
+                  title={isCustomizing ? selectedTemplate.name : documentTitle}
+                  documentNumber={isCustomizing ? 'MASTER-TEMPLATE' : (currentRecord?.documentNumber || 'DOC-2026-DRAFT')}
+                  site={isCustomizing ? 'All Sites (Master Template)' : selectedSite}
                   templateName={selectedTemplate.name}
                   fieldDefinitions={fieldDefs}
                   layoutConfig={layoutConfig}

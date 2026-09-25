@@ -48,6 +48,24 @@ export interface IncidentDocData {
   fireCadRef: string;
   fireNotes?: string;
   evidencePhotos: FlowAttachment[];
+  customSections?: CustomSectionData[];
+}
+
+export interface CustomFieldItem {
+  id: string;
+  name: string;
+  label: string;
+  type: string;
+  value: any;
+  displayValue: string;
+  width?: 'full' | 'half';
+}
+
+export interface CustomSectionData {
+  id: string;
+  title: string;
+  columns?: 1 | 2;
+  fields: CustomFieldItem[];
 }
 
 export type PageBlockType =
@@ -58,6 +76,7 @@ export type PageBlockType =
   | 'incident_description'
   | 'action_taken'
   | 'authorities_table'
+  | 'custom_section'
   | 'evidence_gallery'
   | 'evidence_instruction';
 
@@ -94,7 +113,12 @@ const USABLE_HEIGHT_PAGE_N = 660;
 /**
  * Normalizes field values into a structured IncidentDocData object
  */
-export function normalizeIncidentData(fieldValues: Record<string, any>, site?: string): IncidentDocData {
+export function normalizeIncidentData(
+  fieldValues: Record<string, any>,
+  site?: string,
+  fieldDefinitions?: any[],
+  layoutConfig?: any
+): IncidentDocData {
   const parsePeople = (val: any): FlowPerson[] => {
     if (!val) return [];
     if (Array.isArray(val)) {
@@ -164,6 +188,105 @@ export function normalizeIncidentData(fieldValues: Record<string, any>, site?: s
     return [];
   };
 
+  const standardFieldNames = new Set([
+    'propertyId',
+    'locationDetail',
+    'personReporting',
+    'reportedBy',
+    'dateOfIncident',
+    'incidentDate',
+    'offenders',
+    'victims',
+    'witnesses',
+    'incidentDescription',
+    'description',
+    'actionTaken',
+    'immediateAction',
+    'warningLetterIssued',
+    'warningLetterToWhom',
+    'warningLetterNotes',
+    'safeguardingInformed',
+    'safeguardingWho',
+    'safeguardingNotes',
+    'policeInvolved',
+    'policeCadRef',
+    'policeNotes',
+    'ambulanceInvolved',
+    'ambulanceCadRef',
+    'ambulanceNotes',
+    'fireServiceInvolved',
+    'fireCadRef',
+    'fireNotes',
+    'evidencePhotos',
+    'attachments',
+    'photos',
+  ]);
+
+  const customSections: CustomSectionData[] = [];
+  const standardSectionIds = new Set([
+    'incident',
+    'property',
+    'persons',
+    'description',
+    'actions',
+    'warnings',
+    'authorities',
+    'evidence',
+  ]);
+
+  const layoutSections = layoutConfig?.sections || [];
+  const customSectionDefs = layoutSections.filter(s => !standardSectionIds.has(s.id));
+  const customFields = (fieldDefinitions || []).filter(f => !standardFieldNames.has(f.name));
+
+  const secFieldMap = new Map<string, CustomFieldItem[]>();
+  customFields.forEach(f => {
+    const val = fieldValues[f.name];
+    const hasVal = val !== undefined && val !== null && val !== '';
+    const displayValue = hasVal ? (Array.isArray(val) ? `${val.length} items` : String(val)) : '—';
+    const item: CustomFieldItem = {
+      id: f.id,
+      name: f.name,
+      label: f.label || f.name,
+      type: f.type || 'text',
+      value: val,
+      displayValue,
+      width: f.width,
+    };
+
+    const secId = f.section || 'custom';
+    if (!secFieldMap.has(secId)) {
+      secFieldMap.set(secId, []);
+    }
+    secFieldMap.get(secId)!.push(item);
+  });
+
+  const processedSecIds = new Set<string>();
+
+  // 1. Add all explicitly created user sections (even if empty!)
+  customSectionDefs.forEach(s => {
+    processedSecIds.add(s.id);
+    const fields = secFieldMap.get(s.id) || [];
+    customSections.push({
+      id: s.id,
+      title: s.title || 'Section',
+      columns: s.columns || 2,
+      fields,
+    });
+  });
+
+  // 2. Add any custom fields assigned to existing or orphan sections
+  secFieldMap.forEach((fields, secId) => {
+    if (!processedSecIds.has(secId)) {
+      const existingSec = layoutSections.find((s: any) => s.id === secId);
+      customSections.push({
+        id: secId,
+        title: existingSec?.title ? `${existingSec.title} (Additional Fields)` : 'Additional Information',
+        columns: existingSec?.columns || 2,
+        fields,
+      });
+    }
+  });
+
   return {
     propertyId: String(fieldValues.propertyId || fieldValues.locationDetail || site || ''),
     personReporting: String(fieldValues.personReporting || fieldValues.reportedBy || ''),
@@ -194,6 +317,7 @@ export function normalizeIncidentData(fieldValues: Record<string, any>, site?: s
       fieldValues.photos ||
       Object.values(fieldValues).find(v => Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' && ('url' in v[0] || 'dataUrl' in v[0]))
     ),
+    customSections,
   };
 }
 
@@ -382,7 +506,27 @@ export function computeIncidentPages(data: IncidentDocData): ComputedPage[] {
   });
   currentRemainingHeight -= authoritiesHeight;
 
-  // 5. Evidence Instruction Note
+  // 5. Custom Sections & Fields (Added in Customize Mode)
+  if (data.customSections && data.customSections.length > 0) {
+    data.customSections.forEach(sec => {
+      const fieldCount = sec.fields.length;
+      const sectionHeight = 24 + Math.max(1, fieldCount) * 22;
+
+      if (currentRemainingHeight < Math.min(sectionHeight, 60)) {
+        pushCurrentPage();
+      }
+
+      currentPageBlocks.push({
+        type: 'custom_section',
+        title: sec.title,
+        data: sec,
+        estimatedHeight: sectionHeight,
+      });
+      currentRemainingHeight -= sectionHeight;
+    });
+  }
+
+  // 6. Evidence Instruction Note
   const noteHeight = 24;
   currentPageBlocks.push({
     type: 'evidence_instruction',

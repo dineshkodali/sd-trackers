@@ -1827,5 +1827,109 @@ BEGIN
   END IF;
 END $$;
 
+-- =====================================================================
+-- PART 11: HO REPORT GENERATOR MODULE (Dedicated Separate Tables)
+-- =====================================================================
+
+-- 1. HO Report Templates Table
+CREATE TABLE IF NOT EXISTS public.ho_report_templates (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT DEFAULT 'Operations',
+  is_active BOOLEAN DEFAULT true,
+  current_version INTEGER DEFAULT 1,
+  field_definitions JSONB DEFAULT '[]'::jsonb,
+  layout_config JSONB DEFAULT '{}'::jsonb,
+  header_config JSONB DEFAULT '{}'::jsonb,
+  footer_config JSONB DEFAULT '{}'::jsonb,
+  created_by TEXT,
+  data JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'update_ho_report_templates_updated_at'
+  ) THEN
+    CREATE TRIGGER update_ho_report_templates_updated_at
+      BEFORE UPDATE ON public.ho_report_templates
+      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_ho_report_templates_active ON public.ho_report_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_ho_report_templates_category ON public.ho_report_templates(category);
+
+-- 2. HO Report Records Table (Generated documents prepared in DOCX/PDF)
+CREATE TABLE IF NOT EXISTS public.ho_report_records (
+  id TEXT PRIMARY KEY,
+  template_id TEXT REFERENCES public.ho_report_templates(id) ON DELETE SET NULL,
+  site TEXT NOT NULL DEFAULT 'All Sites',
+  title TEXT NOT NULL,
+  document_number TEXT,
+  category TEXT DEFAULT 'General',
+  status TEXT DEFAULT 'draft',                 -- 'draft' | 'final'
+  prepared_format TEXT,                        -- 'docx' | 'pdf' | 'both'
+  docx_url TEXT,
+  pdf_url TEXT,
+  field_values JSONB DEFAULT '{}'::jsonb,
+  field_definitions JSONB DEFAULT '[]'::jsonb,
+  layout_config JSONB DEFAULT '{}'::jsonb,
+  header_config JSONB DEFAULT '{}'::jsonb,
+  footer_config JSONB DEFAULT '{}'::jsonb,
+  created_by TEXT,
+  created_by_name TEXT,
+  created_by_role TEXT,
+  created_by_email TEXT,
+  updated_by TEXT,
+  updated_by_name TEXT,
+  updated_by_role TEXT,
+  finalized_at TIMESTAMPTZ,
+  finalized_by TEXT,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'update_ho_report_records_updated_at'
+  ) THEN
+    CREATE TRIGGER update_ho_report_records_updated_at
+      BEFORE UPDATE ON public.ho_report_records
+      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_ho_report_records_site ON public.ho_report_records(site);
+CREATE INDEX IF NOT EXISTS idx_ho_report_records_status ON public.ho_report_records(status);
+CREATE INDEX IF NOT EXISTS idx_ho_report_records_template ON public.ho_report_records(template_id);
+CREATE INDEX IF NOT EXISTS idx_ho_report_records_prepared ON public.ho_report_records(prepared_format);
+CREATE INDEX IF NOT EXISTS idx_ho_report_records_updated_at ON public.ho_report_records(updated_at DESC);
+
+-- 3. HO Report Audit Logs Table
+CREATE TABLE IF NOT EXISTS public.ho_report_audit_logs (
+  id TEXT PRIMARY KEY,
+  record_id TEXT,
+  template_id TEXT,
+  action TEXT NOT NULL,
+  user_id TEXT,
+  user_name TEXT,
+  user_role TEXT,
+  user_email TEXT,
+  site TEXT,
+  details TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ho_report_audit_record ON public.ho_report_audit_logs(record_id);
+CREATE INDEX IF NOT EXISTS idx_ho_report_audit_action ON public.ho_report_audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_ho_report_audit_created ON public.ho_report_audit_logs(created_at DESC);
+
 NOTIFY pgrst, 'reload schema';
+
 

@@ -19,6 +19,7 @@ import {
   Sparkles,
   Edit2,
   Trash2,
+  Sliders,
 } from 'lucide-react';
 import type { TemplateWithVersion } from '../../types/documentBuilder';
 import { useApp } from '../../context/AppContext';
@@ -96,12 +97,12 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
           <Sparkles className="w-4 h-4 text-[#0d9488] shrink-0" />
           <div>
             <p className="text-xs font-bold text-[#0f766e]">
-              {isAdminOrManager ? 'Report Templates & Form Administration' : 'Report Generator — Choose a Report Type'}
+              {isAdminOrManager ? 'HO Report Templates & Form Administration' : 'HO Report Generator — Choose a Report Type'}
             </p>
             <p className="text-[11px] text-[#0d9488]">
               {isAdminOrManager
-                ? 'Select a template below to generate a report, or customize master forms. Staff can choose templates to generate and download reports.'
-                : 'Select an approved template below to generate your report with real-time live preview and instant DOCX/PDF downloads.'}
+                ? 'Select a template below to generate an HO report, or customize master forms. Staff can choose templates to generate and download reports.'
+                : 'Select an approved HO Report template below to generate your report with real-time live preview and instant DOCX/PDF downloads.'}
             </p>
           </div>
         </div>
@@ -237,14 +238,16 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                   <div className="flex items-center gap-1.5">
                     {isAdminOrManager && onEditTemplate && (
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           onEditTemplate(template);
                         }}
-                        className="p-1 text-[#94a3b8] hover:text-[#0d9488] rounded-xs"
-                        title="Edit Template"
+                        className="px-2 py-1 text-xs font-semibold text-[#0f766e] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#99f6e4] rounded-xs transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                        title="Customize Master Form / Template Schema"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Sliders className="w-3 h-3 text-[#0d9488]" />
+                        <span>Customize Template</span>
                       </button>
                     )}
 

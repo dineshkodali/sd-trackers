@@ -102,9 +102,9 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   // 1. DYNAMIC INCIDENT REPORT FLOW PAGES
   const incidentPages: ComputedPage[] = useMemo(() => {
     if (!isIncidentReport) return [];
-    const normalized = normalizeIncidentData(fieldValues, site);
+    const normalized = normalizeIncidentData(fieldValues, site, fieldDefinitions, layoutConfig);
     return computeIncidentPages(normalized);
-  }, [isIncidentReport, fieldValues, site]);
+  }, [isIncidentReport, fieldValues, site, fieldDefinitions, layoutConfig]);
 
   // 2. STANDARD TEMPLATE SECTIONS & PAGES
   const sections = useMemo(() => {
@@ -112,12 +112,27 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
       ? [...layoutConfig.sections].sort((a, b) => a.order - b.order)
       : [{ id: 'default', title: 'Document Content', order: 1, columns: 1 as const }];
 
-    return secs.map((sec) => ({
+    const matchedSectionIds = new Set(secs.map(s => s.id));
+    const result = secs.map((sec) => ({
       ...sec,
       fields: fieldDefinitions
         .filter((f) => f.section === sec.id)
         .sort((a, b) => a.order - b.order),
     }));
+
+    // Collect any fields whose section ID didn't match existing sections
+    const orphanFields = fieldDefinitions.filter(f => !matchedSectionIds.has(f.section));
+    if (orphanFields.length > 0) {
+      result.push({
+        id: 'additional-fields',
+        title: 'Additional Details',
+        order: result.length + 1,
+        columns: 2 as const,
+        fields: orphanFields.sort((a, b) => a.order - b.order),
+      });
+    }
+
+    return result;
   }, [layoutConfig, fieldDefinitions]);
 
   const standardPages = useMemo(() => {

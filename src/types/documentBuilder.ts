@@ -155,6 +155,10 @@ export interface DocumentBuilderRecord {
   documentNumber: string;
   status: DocumentStatus;
   fieldValues: Record<string, any>;
+  fieldDefinitions?: TemplateFieldDefinition[];
+  layoutConfig?: LayoutConfig;
+  headerConfig?: HeaderConfig;
+  footerConfig?: FooterConfig;
   createdBy: string;
   createdByName: string;
   createdByRole?: string;

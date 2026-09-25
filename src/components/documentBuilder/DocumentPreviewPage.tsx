@@ -291,6 +291,47 @@ export const DocumentPreviewPage: React.FC<DocumentPreviewPageProps> = ({
         );
       }
 
+      case 'custom_section': {
+        const sec = block.data;
+        return (
+          <React.Fragment key={blockIdx}>
+            <tr className="border-b border-black">
+              <td
+                colSpan={4}
+                className="py-1 px-2.5 font-bold uppercase text-black bg-[#f3f4f6] text-[8.5px] tracking-wide text-center"
+              >
+                {sec.title}
+              </td>
+            </tr>
+            {sec.fields.length === 0 ? (
+              <tr className="border-b border-black">
+                <td colSpan={4} className="py-2 px-2.5 text-center text-[8px] text-gray-400 italic bg-gray-50/50">
+                  (Empty section — click &quot;+ Add Field&quot; in Customize mode to add fields)
+                </td>
+              </tr>
+            ) : (
+              sec.fields.map((f: any, fIdx: number) => {
+                const val = fieldValues[f.name];
+                const hasVal = val !== undefined && val !== null && val !== '';
+                const disp = hasVal ? (Array.isArray(val) ? `${val.length} items` : String(val)) : '—';
+                return (
+                  <tr key={fIdx} className="border-b border-black">
+                    <td className="font-bold text-center border-r border-black py-1 px-2 bg-white text-[8.5px]">
+                      {f.label}
+                    </td>
+                    <td colSpan={3} className="py-1 px-2.5 text-left text-[9px]">
+                      <span className={disp === '—' ? 'text-gray-400 italic' : 'text-black'}>
+                        {disp}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </React.Fragment>
+        );
+      }
+
       default:
         return null;
     }
@@ -493,11 +534,11 @@ export const DocumentPreviewPage: React.FC<DocumentPreviewPageProps> = ({
             <div className="flex-1">
               {sections.map(section => (
                 <div key={section.id} className="mb-4">
-                  <div className="mb-2">
-                    <h2 className="text-[11px] font-bold text-[#115e59] uppercase tracking-wide">
+                  <div className="mb-2 text-center">
+                    <h2 className="text-[11px] font-bold text-[#115e59] uppercase tracking-wide text-center">
                       {section.title}
                     </h2>
-                    <div className="h-[1px] bg-[#0d9488] w-[35%] mt-0.5" />
+                    <div className="h-[1px] bg-[#0d9488] w-[35%] mx-auto mt-0.5" />
                   </div>
                   <div className={`gap-x-4 gap-y-2 ${
                     (section.columns || 1) > 1 ? 'grid grid-cols-2' : 'space-y-2'
