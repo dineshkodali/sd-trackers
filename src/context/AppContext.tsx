@@ -574,16 +574,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [activePage, setActivePageRaw] = useState<string>(() => {
     try {
-      if (typeof window !== 'undefined') {
-        const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
-        if (path === '/welfare-checks') return 'welfareChecks';
-        if (path === '/food-surveys') return 'foodSurveys';
-        if (path === '/room-checks') return 'roomChecks';
-        if (window.sessionStorage) {
-          const saved = sessionStorage.getItem('sg_tracker_active_page');
-          if (saved && typeof saved === 'string' && saved.trim()) {
-            return saved.trim();
-          }
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const saved = sessionStorage.getItem('sg_tracker_active_page');
+        if (saved && typeof saved === 'string' && saved.trim()) {
+          return saved.trim();
         }
       }
     } catch {}
@@ -600,18 +594,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setActivePage = useCallback((page: string) => {
     setActivePageRaw(page);
     try {
-      if (typeof window !== 'undefined') {
-        if (window.sessionStorage) {
-          sessionStorage.setItem('sg_tracker_active_page', page);
-        }
-        let targetPath = '';
-        if (page === 'welfareChecks') targetPath = '/welfare-checks';
-        else if (page === 'foodSurveys') targetPath = '/food-surveys';
-        else if (page === 'roomChecks') targetPath = '/room-checks';
-        else if (page === 'dashboard') targetPath = '/';
-        if (targetPath && window.location.pathname !== targetPath) {
-          window.history.pushState(null, '', targetPath);
-        }
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.setItem('sg_tracker_active_page', page);
       }
     } catch {}
     setIsMobileSidebarOpen(false); // Automatically close mobile drawer when navigating
