@@ -21,6 +21,7 @@ import { SupabaseBackendCard } from './SupabaseBackendCard';
 import { useSupabaseRealtime } from '../../hooks/useSupabaseRealtime';
 import { REALTIME_TABLES } from '../../services/realtimeService';
 
+
 export const SettingsView: React.FC = () => {
   const {
     settings,
@@ -306,6 +307,7 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       </div>
+
 
 
       {/* Section 2: Active System Preferences & Governance Policies (Read-Only) */}

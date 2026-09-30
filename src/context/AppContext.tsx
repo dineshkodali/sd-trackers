@@ -169,6 +169,9 @@ interface AppContextType {
   // App Settings
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
+  isPageUnderMaintenance: (pageId: string) => boolean;
+  setPageMaintenanceMode: (pageId: string, inMaintenance: boolean) => void;
+  setAllPagesMaintenanceMode: (pageIds: string[], inMaintenance: boolean) => void;
 
   // Active View Navigation
   activePage: string;
@@ -1961,6 +1964,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
   }, [reportPersistFailure, appendLocalAudit]);
+
+  const isPageUnderMaintenance = useCallback((pageId: string): boolean => {
+    return Boolean(settings.pageMaintenance?.[pageId]);
+  }, [settings.pageMaintenance]);
+
+  const setPageMaintenanceMode = useCallback((pageId: string, inMaintenance: boolean) => {
+    const currentMap = settingsRef.current.pageMaintenance || {};
+    const updatedMap = { ...currentMap, [pageId]: inMaintenance };
+    updateSettings({ pageMaintenance: updatedMap });
+    addAuditEntry(
+      'SETTINGS_UPDATE',
+      'Settings',
+      `Page Maintenance: ${pageId}`,
+      'All Sites',
+      `${inMaintenance ? 'Enabled' : 'Disabled'} Maintenance Mode for page "${pageId}".`
+    );
+  }, [updateSettings, addAuditEntry]);
+
+  const setAllPagesMaintenanceMode = useCallback((pageIds: string[], inMaintenance: boolean) => {
+    const currentMap = { ...(settingsRef.current.pageMaintenance || {}) };
+    pageIds.forEach(id => {
+      currentMap[id] = inMaintenance;
+    });
+    updateSettings({ pageMaintenance: currentMap });
+    addAuditEntry(
+      'SETTINGS_UPDATE',
+      'Settings',
+      'Bulk Page Maintenance',
+      'All Sites',
+      `${inMaintenance ? 'Enabled' : 'Disabled'} Maintenance Mode for ${pageIds.length} pages.`
+    );
+  }, [updateSettings, addAuditEntry]);
 
   // Synthesize notifications from live audit logs, escalations, change requests, and system events
   const allDerivedNotifications = useMemo(() => {
@@ -4695,6 +4730,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       allowedSites,
       settings,
       updateSettings,
+      isPageUnderMaintenance,
+      setPageMaintenanceMode,
+      setAllPagesMaintenanceMode,
       activePage,
       setActivePage,
       globalSearchFilter,

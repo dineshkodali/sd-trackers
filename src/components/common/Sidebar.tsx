@@ -37,8 +37,10 @@ import {
   ClipboardList,
   Trash2,
   X,
-  FilePlus
+  FilePlus,
+  Wrench
 } from 'lucide-react';
+
 import { useApp } from '../../context/AppContext';
 import { Logo } from './Logo';
 
@@ -57,31 +59,48 @@ interface NavItemProps {
 
 const NavItem: React.FC<NavItemProps> = ({ 
   id, page, label, icon: Icon, iconColor, badge, badgeClass, active, onClick, extraBadge
-}) => (
-  <button
-    id={id}
-    type="button"
-    onClick={() => onClick(page)}
-    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
-      active ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
-    }`}
-  >
-    <div className="flex items-center gap-2.5 truncate">
-      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : iconColor || 'text-neutral-600'}`} />
-      <span className="truncate">{label}</span>
-    </div>
-    <div className="flex items-center gap-1 shrink-0 ml-1.5">
-      {extraBadge}
-      {badge !== undefined && badge !== null && badge !== 0 && (
-        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-          active ? 'bg-white/20 text-white' : badgeClass || 'bg-[#eef3f7] text-[#0f766e]'
-        }`}>
-          {badge}
-        </span>
-      )}
-    </div>
-  </button>
-);
+}) => {
+  const { isPageUnderMaintenance } = useApp();
+  const inMaintenance = isPageUnderMaintenance(page);
+
+  return (
+    <button
+      id={id}
+      type="button"
+      onClick={() => onClick(page)}
+      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
+        active ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
+      }`}
+    >
+      <div className="flex items-center gap-2.5 truncate">
+        <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : iconColor || 'text-neutral-600'}`} />
+        <span className="truncate">{label}</span>
+      </div>
+      <div className="flex items-center gap-1 shrink-0 ml-1.5">
+        {inMaintenance && (
+          <span 
+            title="This page is currently under maintenance"
+            className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+              active 
+                ? 'bg-amber-400 text-neutral-900 shadow-2xs' 
+                : 'bg-amber-100 text-amber-900 border border-amber-300'
+            }`}
+          >
+            Maint
+          </span>
+        )}
+        {extraBadge}
+        {badge !== undefined && badge !== null && badge !== 0 && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+            active ? 'bg-white/20 text-white' : badgeClass || 'bg-[#eef3f7] text-[#0f766e]'
+          }`}>
+            {badge}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+};
 
 export const Sidebar: React.FC = () => {
   const { 
@@ -416,8 +435,12 @@ export const Sidebar: React.FC = () => {
               {canManageSettings() && (
                 <NavItem id="nav-notifications" page="notifications" label="Email Notifications" icon={BellRing} iconColor="text-[#0d9488]" badge={notificationRules.filter(r => r.enabled).length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('notifications')} onClick={handleNavClick} />
               )}
+              {currentUserRole === 'Super Admin' && (
+                <NavItem id="nav-page-maintenance" page="pageMaintenance" label="Page Maintenance" icon={Wrench} iconColor="text-amber-600" active={isNavActive('pageMaintenance')} onClick={handleNavClick} />
+              )}
             </div>
           )}
+
         </nav>
       </aside>
     </>

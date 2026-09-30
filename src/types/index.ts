@@ -416,6 +416,10 @@ export interface AppSettings {
   sharePointTargetFolder?: string;
   sharePointDefaultSheet?: string;
   sharePointAutoSyncEnabled?: boolean;
+
+  // Page Maintenance Mode
+  pageMaintenance?: Record<string, boolean>; // pageId -> boolean (true = in maintenance)
+  maintenanceMessage?: string; // Optional custom message for maintenance banner/view
 }
 
 export interface AuthUser {

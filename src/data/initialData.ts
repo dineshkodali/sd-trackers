@@ -277,7 +277,9 @@ export const INITIAL_SETTINGS: AppSettings = {
   sharePointWorkbookName: 'SD_Commercial_Trackers_Master.xlsx',
   sharePointTargetFolder: 'sites/SD-Operations/Shared Documents/Master Workbooks',
   sharePointDefaultSheet: 'Referrals_Master',
-  sharePointAutoSyncEnabled: true
+  sharePointAutoSyncEnabled: true,
+  pageMaintenance: {},
+  maintenanceMessage: 'This page is currently undergoing scheduled maintenance and updates. It will be restored shortly.'
 };
 
 export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {

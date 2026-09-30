@@ -53,6 +53,11 @@ import { DocumentBuilderView } from './components/documentBuilder/DocumentBuilde
 import { WelfareChecksView } from './components/welfare/WelfareChecksView';
 import { FoodSurveysView } from './components/food/FoodSurveysView';
 import { RoomChecksView } from './components/room/RoomChecksView';
+import { PageMaintenanceView } from './components/common/PageMaintenanceView';
+import { SuperAdminMaintenanceBanner } from './components/common/SuperAdminMaintenanceBanner';
+import { getPageTitle } from './config/pageRegistry';
+import { PageMaintenanceManagerView } from './components/maintenance/PageMaintenanceManagerView';
+
 
 function AppLayout() {
   const { 
@@ -68,7 +73,10 @@ function AppLayout() {
     canManageUsers,
     canManageProperties,
     currentUserRole,
-    rolePermissions
+    rolePermissions,
+    isPageUnderMaintenance,
+    setPageMaintenanceMode,
+    settings
   } = useApp();
   const [isQuickJumpOpen, setIsQuickJumpOpen] = useState(false);
 
@@ -129,6 +137,19 @@ function AppLayout() {
   }
 
   const renderActiveView = () => {
+    // Page Maintenance Mode Gate:
+    // If the active page is under maintenance and the user is NOT Super Admin,
+    // block access and show the dedicated PageMaintenanceView.
+    // Super Admins retain full bypass access to view and work on the page.
+    if (activePage !== 'settings' && activePage !== 'pageMaintenance' && isPageUnderMaintenance(activePage) && currentUserRole !== 'Super Admin') {
+      return (
+        <PageMaintenanceView 
+          pageName={getPageTitle(activePage)} 
+          customMessage={settings.maintenanceMessage} 
+        />
+      );
+    }
+
     switch (activePage) {
       case 'dashboard':
         return <DashboardView />;
@@ -222,6 +243,10 @@ function AppLayout() {
         return canManageSettings()
           ? <NotificationsManagementView />
           : <AccessDeniedView pageName="Email Notifications Management" requiredRole="Super Admin or Admin" />;
+      case 'pageMaintenance':
+        return currentUserRole === 'Super Admin'
+          ? <PageMaintenanceManagerView />
+          : <AccessDeniedView pageName="Page Maintenance Mode" requiredRole="Super Admin" />;
       case 'settings':
         return canManageSettings()
           ? <SettingsView />
@@ -248,6 +273,13 @@ function AppLayout() {
             : 'p-2.5 sm:p-4 md:p-6 lg:p-8 max-w-[1700px] mx-auto w-full'
         }`}>
           <LiveDataBanner />
+          {activePage !== 'settings' && activePage !== 'pageMaintenance' && isPageUnderMaintenance(activePage) && currentUserRole === 'Super Admin' && (
+            <SuperAdminMaintenanceBanner
+              pageId={activePage}
+              pageName={getPageTitle(activePage)}
+              onTurnOff={() => setPageMaintenanceMode(activePage, false)}
+            />
+          )}
           <ErrorBoundary key={activePage} fallbackTitle={`Display Issue in ${activePage}`}>
             {renderActiveView()}
           </ErrorBoundary>
