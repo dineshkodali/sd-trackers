@@ -251,153 +251,129 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Standard Page View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <PlaneTakeoff className="w-5 h-5 text-[#a4262c]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
-              Dispersal Sheet
-            </h1>
-            <span className="text-xs bg-red-50 text-[#a4262c] font-semibold px-2 py-0.5 rounded-xs border border-red-200">
-              {filteredRecords.length} Eviction Notices
-            </span>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-red-50 border border-red-200 text-[#a4262c] rounded-xs">
+              <UserMinus className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Cessation &amp; Eviction Notices</h1>
+                <span className="text-xs bg-red-50 text-[#a4262c] font-semibold px-2 py-0.5 rounded-xs border border-red-200">
+                  {filteredRecords.length} Eviction Notices
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Record, audit, and manage Home Office cessation notices, appeals, and room vacation orders.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Record, audit, and manage Home Office cessation notices, appeals, and room vacation orders.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Tab Switcher: Dispersal Sheet | Cessation & Eviction Notices */}
+            <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-xs border border-[#e5e5e5]">
+              <button
+                type="button"
+                id="tab-switcher-dispersal"
+                onClick={() => onTabChange('dispersal')}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs text-[#605e5c] hover:text-[#242424] transition-colors cursor-pointer"
+              >
+                <Send className="w-3 h-3 text-[#0078d4]" />
+                <span>Dispersals</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-[#e1dfdd] text-[#605e5c]">
+                  {dispersalCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                id="tab-switcher-eviction"
+                onClick={() => onTabChange('eviction')}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs bg-white text-[#a4262c] shadow-2xs cursor-pointer"
+              >
+                <UserMinus className="w-3 h-3 text-[#a4262c]" />
+                <span>Eviction Notices</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-red-100 text-[#a4262c]">
+                  {evictionCount}
+                </span>
+              </button>
+            </div>
+
+            {currentUserRole === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors cursor-pointer"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="Evictions"
+              totalRecordCount={evictionRecords.length}
+              filteredRecordCount={filteredRecords.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={evictionExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+              buttonVariant="toolbar"
+            />
+
+            {canCreateRecord() && (
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#a4262c] hover:bg-[#8f1d22] text-white rounded-xs shadow-2xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Record Eviction</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
-            <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
-              title="Super Admin: Customize table columns, headers, and fields"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
-            </button>
-          )}
-
-          <ExportDropdown
-            moduleName="Evictions"
-            totalRecordCount={evictionRecords.length}
-            filteredRecordCount={filteredRecords.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={evictionExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          {canCreateRecord() && (
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#a4262c] hover:bg-[#8f1d22] text-white rounded-xs shadow-xs transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Record Eviction</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Filters Toolbar with Integrated Tab Switcher */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Tab Switcher: Dispersal Sheet | Cessation & Eviction Notices */}
-          <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-xs border border-[#8a8886]/40">
-            <button
-              type="button"
-              id="tab-switcher-dispersal"
-              onClick={() => onTabChange('dispersal')}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs text-[#605e5c] hover:text-[#242424] transition-colors cursor-pointer"
-            >
-              <Send className="w-3 h-3 text-[#0078d4]" />
-              <span>Dispersal Sheet</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-[#e1dfdd] text-[#605e5c]">
-                {dispersalCount}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              id="tab-switcher-eviction"
-              onClick={() => onTabChange('eviction')}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs bg-white text-[#a4262c] shadow-xs cursor-pointer"
-            >
-              <UserMinus className="w-3 h-3 text-[#a4262c]" />
-              <span>Cessation &amp; Eviction Notices</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-red-100 text-[#a4262c]">
-                {evictionCount}
-              </span>
-            </button>
+        {/* Integrated Filter Row */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search Port Ref, SU Name, Room..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
           </div>
 
-          <div className="h-5 w-px bg-[#e1dfdd] hidden sm:block" />
+          <select
+            value={siteFilter}
+            onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Sites</option>
+            {allowedSites.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
 
-          {/* Beside it: Site Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c]">Site:</span>
-            <select
-              value={siteFilter}
-              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
-            >
-              <option value="all">All Sites</option>
-              {allowedSites.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c]">Status:</span>
-            <select
-              value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
-            >
-              <option value="all">All Statuses</option>
-              <option value="Notice Issued">Notice Issued</option>
-              <option value="Pending Appeal">Pending Appeal</option>
-              <option value="Evicted">Evicted</option>
-            </select>
-          </div>
-
-          {(siteFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                setSiteFilter('all');
-                setStatusFilter('all');
-                setSearchQuery('');
-                setCurrentPage(1);
-              }}
-              className="px-2 py-1 text-xs text-[#0078d4] hover:underline font-semibold cursor-pointer"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-
-        <div className="relative w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#605e5c]" />
-          <input
-            type="text"
-            placeholder="Search Port Ref, SU Name, Room..."
-            value={searchQuery}
-            onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full pl-8 pr-3 py-1.5 border border-[#8a8886] rounded-xs text-[#323130] text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
-          />
+          <select
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Statuses</option>
+            <option value="Notice Issued">Notice Issued</option>
+            <option value="Pending Appeal">Pending Appeal</option>
+            <option value="Evicted">Evicted</option>
+          </select>
         </div>
       </div>
 
       {/* Main Table */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[500px] flex flex-col justify-between">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
             <thead>

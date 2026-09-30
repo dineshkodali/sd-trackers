@@ -50,11 +50,9 @@ export const QuickOptionModal: React.FC<QuickOptionModalProps> = ({
   const { 
     fieldOptions, 
     addFieldOption, 
-    updateFieldOption, 
     deleteFieldOption, 
     toggleFieldOptionStatus, 
-    reorderFieldOption,
-    currentUserRole 
+    reorderFieldOption
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'add' | 'manage'>('add');
@@ -62,8 +60,6 @@ export const QuickOptionModal: React.FC<QuickOptionModalProps> = ({
   const [newColor, setNewColor] = useState('blue');
   const [newDescription, setNewDescription] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const canManage = currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || currentUserRole === 'Staff';
 
   const categoryMeta = useMemo(() => {
     if (!categoryKey) return null;

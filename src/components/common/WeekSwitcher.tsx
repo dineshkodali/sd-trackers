@@ -26,7 +26,6 @@ export interface WeekSwitcherProps {
   onCursorChange?: (cursor: string) => void;
   compact?: boolean;
   className?: string;
-  title?: string;
 }
 
 function getISOWeekNumber(d: Date): number {
@@ -119,8 +118,7 @@ export const WeekSwitcher: React.FC<WeekSwitcherProps> = ({
   activeWeekCursor,
   onCursorChange,
   compact = false,
-  className = '',
-  title = 'Week Switcher'
+  className = ''
 }) => {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);

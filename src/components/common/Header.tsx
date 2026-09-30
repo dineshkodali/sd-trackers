@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Bell, 
-  User, 
   Shield, 
   Zap, 
   Building2, 
@@ -9,18 +8,13 @@ import {
   Check, 
   ExternalLink, 
   Lock, 
-  RefreshCw, 
-  LogIn, 
   LogOut, 
   Activity, 
   Menu, 
   X,
   CheckCheck,
-  AlertCircle,
-  Clock,
   ShieldAlert,
   UserCheck,
-  Filter,
   ArrowRight,
   Sparkles
 } from 'lucide-react';

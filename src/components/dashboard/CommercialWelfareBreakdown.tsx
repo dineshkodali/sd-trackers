@@ -3,10 +3,7 @@ import {
   Soup, 
   Shirt, 
   CheckCircle2, 
-  AlertCircle, 
-  Clock, 
   ArrowUpRight, 
-  ThermometerSnowflake, 
   Flame
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';

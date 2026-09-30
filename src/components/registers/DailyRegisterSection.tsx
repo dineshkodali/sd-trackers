@@ -229,7 +229,7 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
   return (
     <div className="space-y-4">
       {/* Main Register Table with Scalable Date Matrix Columns */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse min-w-[1400px]">
             <thead>

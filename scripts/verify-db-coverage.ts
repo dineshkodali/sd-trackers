@@ -38,7 +38,15 @@ const ALL_TABLES = [
   'audit_trails',
   'email_notification_rules',
   'email_notification_logs',
-  'password_audit_logs'
+  'password_audit_logs',
+  'ho_report_templates',
+  'ho_report_records',
+  'ho_report_audit_logs',
+  'welfare_checks',
+  'food_surveys',
+  'food_meal_ratings',
+  'room_checks',
+  'room_check_items'
 ];
 
 export async function verifyDbCoverage(): Promise<{ total: number; connected: number; results: Array<{ table: string; status: string; rows: number }> }> {

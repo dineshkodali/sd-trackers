@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Settings2, Sparkles } from 'lucide-react';
+import { Plus, Settings2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FieldOptionCategory } from '../../types';
 import { SelectOption } from '../../types/tableSchema';
@@ -41,12 +41,11 @@ export const ManageableSelect: React.FC<ManageableSelectProps> = ({
   required = false,
   className = '',
   error,
-  badgeColors,
   helperText,
   showManageActions = true,
   compact = false
 }) => {
-  const { getFieldOptions, currentUserRole } = useApp();
+  const { getFieldOptions } = useApp();
   const [isQuickModalOpen, setIsQuickModalOpen] = useState(false);
 
   // Determine if user can add/manage (Super Admin, Admin, and Staff)
@@ -79,11 +78,6 @@ export const ManageableSelect: React.FC<ManageableSelectProps> = ({
     }
     return list;
   }, [optionCategory, getFieldOptions, options, value]);
-
-  // Selected option metadata
-  const selectedOptionMeta = useMemo(() => {
-    return resolvedOptions.find(o => String(o.value) === String(value));
-  }, [resolvedOptions, value]);
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedVal = e.target.value;

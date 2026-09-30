@@ -31,10 +31,11 @@ from a single origin, backed by PostgreSQL on Supabase.
 │   └── migrations/           Incremental migrations
 │
 ├── deploy/                   Deployment configurations (Nginx, Docker)
-├── docs/                     System architecture, design tokens, Amplify guide
-├── public/                   Static web assets
+├── docs/                     System architecture, design tokens, UI guide, operations manual
+├── public/                   Static web assets & report templates
 ├── scripts/                  Database, sync, and reporting utility scripts
-├── testing/                  Unified test engine, UAT, unit tests, reports & playbooks
+├── status/                   Real-time operations & system telemetry status portal
+├── tests/                    Focused unit, adapter, and migration test suite
 │
 ├── amplify.yml               AWS Amplify CI/CD hosting pipeline
 ├── Dockerfile                Multi-stage production container build
@@ -83,7 +84,7 @@ Useful environment flags:
 
 ## Testing
 
-The full testing suite, UAT scenarios, test procedures, error audits, and reports live in **[`testing/`](file:///d:/SD%20Commercial/APPS/sdtracker/testing)**.
+Unit and integration test suites live in **[`tests/`](file:///d:/SD%20Commercial/APPS/sdtracker/tests)**, and end-to-end procedural test runners live in **[`.testing/`](file:///d:/SD%20Commercial/APPS/sdtracker/.testing)**.
 
 Run all tests in one command:
 ```bash
@@ -92,10 +93,12 @@ npm run test:all
 
 Or run individual suites:
 ```bash
+npm run test:unit         # Schema adapters, report generator & persistence tests
 npm run test:uat          # End-to-end User Acceptance Testing
-npm run test:unit         # Schema adapters & LocalStorage migrations
+npm run test:auth         # Authentication & RBAC permissions testing
+npm run test:api          # Core Express API endpoints
+npm run test:db           # Supabase live database operations
+npm run test:security     # Security checks & vulnerability scans
 npm run db:coverage       # PostgreSQL 29-table & 31-page coverage
 npm run test:qa:report    # Compile dated QA system diagnostics
 ```
-
-See [`testing/ALL_TEST_COMMANDS.txt`](file:///d:/SD%20Commercial/APPS/sdtracker/testing/ALL_TEST_COMMANDS.txt) for the complete list of testing commands and options.

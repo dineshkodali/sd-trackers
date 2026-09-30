@@ -7,24 +7,12 @@ import {
   Plus,
   Trash2,
   Edit3,
-  Download,
   Search,
-  Filter,
   X,
-  ShieldAlert,
   Building2,
   BookOpen,
-  Info,
-  ChevronDown,
-  ChevronUp,
   Flame,
-  Droplets,
-  Zap,
   Hammer,
-  FileText,
-  Save,
-  RotateCcw,
-  Lock,
   Eye,
   ArrowUpDown,
   ArrowUp,
@@ -81,7 +69,6 @@ export const MaintenanceTrackerView: React.FC = () => {
     canEditRecord,
     canDeleteRecord,
     canCreateRecord,
-    sites,
     getFieldOptions,
     globalSearchFilter,
     setGlobalSearchFilter,
@@ -102,7 +89,6 @@ export const MaintenanceTrackerView: React.FC = () => {
   };
 
   const priorityOptions = useMemo(() => getFieldOptions('maintenancePriorities'), [getFieldOptions]);
-  const timeScaleOptions = useMemo(() => getFieldOptions('maintenanceTimeScales'), [getFieldOptions]);
   const defectStatusOptions = useMemo(() => getFieldOptions('maintenanceStatuses'), [getFieldOptions]);
 
   // Filters
@@ -830,83 +816,93 @@ export const MaintenanceTrackerView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header & Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <Wrench className="w-6 h-6 text-[#0d9488]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
-              Maintenance & Defect Tracker
-            </h1>
-            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded">
-              Home Office Standards B.2 – B.6
-            </span>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-xs">
+              <Wrench className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">
+                  Maintenance &amp; Defect Tracker
+                </h1>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-xs bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4]">
+                  HO Standards B.2 – B.6
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">
+                Official accommodation habitability, emergency safety repair logs, and statutory timescale compliance tracker.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-1">
-            Official accommodation habitability, emergency safety repair logs, and statutory timescale compliance tracker.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentUserRole === 'Super Admin' && (
+              <button
+                id="btn-customize-maintenance-table"
+                onClick={() => setIsSchemaEditorOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Configure Table Headers & Form Fields (Super Admin Only)"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <button
+              id="btn-open-criteria-guide"
+              onClick={() => setIsCriteriaGuideOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>Criteria Guide</span>
+            </button>
+
+            <ExportDropdown
+              moduleName="Maintenance"
+              totalRecordCount={maintenanceRecords.length}
+              filteredRecordCount={sortedRecords.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={maintenanceExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+            />
+
+            {canCreateRecord() && (
+              <button
+                id="btn-add-maintenance-defect"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Log Defect</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Super Admin Table Customizer Button */}
-          {currentUserRole === 'Super Admin' && (
-            <button
-              id="btn-customize-maintenance-table"
-              onClick={() => setIsSchemaEditorOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
-              title="Configure Table Headers & Form Fields (Super Admin Only)"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Customize Table</span>
-            </button>
-          )}
+        {/* Filter Bar integrated into the same card */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search defects, criteria, room..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-8 pr-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
 
-          <button
-            id="btn-open-criteria-guide"
-            onClick={() => setIsCriteriaGuideOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-[#0d9488]" />
-            <span>Criteria Guide (71 Standards)</span>
-          </button>
-
-          <ExportDropdown
-            moduleName="Maintenance"
-            totalRecordCount={maintenanceRecords.length}
-            filteredRecordCount={sortedRecords.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={maintenanceExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          {canCreateRecord() && (
-            <button
-              id="btn-add-maintenance-defect"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Log Maintenance Defect</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Filter Bar (Placed consistently on top) */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Site Filter */}
-          <div className="flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-neutral-500" />
-            <span className="font-semibold text-neutral-700">Site:</span>
+          <div>
             <select
               value={siteFilter}
-              onChange={e => setSiteFilter(e.target.value)}
+              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
               disabled={!canAccessAllSites()}
-              className="px-2.5 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               {canAccessAllSites() && <option value="all">All Properties ({allowedSites.length})</option>}
               {allowedSites.map((s, idx) => (
@@ -915,13 +911,11 @@ export const MaintenanceTrackerView: React.FC = () => {
             </select>
           </div>
 
-          {/* Priority Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-neutral-700">Priority:</span>
+          <div>
             <select
               value={priorityFilter}
-              onChange={e => setPriorityFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
+              onChange={e => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Priorities</option>
               {priorityOptions.map(opt => (
@@ -930,13 +924,11 @@ export const MaintenanceTrackerView: React.FC = () => {
             </select>
           </div>
 
-          {/* Defect Status Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-neutral-700">Defect Status:</span>
+          <div>
             <select
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
+              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Defect Statuses</option>
               {defectStatusOptions.map(opt => (
@@ -945,47 +937,17 @@ export const MaintenanceTrackerView: React.FC = () => {
             </select>
           </div>
 
-          {/* Action Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-neutral-700">Action:</span>
+          <div>
             <select
               value={actionFilter}
-              onChange={e => setActionFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
+              onChange={e => { setActionFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Actions</option>
               <option value="Open">Open</option>
               <option value="Closed">Closed</option>
             </select>
           </div>
-
-          {/* Reset button */}
-          {(priorityFilter !== 'all' || statusFilter !== 'all' || actionFilter !== 'all' || searchQuery || (canAccessAllSites() && siteFilter !== 'all')) && (
-            <button
-              onClick={() => {
-                setSiteFilter(canAccessAllSites() ? 'all' : assignedSite);
-                setPriorityFilter('all');
-                setStatusFilter('all');
-                setActionFilter('all');
-                setSearchQuery('');
-              }}
-              className="px-2 py-1 text-xs text-[#0d9488] hover:underline font-semibold"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-          <input
-            type="text"
-            placeholder="Search defects, criteria, room..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs text-neutral-800 text-xs focus:outline-none focus:border-[#0d9488]"
-          />
         </div>
       </div>
 
@@ -1047,14 +1009,13 @@ export const MaintenanceTrackerView: React.FC = () => {
       </div>
 
       {/* Main Data Table */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
         {isMobileCompactView ? (
           <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
             <CompactRecordList
               data={paginatedRecords}
               emptyMessage="No maintenance tickets found matching current filters."
               renderCard={(item, idx) => {
-                const isCat1 = item.priority === 'CAT 1';
                 const isClosed = item.defectStatus === 'Completed' || item.action === 'Closed';
                 const canEdit = canEditRecord(item.site);
                 const canDelete = canDeleteRecord();
@@ -1209,7 +1170,7 @@ export const MaintenanceTrackerView: React.FC = () => {
 
         {/* Pagination bar */}
         {sortedRecords.length > 0 && (
-          <div className="p-3 border-t border-[#edebe9] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="p-3 border-t border-[#edebe9] flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
             <div className="text-neutral-500">
               Showing <span className="font-semibold text-neutral-800">{paginatedRecords.length}</span> of <span className="font-semibold text-neutral-800">{sortedRecords.length}</span> maintenance defects
             </div>

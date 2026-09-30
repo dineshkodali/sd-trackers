@@ -283,7 +283,6 @@ function syncToLegacyDocBuilder() {
 
 export async function getTemplates(): Promise<StoredTemplate[]> {
   const localTemplates = readLocalTemplates();
-  const seedIncident = SEED_TEMPLATES.find(s => s.template.id === 'tmpl-incident-report');
 
   const supabase = getSupabaseAdmin();
   if (!supabase) return localTemplates;

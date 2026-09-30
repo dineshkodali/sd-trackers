@@ -108,6 +108,9 @@ export const Sidebar: React.FC = () => {
     irRecords,
     foodWastageRecords,
     dailyRegisterRecords,
+    welfareChecks,
+    foodSurveys,
+    roomChecks,
     notificationRules,
     canManageSettings,
     canManageRoles,
@@ -327,6 +330,7 @@ export const Sidebar: React.FC = () => {
               )}
             </div>
 
+            <NavItem id="nav-welfare-checks" page="welfareChecks" label="Welfare Checks" icon={HeartHandshake} iconColor="text-rose-600" badge={welfareChecks?.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('welfareChecks')} onClick={handleNavClick} />
             <NavItem id="nav-rfa-welfare" page="rfaWelfare" label="RFA Welfare Checks" icon={UserCheck} iconColor="text-rose-600" badge={rfaWelfareRecords.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('rfaWelfare')} onClick={handleNavClick} />
             <NavItem id="nav-gp-appointments" page="gpAppointments" label="GP Appointments" icon={Stethoscope} iconColor="text-blue-600" badge={gpAppointmentRecords.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('gpAppointments')} onClick={handleNavClick} />
             <NavItem id="nav-document-builder" page="documentBuilder" label="HO Report Generator" icon={FilePlus} iconColor="text-[#0d9488]" active={isNavActive('documentBuilder')} onClick={handleNavClick} />
@@ -346,7 +350,9 @@ export const Sidebar: React.FC = () => {
             <NavItem id="nav-booklets" page="booklets" label="Booklet Inventory" icon={BookOpen} iconColor="text-amber-700" badge={bookletRecords.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('booklets')} onClick={handleNavClick} />
             <NavItem id="nav-laundry" page="laundry" label="Laundry Support" icon={Waves} iconColor="text-cyan-700" active={isNavActive('laundry')} onClick={handleNavClick} />
             <NavItem id="nav-food" page="food" label="Hot Meals Tracker" icon={Soup} iconColor="text-emerald-600" active={isNavActive('food')} onClick={handleNavClick} />
+            <NavItem id="nav-food-surveys" page="foodSurveys" label="Food Surveys" icon={Soup} iconColor="text-emerald-600" badge={foodSurveys?.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('foodSurveys')} onClick={handleNavClick} />
             <NavItem id="nav-food-wastage" page="foodWastage" label="Food Wastage Tracker" icon={Trash2} iconColor="text-amber-700" badge={foodWastageRecords.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodWastage')} onClick={handleNavClick} />
+            <NavItem id="nav-room-checks" page="roomChecks" label="Room Checks" icon={Building2} iconColor="text-cyan-700" badge={roomChecks?.length || null} badgeClass="bg-cyan-50 text-cyan-800" active={isNavActive('roomChecks')} onClick={handleNavClick} />
             <NavItem id="nav-escalations" page="escalations" label="Escalations Log" icon={Siren} iconColor="text-red-600" badge={activeEscalations || null} badgeClass="bg-red-100 text-red-800 font-bold" active={isNavActive('escalations')} onClick={handleNavClick} />
             <NavItem id="nav-documents" page="documents" label="Proof Documents" icon={FolderLock} iconColor="text-slate-600" active={isNavActive('documents')} onClick={handleNavClick} />
           </div>

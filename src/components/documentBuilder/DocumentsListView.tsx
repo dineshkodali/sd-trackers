@@ -17,16 +17,13 @@ import {
   Trash2,
   History,
   Search,
-  Filter,
-  Loader2,
-  CheckCircle,
   Clock,
   Shield,
-  User,
   MapPin,
   Calendar,
   X,
-  AlertCircle,
+  Loader2,
+  CheckCircle,
 } from 'lucide-react';
 import type { DocumentBuilderRecord, DocumentAuditLog } from '../../types/documentBuilder';
 import {
@@ -43,7 +40,7 @@ interface DocumentsListViewProps {
 }
 
 export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditRecord }) => {
-  const { currentUserRole, assignedSite, canAccessAllSites, allowedSites } = useApp();
+  const { currentUserRole, canAccessAllSites, allowedSites } = useApp();
 
   const [records, setRecords] = useState<DocumentBuilderRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +100,6 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
   };
 
   const handleDelete = async (record: DocumentBuilderRecord) => {
-    const isOwner = record.createdByName === 'Staff' || true;
     const isAdmin = ['Super Admin', 'Admin', 'Regional Manager'].includes(currentUserRole);
 
     if (record.status === 'final' && !isAdmin) {

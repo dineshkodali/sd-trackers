@@ -9,7 +9,6 @@ import {
   RotateCcw, 
   Check, 
   ShieldAlert, 
-  Settings2, 
   Eye, 
   EyeOff,
   Edit2

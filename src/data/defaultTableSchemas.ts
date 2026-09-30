@@ -19,7 +19,10 @@ import {
   DailyRegisterRoom,
   DailyRegisterRecord,
   NewArrivalRecord,
-  EvictionRecord
+  EvictionRecord,
+  WelfareCheckRecord,
+  FoodSurveyRecord,
+  RoomCheckRecord
 } from '../types';
 
 export const renderSchemaAttachmentCell = (val: any, row: any) =>
@@ -732,6 +735,85 @@ export const EVICTION_TABLE_COLUMNS: TableColumnConfig<EvictionRecord>[] = [
     section: 'Eviction Timeline' 
   },
   { key: 'notes', label: 'Notes', type: 'textarea', colSpan: 2, section: 'Eviction Details' }
+];
+
+export const WELFARE_CHECKS_TABLE_COLUMNS: TableColumnConfig<WelfareCheckRecord>[] = [
+  { key: 'checkDatetime', label: 'Date & Time', type: 'text', required: true, section: 'Check Details' },
+  { key: 'portReference', label: 'Port Ref', type: 'text', required: true, section: 'Resident Details' },
+  { key: 'flatNumber', label: 'Flat / Room No', type: 'text', section: 'Check Details' },
+  { key: 'siteName', label: 'Property / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Check Details' },
+  { key: 'officerName', label: 'Conducting Officer', type: 'text', section: 'Check Details' },
+  { key: 'locationType', label: 'Location', type: 'text', section: 'Contact & Engagement' },
+  { key: 'contactMethod', label: 'Contact Method', type: 'text', section: 'Contact & Engagement' },
+  { key: 'wantsWelfareEngagement', label: 'Engagement Agreed', type: 'checkbox', section: 'Contact & Engagement' },
+  { key: 'familyOrIndividual', label: 'Family/Individual', type: 'text', section: 'Contact & Engagement' },
+  { key: 'gpRegistered', label: 'GP Registered', type: 'checkbox', section: 'Health' },
+  { key: 'physicalHealthChange', label: 'Health Change', type: 'checkbox', section: 'Health' },
+  { key: 'mentalHealthChange', label: 'Mental Health Change', type: 'checkbox', section: 'Welfare' },
+  { 
+    key: 'status', 
+    label: 'Status', 
+    type: 'select', 
+    options: ['Completed', 'Issues Identified', 'Follow-up Required'],
+    badgeColors: {
+      'Completed': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      'Issues Identified': 'bg-amber-100 text-amber-800 border border-amber-200',
+      'Follow-up Required': 'bg-red-100 text-red-800 border border-red-200'
+    },
+    section: 'General' 
+  },
+  { key: 'maintenanceIssues', label: 'Maintenance Issues', type: 'textarea', section: 'Maintenance' },
+  { key: 'otherWelfareIssues', label: 'Welfare Notes', type: 'textarea', section: 'Welfare' }
+];
+
+export const FOOD_SURVEYS_TABLE_COLUMNS: TableColumnConfig<FoodSurveyRecord>[] = [
+  { key: 'createdAt', label: 'Survey Date', type: 'date', section: 'Survey Details' },
+  { key: 'siteName', label: 'Property / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Survey Details' },
+  { key: 'portReference', label: 'Port Ref', type: 'text', required: true, section: 'Survey Details' },
+  { key: 'houseOfficerName', label: 'House Officer', type: 'text', section: 'Survey Details' },
+  { 
+    key: 'overallFoodRating', 
+    label: 'Overall Rating', 
+    type: 'select', 
+    options: ['Excellent', 'Very good', 'Good', 'Fair', 'Poor'],
+    badgeColors: {
+      'Excellent': 'bg-emerald-100 text-emerald-800',
+      'Very good': 'bg-teal-100 text-teal-800',
+      'Good': 'bg-blue-100 text-blue-800',
+      'Fair': 'bg-amber-100 text-amber-800',
+      'Poor': 'bg-red-100 text-red-800'
+    },
+    section: 'Ratings' 
+  },
+  { key: 'overallFoodQuality', label: 'Food Quality', type: 'select', options: ['Excellent', 'Very good', 'Good', 'Fair', 'Poor'], section: 'Ratings' },
+  { key: 'serverQuality', label: 'Server Quality', type: 'select', options: ['Excellent', 'Very good', 'Good', 'Fair', 'Poor'], section: 'Service' },
+  { key: 'diningAreaCleanliness', label: 'Cleanliness', type: 'select', options: ['Excellent', 'Very good', 'Good', 'Fair', 'Poor'], section: 'Service' },
+  { key: 'menuDiversity', label: 'Menu Diversity', type: 'select', options: ['Excellent', 'Very good', 'Good', 'Fair', 'Poor'], section: 'Ratings' },
+  { key: 'favouriteDish', label: 'Liked Most', type: 'text', section: 'Feedback' },
+  { key: 'leastFavouriteDish', label: 'Liked Least', type: 'text', section: 'Feedback' },
+  { key: 'suggestedDishes', label: 'Suggestions', type: 'textarea', section: 'Feedback' },
+  { key: 'dietaryRequirements', label: 'Dietary Requirements', type: 'text', section: 'Feedback' }
+];
+
+export const ROOM_CHECKS_TABLE_COLUMNS: TableColumnConfig<RoomCheckRecord>[] = [
+  { key: 'inspectionDate', label: 'Date', type: 'date', required: true, section: 'Inspection Details' },
+  { key: 'siteName', label: 'Property / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Inspection Details' },
+  { key: 'roomNumber', label: 'Room No', type: 'text', required: true, section: 'Inspection Details' },
+  { key: 'aicReference', label: 'AIC Ref', type: 'text', section: 'Inspection Details' },
+  { key: 'officerName', label: 'Inspector', type: 'text', section: 'Inspection Details' },
+  { 
+    key: 'overallStatus', 
+    label: 'Overall Status', 
+    type: 'select', 
+    options: ['Passed', 'Issues', 'Attention Required'],
+    badgeColors: {
+      'Passed': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      'Issues': 'bg-amber-100 text-amber-800 border border-amber-200',
+      'Attention Required': 'bg-red-100 text-red-800 border border-red-200 font-bold'
+    },
+    section: 'Inspection Details' 
+  },
+  { key: 'finalComments', label: 'Comments', type: 'textarea', section: 'Inspection Details' }
 ];
 
 

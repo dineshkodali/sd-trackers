@@ -126,7 +126,7 @@ export const RegisterDispersalSection: React.FC<RegisterDispersalSectionProps> =
     <div className="space-y-4">
 
       {/* Table */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[500px] flex flex-col justify-between">
+      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
             <thead>

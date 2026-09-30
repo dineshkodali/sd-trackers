@@ -3,7 +3,6 @@ import {
   BookOpen, 
   Plus, 
   Search, 
-  Download, 
   Edit3, 
   Trash2, 
   Eye, 
@@ -292,63 +291,102 @@ export const BookletCollectionView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-[#8764b8]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
-              Booklets to be Collected
-            </h1>
-            <span className="text-xs bg-purple-50 text-[#8764b8] font-semibold px-2 py-0.5 rounded-xs border border-purple-200">
-              {filteredRecords.length} Consignments
-            </span>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-50 border border-purple-200 text-[#8764b8] rounded-xs">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Booklets to be Collected</h1>
+                <span className="text-xs bg-purple-50 text-[#8764b8] font-semibold px-2 py-0.5 rounded-xs border border-purple-200">
+                  {filteredRecords.length} Consignments
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Initial Accommodation onboarding literature, translations, collection targets, and delivery receipts.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Initial Accommodation onboarding literature, translations, collection targets, and delivery receipts.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentUserRole === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="Booklet Consignments"
+              totalRecordCount={bookletRecords.length}
+              filteredRecordCount={filteredRecords.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={bookletExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+              buttonVariant="toolbar"
+            />
+
+            {canCreateRecord() && (
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#8764b8] hover:bg-[#744da9] text-white rounded-xs shadow-2xs transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add Booklet Stock</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
-            <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-              title="Super Admin: Customize table columns, headers, and fields"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
-            </button>
-          )}
+        {/* Integrated Filter Row */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search Language, Type, Notes..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
 
-          <ExportDropdown
-            moduleName="Booklet Consignments"
-            totalRecordCount={bookletRecords.length}
-            filteredRecordCount={filteredRecords.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={bookletExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
+          <select
+            value={selectedHotel}
+            onChange={e => setSelectedHotel(e.target.value)}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Hotels</option>
+            {IA_HOTEL_NAMES.map(h => (
+              <option key={h} value={h}>{h}</option>
+            ))}
+          </select>
 
-          {canCreateRecord() && (
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#8764b8] hover:bg-[#744da9] text-white rounded-xs shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Add Booklet Stock</span>
-            </button>
-          )}
+          <select
+            value={bookletTypeFilter}
+            onChange={e => setBookletTypeFilter(e.target.value)}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Booklet Types</option>
+            <option value="Migrant Help booklets">Migrant Help</option>
+            <option value="Point of Arrival Welcome Guides">Welcome Guides</option>
+            <option value="Fire Safety & Rules Booklets">Fire Safety</option>
+            <option value="Health & Medical Registration Guides">Medical Guides</option>
+          </select>
         </div>
       </div>
 
       {/* QA-08: Record Discoverability Alert Banner */}
       {lastCreatedId && (
-        <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs rounded-xs shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs rounded-xs shadow-2xs animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
@@ -366,71 +404,8 @@ export const BookletCollectionView: React.FC = () => {
         </div>
       )}
 
-      {/* Filters Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Hotel Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c]">Hotel:</span>
-            <select
-              value={selectedHotel}
-              onChange={e => setSelectedHotel(e.target.value)}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
-            >
-              <option value="all">All Hotels</option>
-              {IA_HOTEL_NAMES.map(h => (
-                <option key={h} value={h}>{h}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Type Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c]">Type:</span>
-            <select
-              value={bookletTypeFilter}
-              onChange={e => setBookletTypeFilter(e.target.value)}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
-            >
-              <option value="all">All Booklet Types</option>
-              <option value="Migrant Help booklets">Migrant Help</option>
-              <option value="Point of Arrival Welcome Guides">Welcome Guides</option>
-              <option value="Fire Safety & Rules Booklets">Fire Safety</option>
-              <option value="Health & Medical Registration Guides">Medical Guides</option>
-            </select>
-          </div>
-
-          {/* Reset button */}
-          {(selectedHotel !== 'all' || selectedAgent !== 'all' || bookletTypeFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                setSelectedHotel('all');
-                setSelectedAgent('all');
-                setBookletTypeFilter('all');
-                setSearchQuery('');
-              }}
-              className="px-2 py-1 text-xs text-[#8764b8] hover:underline font-semibold"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-72">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#605e5c]" />
-          <input
-            type="text"
-            placeholder="Search Language, Type, Notes..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 border border-[#8a8886] rounded-xs text-[#323130] text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
-          />
-        </div>
-      </div>
-
       {/* Main Table Panel */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
             <thead>

@@ -269,75 +269,88 @@ export const DocumentsView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <h2 className="text-2xl font-semibold text-[#242424] tracking-tight">
-            Compliance &amp; Document Repository
-          </h2>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Store risk assessments, local authority MOUs, medical assessments, and safeguarding support plans.
-          </p>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xs">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Compliance &amp; Document Repository</h1>
+                <span className="text-xs bg-slate-50 text-slate-700 font-semibold px-2 py-0.5 rounded-xs border border-slate-200">
+                  {filteredData.length} Documents
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Store risk assessments, local authority MOUs, medical assessments, and safeguarding support plans.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentUserRole === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="Documents"
+              totalRecordCount={documents.length}
+              filteredRecordCount={filteredData.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={documentsExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+              buttonVariant="toolbar"
+            />
+
+            {canCreateRecord && canCreateRecord() && (
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>+ Upload Document</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
-            <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-              title="Super Admin: Customize table columns, headers, and fields"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
-            </button>
-          )}
+        {/* Integrated Filter Row */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search document title, resident, ref..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
 
-          <ExportDropdown
-            moduleName="Documents"
-            totalRecordCount={documents.length}
-            filteredRecordCount={filteredData.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={documentsExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          {canCreateRecord && canCreateRecord() && (
-            <button
-              onClick={() => setIsUploadModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>+ Upload Document</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Filter panel */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs flex flex-wrap items-end gap-3 text-xs">
-        <div className="flex-1 min-w-[140px]">
-          <label className="font-semibold text-[#605e5c] block mb-1">Hotel / Site</label>
           <select
             value={siteFilter}
             onChange={e => setSiteFilter(e.target.value)}
             disabled={!canAccessAllSites()}
-            className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
           >
             {canAccessAllSites() && <option value="all">All Sites ({allowedSites.length})</option>}
             {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
           </select>
-        </div>
 
-        <div className="flex-1 min-w-[140px]">
-          <label className="font-semibold text-[#605e5c] block mb-1">Category</label>
           <select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
-            className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
           >
             <option value="all">All Categories</option>
             <option value="Risk Assessment">Risk Assessment</option>
@@ -348,35 +361,10 @@ export const DocumentsView: React.FC = () => {
             <option value="Consent Form">Consent Form</option>
           </select>
         </div>
-
-        <div className="flex-[2] min-w-[180px]">
-          <label className="font-semibold text-[#605e5c] block mb-1">Search Documents</label>
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search document title, resident, ref..."
-              className="w-full pl-8 pr-2 py-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-            />
-            <Search className="w-4 h-4 text-neutral-400 absolute left-2.5 top-2.5" />
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            setSiteFilter(canAccessAllSites() ? 'all' : assignedSite);
-            setCategoryFilter('all');
-            setSearchQuery('');
-          }}
-          className="px-3 py-2 border border-[#8a8886] rounded-xs hover:bg-[#edebe9] text-[#323130] font-semibold"
-        >
-          Reset
-        </button>
       </div>
 
       {/* Main Table Panel */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse min-w-[1050px]">
             <thead>

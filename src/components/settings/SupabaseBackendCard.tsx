@@ -94,18 +94,18 @@ export const SupabaseBackendCard: React.FC = () => {
     }
   };
 
-  const handleCopyFinanceSql = async () => {
+  const handleCopyHoReportsSql = async () => {
     try {
-      const res = await fetch('/api/db/finance-migration-sql', {
+      const res = await fetch('/api/db/ho-report-migration-sql', {
         headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token') || ''}` }
       });
       const sqlText = res.ok ? await res.text() : '';
       if (sqlText) {
         await navigator.clipboard.writeText(sqlText);
-        setCopiedSql('finance');
+        setCopiedSql('horeports');
         setTimeout(() => setCopiedSql(null), 4000);
       } else {
-        alert('Could not retrieve migration script from server.');
+        alert('Could not retrieve HO Report migration script from server.');
       }
     } catch (err: any) {
       alert('Failed to copy migration script: ' + err.message);
@@ -391,6 +391,15 @@ export const SupabaseBackendCard: React.FC = () => {
                   >
                     <Copy className="w-3 h-3" />
                     <span>{copiedSql === 'registers' ? 'Copied Registers SQL!' : 'Copy Registers & IR SQL'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyHoReportsSql}
+                    className="px-2.5 py-1 bg-[#0369a1] hover:bg-sky-700 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                    title="Copy 009_ho_report_generator.sql to clipboard"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>{copiedSql === 'horeports' ? 'Copied HO Reports SQL!' : 'Copy HO Reports SQL'}</span>
                   </button>
                   <a
                     href="https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new"

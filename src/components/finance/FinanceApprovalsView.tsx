@@ -7,17 +7,8 @@ import {
   ArrowUp, 
   ArrowDown, 
   SlidersHorizontal, 
-  Eye,
-  Edit3,
-  Trash2,
-  Copy,
-  Check, 
   Building2,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Clock,
-  ShieldAlert
+  Clock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
@@ -72,73 +63,6 @@ export const FinanceApprovalsView: React.FC = () => {
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [billToEdit, setBillToEdit] = useState<FinanceBill | null>(null);
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const handleCopyRef = (ref: string) => {
-    if (!ref) return;
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        navigator.clipboard.writeText(ref);
-      }
-    } catch {}
-    setCopiedId(ref);
-    setTimeout(() => setCopiedId(null), 1800);
-  };
-
-  const handleQuickApprove = (bill: FinanceBill) => {
-    requestConfirmation({
-      title: 'Authorize & Release Payment',
-      message: `Are you sure you want to approve bill "${bill.billNumber}" payable to ${bill.vendorName || 'Supplier'} for £${Number(bill.totalAmount || 0).toFixed(2)}?`,
-      confirmLabel: 'Approve Payment',
-      isDanger: false,
-      onConfirm: async () => {
-        closeConfirmation();
-        try {
-          await financeService.financeFinalApproval(bill.id, 'Approved via Quick Action in Approvals Queue');
-          await loadData();
-        } catch (err) {
-          console.error('Failed to approve bill:', err);
-        }
-      }
-    });
-  };
-
-  const handleQuickReject = (bill: FinanceBill) => {
-    requestConfirmation({
-      title: 'Reject Bill in Queue',
-      message: `Are you sure you want to reject bill "${bill.billNumber}" (£${Number(bill.totalAmount || 0).toFixed(2)})? It will be marked as Rejected.`,
-      confirmLabel: 'Reject Bill',
-      isDanger: true,
-      onConfirm: async () => {
-        closeConfirmation();
-        try {
-          await financeService.financeRejectBill(bill.id, 'Rejected via Quick Action in Approvals Queue');
-          await loadData();
-        } catch (err) {
-          console.error('Failed to reject bill:', err);
-        }
-      }
-    });
-  };
-
-  const handleDeleteBill = (bill: FinanceBill) => {
-    requestConfirmation({
-      title: 'Delete Bill from Queue',
-      message: `Are you sure you want to delete "${bill.billNumber}" (${bill.vendorName || 'Supplier'})? This action cannot be undone.`,
-      confirmLabel: 'Delete Bill',
-      isDanger: true,
-      onConfirm: async () => {
-        closeConfirmation();
-        try {
-          await financeService.deleteBill(bill.id, bill.billType);
-          await loadData();
-        } catch (err) {
-          console.error('Failed to delete bill:', err);
-        }
-      }
-    });
-  };
-
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -366,80 +290,86 @@ export const FinanceApprovalsView: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full animate-fade-in">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xs border border-[#e1dfdd] shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <FileCheck className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-xl font-bold text-[#242424] tracking-tight">
-              Finance Approvals Queue
-            </h1>
-            {pendingActionCount > 0 ? (
-              <span className="text-xs bg-amber-50 text-amber-900 font-semibold px-2 py-0.5 rounded-xs border border-amber-300 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-amber-700" />
-                {pendingActionCount} Pending Sign-off
-              </span>
-            ) : (
-              <span className="text-xs bg-emerald-50 text-emerald-800 font-semibold px-2 py-0.5 rounded-xs border border-emerald-200">
-                All Cleared
-              </span>
-            )}
+      {/* Top Header Card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-xs">
+              <FileCheck className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Finance Approvals Queue</h1>
+                {pendingActionCount > 0 ? (
+                  <span className="text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-amber-600" />
+                    {pendingActionCount} Pending Sign-off
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    All Cleared
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-neutral-500 mt-0.5">Central Finance final authorization, segregation of duties compliance, and payment release control.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Central Finance final authorization, segregation of duties compliance, and payment release control.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+            {(authProfile?.role || currentUserRole) === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="Finance Approvals Queue"
+              totalRecordCount={bills.length}
+              filteredRecordCount={filteredBills.length}
+              defaultOrientation="landscape"
+              availableColumns={approvalExportColumns}
+              onExport={handlePerformExport}
+            />
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {(authProfile?.role || currentUserRole) === 'Super Admin' && (
-            <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
-              title="Super Admin: Customize table columns, headers, and fields"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
-            </button>
-          )}
+        {/* Integrated Filter Row */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search reference, vendor..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
 
-          <ExportDropdown
-            moduleName="Finance Approvals Queue"
-            totalRecordCount={bills.length}
-            filteredRecordCount={filteredBills.length}
-            defaultOrientation="landscape"
-            availableColumns={approvalExportColumns}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          {/* Site Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Property:</span>
+          <div>
             <select
               value={siteFilter}
               onChange={e => setSiteFilter(e.target.value)}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[160px]"
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             >
-              <option value="all">All Properties</option>
+              <option value="all">All Properties / Sites</option>
               {properties.map(p => (
                 <option key={p.id} value={p.name}>{p.name}</option>
               ))}
             </select>
           </div>
 
-          {/* Workflow Stage Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Stage:</span>
+          <div>
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             >
               <option value="awaiting_approval">Awaiting Approval (Primary)</option>
               <option value="pending_any">All Pending Review</option>
@@ -452,52 +382,38 @@ export const FinanceApprovalsView: React.FC = () => {
             </select>
           </div>
 
-          {/* Type Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Type:</span>
+          <div className="flex items-center gap-2">
             <select
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
+              className="flex-1 px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Bill Types</option>
               <option value="vendor_invoice">Vendor Invoice</option>
               <option value="credit_card_expense">Credit Card Expense</option>
               <option value="other_expense">Other Expense</option>
             </select>
-          </div>
 
-          {/* Search Input */}
-          <div className="relative min-w-[160px] flex-1 max-w-[240px]">
-            <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-[#605e5c]" />
-            <input
-              type="text"
-              placeholder="Search reference, vendor..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-7 pr-2 py-1 border border-[#8a8886] rounded-xs text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
-            />
+            {(siteFilter !== 'all' || statusFilter !== 'awaiting_approval' || typeFilter !== 'all' || searchQuery) && (
+              <button
+                onClick={() => {
+                  setSiteFilter('all');
+                  setStatusFilter('awaiting_approval');
+                  setTypeFilter('all');
+                  setSearchQuery('');
+                }}
+                className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-xs transition-colors shrink-0"
+                title="Reset Filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-
-          {(siteFilter !== 'all' || statusFilter !== 'awaiting_approval' || typeFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                setSiteFilter('all');
-                setStatusFilter('awaiting_approval');
-                setTypeFilter('all');
-                setSearchQuery('');
-              }}
-              className="flex items-center gap-1 text-[11px] text-[#605e5c] hover:text-[#242424] cursor-pointer"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Reset</span>
-            </button>
-          )}
         </div>
       </div>
 
       {/* Main Data Table */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden flex flex-col justify-between min-h-[560px] lg:min-h-[calc(100vh-270px)]">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1 overflow-y-auto">
           <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
             <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap sticky top-0 z-20 shadow-xs">
@@ -525,7 +441,7 @@ export const FinanceApprovalsView: React.FC = () => {
                     </th>
                   );
                 })}
-                <th className="py-2.5 px-3 text-center w-28">Action</th>
+                <th className="py-2.5 px-3 text-center w-28 sticky right-0 bg-[#f3f2f1] shadow-[-2px_0_4px_rgba(0,0,0,0.06)] z-10 select-none">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9]">
@@ -559,7 +475,7 @@ export const FinanceApprovalsView: React.FC = () => {
                         {renderCellContent(bill, col)}
                       </td>
                     ))}
-                    <td className="py-2 px-3 text-center" onClick={e => e.stopPropagation()}>
+                    <td className="py-2 px-3 text-center sticky right-0 bg-white group-hover:bg-[#f9f9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.06)] z-10" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => {
                           setSelectedBill(bill);

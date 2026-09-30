@@ -11,8 +11,7 @@ import {
   ShieldCheck, 
   RefreshCw, 
   X,
-  CheckCircle2,
-  HelpCircle
+  CheckCircle2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/apiService';
@@ -224,8 +223,8 @@ export const LoginView: React.FC = () => {
 
           <div className="pt-6 mt-6 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Cloud Authentication Active</span>
+              <span className={`w-2 h-2 rounded-full ${statusChecking ? 'bg-amber-400 animate-pulse' : authConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+              <span>{statusChecking ? 'Checking Auth Status...' : authConfigured ? 'Cloud Authentication Active' : 'Fallback Local Standby'}</span>
             </div>
           </div>
         </div>

@@ -7,8 +7,6 @@
  */
 
 import { Router, Request, Response } from 'express';
-import crypto from 'crypto';
-import { requireRole } from '../middleware/requireAuth.js';
 import { generateDocx } from './documentBuilderDocx.js';
 import { generatePdf } from './documentBuilderPdf.js';
 import {

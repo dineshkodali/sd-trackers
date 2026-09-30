@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  AlertOctagon, 
+  AlertOctagon,
+  Siren, 
   Plus, 
   Trash2, 
   Eye, 
@@ -360,135 +361,122 @@ export const EscalationsView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <AlertOctagon className="w-5 h-5 text-[#a4262c]" />
-            <h2 className="text-xl font-bold text-[#242424] tracking-tight">
-              Safeguarding Escalations Log
-            </h2>
-            <span className="text-xs bg-red-100 text-[#a4262c] font-bold px-2 py-0.5 rounded">
-              {sortedData.length} Records
-            </span>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 rounded-xs">
+              <Siren className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">
+                  Safeguarding Escalations Log
+                </h1>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-xs bg-red-100 text-[#a4262c] border border-red-200">
+                  {sortedData.length} Records
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">
+                Log, track, and coordinate multi-agency safeguarding escalations across accommodation sites.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Log, track, and coordinate multi-agency safeguarding escalations across accommodation sites.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentUserRole === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="Escalations"
+              totalRecordCount={escalations.length}
+              filteredRecordCount={sortedData.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={escalationExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+            />
+
             <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-              title="Super Admin: Customize table columns, headers, and fields"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#a4262c] hover:bg-[#8e2025] text-white rounded-xs shadow-2xs transition-colors cursor-pointer"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Log Urgent Escalation</span>
             </button>
-          )}
-
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#a4262c] hover:bg-[#8e2025] text-white rounded-xs shadow-xs transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Log Urgent Escalation</span>
-          </button>
-
-          <ExportDropdown
-            moduleName="Escalations"
-            totalRecordCount={escalations.length}
-            filteredRecordCount={sortedData.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={escalationExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-        </div>
-      </div>
-
-      {/* Filter panel */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs flex flex-wrap items-end gap-3 text-xs shadow-xs">
-        <div className="flex-1 min-w-[140px]">
-          <label className="font-semibold text-[#605e5c] block mb-1">Site / Property</label>
-          <select
-            value={siteFilter}
-            onChange={e => setSiteFilter(e.target.value)}
-            disabled={!canAccessAllSites()}
-            className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-          >
-            {canAccessAllSites() && <option value="all">All Sites ({allowedSites.length})</option>}
-            {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
-          </select>
+          </div>
         </div>
 
-        <div className="w-40">
-          <label className="font-semibold text-[#605e5c] block mb-1">WL Issued</label>
-          <select
-            value={wlFilter}
-            onChange={e => setWlFilter(e.target.value)}
-            className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-          >
-            <option value="all">All WL Statuses</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-            <option value="Warning Letter Issued">Warning Letter Issued</option>
-            <option value="Notice to Quit">Notice to Quit</option>
-            <option value="N/A">N/A</option>
-          </select>
-        </div>
-
-        <div className="w-44">
-          <label className="font-semibold text-[#605e5c] block mb-1">Status</label>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-          >
-            <option value="all">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Under Investigation">Under Investigation</option>
-            <option value="Awaiting Multi-Agency Review">Awaiting Review</option>
-            <option value="Resolved">Resolved</option>
-          </select>
-        </div>
-
-        <div className="flex-[2] min-w-[200px]">
-          <label className="font-semibold text-[#605e5c] block mb-1">Search Escalations</label>
+        {/* Filter Bar integrated into the same card */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-[#605e5c] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              placeholder="Search SU name, ref, site, notes..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search SU name, ref, site, incident notes, authorities..."
-              className="w-full pl-8 pr-3 py-2 border border-[#8a8886] rounded-xs bg-white text-[#323130]"
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-8 pr-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             />
           </div>
-        </div>
 
-        {(siteFilter !== 'all' || wlFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
-          <button
-            onClick={() => {
-              setSiteFilter('all');
-              setWlFilter('all');
-              setStatusFilter('all');
-              setSearchQuery('');
-            }}
-            className="text-xs text-[#a4262c] hover:underline font-semibold self-center"
-          >
-            Clear Filters
-          </button>
-        )}
+          <div>
+            <select
+              value={siteFilter}
+              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
+              disabled={!canAccessAllSites()}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              {canAccessAllSites() && <option value="all">All Properties / Sites ({allowedSites.length})</option>}
+              {allowedSites.map((s, idx) => (
+                <option key={`${s}-${idx}`} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={wlFilter}
+              onChange={e => { setWlFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              <option value="all">All WL Statuses</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Warning Letter Issued">Warning Letter Issued</option>
+              <option value="Notice to Quit">Notice to Quit</option>
+              <option value="N/A">N/A</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={statusFilter}
+              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              <option value="all">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Under Investigation">Under Investigation</option>
+              <option value="Awaiting Multi-Agency Review">Awaiting Review</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      {/* Main Table Panel */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      {/* Main Table in a SEPARATE card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         {isMobileCompactView ? (
           <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
             <CompactRecordList

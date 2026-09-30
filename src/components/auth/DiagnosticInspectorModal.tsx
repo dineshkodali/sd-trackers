@@ -2,16 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Terminal, 
-  KeyRound, 
   Clock, 
   Database, 
   CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
   RotateCw, 
   Copy, 
-  ShieldCheck,
-  Activity,
+  Activity, 
   Server
 } from 'lucide-react';
 import { diagnosticLogger, DiagnosticEvent, parseJwtPayload } from '../../utils/diagnosticLogger';

@@ -9,10 +9,7 @@ import {
   RefreshCw, 
   Settings, 
   CheckCircle2, 
-  AlertCircle, 
-  ArrowUpRight,
-  Info,
-  Link2,
+  Link2, 
   Table
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';

@@ -5,8 +5,6 @@ import {
   Plus, 
   Trash2, 
   Edit3, 
-  CheckCircle2, 
-  AlertTriangle, 
   Search, 
   X, 
   Flame, 
@@ -23,7 +21,7 @@ import {
   Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { PropertyFoodVendorBuffetLog, FoodVendorName, FoodBuffetItemBreakdown, DayOfWeek } from '../../types';
+import { PropertyFoodVendorBuffetLog, FoodVendorName, FoodBuffetItemBreakdown } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
@@ -395,13 +393,6 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     return formatWeekRangeFromDates(bounds.start, bounds.end);
   }, [activeWeekCursor]);
 
-  const handleMoveWeek = (direction: 'prev' | 'next') => {
-    let currentStart = activeWeekCursor === 'all' ? todayBounds.start : activeWeekCursor;
-    const offset = direction === 'prev' ? -7 : 7;
-    const newStart = addDays(currentStart, offset);
-    setActiveWeekCursor(newStart);
-  };
-
   const filteredLogs = useMemo(() => {
     return foodVendorBuffetLogs.filter(log => {
       const normVendor = log.vendor === '9 cusines' ? '9 Cuisines' : log.vendor === 'sands' ? 'Sands' : log.vendor;
@@ -768,137 +759,119 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <UtensilsCrossed className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
-              Hot Food &amp; Catering Tracker
-            </h1>
-            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
-              {filteredLogs.length} Buffet Logs
-            </span>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <UtensilsCrossed className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Hot Food &amp; Catering Tracker</h1>
+                <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                  {filteredLogs.length} Buffet Logs
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Commercial 4-vendor hot food buffet matrix, daily breakfast, lunch, dinner, toddler &amp; special diet allocations.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Commercial 4-vendor hot food buffet matrix, daily breakfast, lunch, dinner, toddler &amp; special diet allocations.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* View Toggle */}
+            <div className="inline-flex rounded-xs border border-[#e5e5e5] bg-[#fbfbfa] p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setDisplayMode('matrix')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-xs font-semibold transition-all ${
+                  displayMode === 'matrix' ? 'bg-[#0d9488] text-white shadow-2xs' : 'text-neutral-600 hover:text-[#242424]'
+                }`}
+                title="Matrix View (7-Day Daily Breakdown)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Matrix</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDisplayMode('table')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-xs font-semibold transition-all ${
+                  displayMode === 'table' ? 'bg-[#0d9488] text-white shadow-2xs' : 'text-neutral-600 hover:text-[#242424]'
+                }`}
+                title="Register Table View (Customizable Columns)"
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+                <span>Table</span>
+              </button>
+            </div>
+
+            {currentUserRole === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="4-Vendor Hot Food Buffet Matrix"
+              totalRecordCount={foodVendorBuffetLogs.length}
+              filteredRecordCount={filteredLogs.length}
+              defaultOrientation="landscape"
+              availableColumns={buffetExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+              buttonVariant="toolbar"
+            />
+
+            <button
+              type="button"
+              onClick={handleOpenAddModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold text-xs rounded-xs shadow-2xs transition-colors whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Add Vendor Buffet Log</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
-            <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-              title="Super Admin: Customize table columns, headers, and fields"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
-            </button>
-          )}
-
-          {/* View Toggle */}
-          <div className="inline-flex rounded-xs border border-[#8a8886] bg-white p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={() => setDisplayMode('matrix')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-xs font-semibold transition-colors ${
-                displayMode === 'matrix' ? 'bg-[#0d9488] text-white' : 'text-[#323130] hover:bg-[#f3f2f1]'
-              }`}
-              title="Matrix View (7-Day Daily Breakdown)"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Matrix</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setDisplayMode('table')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-xs font-semibold transition-colors ${
-                displayMode === 'table' ? 'bg-[#0d9488] text-white' : 'text-[#323130] hover:bg-[#f3f2f1]'
-              }`}
-              title="Register Table View (Customizable Columns)"
-            >
-              <TableIcon className="w-3.5 h-3.5" />
-              <span>Register Table</span>
-            </button>
-          </div>
-
-          <ExportDropdown
-            moduleName="4-Vendor Hot Food Buffet Matrix"
-            totalRecordCount={foodVendorBuffetLogs.length}
-            filteredRecordCount={filteredLogs.length}
-            defaultOrientation="landscape"
-            availableColumns={buffetExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          <button
-            type="button"
-            onClick={handleOpenAddModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold text-xs rounded-xs shadow-xs transition-colors whitespace-nowrap"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Add Vendor Buffet Log</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          {/* Contracted Property Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Contracted Property:</span>
-            <select
-              value={siteFilter}
-              onChange={e => setSiteFilter(e.target.value)}
-              disabled={!canAccessAllSites()}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[170px]"
-            >
-              {canAccessAllSites() && <option value="all">All Contracted Hotels</option>}
-              {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          {/* Food Vendor Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Food Vendor:</span>
-            <select
-              value={vendorFilter}
-              onChange={e => setVendorFilter(e.target.value as FoodVendorName | 'all')}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-semibold text-xs"
-            >
-              <option value="all">All Food Vendors ({foodVendors.length})</option>
-              {foodVendors.map(v => (
-                <option key={v} value={v}>{v}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Search Input */}
-          <div className="relative min-w-[140px] flex-1 max-w-[220px]">
-            <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-[#605e5c]" />
+        {/* Integrated Filter Row */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
               placeholder="Search matrix..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-6 pr-2 py-1 border border-[#8a8886] rounded-xs text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             />
           </div>
-        </div>
 
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="text-xs text-[#0d9488] hover:underline font-semibold"
+          <select
+            value={siteFilter}
+            onChange={e => setSiteFilter(e.target.value)}
+            disabled={!canAccessAllSites()}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
           >
-            Clear Search
-          </button>
-        )}
+            {canAccessAllSites() && <option value="all">All Contracted Hotels</option>}
+            {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
+          </select>
+
+          <select
+            value={vendorFilter}
+            onChange={e => setVendorFilter(e.target.value as FoodVendorName | 'all')}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Food Vendors ({foodVendors.length})</option>
+            {foodVendors.map(v => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table Controls Header with Integrated Week Switcher */}
@@ -1007,7 +980,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
               return (
                 <div 
                   key={log.id} 
-                  className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden transition-all hover:border-[#0d9488]"
+                  className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden transition-all hover:border-[#0d9488]"
                 >
                   {/* Header Bar */}
                   <div className="bg-[#f3f8fd] px-4 py-2 border-b border-[#5eead4] flex flex-wrap items-center justify-between gap-2">
@@ -1157,8 +1130,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
         )
       ) : (
         /* Register Table View */
-        <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
+          <div className="overflow-x-auto flex-1">
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap">
                 <tr>
@@ -1241,7 +1214,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
           </div>
           {/* Pagination for table view */}
           {sortedTableLogs.length > 0 && (
-            <div className="p-3 border-t border-[#edebe9]">
+            <div className="p-3 border-t border-[#edebe9] shrink-0">
               <Pagination
                 currentPage={currentPage}
                 totalItems={sortedTableLogs.length}

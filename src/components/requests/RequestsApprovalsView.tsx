@@ -1,20 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
   Plus, 
   ShieldCheck, 
   FileText, 
-  AlertCircle, 
   Filter, 
   Search, 
-  Check, 
   X,
   MessageSquareQuote,
   Building2,
   User,
-  Shield,
   Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -240,32 +234,32 @@ export const RequestsApprovalsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 w-full pb-12 animate-fade-in">
-      {/* UNIFIED CONTAINER */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs p-6 space-y-6">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#edebe9]">
+    <div className="space-y-4 w-full animate-fade-in">
+      {/* Top Header Card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xs bg-[#f0fdfa] border border-[#5eead4] flex items-center justify-center text-[#0d9488]">
-              <MessageSquareQuote className="w-5 h-5" />
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-teal-700 rounded-xs">
+              <MessageSquareQuote className="w-5 h-5 text-teal-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-[#242424]">Requests &amp; Approvals Workflow</h1>
-                {pendingCount > 0 && (
-                  <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded-full text-[10px] border border-amber-300">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Requests & Approvals Workflow</h1>
+                {pendingCount > 0 ? (
+                  <span className="text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                     {pendingCount} Pending Review
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-semibold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">
+                    {filteredRequests.length}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-[#605e5c]">
-                Submit data entry corrections, deletion requests, or record changes for Regional Manager and Admin review.
-              </p>
+              <p className="text-xs text-neutral-500 mt-0.5">Submit data entry corrections, deletion requests, or record changes for Regional Manager and Admin review.</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
             <ExportDropdown
               moduleName="Change Requests"
               totalRecordCount={dataChangeRequests.length}
@@ -275,42 +269,49 @@ export const RequestsApprovalsView: React.FC = () => {
               availableColumns={requestsExportColumns}
               getPreviewData={getExportPreviewData}
               onExport={handlePerformExport}
-              buttonVariant="toolbar"
             />
 
             <button
               onClick={() => setIsNewModalOpen(true)}
-              className="px-3.5 py-2 bg-[#0d9488] text-white hover:bg-[#0f766e] text-xs font-semibold rounded-xs shadow-xs flex items-center gap-1.5 transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Raise Change Request</span>
+              <span>+ Raise Change Request</span>
             </button>
           </div>
         </div>
 
-        {/* Filter Toolbar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#faf9f8] p-3.5 border border-[#edebe9] rounded-xs">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#323130]">
-              <Filter className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Filter By:</span>
-            </div>
+        {/* Integrated Filter Row */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-neutral-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search request title, reason, submitter..."
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
 
+          <div>
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="p-1.5 text-xs border border-[#8a8886] rounded-xs bg-white text-[#323130]"
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Statuses</option>
               <option value="Pending">Pending</option>
               <option value="Approved">Approved</option>
               <option value="Rejected">Rejected</option>
             </select>
+          </div>
 
+          <div>
             <select
               value={moduleFilter}
               onChange={e => setModuleFilter(e.target.value)}
-              className="p-1.5 text-xs border border-[#8a8886] rounded-xs bg-white text-[#323130]"
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Modules</option>
               <option value="Referrals">Referrals</option>
@@ -323,20 +324,11 @@ export const RequestsApprovalsView: React.FC = () => {
               <option value="Escalations">Escalations</option>
             </select>
           </div>
-
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#8a8886]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search request title, reason, submitter..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs border border-[#8a8886] rounded-xs bg-white text-[#323130]"
-            />
-          </div>
         </div>
+      </div>
 
-        {/* Requests List */}
+      {/* Main Content Card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[500px] lg:min-h-[calc(100vh-270px)] p-4 flex flex-col justify-between">
         <div className="space-y-3">
           {filteredRequests.length === 0 ? (
             <div className="p-12 text-center text-[#605e5c] border border-dashed border-[#edebe9] rounded-xs">

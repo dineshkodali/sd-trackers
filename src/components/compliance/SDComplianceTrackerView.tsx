@@ -3,7 +3,6 @@ import {
   ShieldCheck, 
   Plus, 
   Search, 
-  Download, 
   Edit3, 
   Trash2, 
   Eye, 
@@ -274,70 +273,82 @@ export const SDComplianceTrackerView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-[#107c41]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
-              SD Compliance Tracker
-            </h1>
-            <span className="text-xs bg-emerald-50 text-[#107c41] font-semibold px-2 py-0.5 rounded-xs border border-emerald-200">
-              {filteredRecords.length} Certifications
-            </span>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xs">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">
+                  SD Compliance Tracker
+                </h1>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {filteredRecords.length} Certifications
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">
+                Statutory safety certifications, FRA, CP12 gas, EICR electrical, emergency lighting, and contractor renewals.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Statutory safety certifications, FRA, CP12 gas, EICR electrical, emergency lighting, and contractor renewals.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentUserRole === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="Compliance Certificates"
+              totalRecordCount={complianceRecords.length}
+              filteredRecordCount={filteredRecords.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={complianceExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+            />
+
+            {canCreateRecord() && (
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add Certificate</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
-            <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-              title="Super Admin: Customize table columns, headers, and fields"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
-            </button>
-          )}
+        {/* Filter Bar integrated into the same card */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search Compliance, Contractor, Contact..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-8 pr-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
 
-          <ExportDropdown
-            moduleName="Compliance Certificates"
-            totalRecordCount={complianceRecords.length}
-            filteredRecordCount={filteredRecords.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={complianceExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          {canCreateRecord() && (
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#107c41] hover:bg-[#0b5c30] text-white rounded-xs shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Add Certificate</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Filters Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Site Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c]">Site:</span>
+          <div>
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Sites</option>
               {allowedSites.map(s => (
@@ -346,13 +357,11 @@ export const SDComplianceTrackerView: React.FC = () => {
             </select>
           </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c]">Status:</span>
+          <div>
             <select
               value={statusFilter}
               onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Statuses</option>
               {complianceStatusOptions.length > 0
@@ -362,13 +371,11 @@ export const SDComplianceTrackerView: React.FC = () => {
             </select>
           </div>
 
-          {/* Type Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c]">Type:</span>
+          <div>
             <select
               value={typeFilter}
               onChange={e => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#71afe5]"
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Compliance Types</option>
               {complianceTypeOptions.length > 0
@@ -377,39 +384,11 @@ export const SDComplianceTrackerView: React.FC = () => {
               }
             </select>
           </div>
-
-          {/* Reset button */}
-          {(siteFilter !== 'all' || statusFilter !== 'all' || typeFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                setSiteFilter('all');
-                setStatusFilter('all');
-                setTypeFilter('all');
-                setSearchQuery('');
-                setCurrentPage(1);
-              }}
-              className="px-2 py-1 text-xs text-[#107c41] hover:underline font-semibold"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-72">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#605e5c]" />
-          <input
-            type="text"
-            placeholder="Search Compliance, Contractor, Contact..."
-            value={searchQuery}
-            onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full pl-8 pr-3 py-1.5 border border-[#8a8886] rounded-xs text-[#323130] text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
-          />
         </div>
       </div>
 
-      {/* Main Table Panel */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      {/* Main Table in a SEPARATE card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse min-w-[1200px]">
             <thead>

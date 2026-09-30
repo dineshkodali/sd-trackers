@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ShieldAlert, Lock, User, RefreshCw, KeyRound } from 'lucide-react';
+import React from 'react';
+import { Lock, KeyRound } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
 

@@ -2,21 +2,16 @@ import React, { useState, useMemo } from 'react';
 import {
   Building2,
   Plus,
-  Search,
   Edit3,
   Trash2,
   Users,
   MapPin,
   Phone,
   UserCheck,
-  X,
-  Check,
-  AlertCircle,
   ShieldAlert,
   RotateCcw,
   Shield,
   CheckCircle2,
-  Lock,
   History,
   ArrowUpDown,
   ArrowUp,
@@ -53,11 +48,8 @@ export const PropertiesView: React.FC = () => {
   const {
     properties,
     users,
-    userGroups,
-    updateUserGroup,
     addProperty,
     updateProperty,
-    updateUser,
     deleteProperty,
     canManageProperties,
     currentUserRole,
@@ -69,7 +61,6 @@ export const PropertiesView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Under Maintenance'>('All');
   const [syncSuccess, setSyncSuccess] = useState(false);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   // Sorting
   const [sortField, setSortField] = useState<keyof PropertyInfo>('name');
@@ -293,7 +284,6 @@ export const PropertiesView: React.FC = () => {
 
   const handleSaveEdit = async (data: Partial<PropertyInfo>) => {
     if (!editingProperty || !data.name?.trim() || !data.city?.trim()) return;
-    const oldName = editingProperty.name;
     const newName = data.name.trim();
     updateProperty(editingProperty.id, {
       ...editingProperty,
@@ -424,127 +414,132 @@ export const PropertiesView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">Properties Directory</h1>
-            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
-              {visibleProperties.length} Properties
-            </span>
+    <div className="space-y-4 w-full animate-fade-in">
+      {/* Top Header Card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-teal-700 rounded-xs">
+              <Building2 className="w-5 h-5 text-teal-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Properties Directory</h1>
+                <span className="text-[11px] font-semibold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">
+                  {visibleProperties.length}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500 mt-0.5">Official accommodation list with Property IDs (PIDs), resident capacity, and lead officers.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Official accommodation list with Property IDs (PIDs), resident capacity, and lead officers.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Super Admin Table Customizer */}
-          {currentUserRole === 'Super Admin' && (
-            <button
-              id="btn-customize-sites-table"
-              onClick={() => setIsSchemaEditorOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#edebe9] border border-[#8a8886] text-[#323130] rounded-xs text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-              title="Configure Table Headers & Form Fields (Super Admin Only)"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Customize Table</span>
-            </button>
-          )}
-
-          {/* Audit Trail Button */}
-          <button
-            id="btn-view-property-audit"
-            onClick={() => setActivePage('audit')}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#edebe9] border border-[#8a8886] text-[#323130] rounded-xs text-xs font-semibold shadow-xs transition-colors"
-            title="View timestamped property CRUD audit trail"
-          >
-            <History className="w-3.5 h-3.5 text-[#0d9488]" />
-            <span>Activity Log</span>
-          </button>
-
-          {/* Quick Resync Master Hotels Button */}
-          <button
-            id="btn-sync-master-hotels"
-            onClick={handleSyncMasterHotels}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#edebe9] border border-[#8a8886] text-[#323130] rounded-xs text-xs font-semibold shadow-xs transition-colors"
-            title="Reload and synchronize official master list of 16 hotels and PIDs"
-          >
-            {syncSuccess ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-700">Synchronized!</span>
-              </>
-            ) : (
-              <>
-                <RotateCcw className="w-3.5 h-3.5 text-[#0d9488]" />
-                <span>Reset to Official 16 Hotels</span>
-              </>
+          <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+            {/* Super Admin Table Customizer */}
+            {currentUserRole === 'Super Admin' && (
+              <button
+                id="btn-customize-sites-table"
+                onClick={() => setIsSchemaEditorOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Configure Table Headers & Form Fields (Super Admin Only)"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
             )}
-          </button>
 
-          {/* Export Dropdown */}
-          <ExportDropdown
-            moduleName="Properties"
-            totalRecordCount={visibleProperties.length}
-            filteredRecordCount={sortedProperties.length}
-            defaultOrientation="landscape"
-            availableColumns={propertyExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-          />
-
-          {hasAdminAuthority && (
+            {/* Audit Trail Button */}
             <button
-              id="btn-add-property"
-              onClick={handleOpenAdd}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs transition-colors"
+              id="btn-view-property-audit"
+              onClick={() => setActivePage('audit')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+              title="View timestamped property CRUD audit trail"
             >
-              <Plus className="w-4 h-4" />
-              <span>Add Property</span>
+              <History className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>Activity Log</span>
             </button>
-          )}
-        </div>
-      </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs p-3 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="w-full sm:w-80">
-          <SearchInput
-            id="properties-search"
-            placeholder="Search property name, PID, city, officer..."
-            value={searchQuery}
-            onChange={val => {
-              setSearchQuery(val);
-              setCurrentPage(1);
-            }}
-            storageKey="properties_search"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-          {(['All', 'Active', 'Under Maintenance'] as const).map(st => (
+            {/* Quick Resync Master Hotels Button */}
             <button
-              key={st}
-              onClick={() => {
-                setStatusFilter(st);
+              id="btn-sync-master-hotels"
+              onClick={handleSyncMasterHotels}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+              title="Reload and synchronize official master list of 16 hotels and PIDs"
+            >
+              {syncSuccess ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-700">Synchronized!</span>
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-3.5 h-3.5 text-[#0d9488]" />
+                  <span>Reset to Official 16 Hotels</span>
+                </>
+              )}
+            </button>
+
+            {/* Export Dropdown */}
+            <ExportDropdown
+              moduleName="Properties"
+              totalRecordCount={visibleProperties.length}
+              filteredRecordCount={sortedProperties.length}
+              defaultOrientation="landscape"
+              availableColumns={propertyExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+            />
+
+            {hasAdminAuthority && (
+              <button
+                id="btn-add-property"
+                onClick={handleOpenAdd}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add Property</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Integrated Filter Row */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="w-full sm:w-80">
+            <SearchInput
+              id="properties-search"
+              placeholder="Search property name, PID, city, officer..."
+              value={searchQuery}
+              onChange={val => {
+                setSearchQuery(val);
                 setCurrentPage(1);
               }}
-              className={`px-3 py-1 text-xs font-medium rounded-xs transition-colors ${statusFilter === st
-                  ? 'bg-[#0d9488] text-white font-semibold'
-                  : 'bg-[#faf9f8] text-[#323130] hover:bg-[#edebe9] border border-[#edebe9]'
+              storageKey="properties_search"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            {(['All', 'Active', 'Under Maintenance'] as const).map(st => (
+              <button
+                key={st}
+                onClick={() => {
+                  setStatusFilter(st);
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 text-xs font-medium rounded-xs transition-colors ${
+                  statusFilter === st
+                    ? 'bg-[#0d9488] text-white font-semibold'
+                    : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 border border-neutral-200'
                 }`}
-            >
-              {st}
-            </button>
-          ))}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Properties Table with persistent full container height */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      {/* Properties Table */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse">
             <thead>

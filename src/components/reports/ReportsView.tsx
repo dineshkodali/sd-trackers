@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  CloudUpload, 
   FileSpreadsheet, 
   Download, 
   RefreshCw, 
@@ -9,23 +8,18 @@ import {
   ShieldCheck, 
   AlertTriangle, 
   Cloud,
-  FileText,
   Printer,
   Calendar,
-  Filter,
-  Eye,
-  Sliders,
-  Layers,
   HardHat,
   ScrollText,
   Soup,
   Siren,
   X,
   Search,
-  Check,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Eye
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Pagination } from '../common/Pagination';
@@ -101,7 +95,6 @@ export const ReportsView: React.FC = () => {
 
   // Sync state
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success'>('idle');
-  const [syncProgress, setSyncProgress] = useState<number>(100);
 
   // Printable Modal State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -109,12 +102,9 @@ export const ReportsView: React.FC = () => {
   // Trigger Live SharePoint Sync
   const handleLiveSync = () => {
     setSyncStatus('syncing');
-    setSyncProgress(25);
     syncSharePointNow();
     
-    setTimeout(() => setSyncProgress(70), 300);
     setTimeout(() => {
-      setSyncProgress(100);
       setSyncStatus('success');
       setTimeout(() => setSyncStatus('idle'), 3500);
     }, 700);
@@ -780,7 +770,7 @@ export const ReportsView: React.FC = () => {
       </div>
 
       {/* Live Data Preview Table with full-height container and pagination */}
-      <div className="bg-white border border-[#edebe9] rounded-xs shadow-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      <div className="bg-white border border-[#edebe9] rounded-xs shadow-xs overflow-hidden min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <div className="p-3 bg-[#faf9f8] border-b border-[#edebe9] flex items-center justify-between">
             <div className="flex items-center gap-2">

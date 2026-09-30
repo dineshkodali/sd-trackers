@@ -8,13 +8,10 @@ import {
   ArrowUpRight, 
   Siren, 
   Plus, 
-  FileSpreadsheet, 
-  FileText,
   TrendingUp,
   ShieldCheck,
   Zap,
-  SlidersHorizontal,
-  Check
+  SlidersHorizontal
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FilterBar } from '../common/FilterBar';
@@ -46,13 +43,11 @@ export const DashboardView: React.FC = () => {
     challengingSUs, 
     escalations, 
     sites, 
-    properties,
-    allowedSites, 
+    properties, 
     setActivePage,
     currentUserRole,
     assignedSite,
-    canAccessAllSites,
-    lastOperationDurationMs
+    canAccessAllSites
   } = useApp();
 
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);

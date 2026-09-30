@@ -11,9 +11,7 @@ import {
   Utensils, 
   Shirt, 
   Building2, 
-  ChevronRight, 
   ChevronDown, 
-  SlidersHorizontal, 
   CornerDownLeft,
   ArrowRight
 } from 'lucide-react';

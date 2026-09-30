@@ -410,23 +410,18 @@ export function filterNotificationsForRole(
     const isSiteSafetyAlert = (n.type === 'urgent' || n.action === 'URGENT' || n.action === 'ALERT') &&
       Boolean(effectiveAssignedSite && n.site && isSiteMatch(effectiveAssignedSite, n.site));
 
-    // 3. Regional Manager: Permitted across regional urgent safety alerts & regional approval requests
+    // 3. Regional Manager: Permitted across regional sites in allowedSites
     if (userRole === 'Regional Manager') {
       if (isSelfAction || isSelfTarget || isSelfProfile || isSelfRequest) return true;
-      const isRegionalAlert = (n.type === 'urgent' || n.action === 'URGENT' || n.action === 'ALERT') &&
-        allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site));
-      const isRegionalRequest = n.category === 'approval_workflow' &&
-        allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site));
-      if (isRegionalAlert || isRegionalRequest) return true;
+      if (allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site))) return true;
+      if (effectiveAssignedSite && isSiteMatch(effectiveAssignedSite, n.site)) return true;
       return false;
     }
 
-    // 4. Site Manager / General Manager: Permitted across managed site safety alerts & site approval requests
+    // 4. Site Manager / General Manager: Permitted across their managed site operations
     if (userRole === 'Site Manager' || userRole === 'General Manager') {
       if (isSelfAction || isSelfTarget || isSelfProfile || isSelfRequest) return true;
-      const isManagedSiteRequest = n.category === 'approval_workflow' &&
-        Boolean(effectiveAssignedSite && n.site && isSiteMatch(effectiveAssignedSite, n.site));
-      if (isSiteSafetyAlert || isManagedSiteRequest) return true;
+      if (effectiveAssignedSite && isSiteMatch(effectiveAssignedSite, n.site)) return true;
       return false;
     }
 

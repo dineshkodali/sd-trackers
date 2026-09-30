@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  FileSpreadsheet, 
   Copy, 
   Check, 
   Download, 
-  TrendingUp, 
   ArrowUpRight, 
   ShieldAlert, 
   Calendar 
@@ -167,7 +165,7 @@ export const MonthlyIncidentsTable: React.FC<MonthlyIncidentsTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edebe9]">
-            {monthlyData.map((row, idx) => {
+            {monthlyData.map((row) => {
               const isPeak = row.total > 0 && row.total === Math.max(...monthlyData.map(m => m.total));
               return (
                 <tr key={row.monthKey} className="hover:bg-[#f3f8fd] transition-colors">

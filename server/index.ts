@@ -250,7 +250,12 @@ async function startServer() {
             return documentBuilderRouter(req, res, next);
           }
         } catch (_) {}
+        return res.status(401).json({ success: false, error: 'Invalid or expired authorization token' });
       }
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
     }
 
     const clientRole = (req.headers['x-user-role'] as string) || 'Staff';
@@ -273,8 +278,9 @@ async function startServer() {
   // Public status monitoring endpoint (real-time health probes & incidents)
   app.use('/api/status', statusRouter);
 
-  // Static route for Pitch Deck presentation
-  app.use('/pitch-deck', express.static(path.join(process.cwd(), 'pitch-deck')));
+  // Static route for Systems Status Portal
+  app.use('/status', express.static(path.join(process.cwd(), 'status')));
+  app.get('/status.html', (_req, res) => res.redirect(301, '/status/'));
 
   // Process error monitoring - immediate reflection on status page
   process.on('uncaughtException', (err) => {

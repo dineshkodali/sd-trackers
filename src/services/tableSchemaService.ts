@@ -182,7 +182,6 @@ export const tableSchemaService = {
 
   /** Save a layout to the database and persistent local store immediately. */
   async saveSchema<T = any>(moduleKey: string, columns: TableColumnConfig<T>[]): Promise<boolean> {
-    const previous = cache[moduleKey];
     const serialized = serialize(columns);
     
     // 1. Instant local persistence (ensures columns survive browser reloads & offline use)

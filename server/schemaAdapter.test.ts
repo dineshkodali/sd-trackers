@@ -299,6 +299,207 @@ const RECORDS: Record<string, { table: string; record: Record<string, any> }> = 
       createdAt: ts,
       updatedAt: ts
     }
+  },
+  financeBills: {
+    table: 'finance_bills',
+    record: {
+      id: '00000000-0000-0000-0000-000000000001',
+      organizationId: 'org-1',
+      siteId: 'site-1',
+      site: 'site-1',
+      vendorId: 'vend-1',
+      billNumber: 'INV-1001',
+      billType: 'vendor_invoice',
+      billDate: '2026-09-01',
+      dueDate: '2026-10-01',
+      receivedDate: '2026-09-02',
+      currency: 'GBP',
+      subtotal: 1000,
+      taxAmount: 200,
+      totalAmount: 1200,
+      status: 'awaiting_approval',
+      paymentStatus: 'unpaid',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  vendorInvoices: {
+    table: 'vendor_invoices',
+    record: {
+      id: '00000000-0000-0000-0000-000000000002',
+      organizationId: 'org-1',
+      siteId: 'site-1',
+      site: 'site-1',
+      vendorId: 'vend-1',
+      billNumber: 'INV-1002',
+      billType: 'vendor_invoice',
+      billDate: '2026-09-01',
+      dueDate: '2026-10-01',
+      receivedDate: '2026-09-02',
+      currency: 'GBP',
+      subtotal: 1000,
+      taxAmount: 200,
+      totalAmount: 1200,
+      status: 'awaiting_approval',
+      paymentStatus: 'unpaid',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  creditCardBills: {
+    table: 'credit_card_bills',
+    record: {
+      id: '00000000-0000-0000-0000-000000000003',
+      organizationId: 'org-1',
+      siteId: 'site-1',
+      site: 'site-1',
+      vendorId: 'vend-1',
+      billNumber: 'CC-1003',
+      billType: 'credit_card_expense',
+      billDate: '2026-09-01',
+      dueDate: '2026-10-01',
+      receivedDate: '2026-09-02',
+      currency: 'GBP',
+      subtotal: 50,
+      taxAmount: 10,
+      totalAmount: 60,
+      status: 'awaiting_approval',
+      paymentStatus: 'unpaid',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  deliveryNotes: {
+    table: 'delivery_notes',
+    record: {
+      id: '00000000-0000-0000-0000-000000000004',
+      organizationId: 'org-1',
+      siteId: 'site-1',
+      site: 'site-1',
+      vendorId: 'vend-1',
+      billNumber: 'DN-1004',
+      billType: 'delivery_note',
+      billDate: '2026-09-01',
+      dueDate: '2026-10-01',
+      receivedDate: '2026-09-02',
+      currency: 'GBP',
+      subtotal: 100,
+      taxAmount: 20,
+      totalAmount: 120,
+      status: 'awaiting_approval',
+      paymentStatus: 'unpaid',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  welfareChecks: {
+    table: 'welfare_checks',
+    record: {
+      id: '00000000-0000-0000-0000-000000000010',
+      siteId: 'site-519',
+      siteName: 'Brit Hotel',
+      portReference: 'PR-1001',
+      flatNumber: 'Flat 12',
+      officerId: 'off-1',
+      officerName: 'Officer Smith',
+      checkDatetime: '2026-09-29T10:00:00Z',
+      safeguardingStatementAgreement: true,
+      validPortReference: true,
+      locationType: 'In Person - Room',
+      locationOther: '',
+      contactMethod: 'Face to Face',
+      contactMethodOther: '',
+      wantsWelfareEngagement: true,
+      familyOrIndividual: 'Individual',
+      gpRegistered: true,
+      gpDetails: 'Dr Smith Camden',
+      physicalHealthChange: false,
+      physicalHealthDetails: '',
+      coronavirusAwareness: true,
+      coronavirusSymptomsAwareness: true,
+      previousCoronavirus: false,
+      knowsSymptomAction: true,
+      knowsWorseningContact: true,
+      knowsAssistanceContact: true,
+      mentalHealthChange: false,
+      mentalHealthDetails: '',
+      otherWelfareIssues: 'None',
+      maintenanceIssues: 'None',
+      safeguardingConcerns: 'No concerns noted',
+      windowRestrictorsIntact: true,
+      smokeAlarmsWorking: true,
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  foodSurveys: {
+    table: 'food_surveys',
+    record: {
+      id: '00000000-0000-0000-0000-000000000020',
+      siteId: 'site-519',
+      siteName: 'Brit Hotel',
+      portReference: 'PR-1001',
+      houseOfficerName: 'Officer Davis',
+      overallFoodQuality: 'Good',
+      serverQuality: 'Very good',
+      diningAreaCleanliness: 'Excellent',
+      overallFoodRating: 'Good',
+      menuDiversity: 'Good',
+      favouriteDish: 'Chicken Curry',
+      leastFavouriteDish: 'Boiled Fish',
+      suggestedDishes: 'More pasta options',
+      foodAllergies: 'None',
+      portionSizes: 'Adequate',
+      knownAllergies: 'None',
+      dietaryRequirements: 'Halal',
+      takeawayAwareness: true,
+      snackAwareness: true,
+      otherFeedback: 'Very satisfied',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  foodMealRatings: {
+    table: 'food_meal_ratings',
+    record: {
+      id: '00000000-0000-0000-0000-000000000030',
+      foodSurveyId: '00000000-0000-0000-0000-000000000020',
+      dayOfWeek: 'Monday',
+      mealType: 'Breakfast',
+      rating: 'Good',
+      createdAt: ts
+    }
+  },
+  roomChecks: {
+    table: 'room_checks',
+    record: {
+      id: '00000000-0000-0000-0000-000000000040',
+      siteId: 'site-519',
+      siteName: 'Brit Hotel',
+      roomNumber: '105',
+      aicReference: 'AIC-9988',
+      officerId: 'off-2',
+      officerName: 'Inspector Taylor',
+      inspectionDate: '2026-09-29',
+      overallStatus: 'Passed',
+      finalComments: 'Room inspected in immaculate condition',
+      createdAt: ts,
+      updatedAt: ts
+    }
+  },
+  roomCheckItems: {
+    table: 'room_check_items',
+    record: {
+      id: '00000000-0000-0000-0000-000000000050',
+      roomCheckId: '00000000-0000-0000-0000-000000000040',
+      section: 'ROOM CONDITION',
+      questionKey: 'clean_and_tidy',
+      questionText: '1. Is the room clean and tidy?',
+      response: 'Yes',
+      comment: 'Clean and tidy',
+      sortOrder: 1,
+      createdAt: ts
+    }
   }
 };
 

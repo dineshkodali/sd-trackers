@@ -6,7 +6,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
-import { Trash2, Plus, Sparkles, UploadCloud, Camera, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Plus, Camera, Image as ImageIcon } from 'lucide-react';
 import type { TemplateFieldDefinition, LayoutConfig, SectionLayout } from '../../types/documentBuilder';
 
 /**

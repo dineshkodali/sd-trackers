@@ -229,183 +229,166 @@ export const LiveDailyRegistersView: React.FC = () => {
   const createLabel = getCreateButtonLabel();
 
   return (
-    <div className="space-y-3">
-      {/* 1. View Header with Dynamic Action Buttons */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-[#0d9488]" />
-            <h1 className="text-xl font-bold text-[#242424] tracking-tight">
-              Live Daily Registers (AASC Headcount)
-            </h1>
-            <span className="text-xs bg-teal-50 text-[#0d9488] font-bold px-2 py-0.5 rounded border border-teal-200 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488] animate-pulse" />
-              Live Operations
-            </span>
-          </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Real-time room occupancy roster, bedspace inventory, service user headcount, and Home Office arrivals/evictions.
-          </p>
-        </div>
-
-        {/* Dynamic Header Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs cursor-pointer transition-colors"
-            title="Refresh database records"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[#0d9488]' : ''}`} />
-            <span>{isSyncing ? 'Syncing...' : 'Sync with DB'}</span>
-          </button>
-
-          {currentUserRole === 'Super Admin' && isCustomizableTab && (
-            <button
-              onClick={() => setCustomizeTrigger(prev => prev + 1)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs cursor-pointer"
-              title="Customize Table Schema"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Customize</span>
-            </button>
-          )}
-
-          {/* Unified Export Dropdown (Standard split-button with live modal preview matching all pages) */}
-          <ExportDropdown
-            moduleName={exportConfig.moduleName}
-            totalRecordCount={exportConfig.totalCount}
-            filteredRecordCount={exportConfig.filteredCount}
-            defaultOrientation="landscape"
-            availableColumns={exportConfig.columns}
-            getPreviewData={handleExportPreview}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          {/* Dynamic + Log / Record Button */}
-          {canCreateRecord() && createLabel && (
-            <button
-              onClick={() => setCreateTrigger(prev => prev + 1)}
-              className="flex items-center gap-1.5 px-3 py-1.5 font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs text-xs cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{createLabel}</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Exact Spreadsheet Sheet Tabs (Matches User Spreadsheet Layout & Colors) */}
-      <div className="bg-[#f3f2f1] border border-[#d2d0ce] rounded-xs p-1.5 flex items-center gap-1.5 overflow-x-auto shadow-2xs">
-        {SHEET_TABS.map(tab => {
-          const isActive = activeTab === tab.id;
-          const badge = getTabBadge(tab.id);
-          const style = tab.pillClass
-            ? `${tab.pillClass} px-3 py-1 rounded shadow-xs ${isActive ? 'ring-2 ring-offset-1 ring-black/30 scale-[1.03]' : 'opacity-90 hover:opacity-100'}`
-            : tab.isUnderline
-            ? `px-2.5 py-1 border-b-2 rounded-t ${isActive ? 'border-[#16a34a] text-[#16a34a] font-bold bg-white/60' : 'border-[#16a34a]/60 text-[#323130] hover:text-black hover:bg-white/40'}`
-            : `px-2.5 py-1 rounded ${isActive ? 'bg-white text-[#242424] font-bold shadow-xs' : 'text-[#605e5c] hover:text-[#242424] hover:bg-white/50'}`;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${style}`}
-            >
-              <span>{tab.label}</span>
-              {badge !== undefined && badge > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  tab.pillClass ? 'bg-white/20 text-white' : tab.isUnderline ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-200 text-neutral-700'
-                }`}>
-                  {badge}
+    <div className="space-y-4">
+      {/* Top Banner, Header, Actions, Tabs & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Live Daily Registers (AASC Headcount)</h1>
+                <span className="text-xs bg-teal-50 text-[#0d9488] font-bold px-2 py-0.5 rounded border border-teal-200 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488] animate-pulse" />
+                  Live Operations
                 </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 3. Consolidated Unified Filter Toolbar (ONE Place for All Filters) */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs p-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs">
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Hotel Scope & Isolation Filter */}
-          {canAccessAllSites() ? (
-            <div className="flex items-center gap-1.5">
-              <Hotel className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span className="font-semibold text-[#605e5c]">Hotel:</span>
-              <select
-                value={selectedSite}
-                onChange={e => setSelectedSite(e.target.value)}
-                className="p-1 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#0d9488] cursor-pointer"
-              >
-                <option value="all">All Hotels &amp; Sites</option>
-                {availableSites.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </div>
+              <p className="text-xs text-neutral-500">Real-time room occupancy roster, bedspace inventory, service user headcount, and Home Office arrivals/evictions.</p>
             </div>
-          ) : (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-neutral-100 border border-neutral-300 rounded text-xs">
-              <Lock className="w-3 h-3 text-[#0f766e]" />
-              <span className="font-semibold text-neutral-600">Site Scope:</span>
-              <span className="font-bold text-[#0f766e]">{assignedSite || 'Assigned Hotel'}</span>
-              <span className="text-[10px] bg-neutral-200 text-neutral-700 px-1 rounded font-mono">Isolated</span>
-            </div>
-          )}
-
-          {/* Date Picker */}
-          <div className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-[#0d9488]" />
-            <span className="font-semibold text-[#605e5c]">Date:</span>
-            <input 
-              type="date"
-              value={registerDate}
-              onChange={e => setRegisterDate(e.target.value)}
-              className="p-1 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#0d9488] cursor-pointer font-medium"
-            />
           </div>
 
-          {/* Dynamic Contextual Filters */}
-          {activeTab === 'dailyRegister' && (
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-[#605e5c]">Occupancy:</span>
-              <select
-                value={occupancyFilter}
-                onChange={e => setOccupancyFilter(e.target.value as any)}
-                className="p-1 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs cursor-pointer"
-              >
-                <option value="all">All Rooms</option>
-                <option value="Occupied">Occupied Only</option>
-                <option value="Vacant">Vacant Only</option>
-              </select>
-            </div>
-          )}
+          {/* Dynamic Header Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs cursor-pointer transition-colors"
+              title="Refresh database records"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[#0d9488]' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync with DB'}</span>
+            </button>
 
-          {/* Consolidated Search Input */}
-          <div className="relative min-w-[220px] max-w-xs">
-            <Search className="w-3.5 h-3.5 text-[#605e5c] absolute left-2.5 top-2 pointer-events-none" />
-            <input 
-              type="text"
-              placeholder={`Search ${SHEET_TABS.find(t => t.id === activeTab)?.label}...`}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-6 py-1 bg-white border border-[#8a8886] rounded-xs text-xs text-[#242424] placeholder:text-[#a19f9d] focus:outline-none focus:border-[#0d9488]"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1.5 text-neutral-400 hover:text-neutral-700 text-xs cursor-pointer"
+            {currentUserRole === 'Super Admin' && isCustomizableTab && (
+              <button
+                onClick={() => setCustomizeTrigger(prev => prev + 1)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs cursor-pointer"
+                title="Customize Table Schema"
               >
-                ✕
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName={exportConfig.moduleName}
+              totalRecordCount={exportConfig.totalCount}
+              filteredRecordCount={exportConfig.filteredCount}
+              defaultOrientation="landscape"
+              availableColumns={exportConfig.columns}
+              getPreviewData={handleExportPreview}
+              onExport={handlePerformExport}
+              buttonVariant="toolbar"
+            />
+
+            {canCreateRecord() && createLabel && (
+              <button
+                onClick={() => setCreateTrigger(prev => prev + 1)}
+                className="flex items-center gap-1.5 px-3 py-1.5 font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs text-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{createLabel}</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Live Headcount Summary Pill */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] bg-teal-50 text-[#0d9488] font-bold px-2 py-0.5 rounded border border-teal-200">
-            {activeResidentsCount} SUs Present · {availableBedspaces} Beds Free · {scopedRooms.length} Rooms
-          </span>
+        {/* Spreadsheet Sheet Tabs */}
+        <div className="mt-3.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs p-1.5 flex items-center gap-1.5 overflow-x-auto">
+          {SHEET_TABS.map(tab => {
+            const isActive = activeTab === tab.id;
+            const badge = getTabBadge(tab.id);
+            const style = tab.pillClass
+              ? `${tab.pillClass} px-3 py-1 rounded shadow-xs ${isActive ? 'ring-2 ring-offset-1 ring-black/30 scale-[1.03]' : 'opacity-90 hover:opacity-100'}`
+              : tab.isUnderline
+              ? `px-2.5 py-1 border-b-2 rounded-t ${isActive ? 'border-[#16a34a] text-[#16a34a] font-bold bg-white/60' : 'border-[#16a34a]/60 text-[#323130] hover:text-black hover:bg-white/40'}`
+              : `px-2.5 py-1 rounded ${isActive ? 'bg-white text-[#242424] font-bold shadow-2xs' : 'text-[#605e5c] hover:text-[#242424] hover:bg-white/50'}`;
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${style}`}
+              >
+                <span>{tab.label}</span>
+                {badge !== undefined && badge > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    tab.pillClass ? 'bg-white/20 text-white' : tab.isUnderline ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-200 text-neutral-700'
+                  }`}>
+                    {badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Consolidated Unified Filter Row */}
+        <div className="mt-3.5 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input 
+              type="text"
+              placeholder={`Search ${SHEET_TABS.find(t => t.id === activeTab)?.label}...`}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-6 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {canAccessAllSites() ? (
+            <select
+              value={selectedSite}
+              onChange={e => setSelectedSite(e.target.value)}
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
+            >
+              <option value="all">All Hotels &amp; Sites</option>
+              {availableSites.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs">
+              <Lock className="w-3 h-3 text-[#0f766e]" />
+              <span className="font-semibold text-neutral-600">Site:</span>
+              <span className="font-bold text-[#0f766e] truncate">{assignedSite || 'Assigned Hotel'}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5">
+            <input 
+              type="date"
+              value={registerDate}
+              onChange={e => setRegisterDate(e.target.value)}
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer font-medium"
+            />
+          </div>
+
+          {activeTab === 'dailyRegister' ? (
+            <select
+              value={occupancyFilter}
+              onChange={e => setOccupancyFilter(e.target.value as any)}
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
+            >
+              <option value="all">All Rooms</option>
+              <option value="Occupied">Occupied Only</option>
+              <option value="Vacant">Vacant Only</option>
+            </select>
+          ) : (
+            <div className="flex items-center justify-end">
+              <span className="text-[11px] bg-teal-50 text-[#0d9488] font-bold px-2 py-1 rounded border border-teal-200">
+                {activeResidentsCount} SUs · {availableBedspaces} Beds Free · {scopedRooms.length} Rooms
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,11 +6,7 @@ import {
   VulnerableSU, 
   ChallengingSU, 
   SPCDRecord, 
-  SiteInfo, 
-  FoodRecord, 
-  LaundryRecord, 
-  EscalationRecord, 
-  DocumentRecord 
+  SiteInfo 
 } from '../types';
 import { TableAttachmentCell } from '../components/common/TableAttachmentCell';
 

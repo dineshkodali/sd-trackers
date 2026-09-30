@@ -16,7 +16,6 @@ import {
   MoveUp,
   MoveDown,
   Copy,
-  Settings2,
   FileText,
   Type,
   AlignLeft,
@@ -24,7 +23,6 @@ import {
   ListFilter,
   Hash,
   CheckSquare,
-  Table as TableIcon,
   AlertTriangle,
   PenTool,
   Save,
@@ -166,10 +164,8 @@ export const TemplateBuilderModal: React.FC<TemplateBuilderModalProps> = ({
     ];
   });
 
-  // Selected block for editing
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'builder' | 'settings'>('builder');
-  const [previewTab, setPreviewTab] = useState<'split' | 'fullscreen'>('split');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

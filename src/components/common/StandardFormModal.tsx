@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileText, Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { X, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 export interface StandardFormModalProps {
   isOpen: boolean;

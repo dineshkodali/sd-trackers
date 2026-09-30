@@ -429,100 +429,135 @@ export const CreditCardBillsView: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full animate-fade-in">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xs border border-[#e1dfdd] shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-xl font-bold text-[#242424] tracking-tight">
-              Credit Card Bills & Expenses
-            </h1>
-            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
-              {filteredBills.length} Card Expenses
-            </span>
+      {/* Top Header Card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-teal-700 rounded-xs">
+              <CreditCard className="w-5 h-5 text-teal-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Credit Card Bills & Expenses</h1>
+                <span className="text-[11px] font-semibold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">
+                  {filteredBills.length}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500 mt-0.5">Corporate credit card receipts, petty cash disbursements, and direct emergency site expense logs.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Corporate credit card receipts, petty cash disbursements, and direct emergency site expense logs.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {(authProfile?.role || currentUserRole) === 'Super Admin' && (
+          <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+            {(authProfile?.role || currentUserRole) === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
+              onClick={() => setIsMerchantModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
-              title="Super Admin: Customize table columns, headers, and fields"
+              title="Manage credit card merchant and store choices"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
+              <Store className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>Manage Merchants</span>
             </button>
-          )}
 
-          <button
-            type="button"
-            onClick={() => setIsMerchantModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
-            title="Manage credit card merchant and store choices"
-          >
-            <Store className="w-3.5 h-3.5 text-[#0d9488]" />
-            <span>Manage Merchants</span>
-          </button>
+            <ExportDropdown
+              moduleName="Credit Card Register"
+              totalRecordCount={bills.length}
+              filteredRecordCount={filteredBills.length}
+              defaultOrientation="landscape"
+              availableColumns={creditCardExportColumns}
+              onExport={handlePerformExport}
+            />
 
-          <ExportDropdown
-            moduleName="Credit Card Register"
-            totalRecordCount={bills.length}
-            filteredRecordCount={filteredBills.length}
-            defaultOrientation="landscape"
-            availableColumns={creditCardExportColumns}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          <button
-            onClick={() => {
-              setBillToEdit(null);
-              setIsBillModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Log Card Expense</span>
-          </button>
+            <button
+              onClick={() => {
+                setBillToEdit(null);
+                setIsBillModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Log Card Expense</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Filter Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          {/* Site / Property Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Property:</span>
+        {/* Status Sub-tabs */}
+        <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-[#f5f5f5] overflow-x-auto text-xs">
+          {[
+            { id: 'all', label: 'All Card Expenses', count: merchantScopedBills.length },
+            { id: 'awaiting_approval', label: 'Pending Approval', count: merchantScopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
+            { id: 'approved', label: 'Approved', count: merchantScopedBills.filter(b => b.status === 'approved').length },
+            { id: 'paid', label: 'Paid', count: merchantScopedBills.filter(b => b.status === 'paid').length },
+            { id: 'queries', label: 'Queries / Rejected', count: merchantScopedBills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusTabFilter(tab.id as any)}
+              className={`px-2.5 py-1 rounded-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap text-xs ${
+                statusTabFilter === tab.id
+                  ? 'bg-[#0d9488] text-white shadow-xs font-semibold'
+                  : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 border border-neutral-200'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                statusTabFilter === tab.id ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-700'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Integrated Filter Row */}
+        <div className="mt-3 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search receipt, merchant, staff..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
+
+          <div>
             <select
               value={siteFilter}
               onChange={e => setSiteFilter(e.target.value)}
               disabled={!canAccessAllSites()}
-              className={`p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[160px] ${
-                !canAccessAllSites() ? 'bg-[#f3f2f1] cursor-not-allowed text-[#605e5c]' : ''
+              className={`w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all ${
+                !canAccessAllSites() ? 'opacity-60 cursor-not-allowed' : ''
               }`}
             >
-              {canAccessAllSites() && <option value="all">All Properties</option>}
+              {canAccessAllSites() && <option value="all">All Properties / Sites</option>}
               {allowedSites.map((s, idx) => (
                 <option key={`${s}-${idx}`} value={s}>{s}</option>
               ))}
             </select>
           </div>
 
-          {/* Merchant Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Merchant:</span>
+          <div>
             <select
               value={merchantFilter}
               onChange={e => {
                 setMerchantFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[170px]"
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Merchants ({availableMerchants.length})</option>
               {availableMerchants.map((m, idx) => (
@@ -531,82 +566,41 @@ export const CreditCardBillsView: React.FC = () => {
             </select>
           </div>
 
-          {/* Status Filter */}
-          <div className="min-w-[190px]">
-            <ManageableSelect
-              label="Status"
-              value={statusFilter === 'all' ? '' : statusFilter}
-              onChange={setStatusFilter}
-              optionCategory="financeBillStatuses"
-              allowQuickAdd={true}
-              placeholder="All Statuses"
-              showManageActions={true}
-              className="p-1.5"
-              compact
-            />
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <ManageableSelect
+                label="Status"
+                value={statusFilter === 'all' ? '' : statusFilter}
+                onChange={setStatusFilter}
+                optionCategory="financeBillStatuses"
+                allowQuickAdd={true}
+                placeholder="All Statuses"
+                showManageActions={true}
+                className="w-full"
+                compact
+              />
+            </div>
+            {(siteFilter !== 'all' || merchantFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+              <button
+                onClick={() => {
+                  if (canAccessAllSites()) setSiteFilter('all');
+                  setMerchantFilter('all');
+                  setStatusFilter('all');
+                  setSearchQuery('');
+                  setCurrentPage(1);
+                }}
+                className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-xs transition-colors shrink-0"
+                title="Reset Filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-
-          {/* Search Input */}
-          <div className="relative min-w-[160px] flex-1 max-w-[240px]">
-            <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-[#605e5c]" />
-            <input
-              type="text"
-              placeholder="Search receipt, merchant, staff..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-7 pr-2 py-1 border border-[#8a8886] rounded-xs text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
-            />
-          </div>
-
-          {(siteFilter !== 'all' || merchantFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                if (canAccessAllSites()) setSiteFilter('all');
-                setMerchantFilter('all');
-                setStatusFilter('all');
-                setSearchQuery('');
-                setCurrentPage(1);
-              }}
-              className="flex items-center gap-1 text-[11px] text-[#605e5c] hover:text-[#242424] cursor-pointer"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Reset</span>
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Approval Status Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-[#edebe9] pb-1 overflow-x-auto text-xs">
-        {[
-          { id: 'all', label: 'All Card Expenses', count: merchantScopedBills.length },
-          { id: 'awaiting_approval', label: 'Pending Approval', count: merchantScopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
-          { id: 'approved', label: 'Approved', count: merchantScopedBills.filter(b => b.status === 'approved').length },
-          { id: 'paid', label: 'Paid', count: merchantScopedBills.filter(b => b.status === 'paid').length },
-          { id: 'queries', label: 'Queries / Rejected', count: merchantScopedBills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setStatusTabFilter(tab.id as any)}
-            className={`px-3 py-1.5 rounded-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              statusTabFilter === tab.id
-                ? 'bg-[#0d9488] text-white shadow-xs'
-                : 'bg-white text-[#605e5c] hover:bg-[#f3f2f1] hover:text-[#242424] border border-[#e1dfdd]'
-            }`}
-          >
-            <span>{tab.label}</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-              statusTabFilter === tab.id ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-600'
-            }`}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
-      </div>
-
       {/* Main Data Table */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden flex flex-col justify-between min-h-[560px] lg:min-h-[calc(100vh-270px)]">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1 overflow-y-auto">
           <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
             <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap sticky top-0 z-20 shadow-xs">

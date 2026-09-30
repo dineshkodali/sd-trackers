@@ -6,25 +6,18 @@ import {
   Plus,
   Trash2,
   Edit3,
-  Download,
   Search,
-  Filter,
   X,
   Building2,
-  Calendar,
-  Clock,
-  CheckCircle2,
   LogOut,
   RotateCcw,
   ShieldCheck,
-  FileText,
-  User,
-  Lock,
   Eye,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ScrollText
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SPCDRecord } from '../../types';
@@ -125,27 +118,6 @@ export const SPCDTrackerView: React.FC = () => {
   const [departureDate, setDepartureDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [departureReason, setDepartureReason] = useState<string>('Dispersed to Home Office NASS Accommodation');
 
-  // Create Form State
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().slice(0, 10),
-    siteName: allowedSites[0] || 'Brit Hotel',
-    roomNumber: '',
-    staffReporting: loggedInUserName,
-    suName: '',
-    suPortReference: '',
-    suDob: '1990-01-01',
-    briefDescriptionActionTaken: '',
-    followUpNotes: '',
-    updates: '',
-    sgReview: 'Pending Safeguarding Lead Review'
-  });
-
-  useEffect(() => {
-    if (loggedInUserName && (formData.staffReporting === 'Duty Worker' || !formData.staffReporting)) {
-      setFormData(prev => ({ ...prev, staffReporting: loggedInUserName }));
-    }
-  }, [loggedInUserName]);
-
   // Filtered lists
   const currentSUs = useMemo(() => {
     return spcdRecords.filter(r => !r.isArchived);
@@ -212,70 +184,7 @@ export const SPCDTrackerView: React.FC = () => {
   }, [sortedRecords, currentPage, pageSize]);
 
   const handleOpenCreate = () => {
-    setFormData({
-      date: new Date().toISOString().slice(0, 10),
-      siteName: allowedSites[0] || 'Brit Hotel',
-      roomNumber: '',
-      staffReporting: loggedInUserName,
-      suName: '',
-      suPortReference: '',
-      suDob: '1990-01-01',
-      briefDescriptionActionTaken: '',
-      followUpNotes: '',
-      updates: '',
-      sgReview: 'Pending Safeguarding Lead Review'
-    });
     setIsCreateModalOpen(true);
-  };
-
-  const handleCreateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const reporter = formData.staffReporting || loggedInUserName;
-    addSPCDRecord({
-      date: formData.date,
-      siteName: formData.siteName,
-      site: formData.siteName,
-      roomNumber: formData.roomNumber,
-      staffReporting: reporter,
-      raisedBy: reporter,
-      suName: formData.suName,
-      suPortReference: formData.suPortReference,
-      suDob: formData.suDob,
-      briefDescriptionActionTaken: formData.briefDescriptionActionTaken,
-      followUpNotes: formData.followUpNotes,
-      updates: formData.updates,
-      sgReview: formData.sgReview,
-      isArchived: false
-    });
-
-    setIsCreateModalOpen(false);
-    // Reset
-    setFormData({
-      date: new Date().toISOString().slice(0, 10),
-      siteName: allowedSites[0] || 'Brit Hotel',
-      roomNumber: '',
-      staffReporting: loggedInUserName,
-      suName: '',
-      suPortReference: '',
-      suDob: '1990-01-01',
-      briefDescriptionActionTaken: '',
-      followUpNotes: '',
-      updates: '',
-      sgReview: 'Pending Safeguarding Lead Review'
-    });
-  };
-
-  const handleUpdateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingRecord) return;
-    const reporter = editingRecord.staffReporting || (editingRecord as any).raisedBy || getRaisedBy(editingRecord) || loggedInUserName;
-    updateSPCDRecord(editingRecord.id, {
-      ...editingRecord,
-      site: editingRecord.siteName,
-      staffReporting: reporter,
-      raisedBy: reporter
-    });
-    setEditingRecord(null);
   };
 
   const handleConfirmDepart = (e: React.FormEvent) => {
@@ -530,149 +439,125 @@ export const SPCDTrackerView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <ClipboardList className="w-6 h-6 text-[#0d9488]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
-              SPCD Case Tracker
-            </h1>
-            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded">
-              Special Provision &amp; Service User Log
-            </span>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xs">
+              <ScrollText className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">
+                  SPCD Case Tracker
+                </h1>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-xs bg-emerald-50 text-emerald-900 border border-emerald-200">
+                  {sortedRecords.length} Entries
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">
+                Special provision, resident casework, and safeguarding departure registry.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-1">
-            Tracking Current SUs in residence and Archived SUs who have departed, relocated, or dispersed.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Tabs: Current SUs vs Archived SUs in header action group */}
+            <div className="bg-[#edebe9] p-0.5 rounded-xs flex items-center text-xs">
+              <button
+                id="tab-spcd-current"
+                onClick={() => {
+                  setActiveTab('current');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-xs font-semibold transition-colors cursor-pointer ${
+                  activeTab === 'current' ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                Current SUs ({currentSUs.length})
+              </button>
+              <button
+                id="tab-spcd-archived"
+                onClick={() => {
+                  setActiveTab('archived');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-xs font-semibold transition-colors cursor-pointer ${
+                  activeTab === 'archived' ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                Archived SUs ({archivedSUs.length})
+              </button>
+            </div>
+
+            {currentUserRole === 'Super Admin' && (
+              <button
+                id="btn-customize-spcd-table"
+                onClick={() => setIsSchemaEditorOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Configure Table Headers & Form Fields (Super Admin Only)"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName={`SPCD (${activeTab === 'current' ? 'Current SUs' : 'Archived SUs'})`}
+              totalRecordCount={(activeTab === 'current' ? currentSUs : archivedSUs).length}
+              filteredRecordCount={sortedRecords.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={spcdExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+            />
+
+            {canCreateRecord() && (
+              <button
+                id="btn-add-spcd-record"
+                onClick={handleOpenCreate}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-medium rounded-xs transition-colors shadow-2xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add SPCD Entry</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
-            <button
-              id="btn-customize-spcd-table"
-              onClick={() => setIsSchemaEditorOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-neutral-300 rounded-xs shadow-xs transition-colors cursor-pointer"
-              title="Configure Table Headers & Form Fields (Super Admin Only)"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Customize Table</span>
-            </button>
-          )}
+        {/* Filter Bar integrated into the same card */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search SU name, port ref, room, notes..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-8 pr-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
 
-          <ExportDropdown
-            moduleName={`SPCD (${activeTab === 'current' ? 'Current SUs' : 'Archived SUs'})`}
-            totalRecordCount={(activeTab === 'current' ? currentSUs : archivedSUs).length}
-            filteredRecordCount={sortedRecords.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={spcdExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          {canCreateRecord() && (
-            <button
-              id="btn-add-spcd-record"
-              onClick={handleOpenCreate}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add SPCD Case Entry</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Tabs: Current SUs vs Archived SUs */}
-      <div className="flex items-center gap-2 border-b border-[#edebe9]">
-        <button
-          id="tab-spcd-current"
-          onClick={() => {
-            setActiveTab('current');
-            setCurrentPage(1);
-          }}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${activeTab === 'current'
-              ? 'border-[#0d9488] text-[#0f766e] bg-white'
-              : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-            }`}
-        >
-          <UserCheck className="w-4 h-4 text-[#0d9488]" />
-          <span>Current SUs</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#f0fdfa] text-[#0f766e] font-bold">
-            {currentSUs.length}
-          </span>
-        </button>
-
-        <button
-          id="tab-spcd-archived"
-          onClick={() => {
-            setActiveTab('archived');
-            setCurrentPage(1);
-          }}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${activeTab === 'archived'
-              ? 'border-[#0d9488] text-[#0f766e] bg-white'
-              : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-            }`}
-        >
-          <Archive className="w-4 h-4 text-neutral-500" />
-          <span>Archived SUs (Departed / Left)</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-neutral-100 text-neutral-600 font-bold">
-            {archivedSUs.length}
-          </span>
-        </button>
-      </div>
-
-      {/* Filter and Search Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Site Filter */}
-          <div className="flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-neutral-500" />
-            <span className="font-semibold text-neutral-700">Site:</span>
+          <div>
             <select
               value={siteFilter}
-              onChange={e => setSiteFilter(e.target.value)}
+              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
               disabled={!canAccessAllSites()}
-              className="px-2.5 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              {canAccessAllSites() && <option value="all">All Properties ({allowedSites.length})</option>}
+              {canAccessAllSites() && <option value="all">All Properties / Sites ({allowedSites.length})</option>}
               {allowedSites.map((s, idx) => (
                 <option key={`${s}-${idx}`} value={s}>{s}</option>
               ))}
             </select>
           </div>
-
-          {(searchQuery || (canAccessAllSites() && siteFilter !== 'all')) && (
-            <button
-              onClick={() => {
-                setSiteFilter(canAccessAllSites() ? 'all' : assignedSite);
-                setSearchQuery('');
-              }}
-              className="px-2 py-1 text-xs text-[#0d9488] hover:underline"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-
-        {/* Search */}
-        <div className="relative w-full sm:w-72">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-          <input
-            type="text"
-            placeholder="Search SU name, port ref, room, notes..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-[#f3f2f1] border border-[#8a8886] rounded-xs text-neutral-800 focus:outline-none focus:border-[#0d9488]"
-          />
         </div>
       </div>
 
-      {/* SPCD Data Table */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Main Table in a SEPARATE card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none">
@@ -817,7 +702,7 @@ export const SPCDTrackerView: React.FC = () => {
 
         {/* Pagination */}
         {sortedRecords.length > 0 && (
-          <div className="p-3 border-t border-[#edebe9] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="p-3 border-t border-[#edebe9] flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
             <div className="text-neutral-500">
               Showing <span className="font-semibold text-neutral-800">{paginatedRecords.length}</span> of <span className="font-semibold text-neutral-800">{sortedRecords.length}</span> records
             </div>

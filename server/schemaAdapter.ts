@@ -422,6 +422,89 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['attachmentUrl', 'attachment_url', 'text'],
     ['fileUrl', 'file_url', 'text'],
   ],
+  welfare_checks: [
+    ['siteId', 'site_id', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['serviceUserId', 'service_user_id', 'text'],
+    ['portReference', 'port_reference', 'text'],
+    ['flatNumber', 'flat_number', 'text'],
+    ['officerId', 'officer_id', 'text'],
+    ['officerName', 'officer_name', 'text'],
+    ['checkDatetime', 'check_datetime', 'text'],
+    ['safeguardingStatementAgreement', 'safeguarding_statement_agreement', 'bool'],
+    ['validPortReference', 'valid_port_reference', 'bool'],
+    ['locationType', 'location_type', 'text'],
+    ['locationOther', 'location_other', 'text'],
+    ['contactMethod', 'contact_method', 'text'],
+    ['contactMethodOther', 'contact_method_other', 'text'],
+    ['wantsWelfareEngagement', 'wants_welfare_engagement', 'bool'],
+    ['familyOrIndividual', 'family_or_individual', 'text'],
+    ['gpRegistered', 'gp_registered', 'bool'],
+    ['gpDetails', 'gp_details', 'text'],
+    ['physicalHealthChange', 'physical_health_change', 'bool'],
+    ['physicalHealthDetails', 'physical_health_details', 'text'],
+    ['coronavirusAwareness', 'coronavirus_awareness', 'bool'],
+    ['coronavirusSymptomsAwareness', 'coronavirus_symptoms_awareness', 'bool'],
+    ['previousCoronavirus', 'previous_coronavirus', 'bool'],
+    ['knowsSymptomAction', 'knows_symptom_action', 'bool'],
+    ['knowsWorseningContact', 'knows_worsening_contact', 'bool'],
+    ['knowsAssistanceContact', 'knows_assistance_contact', 'bool'],
+    ['mentalHealthChange', 'mental_health_change', 'bool'],
+    ['mentalHealthDetails', 'mental_health_details', 'text'],
+    ['otherWelfareIssues', 'other_welfare_issues', 'text'],
+    ['maintenanceIssues', 'maintenance_issues', 'text'],
+    ['safeguardingConcerns', 'safeguarding_concerns', 'text'],
+    ['windowRestrictorsIntact', 'window_restrictors_intact', 'bool'],
+    ['smokeAlarmsWorking', 'smoke_alarms_working', 'bool'],
+    ['status', 'status', 'text'],
+  ],
+  food_surveys: [
+    ['siteId', 'site_id', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['portReference', 'port_reference', 'text'],
+    ['houseOfficerName', 'house_officer_name', 'text'],
+    ['overallFoodQuality', 'overall_food_quality', 'text'],
+    ['serverQuality', 'server_quality', 'text'],
+    ['diningAreaCleanliness', 'dining_area_cleanliness', 'text'],
+    ['overallFoodRating', 'overall_food_rating', 'text'],
+    ['menuDiversity', 'menu_diversity', 'text'],
+    ['favouriteDish', 'favourite_dish', 'text'],
+    ['leastFavouriteDish', 'least_favourite_dish', 'text'],
+    ['suggestedDishes', 'suggested_dishes', 'text'],
+    ['foodAllergies', 'food_allergies', 'text'],
+    ['portionSizes', 'portion_sizes', 'text'],
+    ['knownAllergies', 'known_allergies', 'text'],
+    ['dietaryRequirements', 'dietary_requirements', 'text'],
+    ['takeawayAwareness', 'takeaway_awareness', 'bool'],
+    ['snackAwareness', 'snack_awareness', 'bool'],
+    ['otherFeedback', 'other_feedback', 'text'],
+  ],
+  food_meal_ratings: [
+    ['foodSurveyId', 'food_survey_id', 'text'],
+    ['dayOfWeek', 'day_of_week', 'text'],
+    ['mealType', 'meal_type', 'text'],
+    ['rating', 'rating', 'text'],
+  ],
+  room_checks: [
+    ['siteId', 'site_id', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['roomNumber', 'room_number', 'text'],
+    ['aicReference', 'aic_reference', 'text'],
+    ['officerId', 'officer_id', 'text'],
+    ['officerName', 'officer_name', 'text'],
+    ['inspectionDate', 'inspection_date', 'text'],
+    ['overallStatus', 'overall_status', 'text'],
+    ['finalComments', 'final_comments', 'text'],
+  ],
+  room_check_items: [
+    ['roomCheckId', 'room_check_id', 'text'],
+    ['section', 'section', 'text'],
+    ['questionKey', 'question_key', 'text'],
+    ['questionText', 'question_text', 'text'],
+    ['response', 'response', 'text'],
+    ['comment', 'comment', 'text'],
+    ['sortOrder', 'sort_order', 'int'],
+  ],
 };
 
 const DEFAULT_ORG_UUID = '00000000-0000-0000-0000-000000000001';
@@ -673,7 +756,12 @@ export const ENTITY_MODULE_LABELS: Record<string, string> = {
   dailyRegisterRooms: 'Live Daily Registers', daily_register_rooms: 'Live Daily Registers',
   dailyRegisterRecords: 'Live Daily Registers', daily_register_records: 'Live Daily Registers',
   newArrivals: 'Live Daily Registers', new_arrivals_records: 'Live Daily Registers',
-  evictions: 'Live Daily Registers', eviction_records: 'Live Daily Registers'
+  evictions: 'Live Daily Registers', eviction_records: 'Live Daily Registers',
+  welfareChecks: 'Welfare Checks', welfare_checks: 'Welfare Checks',
+  foodSurveys: 'Food Survey Checks', food_surveys: 'Food Survey Checks',
+  foodMealRatings: 'Food Survey Checks', food_meal_ratings: 'Food Survey Checks',
+  roomChecks: 'Room Checks', room_checks: 'Room Checks',
+  roomCheckItems: 'Room Checks', room_check_items: 'Room Checks'
 };
 export const moduleLabelFor = (entity?: string | null) => (entity && ENTITY_MODULE_LABELS[entity]) || entity || 'Settings';
 
@@ -727,7 +815,7 @@ function coerce(value: any, type: ColType): any {
   }
 }
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isValidUuid(val: any): boolean {
   return typeof val === 'string' && UUID_REGEX.test(val.trim());
 }

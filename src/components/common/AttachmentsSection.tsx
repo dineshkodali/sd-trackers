@@ -10,8 +10,6 @@ import {
   X, 
   File, 
   FileSpreadsheet,
-  CheckCircle,
-  AlertCircle,
   Copy,
   Check,
   Link as LinkIcon

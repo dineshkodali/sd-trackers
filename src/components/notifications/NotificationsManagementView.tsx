@@ -4,26 +4,21 @@ import {
   Mail, 
   Send, 
   RefreshCw, 
-  SlidersHorizontal, 
   CheckCircle2, 
   XCircle, 
   AlertTriangle, 
-  ShieldAlert, 
   Search, 
   RotateCcw, 
   Server, 
   Settings, 
-  ExternalLink,
-  ChevronRight,
-  Info,
-  Clock,
-  Edit3,
-  Flame,
-  Shield,
-  Wrench,
-  Bus,
-  HeartPulse,
-  Building2,
+  Info, 
+  Clock, 
+  Edit3, 
+  Shield, 
+  Wrench, 
+  Bus, 
+  HeartPulse, 
+  Building2, 
   FileCheck2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -96,7 +91,6 @@ export const NotificationsManagementView: React.FC = () => {
     from: string | null;
     user: string | null;
   } | null>(null);
-  const [isLoadingSmtp, setIsLoadingSmtp] = useState(false);
   const [smtpTestRecipient, setSmtpTestRecipient] = useState('');
   const [isTestingSmtp, setIsTestingSmtp] = useState(false);
   const [smtpTestResult, setSmtpTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -110,7 +104,6 @@ export const NotificationsManagementView: React.FC = () => {
   }, []);
 
   const loadSmtpStatus = async () => {
-    setIsLoadingSmtp(true);
     try {
       const status = await emailNotificationService.getStatus();
       setSmtpStatus(status);
@@ -120,8 +113,6 @@ export const NotificationsManagementView: React.FC = () => {
       }
     } catch {
       // ignore
-    } finally {
-      setIsLoadingSmtp(false);
     }
   };
 

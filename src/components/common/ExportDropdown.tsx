@@ -4,8 +4,7 @@ import {
   ChevronDown, 
   FileText, 
   FileSpreadsheet, 
-  Calendar, 
-  Layers 
+  Calendar 
 } from 'lucide-react';
 import { 
   ExportModal, 

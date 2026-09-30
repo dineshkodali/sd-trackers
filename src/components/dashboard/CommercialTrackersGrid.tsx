@@ -14,8 +14,6 @@ import {
   FileSpreadsheet, 
   ScrollText,
   ArrowUpRight,
-  ExternalLink,
-  Plus,
   Receipt,
   CreditCard
 } from 'lucide-react';

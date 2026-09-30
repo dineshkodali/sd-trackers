@@ -118,9 +118,20 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   credit_card_bills: { page: 'Credit Card Bills', table: 'credit_card_bills', alias: true },
   delivery_notes: { page: 'Delivery Notes', table: 'delivery_notes', alias: true },
   finance_approvals: { page: 'Finance Approvals', table: 'finance_approvals', alias: true },
-  finance_vendors: { page: 'Finance Vendors', table: 'finance_vendors', alias: true },
   finance_bill_items: { page: 'Finance Bill Items', table: 'finance_bill_items', alias: true },
   finance_bill_attachments: { page: 'Finance Bill Attachments', table: 'finance_bill_attachments', alias: true },
+
+  // Welfare Checks, Food Surveys & Room Checks
+  welfareChecks: { page: 'Welfare Checks', table: 'welfare_checks' },
+  welfare_checks: { page: 'Welfare Checks', table: 'welfare_checks', alias: true },
+  foodSurveys: { page: 'Food Survey Checks', table: 'food_surveys' },
+  food_surveys: { page: 'Food Survey Checks', table: 'food_surveys', alias: true },
+  foodMealRatings: { page: 'Food Meal Ratings', table: 'food_meal_ratings' },
+  food_meal_ratings: { page: 'Food Meal Ratings', table: 'food_meal_ratings', alias: true },
+  roomChecks: { page: 'Room Checks', table: 'room_checks' },
+  room_checks: { page: 'Room Checks', table: 'room_checks', alias: true },
+  roomCheckItems: { page: 'Room Check Items', table: 'room_check_items' },
+  room_check_items: { page: 'Room Check Items', table: 'room_check_items', alias: true },
 };
 
 /** Retained for callers that imported the old name. */
@@ -508,7 +519,7 @@ router.post('/migrate', requireRole(...ADMIN_ROLES), async (_req: Request, res: 
 
 // GET /api/db/migration-sql - the migration script, for the Supabase SQL editor
 // GET /api/db/finance-migration-sql - returns the complete finance module migration
-router.get('/finance-migration-sql', (_req: Request, res: Response) => {
+router.get('/finance-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
   const migPath = path.join(process.cwd(), 'db', 'migrations', '004_finance_module.sql');
   if (!fs.existsSync(migPath)) {
     return res.status(404).json({ success: false, error: 'Migration script db/migrations/004_finance_module.sql not found' });
@@ -518,10 +529,40 @@ router.get('/finance-migration-sql', (_req: Request, res: Response) => {
 });
 
 // GET /api/db/registers-migration-sql - returns the 6 new tables migration script
-router.get('/registers-migration-sql', (_req: Request, res: Response) => {
+router.get('/registers-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
   const migPath = path.join(process.cwd(), 'db', 'migrations', '007_ir_food_and_registers.sql');
   if (!fs.existsSync(migPath)) {
     return res.status(404).json({ success: false, error: 'Migration script db/migrations/007_ir_food_and_registers.sql not found' });
+  }
+  const sql = fs.readFileSync(migPath, 'utf8');
+  res.type('text/plain').send(sql);
+});
+
+// GET /api/db/ho-report-migration-sql - returns HO Report Generator migration script (009)
+router.get('/ho-report-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
+  const migPath = path.join(process.cwd(), 'db', 'migrations', '009_ho_report_generator.sql');
+  if (!fs.existsSync(migPath)) {
+    return res.status(404).json({ success: false, error: 'Migration script db/migrations/009_ho_report_generator.sql not found' });
+  }
+  const sql = fs.readFileSync(migPath, 'utf8');
+  res.type('text/plain').send(sql);
+});
+
+// GET /api/db/realtime-migration-sql - returns Supabase Realtime & REPLICA IDENTITY FULL script (010)
+router.get('/realtime-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
+  const migPath = path.join(process.cwd(), 'db', 'migrations', '010_supabase_realtime.sql');
+  if (!fs.existsSync(migPath)) {
+    return res.status(404).json({ success: false, error: 'Migration script db/migrations/010_supabase_realtime.sql not found' });
+  }
+  const sql = fs.readFileSync(migPath, 'utf8');
+  res.type('text/plain').send(sql);
+});
+
+// GET /api/db/checks-migration-sql - returns Welfare, Food & Room checks script (011)
+router.get('/checks-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
+  const migPath = path.join(process.cwd(), 'db', 'migrations', '011_welfare_food_room_checks.sql');
+  if (!fs.existsSync(migPath)) {
+    return res.status(404).json({ success: false, error: 'Migration script db/migrations/011_welfare_food_room_checks.sql not found' });
   }
   const sql = fs.readFileSync(migPath, 'utf8');
   res.type('text/plain').send(sql);
@@ -591,7 +632,12 @@ const UUID_PRIMARY_KEY_TABLES = new Set([
   'organizations',
   'vendor_invoices',
   'credit_card_bills',
-  'delivery_notes'
+  'delivery_notes',
+  'welfare_checks',
+  'food_surveys',
+  'food_meal_ratings',
+  'room_checks',
+  'room_check_items'
 ]);
 
 const VIEW_WRITE_TARGETS: Record<string, { table: string; defaultBillType?: string }> = {

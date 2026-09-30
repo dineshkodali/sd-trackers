@@ -8,7 +8,6 @@ async function runTests() {
   const page = await context.newPage();
 
   const testUrls = [
-    `file://${path.resolve('status.html')}`,
     `file://${path.resolve('status/index.html')}`
   ];
 

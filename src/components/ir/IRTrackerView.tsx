@@ -21,7 +21,6 @@ import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { ExportDropdown } from '../common/ExportDropdown';
-import { ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import {
   irExportColumns,
   calculateIRDateRangeCount,
@@ -193,124 +192,100 @@ export const IRTrackerView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
-              IR Tracker
-            </h1>
-            <span className="text-xs bg-teal-50 text-[#0d9488] font-semibold px-2 py-0.5 rounded-xs border border-teal-200">
-              {filteredRecords.length} Incident Reports
-            </span>
-          </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Log, track 1st/2nd review progression, and monitor CRH submission status for incident reports.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
-            <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-              title="Super Admin: Customize table columns, headers, and fields"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Customize Table</span>
-            </button>
-          )}
-
-          <ExportDropdown
-            moduleName="IR Tracker"
-            totalRecordCount={accessibleRecords.length}
-            filteredRecordCount={filteredRecords.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={(s, e) => calculateIRDateRangeCount(accessibleRecords, s, e)}
-            availableColumns={irExportColumns}
-            getPreviewData={(params) => getIRExportPreviewData({ ...params, accessibleRecords, sortedRecords })}
-            onExport={(params) => performIRExport({ ...params, accessibleRecords, sortedRecords })}
-            buttonVariant="toolbar"
-          />
-
-          {canCreateRecord() && (
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Log Incident Report</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Filters Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Site Filter */}
-          {canAccessAllSites() && (
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-[#605e5c]">Site:</span>
-              <select
-                value={siteFilter}
-                onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-                className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#0d9488]"
-              >
-                <option value="all">All Sites</option>
-                {availableSites.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <ClipboardList className="w-5 h-5" />
             </div>
-          )}
-
-          {/* CRH Submission Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c]">CRH Status:</span>
-            <select
-              value={crhFilter}
-              onChange={e => { setCrhFilter(e.target.value); setCurrentPage(1); }}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:outline-2 focus:outline-[#0d9488]"
-            >
-              <option value="all">All Statuses</option>
-              {['Pending', 'Submitted', 'Under Review', 'CRH Approved', 'CRH Rejected', 'Not Applicable'].map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">IR Tracker</h1>
+                <span className="text-xs bg-teal-50 text-[#0d9488] font-semibold px-2 py-0.5 rounded-xs border border-teal-200">
+                  {filteredRecords.length} Incident Reports
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Log, track 1st/2nd review progression, and monitor CRH submission status for incident reports.</p>
+            </div>
           </div>
 
-          {/* Reset button */}
-          {(siteFilter !== 'all' || crhFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                setSiteFilter('all');
-                setCrhFilter('all');
-                setSearchQuery('');
-                setCurrentPage(1);
-              }}
-              className="px-2 py-1 text-xs text-[#0d9488] hover:underline font-semibold"
-            >
-              Reset Filters
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentUserRole === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="IR Tracker"
+              totalRecordCount={accessibleRecords.length}
+              filteredRecordCount={filteredRecords.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={(s, e) => calculateIRDateRangeCount(accessibleRecords, s, e)}
+              availableColumns={irExportColumns}
+              getPreviewData={(params) => getIRExportPreviewData({ ...params, accessibleRecords, sortedRecords })}
+              onExport={(params) => performIRExport({ ...params, accessibleRecords, sortedRecords })}
+              buttonVariant="toolbar"
+            />
+
+            {canCreateRecord() && (
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Log Incident Report</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-72">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#605e5c]" />
-          <input
-            type="text"
-            placeholder="Search SU Name, Site, Port Ref, Summary..."
-            value={searchQuery}
-            onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full pl-8 pr-3 py-1.5 border border-[#8a8886] rounded-xs text-[#323130] text-xs bg-white focus:outline-2 focus:outline-[#0d9488]"
-          />
+        {/* Integrated Filter Row */}
+        <div className={`mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 ${canAccessAllSites() ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-2.5`}>
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search SU Name, Site, Port Ref, Summary..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
+
+          {canAccessAllSites() && (
+            <select
+              value={siteFilter}
+              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            >
+              <option value="all">All Sites</option>
+              {availableSites.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          )}
+
+          <select
+            value={crhFilter}
+            onChange={e => { setCrhFilter(e.target.value); setCurrentPage(1); }}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Statuses</option>
+            {['Pending', 'Submitted', 'Under Review', 'CRH Approved', 'CRH Rejected', 'Not Applicable'].map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
         </div>
       </div>
 
       {/* Main Table Panel */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse min-w-[1300px]">
             <thead>

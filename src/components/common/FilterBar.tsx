@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RotateCcw, Download, Filter, Lock, FileText, FileSpreadsheet, ChevronDown, LayoutGrid, List } from 'lucide-react';
+import { RotateCcw, Download, Lock, FileText, FileSpreadsheet, ChevronDown, LayoutGrid, List } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SearchInput } from './SearchInput';
 

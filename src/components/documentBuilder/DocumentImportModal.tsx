@@ -10,15 +10,11 @@ import React, { useState, useRef } from 'react';
 import {
   X,
   UploadCloud,
-  FileText,
   FileCheck,
   Loader2,
-  CheckCircle2,
-  AlertCircle,
   Eye,
   Sliders,
   Sparkles,
-  Layers,
 } from 'lucide-react';
 import type {
   TemplateWithVersion,

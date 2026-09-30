@@ -12,7 +12,6 @@ import {
   Search,
   CheckCircle2,
   Lock,
-  Unlock,
   SlidersHorizontal,
   FileText,
   Building2,

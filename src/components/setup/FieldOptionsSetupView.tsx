@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { CustomFieldOption, FieldOptionCategory } from '../../types';
-import { FIELD_CATEGORIES_META, CategoryMeta } from '../../data/defaultFieldOptions';
+import { FIELD_CATEGORIES_META } from '../../data/defaultFieldOptions';
 
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string; dot: string; label: string }> = {
   blue: { bg: 'bg-teal-50', text: 'text-teal-800', border: 'border-teal-200', dot: 'bg-teal-500', label: 'Sky Blue' },

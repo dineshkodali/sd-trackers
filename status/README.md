@@ -36,11 +36,11 @@ Instead of vertically stacked sections spanning thousands of pixels, the dashboa
 
 ## 2. How to Open
 
-- **Direct in Browser**: Double-click `status.html` or `status/index.html` to open directly via `file://`.
+- **Direct in Browser**: Open `status/index.html` directly via `file://`.
 - **Via Express Server**:
   ```bash
   npm run dev
-  # Navigate to http://localhost:3020/status.html or http://localhost:3020/status/
+  # Navigate to http://localhost:3020/status/
   ```
 
 ---

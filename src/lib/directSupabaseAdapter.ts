@@ -97,7 +97,17 @@ export const ENTITY_TABLE_MAP: Record<string, EntityMapping> = {
   financeBillStatusHistory: { table: 'finance_bill_status_history' },
   finance_bill_status_history: { table: 'finance_bill_status_history' },
   financeWorkflowEvents: { table: 'finance_workflow_events' },
-  finance_workflow_events: { table: 'finance_workflow_events' }
+  finance_workflow_events: { table: 'finance_workflow_events' },
+  welfareChecks: { table: 'welfare_checks' },
+  welfare_checks: { table: 'welfare_checks' },
+  foodSurveys: { table: 'food_surveys' },
+  food_surveys: { table: 'food_surveys' },
+  foodMealRatings: { table: 'food_meal_ratings' },
+  food_meal_ratings: { table: 'food_meal_ratings' },
+  roomChecks: { table: 'room_checks' },
+  room_checks: { table: 'room_checks' },
+  roomCheckItems: { table: 'room_check_items' },
+  room_check_items: { table: 'room_check_items' }
 };
 
 function ensureId(entity: string, record: any): any {

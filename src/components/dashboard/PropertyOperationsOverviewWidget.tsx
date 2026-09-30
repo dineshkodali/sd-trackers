@@ -1,22 +1,15 @@
 import React, { useState } from 'react';
 import { 
   Shirt, 
-  Soup, 
-  UtensilsCrossed, 
-  Truck, 
-  Plus, 
   AlertTriangle, 
   CheckCircle2, 
-  ChevronRight, 
   ArrowUpRight, 
   Flame, 
-  Calendar,
-  Building2,
-  Layers,
-  ChevronDown
+  Building2, 
+  Layers
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { FoodVendorName, FoodBuffetItemBreakdown } from '../../types';
+import { FoodBuffetItemBreakdown } from '../../types';
 
 interface PropertyOperationsOverviewWidgetProps {
   onNavigate: (page: string) => void;
@@ -28,9 +21,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
   const { 
     propertyLaundryLogs, 
     foodVendorBuffetLogs, 
-    foodVendorsList, 
-    properties, 
-    sites 
+    foodVendorsList 
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'laundry' | 'food'>('laundry');

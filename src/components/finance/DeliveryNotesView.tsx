@@ -457,113 +457,142 @@ export const DeliveryNotesView: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full animate-fade-in">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xs border border-[#e1dfdd] shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <Truck className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-xl font-bold text-[#242424] tracking-tight">
-              Delivery Notes & Goods Receipt
-            </h1>
-            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
-              {filteredBills.length} Delivery Records
-            </span>
+      {/* Top Banner, Header, Actions, Tabs & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <Truck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Delivery Notes &amp; Goods Receipt</h1>
+                <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                  {filteredBills.length} Delivery Records
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Site proof of delivery, delivery note documentation, and delivery-to-invoice matching proof.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Site proof of delivery, delivery note documentation, and delivery-to-invoice matching proof.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {(authProfile?.role || currentUserRole) === 'Super Admin' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {(authProfile?.role || currentUserRole) === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors cursor-pointer"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="Delivery Notes Register"
+              totalRecordCount={bills.length}
+              filteredRecordCount={filteredBills.length}
+              defaultOrientation="landscape"
+              availableColumns={deliveryNoteExportColumns}
+              onExport={handlePerformExport}
+              buttonVariant="toolbar"
+            />
+
             <button
               type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
-              title="Super Admin: Customize table columns, headers, and fields"
+              onClick={() => setIsSupplierModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-[#0d9488] border border-[#0d9488]/40 rounded-xs shadow-2xs transition-colors cursor-pointer"
+              title="Manage delivery note and goods suppliers"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
+              <Truck className="w-3.5 h-3.5" />
+              <span>Manage Suppliers</span>
             </button>
-          )}
 
-          <ExportDropdown
-            moduleName="Delivery Notes Register"
-            totalRecordCount={bills.length}
-            filteredRecordCount={filteredBills.length}
-            defaultOrientation="landscape"
-            availableColumns={deliveryNoteExportColumns}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          <button
-            type="button"
-            onClick={() => setIsSupplierModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#0d9488] border border-[#0d9488]/40 rounded-xs shadow-xs transition-colors cursor-pointer"
-            title="Manage delivery note and goods suppliers"
-          >
-            <Truck className="w-3.5 h-3.5" />
-            <span>Manage Suppliers</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setBillToEdit(null);
-              setIsBillModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Log Delivery Note</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          {/* Site / Property Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Delivery Site:</span>
-            <select
-              value={siteFilter}
-              onChange={e => {
-                setSiteFilter(e.target.value);
-                setCurrentPage(1);
+            <button
+              onClick={() => {
+                setBillToEdit(null);
+                setIsBillModalOpen(true);
               }}
-              disabled={!canAccessAllSites()}
-              className={`p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[160px] ${
-                !canAccessAllSites() ? 'bg-[#f3f2f1] cursor-not-allowed text-[#605e5c]' : ''
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-2xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Log Delivery Note</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Approval Status Tab Switcher */}
+        <div className="mt-3.5 flex items-center gap-1.5 border-b border-[#f0f0f0] pb-2.5 overflow-x-auto text-xs">
+          {[
+            { id: 'all', label: 'All Deliveries', count: vendorScopedBills.length },
+            { id: 'awaiting_approval', label: 'Pending Approval', count: vendorScopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
+            { id: 'approved', label: 'Verified & Approved', count: vendorScopedBills.filter(b => b.status === 'approved').length },
+            { id: 'paid', label: 'Invoiced / Paid', count: vendorScopedBills.filter(b => b.status === 'paid').length },
+            { id: 'queries', label: 'Queries / Rejected', count: vendorScopedBills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusTabFilter(tab.id as any)}
+              className={`px-2.5 py-1 rounded-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                statusTabFilter === tab.id
+                  ? 'bg-[#0d9488] text-white shadow-2xs'
+                  : 'bg-[#fbfbfa] text-neutral-600 hover:bg-neutral-100 hover:text-[#242424] border border-[#e5e5e5]'
               }`}
             >
-              {canAccessAllSites() && <option value="all">All Properties</option>}
-              {allowedSites.map((s, idx) => (
-                <option key={`${s}-${idx}`} value={s}>{s}</option>
-              ))}
-            </select>
+              <span>{tab.label}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                statusTabFilter === tab.id ? 'bg-white/20 text-white' : 'bg-neutral-200 text-neutral-700'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Integrated Filter Row */}
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Search note #, supplier, PO..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            />
           </div>
 
-          {/* Supplier Filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Supplier:</span>
-            <select
-              value={vendorFilter}
-              onChange={e => {
-                setVendorFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[170px]"
-            >
-              <option value="all">All Suppliers ({availableVendors.length})</option>
-              {availableVendors.map((name, idx) => (
-                <option key={`${name}-${idx}`} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={siteFilter}
+            onChange={e => {
+              setSiteFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            disabled={!canAccessAllSites()}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
+          >
+            {canAccessAllSites() && <option value="all">All Properties</option>}
+            {allowedSites.map((s, idx) => (
+              <option key={`${s}-${idx}`} value={s}>{s}</option>
+            ))}
+          </select>
 
-          {/* Status Filter */}
-          <div className="min-w-[190px]">
+          <select
+            value={vendorFilter}
+            onChange={e => {
+              setVendorFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Suppliers ({availableVendors.length})</option>
+            {availableVendors.map((name, idx) => (
+              <option key={`${name}-${idx}`} value={name}>{name}</option>
+            ))}
+          </select>
+
+          <div>
             <ManageableSelect
               label="Verification"
               value={statusFilter === 'all' ? '' : statusFilter}
@@ -576,68 +605,11 @@ export const DeliveryNotesView: React.FC = () => {
               compact
             />
           </div>
-
-          {/* Search Input */}
-          <div className="relative min-w-[160px] flex-1 max-w-[240px]">
-            <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-[#605e5c]" />
-            <input
-              type="text"
-              placeholder="Search note #, supplier, PO..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-7 pr-2 py-1 border border-[#8a8886] rounded-xs text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
-            />
-          </div>
-
-          {(siteFilter !== 'all' || vendorFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                if (canAccessAllSites()) setSiteFilter('all');
-                setVendorFilter('all');
-                setStatusFilter('all');
-                setSearchQuery('');
-                setCurrentPage(1);
-              }}
-              className="flex items-center gap-1 text-[11px] text-[#605e5c] hover:text-[#242424] cursor-pointer"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Reset</span>
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Approval Status Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-[#edebe9] pb-1 overflow-x-auto text-xs">
-        {[
-          { id: 'all', label: 'All Deliveries', count: vendorScopedBills.length },
-          { id: 'awaiting_approval', label: 'Pending Approval', count: vendorScopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length },
-          { id: 'approved', label: 'Verified & Approved', count: vendorScopedBills.filter(b => b.status === 'approved').length },
-          { id: 'paid', label: 'Invoiced / Paid', count: vendorScopedBills.filter(b => b.status === 'paid').length },
-          { id: 'queries', label: 'Queries / Rejected', count: vendorScopedBills.filter(b => b.status === 'rejected' || (b.status as any) === 'query_raised').length }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setStatusTabFilter(tab.id as any)}
-            className={`px-3 py-1.5 rounded-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              statusTabFilter === tab.id
-                ? 'bg-[#0d9488] text-white shadow-xs'
-                : 'bg-white text-[#605e5c] hover:bg-[#f3f2f1] hover:text-[#242424] border border-[#e1dfdd]'
-            }`}
-          >
-            <span>{tab.label}</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-              statusTabFilter === tab.id ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-600'
-            }`}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
-      </div>
-
       {/* Main Data Table */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden flex flex-col justify-between min-h-[560px] lg:min-h-[calc(100vh-270px)]">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[560px] lg:min-h-[calc(100vh-270px)]">
         <div className="overflow-x-auto flex-1 overflow-y-auto">
           <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
             <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap sticky top-0 z-20 shadow-xs">

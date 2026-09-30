@@ -6,23 +6,16 @@ import {
   Archive,
   RotateCcw,
   Trash2,
-  X,
-  Download,
-  AlertCircle,
-  CheckCircle2,
-  FileSpreadsheet,
-  FileText,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Lock,
-  SlidersHorizontal
+  SlidersHorizontal,
+  FolderHeart,
+  Search
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { SGReferral, StatusType, RiskLevel, RecordAttachment } from '../../types';
-import { FilterBar } from '../common/FilterBar';
+import { SGReferral, StatusType } from '../../types';
 import { Pagination } from '../common/Pagination';
-import { AttachmentsSection } from '../common/AttachmentsSection';
 import { CompactRecordCard, CompactRecordList } from '../common/CompactRecordCards';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
@@ -72,7 +65,6 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     canEditRecord,
     canCreateRecord,
     canAccessAllSites,
-    canManageFiles,
     assignedSite,
     currentUserRole,
     currentUserName,
@@ -87,10 +79,6 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
 
-  const referralTypeOptions = useMemo(() => getFieldOptions('referralTypes'), [getFieldOptions]);
-  const referralMethodOptions = useMemo(() => getFieldOptions('referralMethods'), [getFieldOptions]);
-  const councilOptions = useMemo(() => getFieldOptions('councils'), [getFieldOptions]);
-  const urgencyOptions = useMemo(() => getFieldOptions('riskLevels'), [getFieldOptions]);
   const referralStatusOptions = useMemo(() => getFieldOptions('referralStatuses'), [getFieldOptions]);
 
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
@@ -130,31 +118,6 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
   const [editingRecord, setEditingRecord] = useState<SGReferral | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [exportModalFormat, setExportModalFormat] = useState<ExportFormat>('pdf');
-
-  // New Record Form State
-  const initialFormData = {
-    site: allowedSites[0] || 'Hotel A',
-    referralCouncil: 'Westminster City Council',
-    suName: '',
-    mosaicId: '',
-    portRef: '',
-    dob: '',
-    raisedBy: loggedInUserName,
-    officerLeadingHotel: loggedInUserName,
-    referralType: 'Safeguarding Adult' as SGReferral['referralType'],
-    status: 'Open' as StatusType,
-    dateReferred: new Date().toISOString().slice(0, 10),
-    methodOfReferral: 'Mosaic Portal' as SGReferral['methodOfReferral'],
-    acknowledgementReceived: 'Yes' as SGReferral['acknowledgementReceived'],
-    responseReceivedFromLA: 'Awaiting Allocation' as SGReferral['responseReceivedFromLA'],
-    laOfficerLeading: '',
-    notesActionTaken: '',
-    sgReview: '',
-    urgency: 'Medium' as RiskLevel,
-    attachments: [] as RecordAttachment[]
-  };
-
-  const [formData, setFormData] = useState(initialFormData);
 
   // All matching dataset before pagination
   const allDataset = useMemo(() => {
@@ -339,38 +302,6 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     }
   };
 
-  const handleSubmitNew = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.suName.trim()) {
-      alert('Please enter Service User (SU) name.');
-      return;
-    }
-    const currentOfficer = formData.raisedBy || formData.officerLeadingHotel || loggedInUserName;
-    addReferral({
-      ...formData,
-      raisedBy: currentOfficer,
-      officerLeadingHotel: currentOfficer
-    });
-    setIsCreateModalOpen(false);
-    setFormData({
-      ...initialFormData,
-      raisedBy: loggedInUserName,
-      officerLeadingHotel: loggedInUserName
-    });
-  };
-
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingRecord) return;
-    const currentOfficer = editingRecord.raisedBy || editingRecord.officerLeadingHotel || loggedInUserName;
-    updateReferral(editingRecord.id, {
-      ...editingRecord,
-      raisedBy: currentOfficer,
-      officerLeadingHotel: currentOfficer
-    });
-    setEditingRecord(null);
-  };
-
   const renderColumnCell = (col: TableColumnConfig<SGReferral>, r: SGReferral) => {
     const val = (r as any)[col.key];
 
@@ -504,97 +435,148 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
 
   return (
     <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <h2 className="text-2xl font-semibold text-[#242424] tracking-tight">
-            {isArchive ? 'Archived SG Referrals' : 'SG Referrals'}
-          </h2>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            {isArchive
-              ? 'Safeguarding referrals that have concluded or been archived.'
-              : 'Track multi-agency safeguarding referrals and local authority council outcomes.'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Active / Archive Subnav buttons */}
-          <div className="bg-[#edebe9] p-0.5 rounded-xs flex items-center text-xs">
-            <button
-              onClick={() => setActivePage('referrals')}
-              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${!isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
-                }`}
-            >
-              Active Referrals
-            </button>
-            <button
-              onClick={() => setActivePage('referralsArchive')}
-              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
-                }`}
-            >
-              Archive
-            </button>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <FolderHeart className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">
+                  {isArchive ? 'Archived SG Referrals' : 'Safeguarding Referrals'}
+                </h1>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-xs bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4]">
+                  {sortedData.length} Cases
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">
+                {isArchive
+                  ? 'Safeguarding referrals that have concluded or been archived.'
+                  : 'Track multi-agency safeguarding referrals and local authority council outcomes.'}
+              </p>
+            </div>
           </div>
 
-          {/* Super Admin Table Customizer Button */}
-          {currentUserRole === 'Super Admin' && (
-            <button
-              id="btn-customize-referrals-table"
-              onClick={() => setIsSchemaEditorOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-neutral-300 rounded-xs shadow-xs transition-colors cursor-pointer"
-              title="Configure Table Headers & Form Fields (Super Admin Only)"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Customize Table</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Active / Archive Subnav buttons */}
+            <div className="bg-[#edebe9] p-0.5 rounded-xs flex items-center text-xs">
+              <button
+                onClick={() => setActivePage('referrals')}
+                className={`px-3 py-1.5 rounded-xs font-semibold transition-colors cursor-pointer ${
+                  !isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                Active Referrals
+              </button>
+              <button
+                onClick={() => setActivePage('referralsArchive')}
+                className={`px-3 py-1.5 rounded-xs font-semibold transition-colors cursor-pointer ${
+                  isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                Archive
+              </button>
+            </div>
 
-          {!isArchive && canCreateRecord() && (
-            <button
-              id="btn-new-referral"
-              onClick={() => {
-                setFormData({ ...initialFormData, site: allowedSites[0] || 'Hotel A' });
-                setIsCreateModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ New Record</span>
-            </button>
-          )}
+            {/* Super Admin Table Customizer Button */}
+            {currentUserRole === 'Super Admin' && (
+              <button
+                id="btn-customize-referrals-table"
+                onClick={() => setIsSchemaEditorOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Configure Table Headers & Form Fields (Super Admin Only)"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+                <span>Customize Table</span>
+              </button>
+            )}
 
-          <ExportDropdown
-            moduleName={isArchive ? "Archived Referrals" : "SG Referrals"}
-            totalRecordCount={allDataset.length}
-            filteredRecordCount={sortedData.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={referralExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-          />
+            <ExportDropdown
+              moduleName={isArchive ? "Archived Referrals" : "SG Referrals"}
+              totalRecordCount={allDataset.length}
+              filteredRecordCount={sortedData.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={referralExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+            />
+
+            {!isArchive && canCreateRecord() && (
+              <button
+                id="btn-new-referral"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-medium rounded-xs transition-colors shadow-2xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ New Record</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Bar integrated into the same card */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search referrals, SU name, council..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-8 pr-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
+
+          <div>
+            <select
+              value={siteFilter}
+              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
+              disabled={!canAccessAllSites()}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              {canAccessAllSites() && <option value="all">All Properties / Sites ({allowedSites.length})</option>}
+              {allowedSites.map((s, idx) => (
+                <option key={`${s}-${idx}`} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={monthFilter}
+              onChange={e => { setMonthFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              <option value="all">All Months</option>
+              <option value="2026-06">June 2026</option>
+              <option value="2026-05">May 2026</option>
+              <option value="2026-04">April 2026</option>
+              <option value="2026-03">March 2026</option>
+              <option value="2026-02">February 2026</option>
+              <option value="2026-01">January 2026</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={statusFilter}
+              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              <option value="all">All Statuses</option>
+              {referralStatusOptions.map(opt => (
+                <option key={opt.id} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <FilterBar
-        siteFilter={siteFilter}
-        setSiteFilter={setSiteFilter}
-        monthFilter={monthFilter}
-        setMonthFilter={setMonthFilter}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onReset={handleResetFilters}
-        onOpenExport={handleOpenExportModal}
-        totalFilteredCount={sortedData.length}
-        searchStorageKey="referrals_search"
-        statusOptions={referralStatusOptions}
-      />
-
-      {/* Main Table Panel with persistent bottom-stretching height */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      {/* Main Table in a SEPARATE card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         {isMobileCompactView ? (
           <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
             <CompactRecordList

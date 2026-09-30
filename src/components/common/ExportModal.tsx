@@ -15,11 +15,8 @@ import {
   Eye,
   Settings2,
   Table,
-  Sliders,
-  Compass,
   ArrowRight,
-  CheckCircle2,
-  AlertCircle
+  CheckCircle2
 } from 'lucide-react';
 
 export type ExportFormat = 'pdf' | 'csv';

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   ShieldAlert, 
-  KeyRound, 
   Clock, 
   ArrowLeft, 
   RotateCw, 
@@ -10,11 +9,8 @@ import {
   CheckCircle2, 
   Mail, 
   Copy, 
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  XCircle,
-  FileText
+  ChevronDown, 
+  ChevronUp
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { diagnosticLogger, DiagnosticEvent } from '../../utils/diagnosticLogger';

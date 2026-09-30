@@ -10,8 +10,6 @@ import {
   Search, 
   X, 
   Shirt, 
-  RotateCcw, 
-  CalendarDays,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -167,7 +165,6 @@ export const PropertyLaundryLogSection: React.FC = () => {
 
   // Dynamic laundry options from Field Options Setup
   const laundryPeriodTypeOptions = React.useMemo(() => getFieldOptions('laundryPeriodTypes', false), [getFieldOptions]);
-  const discrepancyStatusOptions = React.useMemo(() => getFieldOptions('discrepancyStatuses', false), [getFieldOptions]);
   const userAssignedHotel = useMemo(() => {
     if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
       return assignedSite;
@@ -423,14 +420,6 @@ export const PropertyLaundryLogSection: React.FC = () => {
     return Array.from(map.values()).sort((a, b) => b.start.localeCompare(a.start));
   }, [propertyLaundryLogs, todayBounds, initialWeeklyPeriod]);
 
-  // Week Switcher navigation helpers
-  const handleMoveWeek = (direction: 'prev' | 'next') => {
-    let currentStart = activeWeekCursor === 'all' ? todayBounds.start : activeWeekCursor;
-    const offset = direction === 'prev' ? -7 : 7;
-    const newStart = addDays(currentStart, offset);
-    setActiveWeekCursor(newStart);
-  };
-
   const activeWeekInfo = useMemo(() => {
     if (activeWeekCursor === 'all') return null;
     const bounds = getWeekBounds(activeWeekCursor);
@@ -608,7 +597,6 @@ export const PropertyLaundryLogSection: React.FC = () => {
     return String(value);
   };
 
-  const totalPages = Math.ceil(sortedData.length / pageSize) || 1;
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return sortedData.slice(start, start + pageSize);
@@ -793,181 +781,156 @@ export const PropertyLaundryLogSection: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <Shirt className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">
-              Property Laundry Register
-            </h1>
-            <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
-              {sortedData.length} Laundry Logs
-            </span>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <Shirt className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Property Laundry Register</h1>
+                <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                  {sortedData.length} Laundry Logs
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Dirty laundry dispatched, clean laundry returned, reconciliation variance, and discrepancy tracking.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Dirty laundry dispatched, clean laundry returned, reconciliation variance, and discrepancy tracking.
-          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentUserRole === 'Super Admin' && (
+              <button
+                type="button"
+                onClick={() => setIsSchemaModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors"
+                title="Super Admin: Customize table columns, headers, and fields"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <span>Customize Table</span>
+              </button>
+            )}
+
+            <ExportDropdown
+              moduleName="Property Laundry Register"
+              totalRecordCount={propertyLaundryLogs.length}
+              filteredRecordCount={sortedData.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={propertyLaundryExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+              buttonVariant="toolbar"
+            />
+
+            {canCreateRecord() && (
+              <button
+                onClick={() => {
+                  setEditingLog(null);
+                  const bounds = todayBounds;
+                  const wk = formatPeriodFromDates(bounds.start, bounds.end, 'Weekly');
+                  const effectiveSite = !canAccessAllSites()
+                    ? userAssignedHotel
+                    : (siteFilter !== 'all' ? siteFilter : (userAssignedHotel || allowedSites[0] || ''));
+                  setFormData({ 
+                    ...initialFormData, 
+                    site: effectiveSite,
+                    periodType: 'Weekly',
+                    startDate: bounds.start,
+                    endDate: bounds.end,
+                    periodLabel: wk.periodLabel,
+                    loggedBy: defaultAuditor
+                  });
+                  setIsCreateModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Log Laundry Batch</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {currentUserRole === 'Super Admin' && (
-            <button
-              type="button"
-              onClick={() => setIsSchemaModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors"
-              title="Super Admin: Customize table columns, headers, and fields"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
-              <span>Customize Table</span>
-            </button>
-          )}
-
-          {/* Custom Export Dropdown & Modal */}
-          <ExportDropdown
-            moduleName="Property Laundry Register"
-            totalRecordCount={propertyLaundryLogs.length}
-            filteredRecordCount={sortedData.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={propertyLaundryExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-            buttonVariant="toolbar"
-          />
-
-          {canCreateRecord() && (
-            <button
-              onClick={() => {
-                setEditingLog(null);
-                const bounds = todayBounds;
-                const wk = formatPeriodFromDates(bounds.start, bounds.end, 'Weekly');
-                const effectiveSite = !canAccessAllSites()
-                  ? userAssignedHotel
-                  : (siteFilter !== 'all' ? siteFilter : (userAssignedHotel || allowedSites[0] || ''));
-                setFormData({ 
-                  ...initialFormData, 
-                  site: effectiveSite,
-                  periodType: 'Weekly',
-                  startDate: bounds.start,
-                  endDate: bounds.end,
-                  periodLabel: wk.periodLabel,
-                  loggedBy: defaultAuditor
-                });
-                setIsCreateModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Log Laundry Batch</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-          {/* Hotel / Property */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Hotel / Property:</span>
-            <select
-              value={siteFilter}
-              onChange={e => setSiteFilter(e.target.value)}
-              disabled={!canAccessAllSites()}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs max-w-[160px]"
-            >
-              {canAccessAllSites() && <option value="all">All Properties</option>}
-              {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          {/* Log Type */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Log Type:</span>
-            <select
-              value={periodTypeFilter}
-              onChange={e => setPeriodTypeFilter(e.target.value as any)}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
-            >
-              <option value="all">All Logs</option>
-              {laundryPeriodTypeOptions.length > 0
-                ? laundryPeriodTypeOptions.map(o => <option key={o.id} value={o.value || o.label}>{o.label}</option>)
-                : [{ v: 'Weekly', l: 'Weekly Logs' }, { v: 'Monthly', l: 'Monthly Logs' }].map(o => <option key={o.v} value={o.v}>{o.l}</option>)
-              }
-            </select>
-          </div>
-
-          {/* Discrepancy Status */}
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-[#605e5c] whitespace-nowrap">Discrepancy:</span>
-            <select
-              value={discrepancyFilter}
-              onChange={e => setDiscrepancyFilter(e.target.value as any)}
-              className="p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
-            >
-              <option value="all">All Statuses</option>
-              <option value="flagged">Discrepancy Flagged</option>
-              <option value="reconciled">100% Reconciled</option>
-            </select>
-          </div>
-
-          {/* Search Input */}
-          <div className="relative min-w-[130px] flex-1 max-w-[200px]">
-            <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-[#605e5c]" />
+        {/* Integrated Filter Row */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
-              placeholder="Search laundry..."
+              placeholder="Search laundry logs..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-7 pr-2 py-1 border border-[#8a8886] rounded-xs text-xs bg-white focus:outline-2 focus:outline-[#71afe5]"
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             />
           </div>
-        </div>
 
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="text-xs text-[#0d9488] hover:underline font-semibold"
+          <select
+            value={siteFilter}
+            onChange={e => setSiteFilter(e.target.value)}
+            disabled={!canAccessAllSites()}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
           >
-            Clear Search
-          </button>
-        )}
-      </div>
+            {canAccessAllSites() && <option value="all">All Properties</option>}
+            {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
+          </select>
 
-      {/* Table Controls Header with Integrated Week Switcher */}
-      <div className="bg-[#f3f8fd] border border-[#5eead4] p-2 rounded-xs flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-2xs">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 bg-[#0d9488] text-white font-bold text-xs rounded-xs shadow-2xs">
-            Laundry Register
-          </span>
-          <div className="flex items-center gap-1.5 font-bold text-sm text-[#0f766e]">
-            <Building2 className="w-4 h-4 text-[#0d9488]" />
-            <span>{siteFilter === 'all' ? 'All Contracted Properties' : siteFilter}</span>
-          </div>
-        </div>
+          <select
+            value={periodTypeFilter}
+            onChange={e => setPeriodTypeFilter(e.target.value as any)}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Log Types</option>
+            {laundryPeriodTypeOptions.length > 0
+              ? laundryPeriodTypeOptions.map(o => <option key={o.id} value={o.value || o.label}>{o.label}</option>)
+              : [{ v: 'Weekly', l: 'Weekly Logs' }, { v: 'Monthly', l: 'Monthly Logs' }].map(o => <option key={o.v} value={o.v}>{o.l}</option>)
+            }
+          </select>
 
-        {/* Week Switcher right in Table Header */}
-        <div className="flex items-center gap-1.5">
-          <span className="font-bold text-[#0f766e] whitespace-nowrap">Week Range:</span>
-          <WeekSwitcher
-            startDate={activeWeekBounds.start}
-            endDate={activeWeekBounds.end}
-            activeWeekCursor={activeWeekCursor}
-            onCursorChange={setActiveWeekCursor}
-            onWeekChange={(s) => {
-              setActiveWeekCursor(s);
-            }}
-            availableWeeks={uniqueWeeksInLogs}
-            allowAllOption={false}
-            compact={true}
-          />
+          <select
+            value={discrepancyFilter}
+            onChange={e => setDiscrepancyFilter(e.target.value as any)}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Discrepancies</option>
+            <option value="flagged">Discrepancy Flagged</option>
+            <option value="reconciled">100% Reconciled</option>
+          </select>
         </div>
       </div>
 
       {/* Main Table Model */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
+        {/* Table Subheader with Week Switcher */}
+        <div className="bg-[#fcfcfc] border-b border-[#e5e5e5] px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 bg-[#0d9488] text-white font-bold text-xs rounded-xs shadow-2xs">
+              Scope
+            </span>
+            <div className="flex items-center gap-1.5 font-bold text-xs text-[#0f766e]">
+              <Building2 className="w-3.5 h-3.5 text-[#0d9488]" />
+              <span>{siteFilter === 'all' ? 'All Contracted Properties' : siteFilter}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-neutral-600 whitespace-nowrap">Week Range:</span>
+            <WeekSwitcher
+              startDate={activeWeekBounds.start}
+              endDate={activeWeekBounds.end}
+              activeWeekCursor={activeWeekCursor}
+              onCursorChange={setActiveWeekCursor}
+              onWeekChange={(s) => {
+                setActiveWeekCursor(s);
+              }}
+              availableWeeks={uniqueWeeksInLogs}
+              allowAllOption={false}
+              compact={true}
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-[#f3f2f1] text-[#242424] font-semibold border-b border-[#edebe9] select-none whitespace-nowrap">
               <tr>
@@ -992,7 +955,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                     </th>
                   );
                 })}
-                <th className="py-2.5 px-3 text-center w-24">Actions</th>
+                <th className="py-2.5 px-3 text-center w-24 sticky right-0 bg-[#f3f2f1] shadow-[-2px_0_4px_rgba(0,0,0,0.06)] z-10 select-none">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9]">
@@ -1004,7 +967,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                 </tr>
               ) : (
                 paginatedData.map(log => (
-                  <tr key={log.id} className="hover:bg-[#faf9f8] transition-colors">
+                  <tr key={log.id} className="group hover:bg-[#faf9f8] transition-colors">
                     {visibleColumns.map(col => (
                       <td 
                         key={String(col.key)} 
@@ -1013,7 +976,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                         {renderColumnCell(col, log)}
                       </td>
                     ))}
-                    <td className="py-3 px-3 text-center">
+                    <td className="py-3 px-3 text-center sticky right-0 bg-white group-hover:bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.06)] z-10">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => setViewRecord(log)}
@@ -1055,7 +1018,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
 
         {/* Pagination */}
         {sortedData.length > 0 && (
-          <div className="p-3 border-t border-[#edebe9]">
+          <div className="p-3 border-t border-[#edebe9] shrink-0">
             <Pagination
               currentPage={currentPage}
               totalItems={sortedData.length}

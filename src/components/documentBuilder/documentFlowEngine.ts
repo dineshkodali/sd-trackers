@@ -95,19 +95,8 @@ export interface ComputedPage {
   blocks: PageBlock[];
 }
 
-// Pixel dimensions on A4 at standard preview scale (595px x 842px)
-const A4_HEIGHT = 842;
-const TOP_PADDING_FIRST = 32;
-const TOP_PADDING_OTHER = 24;
-const BOTTOM_PADDING = 30;
-const HEADER_HEIGHT_FIRST = 110; // Ready Homes logo + title + instructions + spacing
-const RUNNING_HEADER_HEIGHT = 32; // Page 2+ running header
-const FOOTER_HEIGHT = 65; // Clearsprings logo + registered address + safety padding
-
-// Real usable table space:
-// Page 1: 842 - 32 - 30 - 110 - 65 = 605px; with safety padding for aesthetic breathing room = 510px
+// Usable content height for A4 pagination calculations
 const USABLE_HEIGHT_PAGE_1 = 510;
-// Page 2+: 842 - 24 - 30 - 32 - 65 = 691px; with safety padding = 660px
 const USABLE_HEIGHT_PAGE_N = 660;
 
 /**
@@ -321,19 +310,6 @@ export function normalizeIncidentData(
   };
 }
 
-/**
- * Calculates line height estimation for text blocks
- */
-function estimateTextLinesHeight(lines: string[], minHeight = 44): number {
-  if (!lines || lines.length === 0) return minHeight;
-  let totalLines = 0;
-  for (const line of lines) {
-    // approx 60 characters per line in table column width
-    const wrapped = Math.max(1, Math.ceil(line.length / 58));
-    totalLines += wrapped;
-  }
-  return Math.max(minHeight, totalLines * 16 + 12);
-}
 
 /**
  * Core flow calculation: distributes all document components across A4 pages

@@ -11,9 +11,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  FileText,
   FilePlus,
-  Download,
   Save,
   RotateCcw,
   Loader2,
@@ -21,10 +19,6 @@ import {
   AlertCircle,
   Plus,
   UploadCloud,
-  History,
-  Layers,
-  Sparkles,
-  GripVertical,
   Sliders,
   ArrowLeft,
   UserCheck,

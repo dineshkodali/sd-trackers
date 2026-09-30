@@ -12,7 +12,6 @@ import {
   Edit2,
   Trash2,
   X,
-  Hotel,
   UserPlus,
   ArrowUpDown,
   ArrowUp,
@@ -61,7 +60,7 @@ export const UsersView: React.FC = () => {
     'Staff',
     'Employee'
   ]);
-  const [groupStatusFilter, setGroupStatusFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [groupStatusFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
 
   // Supabase Users list
   const displayedUsers = useMemo(() => {
@@ -522,24 +521,30 @@ export const UsersView: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
-      {/* View Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#0d9488]" />
-            <h1 className="text-2xl font-semibold text-[#242424] tracking-tight">Staff Accounts &amp; Role Assignments</h1>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4]">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Directory Managed</span>
-            </span>
+    <div className="space-y-4 w-full animate-fade-in">
+      {/* Top Header Card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-teal-700 rounded-xs">
+              <Users className="w-5 h-5 text-teal-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Staff Accounts & Role Assignments</h1>
+                <span className="text-[11px] font-semibold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">
+                  {displayedUsers.length}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[10px] font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4]">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Directory Managed</span>
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500 mt-0.5">User logins and credentials are authenticated securely. Assign operational roles and hotel property access below.</p>
+            </div>
           </div>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            User logins and credentials are authenticated securely. Assign operational roles and hotel property access below.
-          </p>
-        </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
             {hasAdminAuthority && (
               <button
                 onClick={() => {
@@ -547,18 +552,18 @@ export const UsersView: React.FC = () => {
                   setCreateSuccessNotice(null);
                   setIsAddUserModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-2xs transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                 title="Create a new staff user account"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>Add User</span>
+                <span>+ Add User</span>
               </button>
             )}
 
             <button
               onClick={handleRefreshSupabase}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs text-xs font-semibold shadow-2xs transition-colors disabled:opacity-60"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs text-xs font-semibold shadow-xs transition-colors disabled:opacity-60 cursor-pointer"
               title="Pull latest users and permissions from live database"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#0d9488] ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -573,84 +578,73 @@ export const UsersView: React.FC = () => {
               availableColumns={usersExportColumns}
               getPreviewData={getExportPreviewData}
               onExport={handlePerformExport}
-              buttonVariant="toolbar"
             />
 
             {hasAdminAuthority && activeMainTab === 'groups' && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleGenerateAllPropertyGroups}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-[#f0fdfa] hover:bg-[#ccfbf1] text-[#0f766e] border border-[#5eead4] rounded-xs text-xs font-semibold shadow-2xs transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f0fdfa] hover:bg-[#ccfbf1] text-[#0f766e] border border-[#5eead4] rounded-xs text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                   title="Automatically create staff groups for all properties"
                 >
-                  <FolderPlus className="w-4 h-4" />
-                  <span>Generate Property Teams</span>
+                  <FolderPlus className="w-3.5 h-3.5" />
+                  <span>Generate Teams</span>
                 </button>
                 <button
                   onClick={handleOpenCreateGroup}
-                  className="flex items-center gap-2 px-3.5 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                 >
-                  <FolderPlus className="w-4 h-4" />
-                  <span>Create Team</span>
+                  <FolderPlus className="w-3.5 h-3.5" />
+                  <span>+ Create Team</span>
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Informational Callout */}
-        <div className="mt-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-xs p-3 flex items-start gap-2.5 text-xs text-[#475569]">
-          <Building2 className="w-4 h-4 text-[#0d9488] shrink-0 mt-0.5" />
-          <div>
-            <span className="font-semibold text-[#1e293b]">User Management Notice: </span>
-            User logins and accounts are authenticated securely through the enterprise directory. Use <strong>+ Add User</strong> to register new team members, or click <strong>Assign Role</strong> on any user in the table to modify operational roles (Staff, Employee, Site Manager, Admin, etc.) and assigned hotel properties.
-          </div>
+        {/* Subnav Mode Tabs */}
+        <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-[#f5f5f5]">
+          <button
+            onClick={() => setActiveMainTab('users')}
+            className={`px-3 py-1 text-xs font-medium rounded-xs transition-colors flex items-center gap-1.5 ${
+              activeMainTab === 'users'
+                ? 'bg-[#0d9488] text-white font-semibold shadow-xs'
+                : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 border border-neutral-200'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Staff Accounts ({displayedUsers.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMainTab('groups')}
+            className={`px-3 py-1 text-xs font-medium rounded-xs transition-colors flex items-center gap-1.5 ${
+              activeMainTab === 'groups'
+                ? 'bg-[#0d9488] text-white font-semibold shadow-xs'
+                : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 border border-neutral-200'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Property Teams & Staff Groups ({userGroups.length})</span>
+          </button>
         </div>
 
-      {/* Main Tab Navigation */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs p-2 shadow-xs flex items-center gap-2">
-        <button
-          onClick={() => setActiveMainTab('users')}
-          className={`px-4 py-2 text-xs font-bold rounded-xs transition-colors flex items-center gap-2 ${
-            activeMainTab === 'users'
-              ? 'bg-[#0d9488] text-white shadow-xs'
-              : 'text-[#323130] hover:bg-[#edebe9]'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Staff Accounts ({displayedUsers.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveMainTab('groups')}
-          className={`px-4 py-2 text-xs font-bold rounded-xs transition-colors flex items-center gap-2 ${
-            activeMainTab === 'groups'
-              ? 'bg-[#0d9488] text-white shadow-xs'
-              : 'text-[#323130] hover:bg-[#edebe9]'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>Property Teams &amp; Staff Groups ({userGroups.length})</span>
-        </button>
-      </div>
-
-      {/* Search & Filters */}
-      <div className="bg-white border border-[#e1dfdd] rounded-xs p-3 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="w-3.5 h-3.5 text-[#605e5c] absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Integrated Filter Row */}
+        <div className="mt-3 pt-3 border-t border-[#f0f0f0] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-2.5" />
             <input
               type="text"
               placeholder={activeMainTab === 'users' ? "Search by name, email, or property..." : "Search property teams..."}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs border border-[#8a8886] rounded-xs focus:outline-hidden focus:border-[#0d9488]"
+              className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             />
           </div>
 
           {activeMainTab === 'users' && (
-            <div className="flex items-center gap-1.5 bg-[#faf9f8] border border-[#d2d0ce] rounded-xs px-2.5 py-1 text-xs flex-wrap">
-              <span className="font-semibold text-[#323130] mr-1">Role Filter:</span>
+            <div className="flex items-center gap-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs px-2.5 py-1 text-xs flex-wrap">
+              <span className="font-semibold text-neutral-500 mr-1 text-[11px]">Role Filter:</span>
               {['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Site Manager', 'Staff', 'Employee'].map(r => {
                 const isChecked = selectedRoles.includes(r);
                 return (
@@ -678,8 +672,8 @@ export const UsersView: React.FC = () => {
 
       {/* TAB CONTENT: USERS */}
       {activeMainTab === 'users' && (
-        <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
+          <div className="overflow-x-auto flex-1">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#edebe9] text-[#605e5c] font-semibold bg-[#faf9f8] select-none whitespace-nowrap">
@@ -713,7 +707,7 @@ export const UsersView: React.FC = () => {
                       {userSortField === 'lastActive' ? (userSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
                     </div>
                   </th>
-                  <th className="p-3 text-right">Role &amp; Permissions</th>
+                  <th className="p-3 text-right w-44 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)] z-10 select-none">Role &amp; Permissions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#edebe9]">
@@ -725,7 +719,7 @@ export const UsersView: React.FC = () => {
                   </tr>
                 ) : (
                   sortedUsers.map(u => (
-                    <tr key={u.id || `${u.email}-${u.name}`} className="hover:bg-[#f3f8fd] transition-colors">
+                    <tr key={u.id || `${u.email}-${u.name}`} className="hover:bg-[#f3f8fd] group transition-colors">
                       <td className="p-3">
                         <div className="font-bold text-[#242424] flex items-center gap-1.5">
                           <span>{u.name}</span>
@@ -774,7 +768,7 @@ export const UsersView: React.FC = () => {
                       <td className="p-3 text-neutral-500 text-[11px]">
                         {u.lastActive || '—'}
                       </td>
-                      <td className="p-3 text-right">
+                      <td className="p-3 text-right sticky right-0 bg-white group-hover:bg-[#f3f8fd] shadow-[-2px_0_4px_rgba(0,0,0,0.04)] z-10">
                         {hasAdminAuthority && (
                           <button
                             onClick={() => handleOpenAssignProperties(u)}

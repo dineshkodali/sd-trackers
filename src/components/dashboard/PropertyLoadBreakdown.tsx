@@ -1,12 +1,8 @@
 import React from 'react';
 import { 
   Building2, 
-  Users, 
   AlertTriangle, 
-  Wrench, 
   ArrowUpRight, 
-  CheckCircle2, 
-  ShieldCheck,
   Filter
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';

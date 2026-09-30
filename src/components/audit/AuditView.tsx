@@ -2,26 +2,18 @@ import React, { useState, useMemo } from 'react';
 import { 
   History, 
   Search, 
-  Download, 
-  Trash2, 
   ShieldCheck, 
-  Filter, 
   RotateCcw,
-  CheckCircle2,
-  AlertCircle,
   Building2,
   Users,
   UserCheck,
   Shield,
   Eye,
   X,
-  ExternalLink,
   Clock,
   ArrowRight,
-  Sparkles,
   Layers,
   FileText,
-  Info,
   ArrowUpDown,
   ArrowUp,
   ArrowDown
@@ -56,8 +48,7 @@ export const AuditView: React.FC = () => {
     canAccessAllSites,
     assignedSite,
     authProfile,
-    currentUserName,
-    users
+    currentUserName
   } = useApp();
 
   const loggedInUserName = useMemo(() => {
@@ -625,8 +616,8 @@ export const AuditView: React.FC = () => {
       </div>
 
       {/* Audit Log Table */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-xs border-collapse min-w-[950px]">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
@@ -817,16 +808,18 @@ export const AuditView: React.FC = () => {
           </table>
         </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalItems={sortedLogs.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={size => {
-            setPageSize(size);
-            setCurrentPage(1);
-          }}
-        />
+        <div className="shrink-0 border-t border-[#edebe9]">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={sortedLogs.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={size => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
       </div>
 
       {/* Audit Record Details / Receipt Modal */}

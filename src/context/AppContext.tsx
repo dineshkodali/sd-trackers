@@ -39,8 +39,12 @@ import {
   DailyRegisterRoom,
   DailyRegisterRecord,
   NewArrivalRecord,
-  EvictionRecord
+  EvictionRecord,
+  WelfareCheckRecord,
+  FoodSurveyRecord,
+  RoomCheckRecord
 } from '../types';
+import { checksService } from '../services/checksService';
 import {
   INITIAL_SITES,
   INITIAL_REFERRALS,
@@ -75,6 +79,7 @@ import { migrateLegacyLocalData, hasLegacyLocalData, purgeAllLegacyLocalStorage 
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 import { diagnosticLogger, parseJwtPayload } from '../utils/diagnosticLogger';
 import { AuthBlockedInfo } from '../components/auth/AuthenticationBlockedView';
+import { realtimeService, RealtimeTableChangeEvent } from '../services/realtimeService';
 
 /**
  * Live-database connection state shown in the header and on Settings.
@@ -370,6 +375,24 @@ interface AppContextType {
   updateEvictionRecord: (id: string, updates: Partial<EvictionRecord>) => void;
   deleteEvictionRecord: (id: string) => void;
 
+  // Welfare Checks
+  welfareChecks: WelfareCheckRecord[];
+  addWelfareCheck: (record: Omit<WelfareCheckRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => Promise<void>;
+  updateWelfareCheck: (id: string, updates: Partial<WelfareCheckRecord>) => Promise<void>;
+  deleteWelfareCheck: (id: string) => Promise<void>;
+
+  // Food Survey Checks
+  foodSurveys: FoodSurveyRecord[];
+  addFoodSurvey: (record: Omit<FoodSurveyRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => Promise<void>;
+  updateFoodSurvey: (id: string, updates: Partial<FoodSurveyRecord>) => Promise<void>;
+  deleteFoodSurvey: (id: string) => Promise<void>;
+
+  // Room Checks / Inspections
+  roomChecks: RoomCheckRecord[];
+  addRoomCheck: (record: Omit<RoomCheckRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => Promise<void>;
+  updateRoomCheck: (id: string, updates: Partial<RoomCheckRecord>) => Promise<void>;
+  deleteRoomCheck: (id: string) => Promise<void>;
+
   // 11. Finance Bills state
   financeBills: FinanceBill[];
   refreshFinanceBills: () => Promise<void>;
@@ -548,10 +571,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [activePage, setActivePageRaw] = useState<string>(() => {
     try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        const saved = sessionStorage.getItem('sg_tracker_active_page');
-        if (saved && typeof saved === 'string' && saved.trim()) {
-          return saved.trim();
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+        if (path === '/welfare-checks') return 'welfareChecks';
+        if (path === '/food-surveys') return 'foodSurveys';
+        if (path === '/room-checks') return 'roomChecks';
+        if (window.sessionStorage) {
+          const saved = sessionStorage.getItem('sg_tracker_active_page');
+          if (saved && typeof saved === 'string' && saved.trim()) {
+            return saved.trim();
+          }
         }
       }
     } catch {}
@@ -568,8 +597,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setActivePage = useCallback((page: string) => {
     setActivePageRaw(page);
     try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.setItem('sg_tracker_active_page', page);
+      if (typeof window !== 'undefined') {
+        if (window.sessionStorage) {
+          sessionStorage.setItem('sg_tracker_active_page', page);
+        }
+        let targetPath = '';
+        if (page === 'welfareChecks') targetPath = '/welfare-checks';
+        else if (page === 'foodSurveys') targetPath = '/food-surveys';
+        else if (page === 'roomChecks') targetPath = '/room-checks';
+        else if (page === 'dashboard') targetPath = '/';
+        if (targetPath && window.location.pathname !== targetPath) {
+          window.history.pushState(null, '', targetPath);
+        }
       }
     } catch {}
     setIsMobileSidebarOpen(false); // Automatically close mobile drawer when navigating
@@ -615,6 +654,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dailyRegisterRecords, setDailyRegisterRecords] = useState<DailyRegisterRecord[]>([]);
   const [newArrivalsRecords, setNewArrivalsRecords] = useState<NewArrivalRecord[]>([]);
   const [evictionRecords, setEvictionRecords] = useState<EvictionRecord[]>([]);
+  const [welfareChecks, setWelfareChecks] = useState<WelfareCheckRecord[]>([]);
+  const [foodSurveys, setFoodSurveys] = useState<FoodSurveyRecord[]>([]);
+  const [roomChecks, setRoomChecks] = useState<RoomCheckRecord[]>([]);
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
   const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>([]);
   const [users, setUsers] = useState<UserAccount[]>(() => INITIAL_USERS);
@@ -1136,7 +1178,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const login = useCallback(async (email: string, pass: string): Promise<boolean> => {
     setAuthLoading(true);
     setAuthError(null);
-    const cleanEmail = (email || '').trim().toLowerCase();
 
     try {
       const res = await apiService.login(email, pass);
@@ -1240,6 +1281,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDailyRegisterRecords([]);
     setNewArrivalsRecords([]);
     setEvictionRecords([]);
+    setWelfareChecks([]);
+    setFoodSurveys([]);
+    setRoomChecks([]);
     setDataChangeRequests([]);
     setAuditLogs([]);
     setEmailNotificationLogs([]);
@@ -1427,6 +1471,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       { key: 'dailyRegisterRecords', entity: 'dailyRegisterRecords', label: 'Daily Register Records' },
       { key: 'newArrivals', entity: 'newArrivals', label: 'New Arrivals' },
       { key: 'evictions', entity: 'evictions', label: 'Evictions' },
+      { key: 'welfareChecks', entity: 'welfareChecks', label: 'Welfare Checks' },
+      { key: 'foodSurveys', entity: 'foodSurveys', label: 'Food Survey Checks' },
+      { key: 'roomChecks', entity: 'roomChecks', label: 'Room Checks' },
       { key: 'requests', entity: 'requests', label: 'Requests & Approvals' },
       { key: 'fieldOptions', entity: 'fieldOptions', label: 'Field Options' },
       { key: 'rolePermissions', entity: 'rolePermissions', label: 'Roles & RBAC' },
@@ -1493,6 +1540,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apply<DailyRegisterRecord>('dailyRegisterRecords', setDailyRegisterRecords);
       apply<NewArrivalRecord>('newArrivals', setNewArrivalsRecords);
       apply<EvictionRecord>('evictions', setEvictionRecords);
+      apply<WelfareCheckRecord>('welfareChecks', setWelfareChecks);
+      apply<FoodSurveyRecord>('foodSurveys', setFoodSurveys);
+      apply<RoomCheckRecord>('roomChecks', setRoomChecks);
       apply<DataChangeRequest>('requests', rows =>
         setDataChangeRequests([...rows].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))))
       );
@@ -1619,16 +1669,100 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // calls, so polling from the login screen was pure noise. Timers are keyed on
   // the session, not on the sync function's identity (BUG-011); the ref keeps
   // them calling the current implementation.
+  //
+  // Realtime (WebSocket) is the primary live-update mechanism. Polling is kept
+  // as a 5-minute safety net in case the WebSocket drops and auto-reconnect
+  // hasn't yet fired (e.g. extended laptop sleep). Before realtime was wired in,
+  // this ran every 45 s — which caused ~505k API calls/day per idle tab.
   const hasVerifiedSession = !!sessionToken && !!authProfile && !isAuthChecking;
   useEffect(() => {
     if (!hasVerifiedSession) return;
     hasSyncedOnceRef.current = false;
     backgroundSyncRef.current();
+
+    // Start realtime WebSocket subscription
+    realtimeService.subscribe();
+
+    // Reconcile after any realtime reconnect so state stays consistent
+    const unsubReconnect = realtimeService.onReconnect(() => {
+      backgroundSyncRef.current();
+    });
+
+    // 5-minute safety-net poll (realtime covers live changes)
     const interval = setInterval(() => {
       backgroundSyncRef.current();
-    }, 45000);
-    return () => clearInterval(interval);
+    }, 300000);
+
+    return () => {
+      clearInterval(interval);
+      unsubReconnect();
+      realtimeService.unsubscribe();
+    };
   }, [hasVerifiedSession, sessionToken]);
+
+  // ── Realtime patches ──────────────────────────────────────────────────────
+  // For each high-traffic table we merge the incoming CDC row directly into
+  // local state so the UI updates without waiting for the next full sync.
+  // INSERT → prepend, UPDATE → replace-in-place, DELETE → remove.
+  // We intentionally do NOT patch tables that carry large blobs or require
+  // complex joining (e.g. audit_trails) — those are refreshed by the fallback.
+
+  useEffect(() => {
+    if (!hasVerifiedSession) return;
+    return realtimeService.onTable('ir_records', (ev: RealtimeTableChangeEvent<IRRecord>) => {
+      if (ev.eventType === 'INSERT') {
+        setIrRecords(prev => (prev.some(r => r.id === ev.record.id) ? prev : [ev.record, ...prev]));
+      } else if (ev.eventType === 'UPDATE') {
+        setIrRecords(prev => prev.map(r => (r.id === ev.record.id ? { ...r, ...ev.record } : r)));
+      } else if (ev.eventType === 'DELETE') {
+        setIrRecords(prev => prev.filter(r => r.id !== ev.id));
+      }
+    });
+  }, [hasVerifiedSession]);
+
+  useEffect(() => {
+    if (!hasVerifiedSession) return;
+    return realtimeService.onTable('maintenance_records', (ev: RealtimeTableChangeEvent<MaintenanceRecord>) => {
+      if (ev.eventType === 'INSERT') {
+        setMaintenanceRecords(prev => (prev.some(r => r.id === ev.record.id) ? prev : [ev.record, ...prev]));
+      } else if (ev.eventType === 'UPDATE') {
+        setMaintenanceRecords(prev => prev.map(r => (r.id === ev.record.id ? { ...r, ...ev.record } : r)));
+      } else if (ev.eventType === 'DELETE') {
+        setMaintenanceRecords(prev => prev.filter(r => r.id !== ev.id));
+      }
+    });
+  }, [hasVerifiedSession]);
+
+  useEffect(() => {
+    if (!hasVerifiedSession) return;
+    return realtimeService.onTable('escalations', (ev: RealtimeTableChangeEvent<EscalationRecord>) => {
+      if (ev.eventType === 'INSERT') {
+        setEscalations(prev => (prev.some(r => r.id === ev.record.id) ? prev : [ev.record, ...prev]));
+      } else if (ev.eventType === 'UPDATE') {
+        setEscalations(prev => prev.map(r => (r.id === ev.record.id ? { ...r, ...ev.record } : r)));
+      } else if (ev.eventType === 'DELETE') {
+        setEscalations(prev => prev.filter(r => r.id !== ev.id));
+      }
+    });
+  }, [hasVerifiedSession]);
+
+  useEffect(() => {
+    if (!hasVerifiedSession) return;
+    return realtimeService.onTable('data_change_requests', (ev: RealtimeTableChangeEvent<DataChangeRequest>) => {
+      if (ev.eventType === 'INSERT') {
+        setDataChangeRequests(prev => {
+          if (prev.some(r => r.id === ev.record.id)) return prev;
+          return [ev.record, ...prev].sort((a, b) =>
+            String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
+          );
+        });
+      } else if (ev.eventType === 'UPDATE') {
+        setDataChangeRequests(prev => prev.map(r => (r.id === ev.record.id ? { ...r, ...ev.record } : r)));
+      } else if (ev.eventType === 'DELETE') {
+        setDataChangeRequests(prev => prev.filter(r => r.id !== ev.id));
+      }
+    });
+  }, [hasVerifiedSession]);
 
   // Fast Indexed Lookups (0ms O(1)) with null guards
   const lookupPropertyById = useCallback((id?: string) => id ? fastIndices.getPropertyById(id) : undefined, []);
@@ -3446,6 +3580,227 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [evictionRecords, persistDelete, requestConfirmation, closeConfirmation]);
 
+  // --- Welfare Checks CRUD ---
+  const addWelfareCheck = useCallback(async (data: Omit<WelfareCheckRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
+    const now = new Date().toISOString();
+    const newRecord: WelfareCheckRecord = {
+      ...data,
+      id: data.id || ('wfc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)),
+      officerName: data.officerName || currentUserName,
+      createdBy: authProfile?.id || currentUserName,
+      createdByName: currentUserName,
+      lastUpdatedBy: currentUserName,
+      createdAt: now,
+      updatedAt: now
+    };
+    setWelfareChecks(prev => [newRecord, ...prev]);
+    await persistCreate('welfareChecks', 'Welfare check', setWelfareChecks, newRecord, {
+      action: 'CREATE', module: 'Welfare Checks', targetItem: newRecord.portReference, site: newRecord.siteName,
+      details: `Created welfare check for SU ${newRecord.portReference} at ${newRecord.siteName} by ${currentUserName} (${currentUserRole}).`
+    });
+  }, [persistCreate, currentUserName, currentUserRole, authProfile]);
+
+  const updateWelfareCheck = useCallback(async (id: string, updates: Partial<WelfareCheckRecord>) => {
+    const current = welfareChecks.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<WelfareCheckRecord> = {
+      ...updates,
+      lastUpdatedBy: currentUserName,
+      updatedByName: currentUserName,
+      updatedAt: new Date().toISOString()
+    };
+    setWelfareChecks(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    await persistUpdate('welfareChecks', 'Welfare check changes', setWelfareChecks, current, changes, {
+      action: 'UPDATE', module: 'Welfare Checks', targetItem: current.portReference, site: changes.siteName || current.siteName,
+      details: `Updated welfare check ${id} for SU ${current.portReference} by ${currentUserName} (${currentUserRole}).`
+    });
+  }, [welfareChecks, persistUpdate, currentUserName, currentUserRole]);
+
+  const deleteWelfareCheck = useCallback(async (id: string) => {
+    const current = welfareChecks.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Welfare Check',
+      message: `Are you sure you want to permanently delete the welfare check for SU ${current.portReference} at ${current.siteName}?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: async () => {
+        setWelfareChecks(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('welfareChecks', 'Welfare check deletion', setWelfareChecks, current, {
+          action: 'DELETE', module: 'Welfare Checks', targetItem: current.portReference, site: current.siteName,
+          details: `Deleted welfare check ${id} for SU ${current.portReference} by ${currentUserName} (${currentUserRole}).`
+        });
+      }
+    });
+  }, [welfareChecks, persistDelete, requestConfirmation, closeConfirmation, currentUserName, currentUserRole]);
+
+  // --- Food Survey Checks CRUD ---
+  const addFoodSurvey = useCallback(async (data: Omit<FoodSurveyRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
+    const now = new Date().toISOString();
+    const newRecord: FoodSurveyRecord = {
+      ...data,
+      id: data.id || ('fs-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)),
+      houseOfficerName: data.houseOfficerName || currentUserName,
+      createdBy: authProfile?.id || currentUserName,
+      createdByName: currentUserName,
+      lastUpdatedBy: currentUserName,
+      createdAt: now,
+      updatedAt: now
+    };
+    setFoodSurveys(prev => [newRecord, ...prev]);
+    try {
+      const res = await checksService.createFoodSurvey(newRecord);
+      if (!res.success) {
+        reportPersistFailure('Food survey creation', res.error);
+        backgroundSyncRef.current();
+      } else {
+        appendLocalAudit({
+          action: 'CREATE',
+          module: 'Food Survey Checks',
+          targetItem: newRecord.portReference || newRecord.id,
+          site: newRecord.siteName,
+          details: `Created food survey for SU ${newRecord.portReference} at ${newRecord.siteName} by ${currentUserName} (${currentUserRole}).`
+        });
+      }
+    } catch (e: any) {
+      reportPersistFailure('Food survey creation', e.message);
+      backgroundSyncRef.current();
+    }
+  }, [reportPersistFailure, appendLocalAudit, currentUserName, currentUserRole, authProfile]);
+
+  const updateFoodSurvey = useCallback(async (id: string, updates: Partial<FoodSurveyRecord>) => {
+    const current = foodSurveys.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<FoodSurveyRecord> = {
+      ...updates,
+      lastUpdatedBy: currentUserName,
+      updatedByName: currentUserName,
+      updatedAt: new Date().toISOString()
+    };
+    setFoodSurveys(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    try {
+      const res = await checksService.updateFoodSurvey(id, changes);
+      if (!res.success) {
+        reportPersistFailure('Food survey update', res.error);
+        backgroundSyncRef.current();
+      } else {
+        appendLocalAudit({
+          action: 'UPDATE',
+          module: 'Food Survey Checks',
+          targetItem: current.portReference || id,
+          site: changes.siteName || current.siteName,
+          details: `Updated food survey ${id} for SU ${current.portReference} by ${currentUserName} (${currentUserRole}).`
+        });
+      }
+    } catch (e: any) {
+      reportPersistFailure('Food survey update', e.message);
+      backgroundSyncRef.current();
+    }
+  }, [foodSurveys, reportPersistFailure, appendLocalAudit, currentUserName, currentUserRole]);
+
+  const deleteFoodSurvey = useCallback(async (id: string) => {
+    const current = foodSurveys.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Food Survey',
+      message: `Are you sure you want to permanently delete the food survey for SU ${current.portReference} at ${current.siteName}?`,
+      confirmLabel: 'Delete Survey',
+      isDanger: true,
+      onConfirm: async () => {
+        setFoodSurveys(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('foodSurveys', 'Food survey deletion', setFoodSurveys, current, {
+          action: 'DELETE', module: 'Food Survey Checks', targetItem: current.portReference, site: current.siteName,
+          details: `Deleted food survey ${id} by ${currentUserName} (${currentUserRole}).`
+        });
+      }
+    });
+  }, [foodSurveys, persistDelete, requestConfirmation, closeConfirmation, currentUserName, currentUserRole]);
+
+  // --- Room Checks CRUD ---
+  const addRoomCheck = useCallback(async (data: Omit<RoomCheckRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
+    const now = new Date().toISOString();
+    const newRecord: RoomCheckRecord = {
+      ...data,
+      id: data.id || ('rc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)),
+      officerName: data.officerName || currentUserName,
+      createdBy: authProfile?.id || currentUserName,
+      createdByName: currentUserName,
+      lastUpdatedBy: currentUserName,
+      createdAt: now,
+      updatedAt: now
+    };
+    setRoomChecks(prev => [newRecord, ...prev]);
+    try {
+      const res = await checksService.createRoomCheck(newRecord);
+      if (!res.success) {
+        reportPersistFailure('Room check creation', res.error);
+        backgroundSyncRef.current();
+      } else {
+        appendLocalAudit({
+          action: 'CREATE',
+          module: 'Room Checks',
+          targetItem: `Room ${newRecord.roomNumber} (${newRecord.siteName})`,
+          site: newRecord.siteName,
+          details: `Created room check for Room ${newRecord.roomNumber} at ${newRecord.siteName} (Status: ${newRecord.overallStatus}) by ${currentUserName} (${currentUserRole}).`
+        });
+      }
+    } catch (e: any) {
+      reportPersistFailure('Room check creation', e.message);
+      backgroundSyncRef.current();
+    }
+  }, [reportPersistFailure, appendLocalAudit, currentUserName, currentUserRole, authProfile]);
+
+  const updateRoomCheck = useCallback(async (id: string, updates: Partial<RoomCheckRecord>) => {
+    const current = roomChecks.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<RoomCheckRecord> = {
+      ...updates,
+      lastUpdatedBy: currentUserName,
+      updatedByName: currentUserName,
+      updatedAt: new Date().toISOString()
+    };
+    setRoomChecks(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    try {
+      const res = await checksService.updateRoomCheck(id, changes);
+      if (!res.success) {
+        reportPersistFailure('Room check update', res.error);
+        backgroundSyncRef.current();
+      } else {
+        appendLocalAudit({
+          action: 'UPDATE',
+          module: 'Room Checks',
+          targetItem: `Room ${current.roomNumber || ''} (${current.siteName || ''})`,
+          site: changes.siteName || current.siteName,
+          details: `Updated room check ${id} for Room ${current.roomNumber} by ${currentUserName} (${currentUserRole}).`
+        });
+      }
+    } catch (e: any) {
+      reportPersistFailure('Room check update', e.message);
+      backgroundSyncRef.current();
+    }
+  }, [roomChecks, reportPersistFailure, appendLocalAudit, currentUserName, currentUserRole]);
+
+  const deleteRoomCheck = useCallback(async (id: string) => {
+    const current = roomChecks.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Room Check',
+      message: `Are you sure you want to permanently delete the room inspection for Room ${current.roomNumber} at ${current.siteName}?`,
+      confirmLabel: 'Delete Inspection',
+      isDanger: true,
+      onConfirm: async () => {
+        setRoomChecks(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('roomChecks', 'Room check deletion', setRoomChecks, current, {
+          action: 'DELETE', module: 'Room Checks', targetItem: `Room ${current.roomNumber}`, site: current.siteName,
+          details: `Deleted room check ${id} for Room ${current.roomNumber} by ${currentUserName} (${currentUserRole}).`
+        });
+      }
+    });
+  }, [roomChecks, persistDelete, requestConfirmation, closeConfirmation, currentUserName, currentUserRole]);
+
 
   /**
    * Replace a whole module with its bundled master dataset: records not in the
@@ -3858,6 +4213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       gpAppointments: gpAppointmentRecords, rfaWelfare: rfaWelfareRecords,
       dispersal: dispersalRecords, booklets: bookletRecords, vcsAgencies, irRecords,
       foodWastage: foodWastageRecords, dailyRegisterRooms, dailyRegisterRecords, newArrivals: newArrivalsRecords, evictions: evictionRecords,
+      welfareChecks, foodSurveys, roomChecks,
       requests: dataChangeRequests, userGroups, fieldOptions,
       rolePermissions: Object.entries(rolePermissions).map(([role, perms]) => ({ id: role, role, ...perms })),
       appSettings: [{ id: 'global', value: settings }]
@@ -3867,6 +4223,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     foodRecords, foodVendorBuffetLogs, escalations, documents, maintenanceRecords, spcdRecords, publicTransportRecords,
     complianceRecords, gpAppointmentRecords, rfaWelfareRecords, dispersalRecords, bookletRecords, vcsAgencies, irRecords,
     foodWastageRecords, dailyRegisterRooms, dailyRegisterRecords, newArrivalsRecords, evictionRecords,
+    welfareChecks, foodSurveys, roomChecks,
     dataChangeRequests, userGroups, fieldOptions, rolePermissions, settings
   ]);
 
@@ -4437,6 +4794,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addEvictionRecord,
       updateEvictionRecord,
       deleteEvictionRecord,
+      welfareChecks,
+      addWelfareCheck,
+      updateWelfareCheck,
+      deleteWelfareCheck,
+      foodSurveys,
+      addFoodSurvey,
+      updateFoodSurvey,
+      deleteFoodSurvey,
+      roomChecks,
+      addRoomCheck,
+      updateRoomCheck,
+      deleteRoomCheck,
       financeBills,
       refreshFinanceBills,
       properties,

@@ -15,9 +15,7 @@ import {
   Plus,
   UploadCloud,
   Search,
-  CheckCircle2,
   Sparkles,
-  Edit2,
   Trash2,
   Sliders,
 } from 'lucide-react';

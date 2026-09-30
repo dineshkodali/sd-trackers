@@ -4,18 +4,22 @@ import {
   ShieldCheck, 
   Database, 
   Download, 
-  RotateCcw, 
   CheckCircle2, 
   Lock,
-  Layers,
   Activity,
   Server,
-  KeyRound,
   FileCheck2,
-  Cpu
+  Cpu,
+  Wifi,
+  WifiOff,
+  Radio,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SupabaseBackendCard } from './SupabaseBackendCard';
+import { useSupabaseRealtime } from '../../hooks/useSupabaseRealtime';
+import { REALTIME_TABLES } from '../../services/realtimeService';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -29,6 +33,25 @@ export const SettingsView: React.FC = () => {
   } = useApp();
 
   const [downloading, setDownloading] = useState(false);
+
+  const rt = useSupabaseRealtime();
+
+  const rtStatusMeta: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode; pulse: boolean }> = {
+    connected:    { label: 'Connected',    color: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-200', icon: <Wifi className="w-4 h-4" />,      pulse: true  },
+    connecting:   { label: 'Connecting…',  color: 'text-amber-700',  bg: 'bg-amber-50',   border: 'border-amber-200',   icon: <RefreshCw className="w-4 h-4 animate-spin" />, pulse: false },
+    reconnecting: { label: 'Reconnecting…',color: 'text-amber-700',  bg: 'bg-amber-50',   border: 'border-amber-200',   icon: <RefreshCw className="w-4 h-4 animate-spin" />, pulse: false },
+    disconnected: { label: 'Disconnected', color: 'text-neutral-500', bg: 'bg-neutral-50', border: 'border-neutral-200', icon: <WifiOff className="w-4 h-4" />,   pulse: false },
+    error:        { label: 'Error',        color: 'text-red-700',    bg: 'bg-red-50',     border: 'border-red-200',     icon: <WifiOff className="w-4 h-4" />,   pulse: false },
+    idle:         { label: 'Idle',         color: 'text-neutral-400', bg: 'bg-neutral-50', border: 'border-neutral-200', icon: <Radio className="w-4 h-4" />,     pulse: false },
+  };
+
+  const rtMeta = rtStatusMeta[rt.status] ?? rtStatusMeta.idle;
+
+  const formatEventTime = (iso: string | null) => {
+    if (!iso) return 'No events yet';
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
 
   const handleFullBackup = () => {
     setDownloading(true);
@@ -74,6 +97,216 @@ export const SettingsView: React.FC = () => {
 
       {/* Section 1: Supabase & Infrastructure Backend Connectivity */}
       <SupabaseBackendCard />
+
+      {/* Section 1b: Supabase Realtime WebSocket Connector */}
+      <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">
+        {/* Header */}
+        <div className="p-4 border-b border-[#edebe9] bg-[#faf9f8] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Radio className="w-5 h-5 text-[#0d9488]" />
+            <div>
+              <h3 className="font-semibold text-xs text-[#242424]">
+                Supabase Realtime · WebSocket Connector
+                <span className="ml-2 font-mono text-[10px] text-neutral-400">
+                  {REALTIME_TABLES.length} tables · postgres_changes · WSS
+                </span>
+              </h3>
+              <p className="text-[11px] text-[#605e5c]">
+                Live PostgreSQL CDC stream — INSERT, UPDATE &amp; DELETE events broadcast instantly across all active sessions.
+              </p>
+            </div>
+          </div>
+          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded border ${rtMeta.bg} ${rtMeta.color} ${rtMeta.border}`}>
+            {rt.status === 'connected' && (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+            )}
+            {rtMeta.label}
+          </span>
+        </div>
+
+        {/* Row 1 — 5 stat cards */}
+        <div className="p-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-xs border-b border-[#edebe9]">
+
+          {/* Connection State */}
+          <div className="p-3 bg-[#faf9f8] border border-[#edebe9] rounded-xs flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-700">
+              <Wifi className="w-3.5 h-3.5 text-[#0d9488]" /> State
+            </div>
+            <div className={`flex items-center gap-1.5 font-bold text-sm ${rtMeta.color}`}>
+              {rtMeta.icon}
+              <span>{rtMeta.label}</span>
+            </div>
+            {rt.lastError && (
+              <p className="text-[10px] text-red-600 font-mono break-all leading-tight">{rt.lastError}</p>
+            )}
+            <div className="mt-auto pt-2 border-t border-[#edebe9]">
+              <button
+                onClick={rt.reconnect}
+                disabled={rt.isConnected || rt.isConnecting}
+                className="flex items-center gap-1 text-[10px] text-[#0d9488] hover:text-[#0f766e] disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" /> Force Reconnect
+              </button>
+            </div>
+          </div>
+
+          {/* Uptime */}
+          <div className="p-3 bg-[#faf9f8] border border-[#edebe9] rounded-xs flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-700">
+              <Activity className="w-3.5 h-3.5 text-[#0d9488]" /> Uptime
+            </div>
+            <div className="font-mono text-lg font-bold text-neutral-800">
+              {rt.stats.uptimeSeconds >= 3600
+                ? `${Math.floor(rt.stats.uptimeSeconds / 3600)}h ${Math.floor((rt.stats.uptimeSeconds % 3600) / 60)}m`
+                : rt.stats.uptimeSeconds >= 60
+                ? `${Math.floor(rt.stats.uptimeSeconds / 60)}m ${rt.stats.uptimeSeconds % 60}s`
+                : rt.isConnected
+                ? `${rt.stats.uptimeSeconds}s`
+                : '—'}
+            </div>
+            <p className="text-[10px] text-[#605e5c]">Time connected in this session.</p>
+          </div>
+
+          {/* Total Events */}
+          <div className="p-3 bg-[#faf9f8] border border-[#edebe9] rounded-xs flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-700">
+              <Zap className="w-3.5 h-3.5 text-amber-500" /> Total Events
+            </div>
+            <div className="text-2xl font-bold text-[#0d9488]">{rt.stats.totalEvents}</div>
+            <div className="text-[10px] text-[#605e5c] space-y-0.5">
+              <div className="flex justify-between">
+                <span className="text-emerald-700 font-semibold">↑ INSERT</span>
+                <span className="font-mono font-bold">{rt.stats.inserts}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-amber-700 font-semibold">↻ UPDATE</span>
+                <span className="font-mono font-bold">{rt.stats.updates}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-red-600 font-semibold">✕ DELETE</span>
+                <span className="font-mono font-bold">{rt.stats.deletes}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Last Event */}
+          <div className="p-3 bg-[#faf9f8] border border-[#edebe9] rounded-xs flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-700">
+              <Zap className="w-3.5 h-3.5 text-[#0d9488]" /> Last Event
+            </div>
+            <div className="font-mono text-sm font-bold text-neutral-800">
+              {formatEventTime(rt.lastEventAt)}
+            </div>
+            {rt.stats.recentEvents[0] && (
+              <div className="text-[10px] text-[#605e5c]">
+                <span className="font-mono">{rt.stats.recentEvents[0].table}</span>
+                {' · '}
+                <span className={
+                  rt.stats.recentEvents[0].eventType === 'INSERT' ? 'text-emerald-700 font-semibold' :
+                  rt.stats.recentEvents[0].eventType === 'UPDATE' ? 'text-amber-700 font-semibold' :
+                  'text-red-600 font-semibold'
+                }>{rt.stats.recentEvents[0].eventType}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Transport */}
+          <div className="p-3 bg-[#faf9f8] border border-[#edebe9] rounded-xs flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-700">
+              <Server className="w-3.5 h-3.5 text-[#0d9488]" /> Transport
+            </div>
+            <div className="space-y-1 text-[10px] text-[#605e5c]">
+              <div className="flex justify-between"><span>Protocol:</span><span className="font-mono font-semibold text-neutral-800">WSS (TLS)</span></div>
+              <div className="flex justify-between"><span>Schema:</span><span className="font-mono text-neutral-800">public</span></div>
+              <div className="flex justify-between"><span>Mode:</span><span className="font-semibold text-neutral-800">postgres_changes</span></div>
+              <div className="flex justify-between"><span>Publication:</span><span className="font-mono text-neutral-800">supabase_realtime</span></div>
+              <div className="flex justify-between"><span>Reconnect:</span><span className="font-semibold text-emerald-700">Auto · 5 s</span></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2 — Recent event log + Table activity */}
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-[#edebe9]">
+
+          {/* Recent Event Feed */}
+          <div>
+            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide mb-2">
+              Live Event Feed (last {rt.stats.recentEvents.length || '—'})
+            </p>
+            {rt.stats.recentEvents.length === 0 ? (
+              <p className="text-[11px] text-neutral-400 italic">
+                No events yet — waiting for PostgreSQL WAL events…
+              </p>
+            ) : (
+              <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                {rt.stats.recentEvents.map((ev, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[10px]">
+                    <span className={`font-bold px-1 py-0.5 rounded text-[9px] min-w-[44px] text-center ${
+                      ev.eventType === 'INSERT' ? 'bg-emerald-100 text-emerald-700' :
+                      ev.eventType === 'UPDATE' ? 'bg-amber-100 text-amber-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>{ev.eventType}</span>
+                    <span className="font-mono text-neutral-600 truncate flex-1">{ev.table}</span>
+                    <span className="font-mono text-neutral-400 shrink-0">{formatEventTime(ev.timestamp)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Per-Table Activity */}
+          <div>
+            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide mb-2">
+              Active Tables ({Object.keys(rt.stats.tableActivity).length} with events)
+            </p>
+            {Object.keys(rt.stats.tableActivity).length === 0 ? (
+              <p className="text-[11px] text-neutral-400 italic">No per-table activity recorded yet.</p>
+            ) : (
+              <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                {Object.entries(rt.stats.tableActivity)
+                  .sort((a, b) => b[1].localeCompare(a[1]))
+                  .map(([tbl, ts]) => (
+                    <div key={tbl} className="flex items-center justify-between text-[10px]">
+                      <span className="font-mono text-neutral-700">{tbl}</span>
+                      <span className="text-neutral-400 font-mono">{formatEventTime(ts)}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Row 3 — All table pills */}
+        <div className="px-4 py-3">
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide mb-1.5">
+            Active Subscriptions — {REALTIME_TABLES.length} tables
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {REALTIME_TABLES.map(tbl => {
+              const hasActivity = !!rt.stats.tableActivity[tbl];
+              return (
+                <span
+                  key={tbl}
+                  title={hasActivity ? `Last event: ${formatEventTime(rt.stats.tableActivity[tbl])}` : 'No events yet'}
+                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors cursor-default ${
+                    hasActivity
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      : rt.isConnected
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                      : 'bg-neutral-50 text-neutral-400 border-neutral-200'
+                  }`}
+                >
+                  {tbl}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
 
       {/* Section 2: Active System Preferences & Governance Policies (Read-Only) */}
       <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs overflow-hidden">

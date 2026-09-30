@@ -6,22 +6,16 @@ import {
   Archive,
   RotateCcw,
   Trash2,
-  X,
-  Download,
-  AlertTriangle,
-  UserCheck,
-  FileText,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Lock,
-  SlidersHorizontal
+  SlidersHorizontal,
+  HeartHandshake,
+  Search
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { VulnerableSU, RiskLevel, StatusType, RecordAttachment } from '../../types';
-import { FilterBar } from '../common/FilterBar';
+import { VulnerableSU } from '../../types';
 import { Pagination } from '../common/Pagination';
-import { AttachmentsSection } from '../common/AttachmentsSection';
 import { CompactRecordCard, CompactRecordList } from '../common/CompactRecordCards';
 import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrientation } from '../common/ExportModal';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -69,7 +63,6 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
     canCreateRecord,
     canEditRecord,
     canAccessAllSites,
-    canManageFiles,
     assignedSite,
     currentUserRole,
     currentUserName,
@@ -84,7 +77,6 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
 
-  const vulnerabilityOptions = useMemo(() => getFieldOptions('vulnerabilities'), [getFieldOptions]);
   const vulnerableStatusOptions = useMemo(() => getFieldOptions('vulnerableStatuses'), [getFieldOptions]);
 
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
@@ -125,26 +117,6 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [viewRecord, setViewRecord] = useState<VulnerableSU | null>(null);
   const [editingRecord, setEditingRecord] = useState<VulnerableSU | null>(null);
-
-  const initialFormData = {
-    site: allowedSites[0] || 'Hotel A',
-    roomOrFlatNo: '',
-    suName: '',
-    dob: '',
-    group: 'Single Adult' as VulnerableSU['group'],
-    gender: 'Female' as VulnerableSU['gender'],
-    portOrNassRef: '',
-    vulnerability: '',
-    notesActionTaken: '',
-    sgTeamUpdate: '',
-    riskLevel: 'Medium' as RiskLevel,
-    status: 'Open' as StatusType,
-    reviewDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
-    allocatedWorker: '',
-    raisedBy: loggedInUserName
-  };
-
-  const [formData, setFormData] = useState(initialFormData);
 
   // All relevant dataset before filters
   const allDataset = useMemo(() => {
@@ -317,33 +289,6 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
     }
   };
 
-  const handleSubmitNew = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.suName.trim()) {
-      alert('Service User name is required');
-      return;
-    }
-    addVulnerableSU({
-      ...formData,
-      raisedBy: formData.raisedBy || loggedInUserName
-    });
-    setIsCreateModalOpen(false);
-    setFormData({
-      ...initialFormData,
-      raisedBy: loggedInUserName
-    });
-  };
-
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingRecord) return;
-    updateVulnerableSU(editingRecord.id, {
-      ...editingRecord,
-      raisedBy: editingRecord.raisedBy || loggedInUserName
-    });
-    setEditingRecord(null);
-  };
-
   const renderColumnCell = (col: TableColumnConfig<VulnerableSU>, v: VulnerableSU) => {
     const val = (v as any)[col.key];
 
@@ -472,95 +417,148 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <h2 className="text-2xl font-semibold text-[#242424] tracking-tight">
-            {isArchive ? 'Archived Safeguarding SUs' : 'Vulnerable / Safeguarding SUs'}
-          </h2>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            {isArchive
-              ? 'Archived vulnerability files and historical welfare assessments.'
-              : 'Active safeguarding registers, medical vulnerability flags, and welfare support plans.'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="bg-[#edebe9] p-0.5 rounded-xs flex items-center text-xs">
-            <button
-              onClick={() => setActivePage('vulnerable')}
-              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${!isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
-                }`}
-            >
-              Active Register
-            </button>
-            <button
-              onClick={() => setActivePage('vulnerableArchive')}
-              className={`px-3 py-1.5 rounded-xs font-semibold transition-colors ${isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
-                }`}
-            >
-              Archive
-            </button>
+      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-xs">
+              <HeartHandshake className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">
+                  {isArchive ? 'Archived Safeguarding SUs' : 'Vulnerable & Safeguarding SUs'}
+                </h1>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-xs bg-amber-50 text-amber-900 border border-amber-200">
+                  {sortedData.length} SUs
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">
+                {isArchive
+                  ? 'Archived vulnerability files and historical welfare assessments.'
+                  : 'Active safeguarding registers, medical vulnerability flags, and welfare support plans.'}
+              </p>
+            </div>
           </div>
 
-          {/* Super Admin Table Customizer Button */}
-          {currentUserRole === 'Super Admin' && (
-            <button
-              id="btn-customize-vulnerable-table"
-              onClick={() => setIsSchemaEditorOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-neutral-300 rounded-xs shadow-xs transition-colors cursor-pointer"
-              title="Configure Table Headers & Form Fields (Super Admin Only)"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Customize Table</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Active / Archive Subnav buttons */}
+            <div className="bg-[#edebe9] p-0.5 rounded-xs flex items-center text-xs">
+              <button
+                onClick={() => setActivePage('vulnerable')}
+                className={`px-3 py-1.5 rounded-xs font-semibold transition-colors cursor-pointer ${
+                  !isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                Active Register
+              </button>
+              <button
+                onClick={() => setActivePage('vulnerableArchive')}
+                className={`px-3 py-1.5 rounded-xs font-semibold transition-colors cursor-pointer ${
+                  isArchive ? 'bg-white text-[#0f766e] shadow-xs' : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                Archive
+              </button>
+            </div>
 
-          {!isArchive && canCreateRecord() && (
-            <button
-              onClick={() => {
-                setFormData({ ...initialFormData, site: allowedSites[0] || 'Hotel A' });
-                setIsCreateModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Log Vulnerable SU</span>
-            </button>
-          )}
+            {/* Super Admin Table Customizer Button */}
+            {currentUserRole === 'Super Admin' && (
+              <button
+                id="btn-customize-vulnerable-table"
+                onClick={() => setIsSchemaEditorOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
+                title="Configure Table Headers & Form Fields (Super Admin Only)"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
+                <span>Customize Table</span>
+              </button>
+            )}
 
-          <ExportDropdown
-            moduleName={isArchive ? "Archived Vulnerable SUs" : "Vulnerable SUs"}
-            totalRecordCount={allDataset.length}
-            filteredRecordCount={sortedData.length}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={vulnerableExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-          />
+            <ExportDropdown
+              moduleName={isArchive ? "Archived Vulnerable SUs" : "Vulnerable SUs"}
+              totalRecordCount={allDataset.length}
+              filteredRecordCount={sortedData.length}
+              defaultOrientation="landscape"
+              dateRangeRecordCount={calculateDateRangeCount}
+              availableColumns={vulnerableExportColumns}
+              getPreviewData={getExportPreviewData}
+              onExport={handlePerformExport}
+            />
+
+            {!isArchive && canCreateRecord() && (
+              <button
+                id="btn-log-vulnerable"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-medium rounded-xs transition-colors shadow-2xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Log Vulnerable SU</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Bar integrated into the same card */}
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by name, Port ref, room, notes..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-8 pr-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
+
+          <div>
+            <select
+              value={siteFilter}
+              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
+              disabled={!canAccessAllSites()}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              {canAccessAllSites() && <option value="all">All Properties / Sites ({allowedSites.length})</option>}
+              {allowedSites.map((s, idx) => (
+                <option key={`${s}-${idx}`} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={monthFilter}
+              onChange={e => { setMonthFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              <option value="all">All Months</option>
+              <option value="2026-06">June 2026</option>
+              <option value="2026-05">May 2026</option>
+              <option value="2026-04">April 2026</option>
+              <option value="2026-03">March 2026</option>
+              <option value="2026-02">February 2026</option>
+              <option value="2026-01">January 2026</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={statusFilter}
+              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              <option value="all">All Statuses</option>
+              {vulnerableStatusOptions.map(opt => (
+                <option key={opt.id} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Filter bar */}
-      <FilterBar
-        siteFilter={siteFilter}
-        setSiteFilter={setSiteFilter}
-        monthFilter={monthFilter}
-        setMonthFilter={setMonthFilter}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onReset={handleResetFilters}
-        onOpenExport={handleOpenExportModal}
-        totalFilteredCount={sortedData.length}
-        searchStorageKey="vulnerable_search"
-        statusOptions={vulnerableStatusOptions}
-      />
-
-      {/* Data Table with persistent bottom-stretching height */}
-      <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[520px] flex flex-col justify-between">
+      {/* Main Table in a SEPARATE card */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         {isMobileCompactView ? (
           <div className="p-3 bg-neutral-50/50 flex-1 overflow-y-auto">
             <CompactRecordList

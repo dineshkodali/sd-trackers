@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
@@ -50,6 +50,9 @@ import { CreditCardBillsView } from './components/finance/CreditCardBillsView';
 import { DeliveryNotesView } from './components/finance/DeliveryNotesView';
 import { FinanceApprovalsView } from './components/finance/FinanceApprovalsView';
 import { DocumentBuilderView } from './components/documentBuilder/DocumentBuilderView';
+import { WelfareChecksView } from './components/welfare/WelfareChecksView';
+import { FoodSurveysView } from './components/food/FoodSurveysView';
+import { RoomChecksView } from './components/room/RoomChecksView';
 
 function AppLayout() {
   const { 
@@ -141,6 +144,12 @@ function AppLayout() {
         return <ChallengingView isArchive={false} />;
       case 'challengingArchive':
         return <ChallengingView isArchive={true} />;
+      case 'welfareChecks':
+        return <WelfareChecksView />;
+      case 'foodSurveys':
+        return <FoodSurveysView />;
+      case 'roomChecks':
+        return <RoomChecksView />;
       case 'rfaWelfare':
         return <RFAWelfareChecksView />;
       case 'gpAppointments':

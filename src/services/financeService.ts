@@ -11,18 +11,10 @@ import type {
   FinanceBillItem,
   FinanceBillAttachment,
   FinanceVendor,
-  FinanceVerificationProfile,
-  FinanceVerificationTask,
-  FinanceVerificationResponse,
-  FinanceRoutingRule,
-  FinanceApprovalRequest,
-  FinanceApprovalResponse,
   FinanceBillQuery,
-  FinanceQueryResponse,
   FinanceReconciliationRecord,
   FinancePaymentRecord,
   FinanceBillStatusHistory,
-  FinanceWorkflowEvent,
   FinanceAttachmentType,
   FinanceQueryType,
   FinanceQueryPriority,
@@ -81,8 +73,26 @@ class FinanceService {
       if (typeof window === 'undefined') return;
       localStorage.setItem('sg_tracker_finance_bills', JSON.stringify(bills));
       localStorage.setItem('sd_finance_bills_ts', String(Date.now()));
-      window.dispatchEvent(new CustomEvent('finance-bills-changed'));
-    } catch {}
+    } catch {
+      // ignore write errors
+    }
+  }
+
+  public handleRealtimeBillChange(eventType: 'INSERT' | 'UPDATE' | 'DELETE', rawRow: any, id: string): void {
+    const current = this.loadLocalBillsCache();
+    if (eventType === 'DELETE') {
+      const filtered = current.filter(b => b.id !== id);
+      this.saveLocalBillsCache(filtered);
+      return;
+    }
+    const mapped = this.mapBillFromDb(rawRow);
+    const index = current.findIndex(b => b.id === id);
+    if (index >= 0) {
+      current[index] = { ...current[index], ...mapped };
+      this.saveLocalBillsCache([...current]);
+    } else {
+      this.saveLocalBillsCache([mapped, ...current]);
+    }
   }
 
   // ==========================================
@@ -667,7 +677,6 @@ class FinanceService {
     uploadedBy: string,
     organizationId: string = DEFAULT_ORG_ID
   ): Promise<{ success: boolean; attachment?: FinanceBillAttachment; error?: string }> {
-    const fileExt = file.name.split('.').pop();
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const attachmentId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`;
     const storagePath = `${organizationId}/${billId}/${attachmentId}_${cleanFileName}`;

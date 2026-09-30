@@ -24,9 +24,6 @@ import type {
   TemplateWithVersion,
   TemplateFieldDefinition,
   SectionLayout,
-  LayoutConfig,
-  HeaderConfig,
-  FooterConfig,
 } from '../../types/documentBuilder';
 import { CLIENT_SEED_TEMPLATES } from '../../data/seedTemplates';
 

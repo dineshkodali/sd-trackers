@@ -282,7 +282,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
       >
         <div className="flex flex-col items-center gap-6">
           {isIncidentReport ? (
-            incidentPages.map((page, idx) => (
+            incidentPages.map((page) => (
               <DocumentPreviewPage
                 key={`page-${page.pageNumber}`}
                 pageNumber={page.pageNumber}

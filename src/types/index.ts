@@ -894,3 +894,136 @@ export interface EmailNotificationLog {
   entityId?: string;
   payloadSummary?: string;
 }
+
+// =====================================================================
+// Welfare Checks Types
+// =====================================================================
+export interface WelfareCheckRecord {
+  id: string;
+  siteId?: string;
+  siteName: string;
+  serviceUserId?: string;
+  portReference: string;
+  flatNumber?: string;
+  officerId?: string;
+  officerName?: string;
+  checkDatetime: string;
+  safeguardingStatementAgreement: boolean;
+  validPortReference: boolean;
+  locationType: string;
+  locationOther?: string;
+  contactMethod: string;
+  contactMethodOther?: string;
+  wantsWelfareEngagement: boolean;
+  familyOrIndividual: 'Family' | 'Individual';
+  gpRegistered: boolean;
+  gpDetails?: string;
+  physicalHealthChange: boolean;
+  physicalHealthDetails?: string;
+  coronavirusAwareness: boolean;
+  coronavirusSymptomsAwareness: boolean;
+  previousCoronavirus: boolean;
+  knowsSymptomAction: boolean;
+  knowsWorseningContact: boolean;
+  knowsAssistanceContact: boolean;
+  mentalHealthChange: boolean;
+  mentalHealthDetails?: string;
+  otherWelfareIssues?: string;
+  maintenanceIssues?: string;
+  safeguardingConcerns?: string; // SENSITIVE: DO NOT SHARE WITH SU
+  windowRestrictorsIntact: boolean;
+  smokeAlarmsWorking: boolean;
+  status: string;
+  data?: Record<string, any>;
+  createdBy?: string;
+  createdByName?: string;
+  lastUpdatedBy?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// =====================================================================
+// Food Survey Checks Types
+// =====================================================================
+export type MealRatingValue = 'Excellent' | 'Very good' | 'Good' | 'Fair' | 'Poor';
+
+export interface FoodMealRating {
+  id?: string;
+  foodSurveyId?: string;
+  dayOfWeek: string;
+  mealType: 'Breakfast' | 'Lunch' | 'Dinner';
+  rating: MealRatingValue;
+  createdAt?: string;
+}
+
+export interface FoodSurveyRecord {
+  id: string;
+  siteId?: string;
+  siteName: string;
+  portReference: string;
+  houseOfficerName?: string;
+  overallFoodQuality?: MealRatingValue | string;
+  serverQuality?: string;
+  diningAreaCleanliness?: string;
+  overallFoodRating?: MealRatingValue | string;
+  menuDiversity?: string;
+  favouriteDish?: string;
+  leastFavouriteDish?: string;
+  suggestedDishes?: string;
+  foodAllergies?: string;
+  portionSizes?: string;
+  knownAllergies?: string;
+  dietaryRequirements?: string;
+  takeawayAwareness?: boolean;
+  snackAwareness?: boolean;
+  otherFeedback?: string;
+  mealRatings?: FoodMealRating[];
+  data?: Record<string, any>;
+  createdBy?: string;
+  createdByName?: string;
+  lastUpdatedBy?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// =====================================================================
+// Room Checks Types
+// =====================================================================
+export type RoomCheckResponse = 'Yes' | 'No' | 'N/A';
+export type RoomCheckOverallStatus = 'Passed' | 'Issues' | 'Attention Required';
+
+export interface RoomCheckItem {
+  id?: string;
+  roomCheckId?: string;
+  section: string;
+  questionKey: string;
+  questionText: string;
+  response: RoomCheckResponse;
+  comment?: string;
+  sortOrder: number;
+  createdAt?: string;
+}
+
+export interface RoomCheckRecord {
+  id: string;
+  siteId?: string;
+  siteName: string;
+  roomNumber: string;
+  aicReference?: string;
+  officerId?: string;
+  officerName?: string;
+  inspectionDate: string;
+  overallStatus: RoomCheckOverallStatus;
+  finalComments?: string;
+  items?: RoomCheckItem[];
+  data?: Record<string, any>;
+  createdBy?: string;
+  createdByName?: string;
+  lastUpdatedBy?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

@@ -25,8 +25,7 @@ import {
   CheckCircle2, 
   Clock, 
   ArrowUpRight, 
-  HelpCircle,
-  FileSpreadsheet
+  HelpCircle
 } from 'lucide-react';
 import { SGReferral, EscalationRecord, ChallengingSU } from '../../types';
 import { MonthlyIncidentsTable } from './MonthlyIncidentsTable';

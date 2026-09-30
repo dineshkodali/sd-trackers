@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { AlertTriangle, Info, CheckCircle2, X } from 'lucide-react';
+import { AlertTriangle, Info, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const ConfirmationModal: React.FC = () => {

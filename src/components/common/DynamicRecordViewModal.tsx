@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { X, Edit3, ShieldCheck, UserCheck } from 'lucide-react';
-import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
+import { useMemo } from 'react';
+import { X, Edit3, ShieldCheck } from 'lucide-react';
+import { TableColumnConfig } from '../../types/tableSchema';
 import { AttachmentsSection } from './AttachmentsSection';
 
 interface DynamicRecordViewModalProps<T = any> {
