@@ -49,7 +49,7 @@ export const PropertyProfileDrawer: React.FC<PropertyProfileDrawerProps> = ({
   onEditProperty,
   onRefreshData
 }) => {
-  const { sites, maintenanceRecords } = useApp();
+  const { sites, maintenanceRecords, requestConfirmation } = useApp();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [rooms, setRooms] = useState<PropertyRoom[]>([]);
@@ -160,11 +160,13 @@ export const PropertyProfileDrawer: React.FC<PropertyProfileDrawerProps> = ({
   const occupiedRoomsCount = rooms.filter(r => r.occupancyStatus === 'Occupied' || activePlacements.some(p => p.roomId === r.id)).length;
   const availableRoomsCount = Math.max(0, rooms.length - occupiedRoomsCount);
 
-  const roomOccupantMap = new Map<string, { placement: Placement; su?: ServiceUserMaster }>();
+  const roomOccupantMap = new Map<string, Array<{ placement: Placement; su?: ServiceUserMaster }>>();
   activePlacements.forEach(plc => {
     if (plc.roomId) {
       const su = occupants.find(u => u.id === plc.suId);
-      roomOccupantMap.set(plc.roomId, { placement: plc, su });
+      const list = roomOccupantMap.get(plc.roomId) || [];
+      list.push({ placement: plc, su });
+      roomOccupantMap.set(plc.roomId, list);
     }
   });
 

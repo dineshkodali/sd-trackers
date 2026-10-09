@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, AlertCircle, Building2, Check, ChevronDown, DoorOpen } from 'lucide-react';
+import { User, AlertCircle, Building2, Check, ChevronDown, DoorOpen, X, Edit3, Users } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';
 
@@ -35,15 +36,22 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
   placeholder = 'Select Service User...',
   hasError = false
 }) => {
+  const { vulnerableSUs, challengingSUs, spcdRecords, dailyRegisterRecords, newArrivalsRecords, sites } = useApp();
+
   const [serviceUsers, setServiceUsers] = useState<ServiceUserMaster[]>([]);
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
   const [rooms, setRooms] = useState<PropertyRoom[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCustomMode, setIsCustomMode] = useState(false);
-  const [customValue, setCustomValue] = useState('');
+  const [customInput, setCustomInput] = useState(value || '');
 
-  // Fetch all master data
+  // Keep customInput synced with value when switching
+  useEffect(() => {
+    setCustomInput(value || '');
+  }, [value]);
+
+  // Fetch all master data from service
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
@@ -72,7 +80,7 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
           }
         }
       } catch (err) {
-        console.error('Failed to load SU master data for property selector:', err);
+        console.error('Failed to load SU master data for selector:', err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -88,7 +96,57 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
     };
   }, []);
 
-  // Resolve matching property strictly
+  // Consolidate master service users with all tracker records so no resident is missing
+  const allKnownServiceUsers = useMemo<ServiceUserMaster[]>(() => {
+    const map = new Map<string, ServiceUserMaster>();
+
+    // 1. Master service users
+    serviceUsers.forEach(su => {
+      const normName = `${su.firstName || ''} ${su.lastName || ''}`.trim().toLowerCase();
+      if (normName) {
+        map.set(normName, su);
+      }
+    });
+
+    // 2. Synthesize from other app collections if not already present
+    const addSyntheticSU = (name: string, portRef?: string, room?: string, site?: string) => {
+      if (!name || typeof name !== 'string') return;
+      const cleanName = name.trim();
+      const normName = cleanName.toLowerCase();
+      if (!normName || map.has(normName)) return;
+
+      const parts = cleanName.split(' ');
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || '';
+
+      map.set(normName, {
+        id: `synth-${encodeURIComponent(normName)}`,
+        suReference: portRef || `SU-${Math.floor(Math.random() * 89999 + 10000)}`,
+        externalReference: portRef || '',
+        firstName,
+        lastName,
+        status: 'Active',
+        siteId: site || '',
+        gender: 'Not Specified',
+        preferredLanguage: 'English',
+        interpreterRequired: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    };
+
+    vulnerableSUs?.forEach(r => addSyntheticSU(r.suName, r.portOrNassRef, r.roomOrFlatNo, r.site));
+    challengingSUs?.forEach(r => addSyntheticSU(r.name, r.portRef, undefined, r.site));
+    spcdRecords?.forEach(r => addSyntheticSU(r.suName, r.suPortReference, r.roomNumber, r.site || r.siteName));
+    dailyRegisterRecords?.forEach(r => addSyntheticSU(r.name, r.portRef, r.roomNo, r.hotel));
+    newArrivalsRecords?.forEach(r => addSyntheticSU(r.name, r.portReference, r.room, r.hotel));
+
+    return Array.from(map.values()).sort((a, b) =>
+      `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+    );
+  }, [serviceUsers, vulnerableSUs, challengingSUs, spcdRecords, dailyRegisterRecords, newArrivalsRecords]);
+
+  // Resolve matching property
   const resolvedProperty = useMemo(() => {
     if (!siteOrPropertyName || siteOrPropertyName === 'all' || siteOrPropertyName === 'All Sites') {
       return null;
@@ -106,18 +164,40 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
     ) || null;
   }, [siteOrPropertyName, properties]);
 
-  // Strictly filter SUs who have an active placement at this property
-  const relativeSUs = useMemo(() => {
-    if (!resolvedProperty) return [];
-    
-    // Placements strictly matching this property
-    const propPlacements = placements.filter(
-      p => p.propertyId === resolvedProperty.id && p.status === 'Active'
-    );
-    const validSuIds = new Set(propPlacements.map(p => p.suId));
+  // Split SUs into relative (placed at current site) and other SUs
+  const { relativeSUs, otherSUs } = useMemo(() => {
+    if (!siteOrPropertyName || siteOrPropertyName === 'all' || siteOrPropertyName === 'All Sites') {
+      return { relativeSUs: allKnownServiceUsers, otherSUs: [] };
+    }
 
-    return serviceUsers.filter(su => validSuIds.has(su.id));
-  }, [resolvedProperty, placements, serviceUsers]);
+    const cleanSiteName = siteOrPropertyName.trim().toLowerCase();
+    const propId = resolvedProperty?.id;
+
+    // Placements matching this property or site
+    const matchedPlacements = placements.filter(
+      p => (propId && p.propertyId === propId) || (p.siteId && p.siteId.toLowerCase() === cleanSiteName)
+    );
+    const placedSuIds = new Set(matchedPlacements.map(p => p.suId));
+
+    const rel: ServiceUserMaster[] = [];
+    const oth: ServiceUserMaster[] = [];
+
+    allKnownServiceUsers.forEach(su => {
+      const isPlaced = placedSuIds.has(su.id);
+      const isSiteMatched = su.siteId && (
+        su.siteId.toLowerCase() === cleanSiteName ||
+        (resolvedProperty && su.siteId === resolvedProperty.id)
+      );
+
+      if (isPlaced || isSiteMatched) {
+        rel.push(su);
+      } else {
+        oth.push(su);
+      }
+    });
+
+    return { relativeSUs: rel, otherSUs: oth };
+  }, [siteOrPropertyName, resolvedProperty, placements, allKnownServiceUsers]);
 
   // Handle single selection
   const handleSelectOne = (suId: string) => {
@@ -130,7 +210,7 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
       return;
     }
 
-    const su = serviceUsers.find(u => u.id === suId);
+    const su = allKnownServiceUsers.find(u => u.id === suId);
     if (!su) return;
 
     const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
@@ -182,39 +262,66 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
     });
   };
 
-  // If no property/site is selected yet:
-  if (!siteOrPropertyName || siteOrPropertyName === 'all' || siteOrPropertyName === 'All Sites') {
+  // Custom text entry mode
+  if (isCustomMode) {
     return (
-      <div className="p-2.5 bg-amber-50/90 border border-amber-200 text-amber-900 rounded-xs text-xs flex items-center gap-2">
-        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-        <div>
-          <span className="font-semibold block">Property / Site Selection Required</span>
-          <span className="text-[11px] text-amber-700">
-            Please choose the Hotel / Property / Site above first. Service Users will strictly load relative to that property.
-          </span>
+      <div className="space-y-1">
+        <div className="relative flex items-center">
+          <input
+            type="text"
+            value={customInput}
+            onChange={e => {
+              setCustomInput(e.target.value);
+              onChange(e.target.value);
+            }}
+            placeholder="Type resident / service user name..."
+            disabled={disabled}
+            className={`w-full p-2 pr-20 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] text-xs ${
+              hasError ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
+            }`}
+          />
+          <div className="absolute right-1 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setIsCustomMode(false);
+              }}
+              className="px-2 py-1 text-[10px] font-semibold bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200 rounded-xs cursor-pointer flex items-center gap-1"
+              title="Return to dropdown list"
+            >
+              <Users className="w-3 h-3" />
+              <span>List</span>
+            </button>
+          </div>
         </div>
+        <p className="text-[10px] text-neutral-500">
+          Manual resident entry mode. Click <strong>List</strong> to switch back to the dropdown selector.
+        </p>
       </div>
     );
   }
 
   // Multi-select view for suNames
   if (isMulti) {
+    const listToShow = relativeSUs.length > 0 ? relativeSUs : allKnownServiceUsers;
     return (
       <div className="space-y-2 border border-[#8a8886] rounded-xs p-2.5 bg-white">
         <div className="flex items-center justify-between text-[11px] text-neutral-600 pb-1 border-b border-neutral-100">
           <span className="font-medium">
-            Assigned to {resolvedProperty?.propertyName || siteOrPropertyName}:
+            {siteOrPropertyName && siteOrPropertyName !== 'All Sites'
+              ? `Residents at ${resolvedProperty?.propertyName || siteOrPropertyName}:`
+              : 'All Active Service Users:'}
           </span>
-          <span className="text-teal-700 font-semibold">{relativeSUs.length} residents placed</span>
+          <span className="text-teal-700 font-semibold">{listToShow.length} available</span>
         </div>
 
-        {relativeSUs.length === 0 ? (
+        {listToShow.length === 0 ? (
           <div className="py-2 text-center text-neutral-400 text-xs">
-            No active Service Users placed at {resolvedProperty?.propertyName || siteOrPropertyName}.
+            No Service Users found. Use manual entry below.
           </div>
         ) : (
-          <div className="max-h-36 overflow-y-auto space-y-1">
-            {relativeSUs.map(su => {
+          <div className="max-h-40 overflow-y-auto space-y-1">
+            {listToShow.map(su => {
               const fullName = `${su.firstName} ${su.lastName}`.trim();
               const isChecked = selectedNames.includes(fullName);
               const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
@@ -256,9 +363,10 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
           <button
             type="button"
             onClick={() => setIsCustomMode(true)}
-            className="text-teal-700 hover:underline cursor-pointer"
+            className="text-teal-700 hover:underline cursor-pointer flex items-center gap-1"
           >
-            Manual entry...
+            <Edit3 className="w-3 h-3" />
+            <span>Manual entry...</span>
           </button>
         </div>
       </div>
@@ -266,14 +374,19 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
   }
 
   // Single select dropdown
-  const matchedSU = relativeSUs.find(u => `${u.firstName} ${u.lastName}`.trim() === value.trim());
+  const matchedSU = allKnownServiceUsers.find(
+    u => `${u.firstName} ${u.lastName}`.trim().toLowerCase() === String(value || '').trim().toLowerCase()
+  );
 
   return (
     <div className="space-y-1">
       <select
-        value={matchedSU?.id || ''}
+        value={matchedSU?.id || (value ? '__EXISTING_VAL__' : '')}
         disabled={disabled || loading}
-        onChange={e => handleSelectOne(e.target.value)}
+        onChange={e => {
+          if (e.target.value === '__EXISTING_VAL__') return;
+          handleSelectOne(e.target.value);
+        }}
         className={`w-full p-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors text-xs ${
           hasError ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
         }`}
@@ -281,20 +394,58 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
         <option value="">
           {loading
             ? 'Loading residents...'
-            : relativeSUs.length === 0
-            ? `-- No Active Service Users at ${resolvedProperty?.propertyName || siteOrPropertyName} --`
+            : allKnownServiceUsers.length === 0
+            ? '-- No Service Users Registered --'
             : placeholder}
         </option>
-        {relativeSUs.map(su => {
-          const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
-          const rm = plc ? rooms.find(r => r.id === plc.roomId) : null;
-          const roomLabel = rm ? `[Room ${rm.roomNumber}]` : '[No Room]';
-          return (
-            <option key={su.id} value={su.id}>
-              {su.firstName} {su.lastName} {su.externalReference ? `(${su.externalReference})` : `(${su.suReference})`} {roomLabel}
-            </option>
-          );
-        })}
+
+        {value && !matchedSU && (
+          <option value="__EXISTING_VAL__">
+            {value} (Current Value)
+          </option>
+        )}
+
+        {/* Relative SUs (assigned to this site) */}
+        {relativeSUs.length > 0 && otherSUs.length > 0 ? (
+          <>
+            <optgroup label={`Assigned to ${resolvedProperty?.propertyName || siteOrPropertyName || 'Selected Site'} (${relativeSUs.length})`}>
+              {relativeSUs.map(su => {
+                const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
+                const rm = plc ? rooms.find(r => r.id === plc.roomId) : null;
+                const roomLabel = rm ? ` [Room ${rm.roomNumber}]` : '';
+                const ref = su.externalReference || su.suReference;
+                return (
+                  <option key={su.id} value={su.id}>
+                    {su.firstName} {su.lastName} {ref ? `(${ref})` : ''}{roomLabel}
+                  </option>
+                );
+              })}
+            </optgroup>
+            <optgroup label={`All Other Active Service Users (${otherSUs.length})`}>
+              {otherSUs.map(su => {
+                const ref = su.externalReference || su.suReference;
+                return (
+                  <option key={su.id} value={su.id}>
+                    {su.firstName} {su.lastName} {ref ? `(${ref})` : ''}
+                  </option>
+                );
+              })}
+            </optgroup>
+          </>
+        ) : (
+          allKnownServiceUsers.map(su => {
+            const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
+            const rm = plc ? rooms.find(r => r.id === plc.roomId) : null;
+            const roomLabel = rm ? ` [Room ${rm.roomNumber}]` : '';
+            const ref = su.externalReference || su.suReference;
+            return (
+              <option key={su.id} value={su.id}>
+                {su.firstName} {su.lastName} {ref ? `(${ref})` : ''}{roomLabel}
+              </option>
+            );
+          })
+        )}
+
         <option value="__CUSTOM__">➕ Enter unlisted / manual resident name...</option>
       </select>
 
@@ -304,9 +455,10 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
           <button
             type="button"
             onClick={() => setIsCustomMode(true)}
-            className="text-teal-700 hover:underline cursor-pointer"
+            className="text-teal-700 hover:underline cursor-pointer flex items-center gap-1"
           >
-            Edit text
+            <Edit3 className="w-3 h-3" />
+            <span>Edit text</span>
           </button>
         </div>
       )}

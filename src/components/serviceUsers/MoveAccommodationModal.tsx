@@ -70,20 +70,36 @@ export const MoveAccommodationModal: React.FC<MoveAccommodationModalProps> = ({
         setRooms([]);
         return;
       }
-      const res = await suPropertyService.getRooms(targetPropertyId);
+      const [res, plcsRes] = await Promise.all([
+        suPropertyService.getRooms(targetPropertyId),
+        suPropertyService.getPlacements({ propertyId: targetPropertyId, status: 'Active' })
+      ]);
       if (res.success && res.data) {
-        // Filter available or current rooms
-        const availableRooms = res.data.filter(r => r.status === 'Available' || r.id === currentRoom?.id);
+        const activePlcs = plcsRes.success && plcsRes.data ? plcsRes.data : [];
+        const occMap = new Map<string, number>();
+        activePlcs.forEach(p => {
+          if (p.suId === serviceUser.id) return;
+          occMap.set(p.roomId, (occMap.get(p.roomId) || 0) + 1);
+        });
+
+        const availableRooms = res.data.filter(r => {
+          if (r.id === currentRoom?.id) return true;
+          if (r.status === 'Under Maintenance' || r.status === 'Blocked') return false;
+          const occ = occMap.get(r.id) || 0;
+          return occ < (r.capacity || 1);
+        });
+
         setRooms(availableRooms);
         if (availableRooms.length > 0) {
-          setTargetRoomId(availableRooms[0].id);
+          const defaultSelect = availableRooms.find(r => r.id !== currentRoom?.id) || availableRooms[0];
+          setTargetRoomId(defaultSelect.id);
         } else {
           setTargetRoomId('');
         }
       }
     }
     loadRooms();
-  }, [targetPropertyId, currentRoom]);
+  }, [targetPropertyId, currentRoom, serviceUser.id]);
 
   if (!isOpen) return null;
 

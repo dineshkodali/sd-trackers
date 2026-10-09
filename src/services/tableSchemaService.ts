@@ -85,6 +85,7 @@ function merge<T>(saved: SerializedColumn[], defaultColumns: TableColumnConfig<T
       return {
         ...defaultCol,
         ...savedCol,
+        type: (defaultCol.type === 'select' || typeof defaultCol.options === 'function') ? defaultCol.type : (savedCol.type || defaultCol.type),
         // Retain default callbacks like options, optionCategory, and formatters if saved one doesn't supply them
         options: defaultCol.options || savedCol.options,
         optionCategory: defaultCol.optionCategory || savedCol.optionCategory,

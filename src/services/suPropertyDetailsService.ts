@@ -59,6 +59,10 @@ export const suPropertyDetailsService = {
     return await apiService.deleteEntityRecord('suHousehold', id);
   },
 
+  async updateSUHouseholdMember(id: string, member: Partial<ServiceUserHouseholdMember>): Promise<WriteResult<ServiceUserHouseholdMember>> {
+    return await apiService.updateEntityRecord<ServiceUserHouseholdMember>('suHousehold', id, { ...member, updatedAt: new Date().toISOString() });
+  },
+
   async getSUSupport(suId: string): Promise<ServiceUserSupportRecord[]> {
     const res = await apiService.fetchEntityRecords<ServiceUserSupportRecord>('suSupport', {
       eq: { su_id: suId },
@@ -92,6 +96,10 @@ export const suPropertyDetailsService = {
 
   async updateSUSupport(id: string, record: Partial<ServiceUserSupportRecord>): Promise<WriteResult<ServiceUserSupportRecord>> {
     return await apiService.updateEntityRecord<ServiceUserSupportRecord>('suSupport', id, record);
+  },
+
+  async deleteSUSupport(id: string): Promise<WriteResult> {
+    return await apiService.deleteEntityRecord('suSupport', id);
   },
 
   async getSUDocuments(suId: string): Promise<ServiceUserDocument[]> {

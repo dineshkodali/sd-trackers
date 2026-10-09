@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { UsersRound, Plus, Search, Building2, Home, DoorOpen, Eye, Edit3, ArrowRightLeft, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UsersRound, Plus, Search, Building2, Home, DoorOpen, Eye, Edit3, ArrowRightLeft, RefreshCw, CheckCircle2, AlertCircle, Trash2, UserMinus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';
@@ -59,6 +59,82 @@ export const ServiceUsersView: React.FC = () => {
   const [selectedSUForProfile, setSelectedSUForProfile] = useState<ServiceUserMaster | null>(null);
   const [selectedSUForEdit, setSelectedSUForEdit] = useState<ServiceUserMaster | null>(null);
   const [selectedSUForMove, setSelectedSUForMove] = useState<ServiceUserMaster | null>(null);
+
+  // Multi-Selection State for Bulk Operations
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === paginatedUsers.length && paginatedUsers.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(paginatedUsers.map(u => u.id));
+    }
+  };
+
+  const handleToggleSelect = (e: React.SyntheticEvent, id: string) => {
+    e.stopPropagation();
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    requestConfirmation({
+      title: 'Delete Selected Service Users',
+      message: `Are you sure you want to permanently delete ${selectedIds.length} service user${selectedIds.length === 1 ? '' : 's'}? All associated accommodation placements, household members, documents, and support records will be deleted, and their allocated room spaces will be released. This action cannot be undone.`,
+      confirmLabel: 'Delete Service Users',
+      isDanger: true,
+      onConfirm: async () => {
+        for (const id of selectedIds) {
+          const user = serviceUsers.find(u => u.id === id);
+          await suPropertyService.deleteServiceUser(id, user?.suReference, user ? `${user.firstName} ${user.lastName}` : undefined);
+        }
+        setSelectedIds([]);
+        await loadMasterData();
+      }
+    });
+  };
+
+  const handleBulkStatusChange = (newStatus: 'Active' | 'Discharged' | 'Pending') => {
+    if (selectedIds.length === 0) return;
+    requestConfirmation({
+      title: `Set Status to ${newStatus}`,
+      message: `Update status of ${selectedIds.length} selected service user${selectedIds.length === 1 ? '' : 's'} to "${newStatus}"?${newStatus === 'Discharged' ? ' Any active accommodation placements will be closed and rooms released.' : ''}`,
+      confirmLabel: `Update to ${newStatus}`,
+      onConfirm: async () => {
+        for (const id of selectedIds) {
+          await suPropertyService.updateServiceUser(id, { status: newStatus });
+        }
+        setSelectedIds([]);
+        await loadMasterData();
+      }
+    });
+  };
+
+  const handleDeleteSingle = (u: ServiceUserMaster) => {
+    requestConfirmation({
+      title: `Delete Service User: ${u.firstName} ${u.lastName}`,
+      message: `Are you sure you want to permanently delete ${u.firstName} ${u.lastName} (${u.suReference})? All associated placements, household members, documents, and support records will be deleted, and their allocated room space will be released. This action cannot be undone.`,
+      confirmLabel: 'Delete Service User',
+      isDanger: true,
+      onConfirm: async () => {
+        await suPropertyService.deleteServiceUser(u.id, u.suReference, `${u.firstName} ${u.lastName}`);
+        await loadMasterData();
+      }
+    });
+  };
+
+  const handleQuickDischarge = (u: ServiceUserMaster) => {
+    requestConfirmation({
+      title: `Discharge Service User: ${u.firstName} ${u.lastName}`,
+      message: `Are you sure you want to mark ${u.firstName} ${u.lastName} (${u.suReference}) as Discharged? Their active accommodation placement will be ended, and their room space will be released back to the property.`,
+      confirmLabel: 'Discharge Resident',
+      isDanger: false,
+      onConfirm: async () => {
+        await suPropertyService.updateServiceUser(u.id, { status: 'Discharged' });
+        await loadMasterData();
+      }
+    });
+  };
 
   const loadMasterData = async () => {
     setLoading(true);
@@ -349,6 +425,14 @@ export const ServiceUsersView: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
+                <th className="py-2.5 px-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={paginatedUsers.length > 0 && selectedIds.length === paginatedUsers.length}
+                    onChange={handleToggleSelectAll}
+                    className="rounded-xs text-[#0d9488] focus:ring-[#0d9488] cursor-pointer"
+                  />
+                </th>
                 <th className="py-2.5 px-3">SU ID</th>
                 <th className="py-2.5 px-3">Service User Name</th>
                 <th className="py-2.5 px-3">Date of Birth</th>
@@ -357,20 +441,20 @@ export const ServiceUsersView: React.FC = () => {
                 <th className="py-2.5 px-3">Room</th>
                 <th className="py-2.5 px-3">Status</th>
                 <th className="py-2.5 px-3">Placement</th>
-                <th className="py-2.5 px-3 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10 select-none">Actions</th>
+                <th className="py-2.5 px-3 text-right w-36 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10 select-none">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f0f0]">
               {loading && paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-neutral-400">
+                  <td colSpan={10} className="py-12 text-center text-neutral-400">
                     <RefreshCw className="w-8 h-8 mx-auto mb-2 text-[#0d9488] animate-spin" />
                     <p className="font-medium text-xs">Loading Service User records...</p>
                   </td>
                 </tr>
               ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-neutral-400">
+                  <td colSpan={10} className="py-12 text-center text-neutral-400">
                     <UsersRound className="w-8 h-8 mx-auto mb-2 text-neutral-300 opacity-60" />
                     <p className="font-medium text-xs">No Service Users matching current filters</p>
                     <p className="text-[11px] mt-0.5">Click "+ Add Service User" to create a new master record.</p>
@@ -387,8 +471,16 @@ export const ServiceUsersView: React.FC = () => {
                     <tr
                       key={u.id}
                       onClick={() => setSelectedSUForProfile(u)}
-                      className="group hover:bg-[#fbfbfa] transition-colors cursor-pointer"
+                      className={`group hover:bg-[#fbfbfa] transition-colors cursor-pointer ${selectedIds.includes(u.id) ? 'bg-[#f0fdfa]' : ''}`}
                     >
+                      <td className="py-2.5 px-3 w-8" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(u.id)}
+                          onChange={e => handleToggleSelect(e, u.id)}
+                          className="rounded-xs text-[#0d9488] focus:ring-[#0d9488] cursor-pointer"
+                        />
+                      </td>
                       <td className="py-2.5 px-3">
                         <span className="font-mono font-bold text-xs bg-[#f0fdfa] text-[#0f766e] px-2 py-0.5 rounded-xs border border-[#99f6e4] inline-block">
                           {u.suReference}
@@ -451,7 +543,7 @@ export const ServiceUsersView: React.FC = () => {
                             type="button"
                             onClick={() => setSelectedSUForProfile(u)}
                             className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                            title="View SU Profile"
+                            title="View SU Profile & Dossier"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -470,9 +562,29 @@ export const ServiceUsersView: React.FC = () => {
                               type="button"
                               onClick={() => setSelectedSUForMove(u)}
                               className="p-1 text-neutral-500 hover:text-teal-700 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                              title="Move Accommodation"
+                              title="Move / Allocate Accommodation"
                             >
                               <ArrowRightLeft className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canCRUD && u.status === 'Active' && (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickDischarge(u)}
+                              className="p-1 text-neutral-500 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors cursor-pointer"
+                              title="Discharge Resident & Release Room"
+                            >
+                              <UserMinus className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canCRUD && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSingle(u)}
+                              className="p-1 text-neutral-500 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              title="Delete Service User"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
@@ -496,6 +608,40 @@ export const ServiceUsersView: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Floating Bulk Action Toolbar */}
+      <BulkActionToolbar
+        selectedCount={selectedIds.length}
+        totalCount={filteredUsers.length}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={() => setSelectedIds(filteredUsers.map(u => u.id))}
+        customActions={
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange('Active')}
+              className="px-2.5 py-1 text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white rounded cursor-pointer transition-colors"
+            >
+              Set Active
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatusChange('Discharged')}
+              className="px-2.5 py-1 text-xs font-semibold bg-amber-700 hover:bg-amber-800 text-white rounded cursor-pointer transition-colors"
+            >
+              Discharge &amp; Release Rooms
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              className="px-2.5 py-1 text-xs font-semibold bg-rose-700 hover:bg-rose-800 text-white rounded flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete ({selectedIds.length})</span>
+            </button>
+          </div>
+        }
+      />
 
       {/* Embedded Modals / Drawers (URL remains /su-users) */}
       <ServiceUserFormModal

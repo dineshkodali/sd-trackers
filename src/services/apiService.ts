@@ -133,6 +133,10 @@ export interface AuditTrailPayload {
 let activeAuditContext: AuditUserContext | null = null;
 let directFallbackActive = false;
 
+export function setAuditUserContext(ctx: AuditUserContext | null): void {
+  activeAuditContext = ctx;
+}
+
 export function isDirectSupabaseActive(): boolean {
   return directFallbackActive || shouldPreferDirectSupabase();
 }
@@ -159,8 +163,11 @@ export function getApiBaseUrl(): string {
     if (!url && winVal) url = String(winVal).replace(/\/+$/, '');
   }
   if (!url) {
-    const envVal = (import.meta as any).env?.VITE_API_URL || '';
+    const envVal = (import.meta as any).env?.VITE_API_URL || (typeof process !== 'undefined' ? process.env?.API_BASE_URL : '');
     url = String(envVal || '').replace(/\/+$/, '');
+  }
+  if (!url && typeof window === 'undefined') {
+    url = (typeof process !== 'undefined' && process.env?.PORT) ? `http://localhost:${process.env.PORT}` : 'http://localhost:3020';
   }
   // Safety guard: api.trackers.sdcdms.co.uk has no DNS record
   if (url.includes('api.trackers.sdcdms.co.uk')) {

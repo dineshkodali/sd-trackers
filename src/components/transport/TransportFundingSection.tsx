@@ -102,7 +102,7 @@ export const TransportFundingSection: React.FC = () => {
     if (!siteIdentifier) return 'Site Manager';
     const matchedSite = sites.find(s => s.name === siteIdentifier || s.id === siteIdentifier);
     if (matchedSite?.leadOfficer) return matchedSite.leadOfficer;
-    const matchedProp = properties.find(p => p.propertyName === siteIdentifier || p.id === siteIdentifier);
+    const matchedProp = properties.find((p: any) => (p.propertyName || p.name) === siteIdentifier || p.id === siteIdentifier) as any;
     if (matchedProp?.leadOfficer) return matchedProp.leadOfficer;
     if (matchedProp?.propertyManager) return matchedProp.propertyManager;
     return 'Site Manager';

@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+import path from 'path';
 
 /**
  * HMAC signing for the built-in administrator session token.
@@ -24,6 +26,12 @@ let cachedSecret: Buffer | null = null;
 
 function getSecret(): Buffer {
   if (cachedSecret) return cachedSecret;
+
+  if (!process.env.AUTH_TOKEN_SECRET) {
+    try {
+      dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+    } catch (_) {}
+  }
 
   const configured = process.env.AUTH_TOKEN_SECRET;
   if (configured && configured.trim().length >= 16) {

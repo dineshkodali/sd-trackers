@@ -62,6 +62,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     archiveReferral,
     restoreReferral,
     deleteReferral,
+    requestConfirmation,
     canDeleteRecord,
     canEditRecord,
     canCreateRecord,
@@ -203,7 +204,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     }
   };
 
-  const handleToggleSelect = (e: React.MouseEvent, id: string) => {
+  const handleToggleSelect = (e: React.SyntheticEvent, id: string) => {
     e.stopPropagation();
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };

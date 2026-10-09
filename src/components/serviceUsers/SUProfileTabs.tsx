@@ -195,11 +195,14 @@ export interface SUAccommodationTabProps {
   activePlacement: Placement | null;
   placementHistory: Placement[];
   onOpenMoveModal: () => void;
+  onEndPlacement?: (placementId: string) => void;
+  onDeletePlacement?: (placementId: string) => void;
+  canCRUD?: boolean;
 }
 
 export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
   currentProperty, currentRoom, currentSiteName, activePlacement,
-  placementHistory, onOpenMoveModal
+  placementHistory, onOpenMoveModal, onEndPlacement, onDeletePlacement, canCRUD = true
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -211,14 +214,14 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
     }
   };
 
-  const handleToggleSelect = (e: React.MouseEvent, id: string) => {
+  const handleToggleSelect = (e: React.SyntheticEvent, id: string) => {
     e.stopPropagation();
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   return (
   <div className="space-y-4">
-    <div className="p-4 bg-teal-50/60 rounded-lg border border-teal-200/80 flex items-center justify-between">
+    <div className="p-4 bg-teal-50/60 rounded-lg border border-teal-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
         <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider block">Current Active Placement</span>
         <h4 className="text-sm font-bold text-neutral-800 mt-0.5">
@@ -228,13 +231,25 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
           Assigned site: <strong>{currentSiteName}</strong> • Placement active since {activePlacement?.startDate ? new Date(activePlacement.startDate).toLocaleDateString('en-GB') : 'N/A'}
         </p>
       </div>
-      <button
-        onClick={onOpenMoveModal}
-        className="px-3.5 py-1.5 bg-[#0d9488] text-white rounded-md font-semibold text-xs hover:bg-[#0f766e] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-      >
-        <ArrowRightLeft className="w-3.5 h-3.5" />
-        <span>Move Accommodation</span>
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        {canCRUD && (
+          <button
+            onClick={onOpenMoveModal}
+            className="px-3.5 py-1.5 bg-[#0d9488] text-white rounded-md font-semibold text-xs hover:bg-[#0f766e] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            <span>Move Accommodation</span>
+          </button>
+        )}
+        {canCRUD && activePlacement && onEndPlacement && (
+          <button
+            onClick={() => onEndPlacement(activePlacement.id)}
+            className="px-3.5 py-1.5 bg-white text-amber-700 border border-amber-300 rounded-md font-semibold text-xs hover:bg-amber-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <span>End Placement</span>
+          </button>
+        )}
+      </div>
     </div>
 
     <div>
@@ -260,6 +275,7 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
                 <th className="p-2.5">End Date</th>
                 <th className="p-2.5">Status</th>
                 <th className="p-2.5">Reason / Notes</th>
+                <th className="p-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9] text-[#323130]">
@@ -286,6 +302,29 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
                     </span>
                   </td>
                   <td className="p-2.5 text-neutral-500">{p.reason || p.notes || '—'}</td>
+                  <td className="p-2.5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {p.status === 'Active' && onEndPlacement && canCRUD && (
+                        <button
+                          type="button"
+                          onClick={() => onEndPlacement(p.id)}
+                          className="px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-50 rounded border border-amber-200 transition-colors"
+                        >
+                          End
+                        </button>
+                      )}
+                      {onDeletePlacement && canCRUD && (
+                        <button
+                          type="button"
+                          onClick={() => onDeletePlacement(p.id)}
+                          className="p-1 text-[#a4262c] hover:text-[#d13438] hover:bg-[#fceef1] rounded-xs transition-colors cursor-pointer"
+                          title="Delete Placement Record"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -306,32 +345,166 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
 
 export interface SUHouseholdTabProps {
   household: ServiceUserHouseholdMember[];
+  onAddMember?: (member: Partial<ServiceUserHouseholdMember>) => Promise<void> | void;
+  onDeleteMember?: (memberId: string) => void;
+  canCRUD?: boolean;
 }
 
-export const SUHouseholdTab: React.FC<SUHouseholdTabProps> = ({ household }) => (
-  <div className="space-y-4">
-    <div className="flex items-center justify-between">
-      <h4 className="font-bold text-xs text-neutral-800">Associated Household &amp; Dependents</h4>
-    </div>
-    {household.length === 0 ? (
-      <div className="p-6 text-center bg-neutral-50 rounded-lg border border-dashed border-neutral-200 text-neutral-400">
-        No household members registered.
+export const SUHouseholdTab: React.FC<SUHouseholdTabProps> = ({ 
+  household, onAddMember, onDeleteMember, canCRUD = true 
+}) => {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [name, setName] = useState('');
+  const [relationship, setRelationship] = useState('Child');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState('Female');
+  const [notes, setNotes] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    if (onAddMember) {
+      await onAddMember({
+        name: name.trim(),
+        relationship,
+        dateOfBirth: dateOfBirth || undefined,
+        gender,
+        notes: notes.trim()
+      });
+    }
+    setName('');
+    setNotes('');
+    setDateOfBirth('');
+    setShowAddForm(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-bold text-xs text-neutral-800">Associated Household &amp; Dependents</h4>
+        {canCRUD && onAddMember && (
+          <button
+            type="button"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="px-2.5 py-1 bg-teal-50 border border-teal-200 text-teal-800 rounded font-semibold text-xs hover:bg-teal-100 flex items-center gap-1 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Member</span>
+          </button>
+        )}
       </div>
-    ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {household.map(m => (
-          <div key={m.id} className="p-3 bg-white border border-neutral-200 rounded-lg space-y-1">
-            <div className="flex items-center justify-between">
-              <strong className="text-neutral-800">{m.name}</strong>
-              <span className="text-[10px] bg-neutral-100 text-neutral-700 px-1.5 py-0.5 rounded font-semibold">{m.relationship}</span>
+
+      {showAddForm && (
+        <form onSubmit={handleSubmit} className="p-3.5 bg-neutral-50 border border-neutral-300 rounded-lg space-y-2.5 animate-in fade-in duration-150">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-500 mb-0.5">Full Name *</label>
+              <input
+                type="text"
+                placeholder="Full Name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
+                className="w-full px-2 py-1 bg-white border border-neutral-300 rounded text-xs"
+              />
             </div>
-            <p className="text-neutral-500 text-[11px]">DOB: {m.dateOfBirth || 'N/A'} • Gender: {m.gender || 'N/A'}</p>
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-500 mb-0.5">Relationship</label>
+              <select
+                value={relationship}
+                onChange={e => setRelationship(e.target.value)}
+                className="w-full px-2 py-1 bg-white border border-neutral-300 rounded text-xs"
+              >
+                <option value="Child">Child</option>
+                <option value="Spouse">Spouse / Partner</option>
+                <option value="Parent">Parent</option>
+                <option value="Sibling">Sibling</option>
+                <option value="Other Dependent">Other Dependent</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-500 mb-0.5">Date of Birth</label>
+              <input
+                type="date"
+                value={dateOfBirth}
+                onChange={e => setDateOfBirth(e.target.value)}
+                className="w-full px-2 py-1 bg-white border border-neutral-300 rounded text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-500 mb-0.5">Gender</label>
+              <select
+                value={gender}
+                onChange={e => setGender(e.target.value)}
+                className="w-full px-2 py-1 bg-white border border-neutral-300 rounded text-xs"
+              >
+                <option value="Female">Female</option>
+                <option value="Male">Male</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </div>
+            <div className="col-span-full">
+              <input
+                type="text"
+                placeholder="Notes or special considerations..."
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className="w-full px-2 py-1 bg-white border border-neutral-300 rounded text-xs"
+              />
+            </div>
           </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddForm(false)}
+              className="px-2.5 py-1 border border-neutral-300 rounded text-xs text-neutral-600 hover:bg-neutral-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-3 py-1 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded font-semibold text-xs shadow-xs"
+            >
+              Save Member
+            </button>
+          </div>
+        </form>
+      )}
+
+      {household.length === 0 ? (
+        <div className="p-6 text-center bg-neutral-50 rounded-lg border border-dashed border-neutral-200 text-neutral-400">
+          No household members registered.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {household.map(m => (
+            <div key={m.id} className="p-3 bg-white border border-neutral-200 rounded-lg space-y-1 relative group">
+              <div className="flex items-center justify-between">
+                <strong className="text-neutral-800 text-xs">{m.name}</strong>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] bg-neutral-100 text-neutral-700 px-1.5 py-0.5 rounded font-semibold">{m.relationship}</span>
+                  {canCRUD && onDeleteMember && (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteMember(m.id)}
+                      className="p-1 text-[#a4262c] hover:text-[#d13438] hover:bg-[#fceef1] rounded-xs transition-colors cursor-pointer"
+                      title="Delete Household Member"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-neutral-500 text-[11px]">DOB: {m.dateOfBirth || 'N/A'} • Gender: {m.gender || 'N/A'}</p>
+              {m.notes && <p className="text-[10px] text-neutral-400 italic">{m.notes}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export interface SUSupportTabProps {
   supportRecords: ServiceUserSupportRecord[];
@@ -342,22 +515,28 @@ export interface SUSupportTabProps {
   newSupportDesc: string;
   setNewSupportDesc: (val: string) => void;
   onCreateSupport: (e: React.FormEvent) => void;
+  onDeleteSupport?: (supportId: string) => void;
+  onUpdateSupportStatus?: (supportId: string, newStatus: string) => void;
+  canCRUD?: boolean;
 }
 
 export const SUSupportTab: React.FC<SUSupportTabProps> = ({
   supportRecords, showAddSupport, setShowAddSupport, newSupportCat,
-  setNewSupportCat, newSupportDesc, setNewSupportDesc, onCreateSupport
+  setNewSupportCat, newSupportDesc, setNewSupportDesc, onCreateSupport,
+  onDeleteSupport, onUpdateSupportStatus, canCRUD = true
 }) => (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
       <h4 className="font-bold text-xs text-neutral-800">Support Register</h4>
-      <button
-        onClick={() => setShowAddSupport(true)}
-        className="px-2.5 py-1 bg-teal-50 border border-teal-200 text-teal-800 rounded font-semibold hover:bg-teal-100 flex items-center gap-1 cursor-pointer"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        <span>Add Support Ticket</span>
-      </button>
+      {canCRUD && (
+        <button
+          onClick={() => setShowAddSupport(true)}
+          className="px-2.5 py-1 bg-teal-50 border border-teal-200 text-teal-800 rounded font-semibold text-xs hover:bg-teal-100 flex items-center gap-1 cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add Support Ticket</span>
+        </button>
+      )}
     </div>
 
     {showAddSupport && (
@@ -381,8 +560,8 @@ export const SUSupportTab: React.FC<SUSupportTabProps> = ({
           />
         </div>
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => setShowAddSupport(false)} className="px-2 py-1 border rounded text-neutral-600">Cancel</button>
-          <button type="submit" className="px-3 py-1 bg-teal-600 text-white rounded font-semibold">Save Support</button>
+          <button type="button" onClick={() => setShowAddSupport(false)} className="px-2 py-1 border rounded text-xs text-neutral-600 hover:bg-neutral-100">Cancel</button>
+          <button type="submit" className="px-3 py-1 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded font-semibold text-xs">Save Support</button>
         </div>
       </form>
     )}
@@ -396,12 +575,41 @@ export const SUSupportTab: React.FC<SUSupportTabProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[10px] text-teal-800 font-bold">{s.supportReference}</span>
-                <strong className="text-neutral-800">{s.category}</strong>
+                <strong className="text-neutral-800 text-xs">{s.category}</strong>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-semibold">{s.priority}</span>
               </div>
               <p className="text-[11px] text-neutral-600 mt-0.5">{s.description}</p>
             </div>
-            <span className="font-semibold text-teal-700">{s.status}</span>
+            <div className="flex items-center gap-2">
+              {onUpdateSupportStatus && canCRUD ? (
+                <select
+                  value={s.status}
+                  onChange={e => onUpdateSupportStatus(s.id, e.target.value)}
+                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                    s.status === 'Resolved' || s.status === 'Closed'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              ) : (
+                <span className="font-semibold text-teal-700 text-xs">{s.status}</span>
+              )}
+              {canCRUD && onDeleteSupport && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteSupport(s.id)}
+                  className="p-1 text-[#a4262c] hover:text-[#d13438] hover:bg-[#fceef1] rounded-xs transition-colors cursor-pointer"
+                  title="Delete Support Record"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

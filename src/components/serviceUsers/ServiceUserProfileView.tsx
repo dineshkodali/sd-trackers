@@ -11,7 +11,9 @@ import {
   ArrowRightLeft, 
   Plus, 
   HeartHandshake, 
-  FileText
+  FileText,
+  UserMinus,
+  Trash2
 } from 'lucide-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
@@ -157,6 +159,137 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     loadProfileData(serviceUser.id);
   };
 
+  const handleDischarge = () => {
+    requestConfirmation({
+      title: 'Discharge Service User',
+      message: `Are you sure you want to discharge ${serviceUser.firstName} ${serviceUser.lastName}? Their current room placement will be closed and the room released.`,
+      isDanger: false,
+      onConfirm: async () => {
+        try {
+          const res = await suPropertyService.updateServiceUser(serviceUser.id, { status: 'Discharged' });
+          if (res.success) {
+            onRefreshData();
+            loadProfileData(serviceUser.id);
+          }
+        } catch (err) {
+          console.error('Failed to discharge SU:', err);
+        }
+      }
+    });
+  };
+
+  const handleDeleteSU = () => {
+    requestConfirmation({
+      title: 'Delete Service User',
+      message: `Are you sure you want to permanently delete ${serviceUser.firstName} ${serviceUser.lastName} (${serviceUser.suReference})? Placements, household members, and support records will be deleted.`,
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await suPropertyService.deleteServiceUser(serviceUser.id, serviceUser.suReference, `${serviceUser.firstName} ${serviceUser.lastName}`);
+          if (res.success) {
+            onRefreshData();
+            onBack();
+          }
+        } catch (err) {
+          console.error('Failed to delete SU:', err);
+        }
+      }
+    });
+  };
+
+  const handleEndPlacement = (placementId: string) => {
+    requestConfirmation({
+      title: 'End Accommodation Placement',
+      message: 'Are you sure you want to end this active placement? The room will be released immediately.',
+      isDanger: false,
+      onConfirm: async () => {
+        try {
+          const res = await suPropertyService.endPlacement(placementId, 'Manually ended by staff');
+          if (res.success) {
+            onRefreshData();
+            loadProfileData(serviceUser.id);
+          }
+        } catch (err) {
+          console.error('Failed to end placement:', err);
+        }
+      }
+    });
+  };
+
+  const handleDeletePlacement = (placementId: string) => {
+    requestConfirmation({
+      title: 'Delete Placement Record',
+      message: 'Are you sure you want to delete this accommodation placement record?',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await suPropertyService.deletePlacement(placementId);
+          if (res.success) {
+            onRefreshData();
+            loadProfileData(serviceUser.id);
+          }
+        } catch (err) {
+          console.error('Failed to delete placement:', err);
+        }
+      }
+    });
+  };
+
+  const handleAddHouseholdMember = async (memberData: Partial<ServiceUserHouseholdMember>) => {
+    try {
+      const res = await suPropertyDetailsService.addSUHouseholdMember({
+        ...memberData,
+        suId: serviceUser.id
+      });
+      if (res.success) {
+        loadProfileData(serviceUser.id);
+      }
+    } catch (err) {
+      console.error('Failed to add household member:', err);
+    }
+  };
+
+  const handleDeleteHouseholdMember = (memberId: string) => {
+    requestConfirmation({
+      title: 'Delete Household Member',
+      message: 'Are you sure you want to remove this household member?',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await suPropertyDetailsService.deleteSUHouseholdMember(memberId);
+          loadProfileData(serviceUser.id);
+        } catch (err) {
+          console.error('Failed to delete household member:', err);
+        }
+      }
+    });
+  };
+
+  const handleDeleteSupport = (supportId: string) => {
+    requestConfirmation({
+      title: 'Delete Support Record',
+      message: 'Are you sure you want to remove this support ticket?',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await suPropertyDetailsService.deleteSUSupport(supportId);
+          loadProfileData(serviceUser.id);
+        } catch (err) {
+          console.error('Failed to delete support record:', err);
+        }
+      }
+    });
+  };
+
+  const handleUpdateSupportStatus = async (supportId: string, newStatus: string) => {
+    try {
+      await suPropertyDetailsService.updateSUSupport(supportId, { status: newStatus as any });
+      loadProfileData(serviceUser.id);
+    } catch (err) {
+      console.error('Failed to update support status:', err);
+    }
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'personal', label: 'Personal & Contact' },
@@ -275,6 +408,26 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
               <FileText className="w-3.5 h-3.5 text-teal-700" />
               <span>Upload Document</span>
             </button>
+            {canCRUD && serviceUser.status === 'Active' && (
+              <button
+                onClick={handleDischarge}
+                className="px-3 py-1.5 bg-white hover:bg-amber-50 text-amber-700 border border-amber-300 rounded-xs text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Discharge Resident and release room"
+              >
+                <UserMinus className="w-3.5 h-3.5 text-amber-600" />
+                <span>Discharge Resident</span>
+              </button>
+            )}
+            {canCRUD && (
+              <button
+                onClick={handleDeleteSU}
+                className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 rounded-xs text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Delete Service User record and cascade"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Delete</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -323,11 +476,19 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
               activePlacement={activePlacement}
               placementHistory={placementHistory}
               onOpenMoveModal={() => setIsMoveModalOpen(true)}
+              onEndPlacement={handleEndPlacement}
+              onDeletePlacement={handleDeletePlacement}
+              canCRUD={canCRUD}
             />
           )}
 
           {activeTab === 'household' && (
-            <SUHouseholdTab household={household} />
+            <SUHouseholdTab 
+              household={household}
+              onAddMember={handleAddHouseholdMember}
+              onDeleteMember={handleDeleteHouseholdMember}
+              canCRUD={canCRUD}
+            />
           )}
 
           {activeTab === 'support' && (
@@ -340,6 +501,9 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
               newSupportDesc={newSupportDesc}
               setNewSupportDesc={setNewSupportDesc}
               onCreateSupport={handleCreateSupport}
+              onDeleteSupport={handleDeleteSupport}
+              onUpdateSupportStatus={handleUpdateSupportStatus}
+              canCRUD={canCRUD}
             />
           )}
 

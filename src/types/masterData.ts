@@ -87,7 +87,8 @@ export interface ServiceUserDocument {
 
 export interface PropertyMaster {
   id: string;
-  propertyReference: string; // Human readable: e.g. PROP-000001
+  pid?: string;
+  propertyReference: string; // Human readable / PID: e.g. 519, 712, etc.
   propertyName: string;
   propertyType: string;
   siteId?: string;

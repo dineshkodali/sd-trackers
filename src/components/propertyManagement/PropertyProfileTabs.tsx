@@ -21,7 +21,7 @@ export interface PropertyOverviewTabProps {
   complianceList: PropertyCompliance[];
   propertyMaintenanceCount: number;
   assetsCount: number;
-  roomOccupantMap: Map<string, { placement: Placement; su?: ServiceUserMaster }>;
+  roomOccupantMap: Map<string, Array<{ placement: Placement; su?: ServiceUserMaster }>>;
   onAddRoom: () => void;
 }
 
@@ -69,19 +69,35 @@ export const PropertyOverviewTab: React.FC<PropertyOverviewTabProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {rooms.map(r => {
-          const occ = roomOccupantMap.get(r.id);
-          const isOccupied = !!occ;
-          const statusColor = isOccupied 
-            ? 'bg-blue-50 border-blue-200 text-blue-900' 
-            : r.status === 'Maintenance' 
-              ? 'bg-amber-50 border-amber-200 text-amber-900' 
-              : 'bg-emerald-50 border-emerald-200 text-emerald-900';
+          const occs = roomOccupantMap.get(r.id) || [];
+          const occ = occs[0];
+          const cap = r.capacity || 1;
+          const isFull = occs.length >= cap;
+          const isOccupied = occs.length > 0;
+          const isMaintenance = r.status === 'Maintenance' || r.status === 'Under Maintenance';
+          const statusColor = isFull 
+            ? 'bg-purple-50 border-purple-200 text-purple-900'
+            : isOccupied
+              ? 'bg-blue-50 border-blue-200 text-blue-900' 
+              : isMaintenance
+                ? 'bg-amber-50 border-amber-200 text-amber-900' 
+                : 'bg-emerald-50 border-emerald-200 text-emerald-900';
               
-          const badgeColor = isOccupied 
-            ? 'bg-blue-100 text-blue-800 border-blue-200' 
-            : r.status === 'Maintenance' 
-              ? 'bg-amber-100 text-amber-800 border-amber-200' 
-              : 'bg-emerald-100 text-emerald-800 border-emerald-200';
+          const badgeColor = isFull 
+            ? 'bg-purple-100 text-purple-800 border-purple-200'
+            : isOccupied 
+              ? 'bg-blue-100 text-blue-800 border-blue-200' 
+              : isMaintenance
+                ? 'bg-amber-100 text-amber-800 border-amber-200' 
+                : 'bg-emerald-100 text-emerald-800 border-emerald-200';
+
+          const statusBadgeText = isMaintenance 
+            ? 'Maintenance' 
+            : isFull 
+              ? `Full (${occs.length}/${cap})` 
+              : isOccupied 
+                ? `Partial (${occs.length}/${cap})` 
+                : `Available (0/${cap})`;
 
           return (
             <div 
@@ -93,21 +109,24 @@ export const PropertyOverviewTab: React.FC<PropertyOverviewTabProps> = ({
               <div className="flex items-center justify-between mb-3 relative z-10">
                 <span className="font-mono text-[11px] font-bold opacity-80">{r.roomReference}</span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor} shadow-sm flex items-center gap-1.5`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${isOccupied ? 'bg-blue-500' : r.status === 'Maintenance' ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`}></div>
-                  {isOccupied ? 'Occupied' : r.status}
+                  <div className={`w-1.5 h-1.5 rounded-full ${isFull ? 'bg-purple-500' : isOccupied ? 'bg-blue-500' : isMaintenance ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`}></div>
+                  {statusBadgeText}
                 </span>
               </div>
               
               <h4 className="font-bold text-lg mb-1 relative z-10">Room {r.roomNumber}</h4>
-              <p className="text-xs font-medium opacity-80 mb-3 relative z-10">{r.roomType}</p>
+              <p className="text-xs font-medium opacity-80 mb-3 relative z-10">{r.roomType} • Cap: {cap}</p>
               
               <div className="pt-3 border-t border-black/5 relative z-10 h-[40px] flex flex-col justify-center">
-                {occ?.su ? (
+                {occs.length > 0 ? (
                   <div className="text-[12px] font-semibold flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200">
                       <Users className="w-3.5 h-3.5" />
                     </div>
-                    <span className="truncate">{occ.su.firstName} {occ.su.lastName} <span className="opacity-60 font-mono text-[10px]">({occ.su.suReference})</span></span>
+                    <span className="truncate">
+                      {occ?.su ? `${occ.su.firstName} ${occ.su.lastName}` : 'Resident'}
+                      {occs.length > 1 && <span className="text-[10px] opacity-75 font-normal ml-1">+{occs.length - 1} more</span>}
+                    </span>
                   </div>
                 ) : (
                   <p className="text-[11px] opacity-60 italic flex items-center gap-1.5">
@@ -224,7 +243,7 @@ export const PropertyDetailsTab: React.FC<PropertyDetailsTabProps> = ({ property
 
 export interface PropertyRoomsTabProps {
   rooms: PropertyRoom[];
-  roomOccupantMap: Map<string, { placement: Placement; su?: ServiceUserMaster }>;
+  roomOccupantMap: Map<string, Array<{ placement: Placement; su?: ServiceUserMaster }>>;
   onAddRoom: () => void;
   onEditRoom: (r: PropertyRoom) => void;
   onDeleteRooms: (ids: string[]) => void;
@@ -243,7 +262,7 @@ export const PropertyRoomsTab: React.FC<PropertyRoomsTabProps> = ({
     }
   };
 
-  const handleToggleSelect = (e: React.MouseEvent, id: string) => {
+  const handleToggleSelect = (e: React.SyntheticEvent, id: string) => {
     e.stopPropagation();
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
@@ -279,13 +298,33 @@ export const PropertyRoomsTab: React.FC<PropertyRoomsTabProps> = ({
               <th className="p-2.5">Floor</th>
               <th className="p-2.5">Capacity</th>
               <th className="p-2.5">Status</th>
-              <th className="p-2.5">Current Occupant</th>
+              <th className="p-2.5">Current Occupants</th>
               <th className="p-2.5 text-right w-28 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edebe9] text-[#323130]">
             {rooms.map(r => {
-              const occ = roomOccupantMap.get(r.id);
+              const occs = roomOccupantMap.get(r.id) || [];
+              const cap = r.capacity || 1;
+              const isMaintenance = r.status === 'Under Maintenance';
+              const isBlocked = r.status === 'Blocked';
+
+              let statusBadgeClass = 'bg-emerald-100 text-emerald-800';
+              let statusText = `Available (0/${cap})`;
+              if (isMaintenance) {
+                statusBadgeClass = 'bg-amber-100 text-amber-800';
+                statusText = 'Under Maintenance';
+              } else if (isBlocked) {
+                statusBadgeClass = 'bg-rose-100 text-rose-800';
+                statusText = 'Blocked';
+              } else if (occs.length >= cap) {
+                statusBadgeClass = 'bg-purple-100 text-purple-800';
+                statusText = `Occupied (${occs.length}/${cap})`;
+              } else if (occs.length > 0) {
+                statusBadgeClass = 'bg-blue-100 text-blue-800';
+                statusText = `Partially Occupied (${occs.length}/${cap})`;
+              }
+
               return (
                 <tr 
                   key={r.id} 
@@ -304,16 +343,31 @@ export const PropertyRoomsTab: React.FC<PropertyRoomsTabProps> = ({
                 <td className="p-2.5 font-semibold">Room {r.roomNumber}</td>
                 <td className="p-2.5">{r.roomType}</td>
                 <td className="p-2.5">{r.floor || 'Ground'}</td>
-                <td className="p-2.5">{r.capacity}</td>
+                <td className="p-2.5">{cap}</td>
                 <td className="p-2.5">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    occ ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
-                  }`}>
-                    {occ ? 'Occupied' : r.status}
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusBadgeClass}`}>
+                    {statusText}
                   </span>
                 </td>
                 <td className="p-2.5 font-medium">
-                  {occ?.su ? `${occ.su.firstName} ${occ.su.lastName} (${occ.su.suReference})` : <span className="text-neutral-400">—</span>}
+                  {occs.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {occs.map((item, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 text-xs">
+                          <span className="font-semibold text-neutral-800">
+                            {item.su ? `${item.su.firstName} ${item.su.lastName}` : 'Resident'}
+                          </span>
+                          {item.su?.suReference && (
+                            <span className="font-mono text-[10px] text-teal-700 bg-teal-50 px-1 rounded">
+                              {item.su.suReference}
+                            </span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-neutral-400">—</span>
+                  )}
                 </td>
                 <td className="p-2.5 text-right sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
                   <div className="flex items-center justify-end gap-1.5">
@@ -362,7 +416,7 @@ export const PropertyServiceUsersTab: React.FC<PropertyServiceUsersTabProps> = (
     }
   };
 
-  const handleToggleSelect = (e: React.MouseEvent, id: string) => {
+  const handleToggleSelect = (e: React.SyntheticEvent, id: string) => {
     e.stopPropagation();
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
@@ -453,7 +507,7 @@ export const PropertyComplianceTab: React.FC<PropertyComplianceTabProps> = ({
     }
   };
 
-  const handleToggleSelect = (e: React.MouseEvent, id: string) => {
+  const handleToggleSelect = (e: React.SyntheticEvent, id: string) => {
     e.stopPropagation();
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };

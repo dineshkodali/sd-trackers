@@ -1,5 +1,7 @@
 import React from 'react';
 import { ShieldCheck, Wifi, Phone, Wrench, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { getUserDropdownOptions } from '../../utils/userSelectOptions';
 
 export interface PropertyComplianceData {
   epcRating: string;
@@ -219,7 +221,11 @@ export interface PropertyContactsData {
 export const PropertyContactsSection: React.FC<{
   contacts: PropertyContactsData;
   onChange: (field: keyof PropertyContactsData, val: string) => void;
-}> = ({ contacts, onChange }) => (
+}> = ({ contacts, onChange }) => {
+  const { users } = useApp();
+  const userOptions = getUserDropdownOptions(users);
+
+  return (
   <div className="p-3.5 bg-[#faf9f8] border border-[#e5e5e5] rounded-xs space-y-4">
     <div className="flex items-center justify-between pb-2 border-b border-[#f0f0f0]">
       <h4 className="font-bold text-xs text-[#242424] flex items-center gap-1.5">
@@ -234,13 +240,21 @@ export const PropertyContactsSection: React.FC<{
         <h5 className="font-bold text-[11px] text-teal-800">Assigned Housing Officer</h5>
         <div>
           <label className="block text-[10px] text-neutral-500 mb-0.5">Name</label>
-          <input
-            type="text"
+          <select
             value={contacts.housingOfficerName}
             onChange={e => onChange('housingOfficerName', e.target.value)}
-            placeholder="e.g. John Davies"
             className="w-full px-2 py-1 bg-[#faf9f8] border border-[#e5e5e5] rounded-xs text-xs"
-          />
+          >
+            <option value="">-- Select Housing Officer --</option>
+            {contacts.housingOfficerName && !userOptions.some(u => u.value === contacts.housingOfficerName) && (
+              <option value={contacts.housingOfficerName}>{contacts.housingOfficerName} (Current)</option>
+            )}
+            {userOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-[10px] text-neutral-500 mb-0.5">Direct Phone</label>
@@ -305,7 +319,8 @@ export const PropertyContactsSection: React.FC<{
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export async function savePropertyRelatedData(
   targetPropId: string,

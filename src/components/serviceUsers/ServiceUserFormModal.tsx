@@ -198,15 +198,35 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
   useEffect(() => {
     async function loadRooms() {
       if (!propertyId) { setRooms([]); return; }
-      const res = await suPropertyService.getRooms(propertyId);
+      const [res, plcsRes] = await Promise.all([
+        suPropertyService.getRooms(propertyId),
+        suPropertyService.getPlacements({ propertyId, status: 'Active' })
+      ]);
       if (res.success && res.data) {
-        const available = res.data.filter(r => r.status === 'Available' || r.id === roomId);
-        setRooms(available);
-        if (available.length > 0 && !roomId) setRoomId(available[0].id);
+        const activePlcs = plcsRes.success && plcsRes.data ? plcsRes.data : [];
+        const occMap = new Map<string, number>();
+        activePlcs.forEach(p => {
+          if (serviceUserToEdit && p.suId === serviceUserToEdit.id) return;
+          occMap.set(p.roomId, (occMap.get(p.roomId) || 0) + 1);
+        });
+
+        const selectable = res.data.filter(r => {
+          if (r.id === roomId) return true;
+          if (r.status === 'Under Maintenance' || r.status === 'Blocked') return false;
+          const currentOccupancy = occMap.get(r.id) || 0;
+          return currentOccupancy < (r.capacity || 1);
+        });
+
+        setRooms(selectable);
+        if (selectable.length > 0 && (!roomId || !selectable.some(r => r.id === roomId))) {
+          setRoomId(selectable[0].id);
+        } else if (selectable.length === 0) {
+          setRoomId('');
+        }
       }
     }
     if (includeAccommodation || formMode === 'arrival') loadRooms();
-  }, [propertyId, includeAccommodation, formMode]);
+  }, [propertyId, includeAccommodation, formMode, serviceUserToEdit]);
 
   if (!isOpen) return null;
 
@@ -237,13 +257,22 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
       let targetSuId = serviceUserToEdit?.id;
 
       if (serviceUserToEdit) {
+        const placementOptions = {
+          includeAccommodation,
+          siteId: includeAccommodation ? siteId : undefined,
+          propertyId: includeAccommodation ? propertyId : undefined,
+          roomId: includeAccommodation ? roomId : '',
+          startDate: placementStartDate || undefined,
+          notes: accommodationNotes || undefined
+        };
+
         const res = await suPropertyService.updateServiceUser(serviceUserToEdit.id, {
           firstName: firstName.trim(), middleName: middleName.trim(), lastName: lastName.trim(),
           preferredName: preferredName.trim(), dateOfBirth, gender, nationality,
           preferredLanguage, interpreterRequired, status,
           externalReference: externalReference.trim(), caseReference: caseReference.trim(),
           referralDate, arrivalDate, siteId
-        });
+        }, placementOptions);
         if (!res.success) throw new Error(res.error || 'Failed to update Service User.');
       } else {
         const initialPlacement = (formMode === 'arrival' || includeAccommodation) && siteId && propertyId && roomId ? {

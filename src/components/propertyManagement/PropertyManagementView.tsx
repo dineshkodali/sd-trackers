@@ -190,7 +190,7 @@ export const PropertyManagementView: React.FC = () => {
     }
   };
 
-  const handleToggleSelect = (e: React.MouseEvent, id: string) => {
+  const handleToggleSelect = (e: React.SyntheticEvent, id: string) => {
     e.stopPropagation();
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };

@@ -9,6 +9,7 @@ import {
   SiteInfo 
 } from '../types';
 import { TableAttachmentCell } from '../components/common/TableAttachmentCell';
+import { getUserDropdownOptions } from '../utils/userSelectOptions';
 
 export const renderAttachmentCell = (val: any, record: any) =>
   React.createElement(TableAttachmentCell, {
@@ -879,6 +880,12 @@ export const sitesTableConfig: TableColumnConfig<SiteInfo>[] = [
     placeholder: 'e.g. London (Redbridge)'
   },
   {
+    key: 'address',
+    label: 'Address',
+    type: 'text',
+    placeholder: 'e.g. 35 Hampton Street'
+  },
+  {
     key: 'capacity',
     label: 'Capacity (Residents / Rooms)',
     type: 'number',
@@ -888,8 +895,17 @@ export const sitesTableConfig: TableColumnConfig<SiteInfo>[] = [
   {
     key: 'leadOfficer',
     label: 'Lead Contact Officer',
-    type: 'text',
-    placeholder: 'e.g. Sarah Jenkins'
+    type: 'select',
+    allowQuickAdd: false,
+    placeholder: 'Select Lead Contact Officer from Staff Accounts...',
+    options: (ctx: any) => {
+      const siteName = ctx?.formData?.name || ctx?.recordName || '';
+      return getUserDropdownOptions(ctx?.users, {
+        siteName,
+        includeRoleInLabel: true,
+        onlyActive: true
+      });
+    }
   },
   {
     key: 'contactNumber',

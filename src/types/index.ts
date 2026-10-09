@@ -27,6 +27,7 @@ export interface PropertyInfo {
   pid?: string;
   name: string;
   city: string;
+  address?: string;
   capacity: number;
   activeResidents?: number;
   council?: string;

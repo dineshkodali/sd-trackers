@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { AttachmentsSection } from './AttachmentsSection';
 import { QuickOptionModal } from './QuickOptionModal';
 import { PropertyRelativeSUSelector } from './PropertyRelativeSUSelector';
+import { isUserAssignmentField, getUserDropdownOptions } from '../../utils/userSelectOptions';
 
 interface DynamicRecordFormModalProps<T = any> {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export function DynamicRecordFormModal<T = any>({
     selectedSite,
     sites,
     properties,
+    users,
     authProfile,
     currentUserName,
     currentUserRole,
@@ -125,10 +127,11 @@ export function DynamicRecordFormModal<T = any>({
     assignedSite: userAssignedHotel,
     allowedSites: allSiteNames,
     sites,
+    users,
     selectedSite,
     canAccessAllSites,
     ...contextData
-  }), [userAssignedHotel, allSiteNames, sites, selectedSite, canAccessAllSites, contextData]);
+  }), [userAssignedHotel, allSiteNames, sites, users, selectedSite, canAccessAllSites, contextData]);
 
   const isLoggedByColumn = (col: TableColumnConfig<T>): boolean => {
     // Non-text fields cannot be logged-by fields
@@ -302,8 +305,21 @@ export function DynamicRecordFormModal<T = any>({
       key === 'serviceusernames' ||
       key === 'serviceuser' ||
       key === 'residentname' ||
-      label.includes('service user name')
+      key === 'residentnames' ||
+      key === 'resident' ||
+      key === 'su' ||
+      label.includes('service user') ||
+      label.includes('resident name') ||
+      label === 'resident' ||
+      label.includes('resident(s)') ||
+      label.includes('resident (s)') ||
+      label.includes('su name')
     );
+  };
+
+  const isUserColumn = (col: TableColumnConfig<T>): boolean => {
+    if (isLoggedByColumn(col)) return false;
+    return isUserAssignmentField(String(col.key), col.label) || isSiteManagerColumn(col);
   };
 
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -686,8 +702,18 @@ export function DynamicRecordFormModal<T = any>({
       return list;
     }
 
+    if (isUserColumn(col) && !col.options) {
+      const siteForUser = formData.siteName || formData.site || formData.siteId || effectiveContext.assignedSite;
+      const userOpts = getUserDropdownOptions(users, { siteName: siteForUser });
+      const currentVal = formData[String(col.key)];
+      if (currentVal && !userOpts.some(o => String(o.value).toLowerCase() === String(currentVal).toLowerCase())) {
+        return [{ label: `${currentVal} (Current Value)`, value: currentVal }, ...userOpts];
+      }
+      return userOpts;
+    }
+
     if (!col.options) return [];
-    const rawOptions = typeof col.options === 'function' ? col.options(effectiveContext) : col.options;
+    const rawOptions = typeof col.options === 'function' ? col.options({ ...effectiveContext, formData }) : col.options;
     const list: SelectOption[] = (rawOptions || []).map(opt => {
       if (typeof opt === 'string') {
         return { label: opt, value: opt };
@@ -951,7 +977,7 @@ export function DynamicRecordFormModal<T = any>({
                           />
                           <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
                         </div>
-                      ) : isSiteManager ? (
+                      ) : isSiteManager && col.editable === false ? (
                         <div className="relative">
                           <input
                             type="text"
@@ -1038,7 +1064,7 @@ export function DynamicRecordFormModal<T = any>({
                             }
                           }}
                         />
-                      ) : col.type === 'select' || isSite ? (
+                      ) : col.type === 'select' || isSite || isUserColumn(col) || isSiteManager ? (
                         <select
                           value={value}
                           disabled={isReadOnly || isSubmitting}
@@ -1059,7 +1085,7 @@ export function DynamicRecordFormModal<T = any>({
                               {opt.label}
                             </option>
                           ))}
-                          {col.type === 'select' && !isSite && col.allowQuickAdd !== false && (
+                          {col.type === 'select' && !isSite && !isUserColumn(col) && !isSiteManager && col.allowQuickAdd !== false && (
                             <option value="__ADD_NEW_OPTION__" className="font-bold text-teal-800 bg-teal-50">
                               ➕ + Add New Option...
                             </option>

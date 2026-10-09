@@ -537,13 +537,19 @@ function buildListOptions(src: { limit?: any; order?: any; eq?: Record<string, a
 
   const order = typeof src.order === 'string' ? src.order : '';
   const [column, direction] = order.split('.');
-  if (column && known?.has(column)) {
-    opts.orderColumn = column;
-    opts.ascending = direction !== 'desc';
+  if (column) {
+    const snake = column.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    const validCol = known?.has(column) ? column : (known?.has(snake) ? snake : null);
+    if (validCol) {
+      opts.orderColumn = validCol;
+      opts.ascending = direction !== 'desc';
+    }
   }
 
   for (const [filterColumn, value] of Object.entries(src.eq || {})) {
-    if (typeof value === 'string' && known?.has(filterColumn)) (opts.filters ||= []).push([filterColumn, value]);
+    const snake = filterColumn.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    const validCol = known ? (known.has(filterColumn) ? filterColumn : (known.has(snake) ? snake : filterColumn)) : filterColumn;
+    if (typeof value === 'string') (opts.filters ||= []).push([validCol, value]);
   }
   return opts;
 }
@@ -554,12 +560,13 @@ function parseListOptions(req: Request, tableName: string): ListOptions {
   for (const [key, value] of Object.entries(req.query)) {
     if (key.startsWith('eq.') && typeof value === 'string') {
       const col = key.slice(3);
-      if (col === 'site_id' || col === 'siteId') {
+      const snakeCol = col.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      if (snakeCol === 'site_id') {
         eq['site_id'] = resolveSiteId(value) || value;
-      } else if (col === 'site' || col === 'site_name' || col === 'hotel') {
-        eq[col] = value.startsWith('site-') ? (resolveSiteName(value) || value) : value;
+      } else if (snakeCol === 'site' || snakeCol === 'site_name' || snakeCol === 'hotel') {
+        eq[snakeCol] = value.startsWith('site-') ? (resolveSiteName(value) || value) : value;
       } else {
-        eq[col] = value;
+        eq[snakeCol] = value;
       }
     }
   }
@@ -1181,6 +1188,62 @@ async function cascadeDeleteProperty(client: SupabaseClient, propertyIds: string
   }
 }
 
+/** Cascade delete child service user entities and release any active room allocations */
+async function cascadeDeleteServiceUser(client: SupabaseClient, suIds: string[]) {
+  if (!suIds || suIds.length === 0) return;
+  const childTables = [
+    'service_user_contacts',
+    'service_user_household',
+    'service_user_support',
+    'service_user_documents'
+  ];
+  for (const childTable of childTables) {
+    try {
+      await client.from(childTable).delete().in('su_id', suIds);
+    } catch (e) {
+      console.warn(`[Cascade Delete] error on ${childTable}:`, e);
+    }
+  }
+
+  // Handle placements and update rooms
+  try {
+    const { data: activePlacements } = await client
+      .from('placements')
+      .select('id, room_id')
+      .in('su_id', suIds)
+      .eq('status', 'Active');
+
+    await client.from('placements').delete().in('su_id', suIds);
+
+    const affectedRoomIds = Array.from(new Set((activePlacements || []).map(p => p.room_id).filter(Boolean)));
+    for (const roomId of affectedRoomIds) {
+      const { data: remaining } = await client
+        .from('placements')
+        .select('id')
+        .eq('room_id', roomId)
+        .eq('status', 'Active');
+
+      const { data: roomData } = await client
+        .from('property_rooms')
+        .select('capacity, status')
+        .eq('id', roomId)
+        .maybeSingle();
+
+      const count = remaining?.length || 0;
+      const cap = Number(roomData?.capacity) || 1;
+      const baseStatus = roomData?.status === 'Under Maintenance' || roomData?.status === 'Blocked' ? roomData.status : (count >= cap ? 'Occupied' : 'Available');
+      const occStatus = count >= cap ? 'Occupied' : (count > 0 ? 'Partially Occupied' : 'Available');
+
+      await client.from('property_rooms').update({
+        status: baseStatus,
+        occupancy_status: occStatus
+      }).eq('id', roomId);
+    }
+  } catch (e) {
+    console.warn(`[Cascade Delete] error on placements/rooms:`, e);
+  }
+}
+
 async function deleteScopeError(client: SupabaseClient, req: Request, def: EntityDef, ids: string[]): Promise<string | null> {
   const user = req.user;
   if (!user || userCanAccessAllSites(user)) return null;
@@ -1345,6 +1408,9 @@ router.post('/:entity/bulk-delete', async (req: Request, res: Response) => {
   const writeTable = VIEW_WRITE_TARGETS[def.table]?.table || def.table;
   if (def.table === 'properties') {
     await cascadeDeleteProperty(client, ids);
+  }
+  if (def.table === 'service_users') {
+    await cascadeDeleteServiceUser(client, ids);
   }
   let deleted = 0;
   for (let i = 0; i < ids.length; i += 200) {
@@ -1574,6 +1640,9 @@ router.delete('/:entity/:id', async (req: Request, res: Response) => {
     }
     if (def.table === 'properties') {
       await cascadeDeleteProperty(client, [id]);
+    }
+    if (def.table === 'service_users') {
+      await cascadeDeleteServiceUser(client, [id]);
     }
     const { data, error } = await client.from(writeTable).delete().eq('id', id).select('id');
     if (error) {

@@ -97,7 +97,7 @@ export const FieldOptionsSetupView: React.FC = () => {
   const [formDescription, setFormDescription] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
 
-  const canManage = currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || currentUserRole === 'Finance Admin' || canManageFinance() || isFinanceUser();
+  const canManage = currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || (currentUserRole as string) === 'Finance Admin' || canManageFinance() || isFinanceUser();
 
   // Category metadata lookup
   const currentCategoryMeta = useMemo(() => {

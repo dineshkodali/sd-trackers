@@ -345,8 +345,7 @@ export const FoodWastageView: React.FC = () => {
         color: 'amber',
         description: 'User-configured kitchen food item',
         isActive: true,
-        isSystem: false,
-        order: configuredFoodItems.length + 1
+        isSystem: false
       });
     }
 

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Building2, Home, MapPin, CheckCircle2 } from 'lucide-react';
 import { SiteInfo } from '../../types';
+import { useApp } from '../../context/AppContext';
+import { getUserDropdownOptions } from '../../utils/userSelectOptions';
 
 /* -------------------------------------------------------------------------- */
 /* Section 1: Core & Address                                                  */
@@ -168,7 +170,11 @@ export const PropertyOwnershipSection: React.FC<{
 }> = ({
   ownershipType, setOwnershipType, provider, setProvider, landlord, setLandlord,
   propertyManager, setPropertyManager, startDate, setStartDate, endDate, setEndDate, notes, setNotes
-}) => (
+}) => {
+  const { users } = useApp();
+  const userOptions = getUserDropdownOptions(users);
+
+  return (
   <div className="p-3.5 bg-[#faf9f8] border border-[#e5e5e5] rounded-xs space-y-3">
     <h4 className="font-bold text-xs text-[#242424] pb-2 border-b border-[#f0f0f0]">
       Ownership &amp; Lease Terms
@@ -210,13 +216,21 @@ export const PropertyOwnershipSection: React.FC<{
       </div>
       <div>
         <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Assigned Property Manager</label>
-        <input
-          type="text"
+        <select
           value={propertyManager}
           onChange={e => setPropertyManager(e.target.value)}
-          placeholder="e.g. John Doe (Housing Officer)"
           className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:border-[#0d9488] outline-hidden"
-        />
+        >
+          <option value="">-- Select Property Manager / Staff --</option>
+          {propertyManager && !userOptions.some(u => u.value === propertyManager) && (
+            <option value={propertyManager}>{propertyManager} (Current)</option>
+          )}
+          {userOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Lease / Contract Start Date</label>
@@ -248,7 +262,8 @@ export const PropertyOwnershipSection: React.FC<{
       />
     </div>
   </div>
-);
+  );
+};
 
 /* -------------------------------------------------------------------------- */
 /* Section 3: Capacity & Specifications                                       */

@@ -58,14 +58,15 @@ export function buildInitialMasterData(): MasterStoreState {
   // Seed properties corresponding to the actual SD Commercial sites
   INITIAL_SITES.forEach((site, idx) => {
     const propId = `prop-${site.id.replace('site-', '')}`;
-    const propRef = `PROP-${String(idx + 1).padStart(6, '0')}`;
+    const pidVal = site.pid && site.pid !== '—' ? site.pid : 'BURROWS';
     properties.push({
       id: propId,
-      propertyReference: propRef,
+      pid: site.pid && site.pid !== '—' ? site.pid : undefined,
+      propertyReference: pidVal,
       propertyName: site.name,
       propertyType: site.capacity > 100 ? 'Commercial' : 'HMO',
       siteId: site.id,
-      addressLine1: `${site.pid || 100 + idx} High Street`,
+      addressLine1: site.address || `${site.pid || 100 + idx} High Street`,
       city: site.city.split(',')[0].trim(),
       county: site.council || 'Greater London',
       postcode: `SD${idx + 1} 1AA`,
@@ -80,7 +81,7 @@ export function buildInitialMasterData(): MasterStoreState {
       accessibilityInformation: 'Wheelchair access ramp at ground entrance; accessible ground-floor bedroom.',
       status: 'Active',
       startDate: '2024-01-01T00:00:00.000Z',
-      notes: `Operational property for site ${site.name}. Key safe: 4921.`
+      notes: `Operational property for site ${site.name} (PID: ${site.pid || '—'}). Address: ${site.address || '—'}. Key safe: 4921.`
     });
 
     // Create 4 standard rooms per property
@@ -297,6 +298,54 @@ export const masterDataStore = {
           if (filteredSites.length !== siteRecords.length) {
             await persistTable('sites' as any, filteredSites);
           }
+        }
+      }
+
+      // Cascade delete child entities and release room placements if deleting from service_users
+      if (table === 'service_users') {
+        const childTables: Array<keyof MasterStoreState> = [
+          'service_user_contacts',
+          'service_user_household',
+          'service_user_support',
+          'service_user_documents'
+        ];
+        for (const childTable of childTables) {
+          const childRecords = store[childTable] || [];
+          const filteredChildren = childRecords.filter((c: any) => c.suId !== id && c.su_id !== id);
+          if (filteredChildren.length !== childRecords.length) {
+            await persistTable(childTable, filteredChildren);
+          }
+        }
+
+        // Find placements for this service user
+        const allPlacements = store.placements || [];
+        const userActivePlacements = allPlacements.filter((p: any) => (p.suId === id || p.su_id === id) && p.status === 'Active');
+        const remainingPlacements = allPlacements.filter((p: any) => p.suId !== id && p.su_id !== id);
+        if (remainingPlacements.length !== allPlacements.length) {
+          await persistTable('placements', remainingPlacements);
+        }
+
+        // Update affected rooms to recalculate occupancy
+        const allRooms = store.property_rooms || [];
+        let roomsChanged = false;
+        userActivePlacements.forEach((p: any) => {
+          const roomId = p.roomId || p.room_id;
+          const room = allRooms.find((r: any) => r.id === roomId);
+          if (room) {
+            const otherActive = remainingPlacements.filter((rp: any) => (rp.roomId === roomId || rp.room_id === roomId) && rp.status === 'Active');
+            const cap = Number(room.capacity) || 1;
+            if (otherActive.length === 0) {
+              room.status = room.status === 'Under Maintenance' || room.status === 'Blocked' ? room.status : 'Available';
+              room.occupancyStatus = 'Available';
+            } else {
+              room.status = otherActive.length >= cap ? 'Occupied' : (room.status === 'Under Maintenance' || room.status === 'Blocked' ? room.status : 'Partially Occupied');
+              room.occupancyStatus = otherActive.length >= cap ? 'Occupied' : 'Partially Occupied';
+            }
+            roomsChanged = true;
+          }
+        });
+        if (roomsChanged) {
+          await persistTable('property_rooms', allRooms);
         }
       }
 

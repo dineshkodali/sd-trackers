@@ -4440,7 +4440,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'CREATE', module: 'Properties', targetItem: `Property: ${newSite.name}${newSite.pid ? ` (${newSite.pid})` : ''}`, site: newSite.name,
       details: `Created accommodation property record: ${newSite.name} in ${newSite.city} (Capacity: ${newSite.capacity} residents, Status: ${newSite.status}${newSite.leadOfficer ? `, Lead Officer: ${newSite.leadOfficer}` : ''}${newSite.contactNumber ? `, Contact: ${newSite.contactNumber}` : ''}).`
     });
-  }, [persistCreate]);
+
+    // Ensure fixed two-way connection: link this site to the assigned user's assignedSites in Staff Accounts
+    if (newSite.leadOfficer) {
+      const officerClean = newSite.leadOfficer.trim().toLowerCase();
+      const matchedUser = users.find(u =>
+        u.name.toLowerCase() === officerClean || u.email.toLowerCase() === officerClean
+      );
+      if (matchedUser) {
+        const curSites = Array.isArray(matchedUser.assignedSites) ? matchedUser.assignedSites : [];
+        if (!curSites.includes('All Sites') && !curSites.includes('All') && !curSites.includes(newSite.name)) {
+          const updatedSites = [...curSites, newSite.name];
+          setUsers(prev => prev.map(u => u.id === matchedUser.id ? { ...u, assignedSites: updatedSites } : u));
+          apiService.updateUserAssignment(matchedUser.id, { assignedSites: updatedSites }).catch(() => {});
+        }
+      }
+    }
+  }, [persistCreate, users]);
 
   const updateSite = useCallback((id: string, updates: Partial<SiteInfo>) => {
     const current = sites.find(s => s.id === id);
@@ -4478,7 +4494,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'UPDATE', module: 'Properties', targetItem: `Property: ${propName}${updates.pid || current.pid ? ` (${updates.pid || current.pid})` : ''}`, site: propName,
       details: `Updated property record for ${propName}: ${desc}.`
     });
-  }, [sites, persistUpdate]);
+
+    // Ensure fixed two-way connection: link this site to the assigned user's assignedSites in Staff Accounts
+    if (updates.leadOfficer) {
+      const officerClean = updates.leadOfficer.trim().toLowerCase();
+      const matchedUser = users.find(u =>
+        u.name.toLowerCase() === officerClean || u.email.toLowerCase() === officerClean
+      );
+      if (matchedUser) {
+        const curSites = Array.isArray(matchedUser.assignedSites) ? matchedUser.assignedSites : [];
+        const siteName = updates.name || current.name;
+        if (siteName && !curSites.includes('All Sites') && !curSites.includes('All') && !curSites.includes(siteName)) {
+          const updatedSites = [...curSites, siteName];
+          setUsers(prev => prev.map(u => u.id === matchedUser.id ? { ...u, assignedSites: updatedSites } : u));
+          apiService.updateUserAssignment(matchedUser.id, { assignedSites: updatedSites }).catch(() => {});
+        }
+      }
+    }
+  }, [sites, persistUpdate, users]);
 
   const deleteSite = useCallback((id: string) => {
     const current = sites.find(s => s.id === id);

@@ -202,13 +202,19 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
     onSelect?.(selectedSummary);
   };
 
-  // Strictly filter SUs by active placement at current property ("strictly no cross shows")
+  // Filter SUs by active placement at current property, with graceful fallback to site or all SUs
   const propertySUs = useMemo(() => {
-    if (!currentPropertyId) return [];
+    if (!currentPropertyId) {
+      const siteMatches = currentSiteId ? serviceUsers.filter(u => u.siteId === currentSiteId) : [];
+      return siteMatches.length > 0 ? siteMatches : serviceUsers;
+    }
     const validPlacements = placements.filter(p => p.propertyId === currentPropertyId && p.status === 'Active');
     const validSuIds = new Set(validPlacements.map(p => p.suId));
-    return serviceUsers.filter(u => validSuIds.has(u.id));
-  }, [currentPropertyId, placements, serviceUsers]);
+    const placed = serviceUsers.filter(u => validSuIds.has(u.id));
+    if (placed.length > 0) return placed;
+    const siteMatches = currentSiteId ? serviceUsers.filter(u => u.siteId === currentSiteId) : [];
+    return siteMatches.length > 0 ? siteMatches : serviceUsers;
+  }, [currentPropertyId, currentSiteId, placements, serviceUsers]);
 
   const filteredSUs = useMemo(() => {
     if (!searchTerm.trim()) return propertySUs;
@@ -284,16 +290,14 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
           <select
             value={selectedSuId || ''}
             onChange={e => handleServiceUserSelect(e.target.value)}
-            disabled={disabled || loading || !currentPropertyId}
+            disabled={disabled || loading}
             className="w-full px-2.5 py-1.5 bg-white border border-neutral-300 rounded-md text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:bg-neutral-100 disabled:text-neutral-500"
           >
             <option value="">
-              {!currentPropertyId
-                ? '-- Select Property First --'
-                : loading
+              {loading
                 ? 'Loading residents...'
-                : propertySUs.length === 0
-                ? '-- No Service Users placed here --'
+                : filteredSUs.length === 0
+                ? '-- No Service Users Found --'
                 : '-- Select Service User --'}
             </option>
             {filteredSUs.map(u => {

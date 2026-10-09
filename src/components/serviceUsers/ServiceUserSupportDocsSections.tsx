@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { HeartHandshake, FileText, UploadCloud, Trash2, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { ServiceUserDocument } from '../../types/masterData';
+import { useApp } from '../../context/AppContext';
+import { getUserDropdownOptions } from '../../utils/userSelectOptions';
 
 export interface SUSupportNeedsSectionProps {
   vulnerabilityFlags: string;
@@ -31,6 +33,9 @@ export const SUSupportNeedsSection: React.FC<SUSupportNeedsSectionProps> = ({
   assignedStaff,
   setAssignedStaff
 }) => {
+  const { users } = useApp();
+  const userOptions = getUserDropdownOptions(users);
+
   return (
     <div className="space-y-4">
       <div className="p-3.5 bg-[#faf9f8] border border-[#e5e5e5] rounded-xs space-y-3">
@@ -55,13 +60,21 @@ export const SUSupportNeedsSection: React.FC<SUSupportNeedsSectionProps> = ({
           </div>
           <div>
             <label className="block text-neutral-600 font-medium mb-1">Assigned Key Worker / Staff</label>
-            <input
-              type="text"
+            <select
               value={assignedStaff}
               onChange={e => setAssignedStaff(e.target.value)}
-              placeholder="e.g. Sarah Jenkins (Housing Officer)"
               className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
-            />
+            >
+              <option value="">-- Select Key Worker / Staff --</option>
+              {assignedStaff && !userOptions.some(u => u.value === assignedStaff) && (
+                <option value={assignedStaff}>{assignedStaff} (Current)</option>
+              )}
+              {userOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
