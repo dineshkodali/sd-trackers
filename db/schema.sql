@@ -601,8 +601,11 @@ CREATE TABLE IF NOT EXISTS public.food_wastage_records (
   id TEXT PRIMARY KEY,
   site TEXT,
   date TEXT,
+  meal_type TEXT,
   food_wastage TEXT,
   quantity TEXT,
+  unit TEXT,
+  items JSONB DEFAULT '[]'::jsonb,
   comments TEXT,
   attachments JSONB DEFAULT '[]'::jsonb,
   attachment_url TEXT,
@@ -852,6 +855,7 @@ CREATE INDEX IF NOT EXISTS idx_ir_date ON public.ir_records(date);
 CREATE INDEX IF NOT EXISTS idx_ir_su_name ON public.ir_records(su_name);
 CREATE INDEX IF NOT EXISTS idx_food_wastage_site ON public.food_wastage_records(site);
 CREATE INDEX IF NOT EXISTS idx_food_wastage_date ON public.food_wastage_records(date);
+CREATE INDEX IF NOT EXISTS idx_food_wastage_meal_type ON public.food_wastage_records(meal_type);
 CREATE INDEX IF NOT EXISTS idx_reg_rooms_hotel ON public.daily_register_rooms(hotel);
 CREATE INDEX IF NOT EXISTS idx_reg_rooms_room_no ON public.daily_register_rooms(room_no);
 CREATE INDEX IF NOT EXISTS idx_reg_records_hotel ON public.daily_register_records(hotel);

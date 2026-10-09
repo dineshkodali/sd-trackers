@@ -67,7 +67,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
     let weekSum = 0;
     Object.values(log.dailyCounts || {}).forEach((day: FoodBuffetItemBreakdown | undefined) => {
       if (day) {
-        weekSum += (day.lunch || 0) + (day.dinner || 0) + (day.todlrLunch || 0) + 
+        weekSum += (day.breakfast || 0) + (day.lunch || 0) + (day.dinner || 0) + (day.todlrLunch || 0) + 
                    (day.todlrDinner || 0) + (day.specialLunch || 0) + (day.specialDinner || 0) + 
                    (day.schoolMealLunch || 0) + (day.childDinner || 0);
       }

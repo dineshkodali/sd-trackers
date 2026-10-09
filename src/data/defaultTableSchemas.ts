@@ -639,9 +639,11 @@ export const IR_TRACKER_TABLE_COLUMNS: TableColumnConfig<IRRecord>[] = [
 export const FOOD_WASTAGE_TABLE_COLUMNS: TableColumnConfig<FoodWastageRecord>[] = [
   { key: 'site', label: 'SITE', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Wastage Information' },
   { key: 'date', label: 'DATE', type: 'date', required: true, section: 'Wastage Information' },
-  { key: 'foodWastage', label: 'FOOD WASTAGE', type: 'text', required: true, placeholder: 'e.g. Unserved lunch buffet, Spoilage, Over-order', section: 'Wastage Information' },
-  { key: 'quantity', label: 'QUANTITY', type: 'text', required: true, placeholder: 'e.g. 5 kg, 12 portions, 3 trays', section: 'Wastage Information' },
-  { key: 'comments', label: 'COMMENTS', type: 'textarea', colSpan: 2, section: 'Wastage Information' },
+  { key: 'mealType' as any, label: 'MEAL TYPE', type: 'select', required: true, options: ['Breakfast', 'Lunch', 'Dinner'], defaultValue: 'Lunch', section: 'Wastage Information' },
+  { key: 'foodWastage', label: 'FOOD ITEM', type: 'text', required: true, placeholder: 'e.g. Rice, Chicken Curry, Pasta', section: 'Wastage Information' },
+  { key: 'quantity', label: 'QUANTITY WASTED', type: 'text', required: true, placeholder: 'e.g. 5 kg, 12 portions, 3 trays', section: 'Wastage Information' },
+  { key: 'unit' as any, label: 'UNIT', type: 'select', options: ['kg', 'grams', 'litres', 'portions', 'trays'], defaultValue: 'kg', section: 'Wastage Information' },
+  { key: 'comments', label: 'REMARKS', type: 'textarea', colSpan: 2, section: 'Wastage Information' },
   { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Wastage Information', renderCell: renderSchemaAttachmentCell }
 ];
 

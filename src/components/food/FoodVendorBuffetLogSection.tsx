@@ -18,7 +18,11 @@ import {
   Eye,
   LayoutGrid,
   Table as TableIcon,
-  Lock
+  Lock,
+  Sun,
+  Moon,
+  Coffee,
+  Utensils
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PropertyFoodVendorBuffetLog, FoodVendorName, FoodBuffetItemBreakdown } from '../../types';
@@ -39,15 +43,27 @@ import { TableColumnConfig } from '../../types/tableSchema';
 const DAYS_OF_WEEK = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
 type DayKey = typeof DAYS_OF_WEEK[number];
 
-const BUFFET_ROWS = [
-  { key: 'lunch', label: 'Lunch' },
-  { key: 'dinner', label: 'Dinner' },
-  { key: 'todlrLunch', label: 'Todlr(Lunch)' },
-  { key: 'todlrDinner', label: 'Todlr(Dinner)' },
-  { key: 'specialLunch', label: 'Special-Lunch' },
-  { key: 'specialDinner', label: 'Special-Dinner' },
-  { key: 'schoolMealLunch', label: 'School Meal/Child Lunch' },
-  { key: 'childDinner', label: 'Child Dinner' }
+export type MealGroup = 'Breakfast' | 'Lunch' | 'Dinner';
+
+export interface BuffetRowConfig {
+  key: keyof FoodBuffetItemBreakdown;
+  label: string;
+  group: MealGroup;
+}
+
+export const BUFFET_ROWS: readonly BuffetRowConfig[] = [
+  // Breakfast group
+  { key: 'breakfast', label: 'Breakfast', group: 'Breakfast' },
+  // Lunch group
+  { key: 'lunch', label: 'Lunch', group: 'Lunch' },
+  { key: 'todlrLunch', label: 'Toddler Lunch', group: 'Lunch' },
+  { key: 'specialLunch', label: 'Special Lunch', group: 'Lunch' },
+  { key: 'schoolMealLunch', label: 'School Meal / Child Lunch', group: 'Lunch' },
+  // Dinner group
+  { key: 'dinner', label: 'Dinner', group: 'Dinner' },
+  { key: 'todlrDinner', label: 'Toddler Dinner', group: 'Dinner' },
+  { key: 'specialDinner', label: 'Special Dinner', group: 'Dinner' },
+  { key: 'childDinner', label: 'Child Dinner', group: 'Dinner' }
 ] as const;
 
 // FOUR_CORE_VENDORS is now loaded dynamically from Field Options Setup (category: 'foodVendors')
@@ -241,13 +257,13 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
   const [editingLog, setEditingLog] = useState<PropertyFoodVendorBuffetLog | null>(null);
 
   const defaultDailyCounts = (): Record<DayKey, FoodBuffetItemBreakdown> => ({
-    MON: { lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
-    TUE: { lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
-    WED: { lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
-    THU: { lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
-    FRI: { lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
-    SAT: { lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
-    SUN: { lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 }
+    MON: { breakfast: 0, lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
+    TUE: { breakfast: 0, lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
+    WED: { breakfast: 0, lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
+    THU: { breakfast: 0, lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
+    FRI: { breakfast: 0, lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
+    SAT: { breakfast: 0, lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 },
+    SUN: { breakfast: 0, lunch: 0, dinner: 0, todlrLunch: 0, todlrDinner: 0, specialLunch: 0, specialDinner: 0, schoolMealLunch: 0, childDinner: 0 }
   });
 
   const [formData, setFormData] = useState({
@@ -346,13 +362,13 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
       startDate: log.startDate || bounds.start,
       endDate: log.endDate || bounds.end,
       dailyCounts: log.dailyCounts ? {
-        MON: log.dailyCounts.MON || defaultDailyCounts().MON,
-        TUE: log.dailyCounts.TUE || defaultDailyCounts().TUE,
-        WED: log.dailyCounts.WED || defaultDailyCounts().WED,
-        THU: log.dailyCounts.THU || defaultDailyCounts().THU,
-        FRI: log.dailyCounts.FRI || defaultDailyCounts().FRI,
-        SAT: log.dailyCounts.SAT || defaultDailyCounts().SAT,
-        SUN: log.dailyCounts.SUN || defaultDailyCounts().SUN,
+        MON: { ...defaultDailyCounts().MON, ...(log.dailyCounts.MON || {}) },
+        TUE: { ...defaultDailyCounts().TUE, ...(log.dailyCounts.TUE || {}) },
+        WED: { ...defaultDailyCounts().WED, ...(log.dailyCounts.WED || {}) },
+        THU: { ...defaultDailyCounts().THU, ...(log.dailyCounts.THU || {}) },
+        FRI: { ...defaultDailyCounts().FRI, ...(log.dailyCounts.FRI || {}) },
+        SAT: { ...defaultDailyCounts().SAT, ...(log.dailyCounts.SAT || {}) },
+        SUN: { ...defaultDailyCounts().SUN, ...(log.dailyCounts.SUN || {}) },
       } : defaultDailyCounts(),
       notes: log.notes || '',
       lastUpdatedBy: loggedInUserName,
@@ -1039,11 +1055,11 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                         <tr>
                           <th 
                             onClick={() => handleMatrixSort('category')} 
-                            className="py-2.5 px-3 min-w-[180px] bg-[#f3f2f1] cursor-pointer hover:bg-[#edebe9] transition-colors"
-                            title="Sort by Category"
+                            className="py-2.5 px-3 min-w-[200px] bg-[#f3f2f1] cursor-pointer hover:bg-[#edebe9] transition-colors"
+                            title="Sort by Meal Type"
                           >
                             <div className="flex items-center gap-1">
-                              <span>Category</span>
+                              <span>Meal Type</span>
                               {matrixSortCol === 'category' ? (matrixSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
                             </div>
                           </th>
@@ -1073,32 +1089,77 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#edebe9]">
-                        {sortedBuffetRows.map(row => {
-                          let rowSum = 0;
-                          return (
-                            <tr key={row.key} className="hover:bg-[#faf9f8] transition-colors">
-                              <td className="py-2 px-3 font-semibold text-[#242424] bg-neutral-50/50">
-                                {row.label}
-                              </td>
-                              {DAYS_OF_WEEK.map(d => {
-                                const count = log.dailyCounts?.[d]?.[row.key] || 0;
-                                rowSum += count;
-                                return (
-                                  <td key={d} className="py-2 px-2 text-center font-mono text-[#323130] border-r border-[#edebe9]">
-                                    {count > 0 ? (
-                                      <span className="font-semibold text-neutral-800">{count}</span>
-                                    ) : (
-                                      <span className="text-neutral-400">0</span>
-                                    )}
+                        {(() => {
+                          let currentGroup = '';
+                          return sortedBuffetRows.map(row => {
+                            let rowSum = 0;
+                            const showGroupHeader = matrixSortCol === 'default' || matrixSortCol === '' || !matrixSortCol ? row.group !== currentGroup : false;
+                            if (showGroupHeader) {
+                              currentGroup = row.group;
+                            }
+                            return (
+                              <React.Fragment key={row.key}>
+                                {showGroupHeader && (
+                                  <tr className={`border-t-2 select-none ${
+                                    row.group === 'Breakfast'
+                                      ? 'bg-amber-50/90 text-amber-950 border-amber-300'
+                                      : row.group === 'Lunch'
+                                      ? 'bg-emerald-50/90 text-emerald-950 border-emerald-300'
+                                      : 'bg-indigo-50/90 text-indigo-950 border-indigo-300'
+                                  }`}>
+                                    <td colSpan={9} className="py-1.5 px-3">
+                                      <div className="flex items-center gap-2">
+                                        {row.group === 'Breakfast' && <Sun className="w-3.5 h-3.5 text-amber-600" />}
+                                        {row.group === 'Lunch' && <Utensils className="w-3.5 h-3.5 text-emerald-600" />}
+                                        {row.group === 'Dinner' && <Moon className="w-3.5 h-3.5 text-indigo-600" />}
+                                        <span className="font-bold text-xs uppercase tracking-wider">{row.group}</span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                          row.group === 'Breakfast'
+                                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                            : row.group === 'Lunch'
+                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                            : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                        }`}>
+                                          {row.group === 'Breakfast' ? 'Morning Service' : row.group === 'Lunch' ? 'Midday Service & Children Allocations' : 'Evening Service & Children Allocations'}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                                <tr className="hover:bg-[#faf9f8] transition-colors">
+                                  <td className="py-2 px-3 font-semibold text-[#242424] bg-neutral-50/50">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span>{row.label}</span>
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium uppercase tracking-tight ${
+                                        row.group === 'Breakfast' ? 'bg-amber-100/70 text-amber-800' :
+                                        row.group === 'Lunch' ? 'bg-teal-100/70 text-teal-800' :
+                                        'bg-indigo-100/70 text-indigo-800'
+                                      }`}>
+                                        {row.group}
+                                      </span>
+                                    </div>
                                   </td>
-                                );
-                              })}
-                              <td className="py-2 px-3 text-right font-mono font-bold text-[#0f766e] bg-teal-50/30">
-                                {rowSum}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                                  {DAYS_OF_WEEK.map(d => {
+                                    const count = log.dailyCounts?.[d]?.[row.key] || 0;
+                                    rowSum += count;
+                                    return (
+                                      <td key={d} className="py-2 px-2 text-center font-mono text-[#323130] border-r border-[#edebe9]">
+                                        {count > 0 ? (
+                                          <span className="font-semibold text-neutral-800">{count}</span>
+                                        ) : (
+                                          <span className="text-neutral-400">0</span>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="py-2 px-3 text-right font-mono font-bold text-[#0f766e] bg-teal-50/30">
+                                    {rowSum}
+                                  </td>
+                                </tr>
+                              </React.Fragment>
+                            );
+                          });
+                        })()}
 
                         {/* Daily Totals Row */}
                         <tr className="bg-[#edebe9] font-bold text-[#242424] border-t-2 border-[#8a8886]">
@@ -1352,41 +1413,94 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
 
               {/* Matrix Input Table */}
               <div className="border border-[#e1dfdd] rounded-xs overflow-hidden">
-                <div className="bg-[#f3f2f1] px-3 py-2 font-semibold text-[#242424] border-b border-[#e1dfdd] flex items-center gap-2">
-                  <ChefHat className="w-4 h-4 text-[#0d9488]" />
-                  <span>Meal Type &amp; Daily Counts Matrix (MON &ndash; SUN)</span>
+                <div className="bg-[#f3f2f1] px-3 py-2 font-semibold text-[#242424] border-b border-[#e1dfdd] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ChefHat className="w-4 h-4 text-[#0d9488]" />
+                    <span>Meal Type &amp; Daily Counts Matrix (MON &ndash; SUN)</span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-neutral-500">
+                    Grouped: Breakfast &rarr; Lunch &rarr; Dinner
+                  </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-[#faf9f8] text-[#242424] font-semibold border-b border-[#edebe9]">
                       <tr>
-                        <th className="p-2 min-w-[170px]">Meal Type</th>
+                        <th className="p-2 min-w-[180px]">Meal Type</th>
                         {DAYS_OF_WEEK.map(d => (
                           <th key={d} className="p-2 text-center w-14 border-r border-[#edebe9]">
                             {d}
                           </th>
                         ))}
+                        <th className="p-2 text-right w-16 bg-teal-50/70 text-[#0f766e]">
+                          Total
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#edebe9]">
-                      {BUFFET_ROWS.map(row => (
-                        <tr key={row.key} className="hover:bg-[#faf9f8]">
-                          <td className="p-2 font-semibold text-[#242424] bg-neutral-50/50">
-                            {row.label}
-                          </td>
-                          {DAYS_OF_WEEK.map(d => (
-                            <td key={d} className="p-1 text-center border-r border-[#edebe9]">
-                              <input
-                                type="number"
-                                min="0"
-                                value={formData.dailyCounts[d][row.key]}
-                                onChange={e => handleDayCountChange(d, row.key, parseInt(e.target.value) || 0)}
-                                className="w-12 p-1 text-center border border-[#8a8886] rounded-xs font-mono text-xs focus:bg-amber-50"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
+                      {(() => {
+                        let currentGroup = '';
+                        return BUFFET_ROWS.map(row => {
+                          const showGroupHeader = row.group !== currentGroup;
+                          if (showGroupHeader) {
+                            currentGroup = row.group;
+                          }
+                          const rowTotal = DAYS_OF_WEEK.reduce((acc, d) => acc + (formData.dailyCounts[d]?.[row.key] || 0), 0);
+                          return (
+                            <React.Fragment key={row.key}>
+                              {showGroupHeader && (
+                                <tr className={`border-t-2 select-none ${
+                                  row.group === 'Breakfast'
+                                    ? 'bg-amber-50/90 text-amber-950 border-amber-300'
+                                    : row.group === 'Lunch'
+                                    ? 'bg-emerald-50/90 text-emerald-950 border-emerald-300'
+                                    : 'bg-indigo-50/90 text-indigo-950 border-indigo-300'
+                                }`}>
+                                  <td colSpan={9} className="py-1 px-3">
+                                    <div className="flex items-center gap-2">
+                                      {row.group === 'Breakfast' && <Sun className="w-3 h-3 text-amber-600" />}
+                                      {row.group === 'Lunch' && <Utensils className="w-3 h-3 text-emerald-600" />}
+                                      {row.group === 'Dinner' && <Moon className="w-3 h-3 text-indigo-600" />}
+                                      <span className="font-bold text-[11px] uppercase tracking-wider">{row.group}</span>
+                                      <span className="text-[10px] opacity-75 font-normal">
+                                        {row.group === 'Breakfast' ? 'Morning service' : row.group === 'Lunch' ? 'Lunch & child categories' : 'Dinner & evening categories'}
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                              <tr className="hover:bg-[#faf9f8]">
+                                <td className="p-2 font-semibold text-[#242424] bg-neutral-50/50">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span>{row.label}</span>
+                                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-medium uppercase ${
+                                      row.group === 'Breakfast' ? 'bg-amber-100 text-amber-800' :
+                                      row.group === 'Lunch' ? 'bg-teal-100 text-teal-800' :
+                                      'bg-indigo-100 text-indigo-800'
+                                    }`}>
+                                      {row.group}
+                                    </span>
+                                  </div>
+                                </td>
+                                {DAYS_OF_WEEK.map(d => (
+                                  <td key={d} className="p-1 text-center border-r border-[#edebe9]">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={formData.dailyCounts[d]?.[row.key] ?? 0}
+                                      onChange={e => handleDayCountChange(d, row.key, parseInt(e.target.value) || 0)}
+                                      className="w-12 p-1 text-center border border-[#8a8886] rounded-xs font-mono text-xs focus:bg-amber-50"
+                                    />
+                                  </td>
+                                ))}
+                                <td className="p-1 text-right font-mono font-bold text-[#0f766e] bg-teal-50/40 pr-2.5">
+                                  {rowTotal}
+                                </td>
+                              </tr>
+                            </React.Fragment>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>

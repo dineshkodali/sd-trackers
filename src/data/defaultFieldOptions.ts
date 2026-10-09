@@ -162,6 +162,20 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'ChefHat'
   },
   {
+    key: 'foodItems',
+    name: 'Food Wastage Items',
+    department: 'Welfare',
+    description: 'Configurable food item master list for kitchen food wastage tracking',
+    iconName: 'Utensils'
+  },
+  {
+    key: 'wastageUnits',
+    name: 'Food Wastage Units',
+    department: 'Welfare',
+    description: 'Units of measurement for food wastage (kg, grams, litres, portions, etc.)',
+    iconName: 'Scale'
+  },
+  {
     key: 'laundryStages',
     name: 'Laundry Cycle Stages',
     department: 'Welfare',
@@ -669,5 +683,26 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-crh-3', category: 'crhSubmissionStatuses', label: 'Under Review', value: 'Under Review', color: 'purple', description: 'Currently under review by CRH', isActive: true, isSystem: true, order: 3 },
   { id: 'opt-crh-4', category: 'crhSubmissionStatuses', label: 'CRH Approved', value: 'CRH Approved', color: 'emerald', description: 'Approved by CRH', isActive: true, isSystem: true, order: 4 },
   { id: 'opt-crh-5', category: 'crhSubmissionStatuses', label: 'CRH Rejected', value: 'CRH Rejected', color: 'red', description: 'Rejected or returned by CRH', isActive: true, isSystem: true, order: 5 },
-  { id: 'opt-crh-6', category: 'crhSubmissionStatuses', label: 'Not Applicable', value: 'Not Applicable', color: 'slate', description: 'CRH submission not required', isActive: true, isSystem: true, order: 6 }
+  { id: 'opt-crh-6', category: 'crhSubmissionStatuses', label: 'Not Applicable', value: 'Not Applicable', color: 'slate', description: 'CRH submission not required', isActive: true, isSystem: true, order: 6 },
+
+  // 46. Food Wastage Items Master List
+  { id: 'opt-fitem-1', category: 'foodItems', label: 'Rice / Biryani', value: 'Rice / Biryani', color: 'amber', description: 'Cooked basmati or long grain rice', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fitem-2', category: 'foodItems', label: 'Chicken Curry / Stew', value: 'Chicken Curry / Stew', color: 'orange', description: 'Prepared poultry hot dishes', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-fitem-3', category: 'foodItems', label: 'Beef / Lamb Stew', value: 'Beef / Lamb Stew', color: 'rose', description: 'Prepared halal meat dishes', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-fitem-4', category: 'foodItems', label: 'Fish / Seafood Dish', value: 'Fish / Seafood Dish', color: 'blue', description: 'Prepared fish dishes', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-fitem-5', category: 'foodItems', label: 'Vegetable Curry / Daal', value: 'Vegetable Curry / Daal', color: 'emerald', description: 'Vegetarian and vegan hot food', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-fitem-6', category: 'foodItems', label: 'Pasta / Noodles', value: 'Pasta / Noodles', color: 'yellow', description: 'Cooked pasta and noodle dishes', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-fitem-7', category: 'foodItems', label: 'Bread / Naan / Rolls', value: 'Bread / Naan / Rolls', color: 'amber', description: 'Bakery and bread products', isActive: true, isSystem: true, order: 7 },
+  { id: 'opt-fitem-8', category: 'foodItems', label: 'Soup / Broth', value: 'Soup / Broth', color: 'teal', description: 'Hot soup and liquid portions', isActive: true, isSystem: true, order: 8 },
+  { id: 'opt-fitem-9', category: 'foodItems', label: 'Fresh Salad / Greens', value: 'Fresh Salad / Greens', color: 'green', description: 'Cold salads and vegetables', isActive: true, isSystem: true, order: 9 },
+  { id: 'opt-fitem-10', category: 'foodItems', label: 'Fruit / Fresh Produce', value: 'Fruit / Fresh Produce', color: 'red', description: 'Fresh fruits and produce', isActive: true, isSystem: true, order: 10 },
+  { id: 'opt-fitem-11', category: 'foodItems', label: 'Dairy / Milk / Yoghurt', value: 'Dairy / Milk / Yoghurt', color: 'slate', description: 'Milk cartons and dairy products', isActive: true, isSystem: true, order: 11 },
+  { id: 'opt-fitem-12', category: 'foodItems', label: 'Breakfast Items (Eggs/Beans/Sausage)', value: 'Breakfast Items (Eggs/Beans/Sausage)', color: 'amber', description: 'Hot breakfast buffet items', isActive: true, isSystem: true, order: 12 },
+
+  // 47. Food Wastage Units
+  { id: 'opt-wunit-1', category: 'wastageUnits', label: 'kg (Kilograms)', value: 'kg', color: 'teal', description: 'Weight in kilograms', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-wunit-2', category: 'wastageUnits', label: 'grams (Grams)', value: 'grams', color: 'cyan', description: 'Weight in grams', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-wunit-3', category: 'wastageUnits', label: 'litres (Litres)', value: 'litres', color: 'blue', description: 'Liquid volume in litres', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-wunit-4', category: 'wastageUnits', label: 'portions (Portions)', value: 'portions', color: 'emerald', description: 'Individual meal portions / servings', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-wunit-5', category: 'wastageUnits', label: 'trays (Trays)', value: 'trays', color: 'amber', description: 'Standard gastro trays', isActive: true, isSystem: true, order: 5 }
 ];

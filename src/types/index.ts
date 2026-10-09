@@ -172,6 +172,7 @@ export interface PropertyLaundryLog {
 export type FoodVendorName = string;
 
 export interface FoodBuffetItemBreakdown {
+  breakfast?: number;
   lunch: number;
   dinner: number;
   todlrLunch?: number; // Todlr(Lunch) or Chld / Todlr(Lunch)
@@ -459,6 +460,8 @@ export type FieldOptionCategory =
   | 'dietaryTypes'
   | 'foodStatuses'
   | 'foodVendors'
+  | 'foodItems'
+  | 'wastageUnits'
   | 'laundryStages'
   | 'laundryPeriodTypes'
   | 'discrepancyStatuses'
@@ -693,13 +696,24 @@ export interface IRRecord {
 }
 
 // 9. Food Wastage Record
+export interface FoodWastageItem {
+  id?: string;
+  foodItem: string;
+  quantity: number | string;
+  unit: string;
+  remarks?: string;
+}
+
 export interface FoodWastageRecord {
   id: string;
   site: string; // SITE
   date: string; // DATE
+  mealType?: 'Breakfast' | 'Lunch' | 'Dinner' | string; // MEAL TYPE
   foodWastage: string; // FOOD WASTAGE
   quantity: string; // QUANTITY
-  comments?: string; // COMMENTS
+  unit?: string;
+  items?: FoodWastageItem[];
+  comments?: string; // COMMENTS / REMARKS
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
   attachment_url?: string;

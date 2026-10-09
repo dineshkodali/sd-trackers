@@ -302,8 +302,11 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
   food_wastage_records: [
     ['site', 'site', 'text'],
     ['date', 'date', 'text'],
+    ['mealType', 'meal_type', 'text'],
     ['foodWastage', 'food_wastage', 'text'],
     ['quantity', 'quantity', 'text'],
+    ['unit', 'unit', 'text'],
+    ['items', 'items', 'json'],
     ['comments', 'comments', 'text'],
     ['attachments', 'attachments', 'json'],
     ['attachmentUrl', 'attachment_url', 'text'],
