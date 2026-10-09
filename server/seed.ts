@@ -10,6 +10,7 @@ import {
   INITIAL_SETTINGS
 } from '../src/data/initialData.js';
 import { DEFAULT_FIELD_OPTIONS } from '../src/data/defaultFieldOptions.js';
+import { readDiskBackup, buildInitialMasterData } from './masterDataStore.js';
 
 /**
  * Seeds reference data - the property directory, booklet inventory, VCS
@@ -32,6 +33,34 @@ interface SeedSpec {
 
 const SEEDS: SeedSpec[] = [
   { table: 'sites', rows: () => INITIAL_SITES.map(s => toDatabaseRow('sites', s)) },
+  {
+    table: 'properties',
+    rows: () => {
+      const data = readDiskBackup() || buildInitialMasterData();
+      return (data.properties || []).map(p => toDatabaseRow('properties', p));
+    }
+  },
+  {
+    table: 'property_rooms',
+    rows: () => {
+      const data = readDiskBackup() || buildInitialMasterData();
+      return (data.property_rooms || []).map(r => toDatabaseRow('property_rooms', r));
+    }
+  },
+  {
+    table: 'service_users',
+    rows: () => {
+      const data = readDiskBackup() || buildInitialMasterData();
+      return (data.service_users || []).map(u => toDatabaseRow('service_users', u));
+    }
+  },
+  {
+    table: 'placements',
+    rows: () => {
+      const data = readDiskBackup() || buildInitialMasterData();
+      return (data.placements || []).map(p => toDatabaseRow('placements', p));
+    }
+  },
   { table: 'booklet_collections', rows: () => INITIAL_BOOKLET_RECORDS.map(r => toDatabaseRow('booklet_collections', r)) },
   { table: 'vcs_agencies', rows: () => INITIAL_VCS_AGENCIES.map(r => toDatabaseRow('vcs_agencies', r)) },
   { table: 'field_options', rows: () => DEFAULT_FIELD_OPTIONS.map(o => toDatabaseRow('field_options', o)) },

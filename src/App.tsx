@@ -39,6 +39,7 @@ import { RequestsApprovalsView } from './components/requests/RequestsApprovalsVi
 import { FieldOptionsSetupView } from './components/setup/FieldOptionsSetupView';
 import { NotificationsManagementView } from './components/notifications/NotificationsManagementView';
 import { LoginView } from './components/auth/LoginView';
+import { ResetPasswordView } from './components/auth/ResetPasswordView';
 import { QuickJumpModal } from './components/common/QuickJumpModal';
 import { AuthenticationBlockedView } from './components/auth/AuthenticationBlockedView';
 import { DiagnosticInspectorModal } from './components/auth/DiagnosticInspectorModal';
@@ -53,6 +54,8 @@ import { DocumentBuilderView } from './components/documentBuilder/DocumentBuilde
 import { WelfareChecksView } from './components/welfare/WelfareChecksView';
 import { FoodSurveysView } from './components/food/FoodSurveysView';
 import { RoomChecksView } from './components/room/RoomChecksView';
+import { ServiceUsersView } from './components/serviceUsers/ServiceUsersView';
+import { PropertyManagementView } from './components/propertyManagement/PropertyManagementView';
 import { PageMaintenanceView } from './components/common/PageMaintenanceView';
 import { SuperAdminMaintenanceBanner } from './components/common/SuperAdminMaintenanceBanner';
 import { getPageTitle } from './config/pageRegistry';
@@ -76,9 +79,42 @@ function AppLayout() {
     rolePermissions,
     isPageUnderMaintenance,
     setPageMaintenanceMode,
-    settings
+    settings,
+    isPasswordRecoveryMode,
+    setIsPasswordRecoveryMode
   } = useApp();
   const [isQuickJumpOpen, setIsQuickJumpOpen] = useState(false);
+
+  const checkIsResetOrRecovery = () => {
+    if (typeof window === 'undefined') return false;
+    const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+
+    if (pathname === '/reset-password' || pathname === '/forgot-password') return true;
+    if (hash.startsWith('#reset-password') || hash.startsWith('#forgot-password')) return true;
+    if (hash.includes('type=recovery') || search.includes('type=recovery')) return true;
+    if (hash.includes('token_hash') || search.includes('token_hash')) return true;
+    if (search.includes('code=') || hash.includes('code=')) return true;
+    if (hash.includes('otp_expired') || search.includes('otp_expired')) return true;
+    if (hash.includes('expired') || search.includes('expired')) return true;
+
+    return false;
+  };
+
+  const [isResetPasswordRoute, setIsResetPasswordRoute] = useState(checkIsResetOrRecovery);
+
+  useEffect(() => {
+    const checkRoute = () => {
+      setIsResetPasswordRoute(checkIsResetOrRecovery());
+    };
+    window.addEventListener('popstate', checkRoute);
+    window.addEventListener('hashchange', checkRoute);
+    return () => {
+      window.removeEventListener('popstate', checkRoute);
+      window.removeEventListener('hashchange', checkRoute);
+    };
+  }, []);
 
   useEffect(() => {
     const handleOpenQuickJump = () => setIsQuickJumpOpen(true);
@@ -123,11 +159,33 @@ function AppLayout() {
     );
   }
 
+  // CRITICAL RECOVERY & RESET ROUTE GUARD:
+  // If the user is in recovery mode or on a reset/forgot password route,
+  // NEVER show the Login page and NEVER show the Dashboard!
+  if (isPasswordRecoveryMode || isResetPasswordRoute) {
+    return (
+      <>
+        <ResetPasswordView onBackToLogin={() => {
+          setIsPasswordRecoveryMode(false);
+          setIsResetPasswordRoute(false);
+          window.history.pushState(null, '', '/');
+        }} />
+        <DiagnosticInspectorModal
+          isOpen={diagnosticModalOpen}
+          onClose={() => setDiagnosticModalOpen(false)}
+        />
+      </>
+    );
+  }
+
   // Strict tokenized session gate: Users cannot access app without logging in
   if (!isAuthenticated) {
     return (
       <>
-        <LoginView />
+        <LoginView onNavigateToResetPassword={() => {
+          window.history.pushState(null, '', '/reset-password');
+          setIsResetPasswordRoute(true);
+        }} />
         <DiagnosticInspectorModal
           isOpen={diagnosticModalOpen}
           onClose={() => setDiagnosticModalOpen(false)}
@@ -165,6 +223,10 @@ function AppLayout() {
         return <ChallengingView isArchive={false} />;
       case 'challengingArchive':
         return <ChallengingView isArchive={true} />;
+      case 'suUsers':
+        return <ServiceUsersView />;
+      case 'propertyManagement':
+        return <PropertyManagementView />;
       case 'welfareChecks':
         return <WelfareChecksView />;
       case 'foodSurveys':

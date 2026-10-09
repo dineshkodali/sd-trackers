@@ -139,6 +139,7 @@ export const Sidebar: React.FC = () => {
     isFinanceUser,
     financeBills,
     assignedSite,
+    allowedSites,
     canAccessAllSites,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen
@@ -155,24 +156,59 @@ export const Sidebar: React.FC = () => {
     setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const openReferrals = referrals.filter(r => r.status !== 'Archived').length;
-  const archivedReferrals = referrals.filter(r => r.status === 'Archived').length;
-  const openVulnerable = vulnerableSUs.filter(v => v.status !== 'Archived').length;
-  const archivedVulnerable = vulnerableSUs.filter(v => v.status === 'Archived').length;
-  const openChallenging = challengingSUs.filter(c => c.status !== 'Archived').length;
-  const archivedChallenging = challengingSUs.filter(c => c.status === 'Archived').length;
-  const activeEscalations = escalations.filter(e => e.status !== 'Resolved').length;
-  const openMaintenance = maintenanceRecords.filter(m => m.defectStatus !== 'Completed').length;
-  const cat1Count = maintenanceRecords.filter(m => m.priority === 'CAT 1' && m.defectStatus !== 'Completed').length;
-  const spcdCount = spcdRecords.filter(s => !s.isArchived).length;
+  const siteFilterPredicate = (item: any) => {
+    if (canAccessAllSites()) return true;
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
+    const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
+    if (!itemSite) return true;
+    return permitted.some(s => itemSite === s || itemSite.includes(s) || s.includes(itemSite));
+  };
+
+  const scopedReferrals = referrals.filter(siteFilterPredicate);
+  const scopedVulnerable = vulnerableSUs.filter(siteFilterPredicate);
+  const scopedChallenging = challengingSUs.filter(siteFilterPredicate);
+  const scopedEscalations = escalations.filter(siteFilterPredicate);
+  const scopedMaintenance = maintenanceRecords.filter(siteFilterPredicate);
+  const scopedSpcd = spcdRecords.filter(siteFilterPredicate);
+  const scopedDailyRegisters = dailyRegisterRecords.filter(siteFilterPredicate);
+  const scopedWelfareChecks = (welfareChecks || []).filter(siteFilterPredicate);
+  const scopedRfaWelfare = rfaWelfareRecords.filter(siteFilterPredicate);
+  const scopedGpAppointments = gpAppointmentRecords.filter(siteFilterPredicate);
+  const scopedIrRecords = irRecords.filter(siteFilterPredicate);
+  const scopedTransport = publicTransportRecords.filter(siteFilterPredicate);
+  const scopedDispersal = dispersalRecords.filter(siteFilterPredicate);
+  const scopedEvictions = (evictionRecords || []).filter(siteFilterPredicate);
+  const scopedBooklets = bookletRecords.filter(siteFilterPredicate);
+  const scopedVcsAgencies = vcsAgencies.filter(siteFilterPredicate);
+  const scopedFoodSurveys = (foodSurveys || []).filter(siteFilterPredicate);
+  const scopedFoodWastage = foodWastageRecords.filter(siteFilterPredicate);
+  const scopedRoomChecks = (roomChecks || []).filter(siteFilterPredicate);
+  const scopedCompliance = complianceRecords.filter(siteFilterPredicate);
+  const scopedChangeRequests = (dataChangeRequests || []).filter(siteFilterPredicate);
+
+  const openReferrals = scopedReferrals.filter(r => r.status !== 'Archived').length;
+  const archivedReferrals = scopedReferrals.filter(r => r.status === 'Archived').length;
+  const openVulnerable = scopedVulnerable.filter(v => v.status !== 'Archived').length;
+  const archivedVulnerable = scopedVulnerable.filter(v => v.status === 'Archived').length;
+  const openChallenging = scopedChallenging.filter(c => c.status !== 'Archived').length;
+  const archivedChallenging = scopedChallenging.filter(c => c.status === 'Archived').length;
+  const activeEscalations = scopedEscalations.filter(e => e.status !== 'Resolved').length;
+  const openMaintenance = scopedMaintenance.filter(m => m.defectStatus !== 'Completed').length;
+  const cat1Count = scopedMaintenance.filter(m => m.priority === 'CAT 1' && m.defectStatus !== 'Completed').length;
+  const spcdCount = scopedSpcd.filter(s => !s.isArchived).length;
 
   const userSiteFilter = (b: any) => {
     if (canAccessAllSites()) return true;
-    if (!assignedSite || assignedSite === 'All Sites' || assignedSite === 'all') return true;
-    const allowed = assignedSite.toLowerCase().trim();
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
     const bSiteName = (b.siteName || '').toLowerCase().trim();
     const bSiteId = (b.siteId || '').toLowerCase().trim();
-    return bSiteName === allowed || bSiteName.includes(allowed) || bSiteId === allowed;
+    return permitted.some(s => bSiteName === s || bSiteName.includes(s) || bSiteId === s);
   };
 
   const scopedBills = (financeBills || []).filter(userSiteFilter);
@@ -232,7 +268,32 @@ export const Sidebar: React.FC = () => {
           {/* Section: Overview */}
           <div className="space-y-1">
             <NavItem id="nav-dashboard" page="dashboard" label="Dashboard" icon={Compass} iconColor="text-[#0d9488]" badge={isNavActive('dashboard') ? 'ACTIVE' : null} badgeClass="bg-white/20 text-white text-[9px] font-semibold" active={isNavActive('dashboard')} onClick={handleNavClick} />
-            <NavItem id="nav-daily-registers" page="dailyRegisters" label="Live Daily Registers" icon={Building2} iconColor="text-blue-600" badge={dailyRegisterRecords.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('dailyRegisters')} onClick={handleNavClick} />
+            <NavItem id="nav-daily-registers" page="dailyRegisters" label="Live Daily Registers" icon={Building2} iconColor="text-blue-600" badge={scopedDailyRegisters.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('dailyRegisters')} onClick={handleNavClick} />
+          </div>
+
+          {/* Section: Master Data */}
+          <div className="space-y-1">
+            <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
+              Master Data
+            </div>
+            <NavItem 
+              id="nav-su-users" 
+              page="suUsers" 
+              label="Service Users" 
+              icon={UsersRound} 
+              iconColor="text-indigo-600" 
+              active={isNavActive('suUsers')} 
+              onClick={handleNavClick} 
+            />
+            <NavItem 
+              id="nav-property-management" 
+              page="propertyManagement" 
+              label="Property Management" 
+              icon={Building2} 
+              iconColor="text-indigo-600" 
+              active={isNavActive('propertyManagement')} 
+              onClick={handleNavClick} 
+            />
           </div>
 
           {/* Section: Safeguarding Records */}
@@ -349,9 +410,9 @@ export const Sidebar: React.FC = () => {
               )}
             </div>
 
-            <NavItem id="nav-welfare-checks" page="welfareChecks" label="Welfare Checks" icon={HeartHandshake} iconColor="text-rose-600" badge={welfareChecks?.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('welfareChecks')} onClick={handleNavClick} />
-            <NavItem id="nav-rfa-welfare" page="rfaWelfare" label="RFA Welfare Checks" icon={UserCheck} iconColor="text-rose-600" badge={rfaWelfareRecords.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('rfaWelfare')} onClick={handleNavClick} />
-            <NavItem id="nav-gp-appointments" page="gpAppointments" label="GP Appointments" icon={Stethoscope} iconColor="text-blue-600" badge={gpAppointmentRecords.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('gpAppointments')} onClick={handleNavClick} />
+            <NavItem id="nav-welfare-checks" page="welfareChecks" label="Welfare Checks" icon={HeartHandshake} iconColor="text-rose-600" badge={scopedWelfareChecks.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('welfareChecks')} onClick={handleNavClick} />
+            <NavItem id="nav-rfa-welfare" page="rfaWelfare" label="RFA Welfare Checks" icon={UserCheck} iconColor="text-rose-600" badge={scopedRfaWelfare.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('rfaWelfare')} onClick={handleNavClick} />
+            <NavItem id="nav-gp-appointments" page="gpAppointments" label="GP Appointments" icon={Stethoscope} iconColor="text-blue-600" badge={scopedGpAppointments.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('gpAppointments')} onClick={handleNavClick} />
             <NavItem id="nav-document-builder" page="documentBuilder" label="HO Report Generator" icon={FilePlus} iconColor="text-[#0d9488]" active={isNavActive('documentBuilder')} onClick={handleNavClick} />
           </div>
 
@@ -363,15 +424,15 @@ export const Sidebar: React.FC = () => {
 
             <NavItem id="nav-maintenance" page="maintenance" label="Maintenance Tracker" icon={HardHat} iconColor="text-amber-700" extraBadge={cat1Count > 0 ? (<span className="text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded animate-pulse">{cat1Count} CAT 1</span>) : null} badge={openMaintenance || null} badgeClass="bg-amber-50 text-amber-900 border border-amber-200" active={isNavActive('maintenance')} onClick={handleNavClick} />
             <NavItem id="nav-spcd" page="spcd" label="SPCD Tracker" icon={ScrollText} iconColor="text-emerald-700" badge={spcdCount || null} badgeClass="bg-emerald-50 text-emerald-900 border border-emerald-200" active={isNavActive('spcd')} onClick={handleNavClick} />
-            <NavItem id="nav-ir-tracker" page="irTracker" label="IR Tracker" icon={ClipboardList} iconColor="text-teal-700" badge={irRecords.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('irTracker')} onClick={handleNavClick} />
-            <NavItem id="nav-transport" page="publicTransport" label="Public Transport" icon={Bus} iconColor="text-teal-700" badge={publicTransportRecords.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('publicTransport')} onClick={handleNavClick} />
-            <NavItem id="nav-dispersal" page="dispersal" label="Dispersal Sheet" icon={PlaneTakeoff} iconColor="text-indigo-700" badge={(dispersalRecords.length + (evictionRecords?.length || 0)) || null} badgeClass="bg-indigo-50 text-indigo-800" active={isNavActive('dispersal')} onClick={handleNavClick} />
-            <NavItem id="nav-booklets" page="booklets" label="Booklet Inventory" icon={BookOpen} iconColor="text-amber-700" badge={bookletRecords.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('booklets')} onClick={handleNavClick} />
+            <NavItem id="nav-ir-tracker" page="irTracker" label="IR Tracker" icon={ClipboardList} iconColor="text-teal-700" badge={scopedIrRecords.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('irTracker')} onClick={handleNavClick} />
+            <NavItem id="nav-transport" page="publicTransport" label="Public Transport" icon={Bus} iconColor="text-teal-700" badge={scopedTransport.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('publicTransport')} onClick={handleNavClick} />
+            <NavItem id="nav-dispersal" page="dispersal" label="Dispersal Sheet" icon={PlaneTakeoff} iconColor="text-indigo-700" badge={(scopedDispersal.length + scopedEvictions.length) || null} badgeClass="bg-indigo-50 text-indigo-800" active={isNavActive('dispersal')} onClick={handleNavClick} />
+            <NavItem id="nav-booklets" page="booklets" label="Booklet Inventory" icon={BookOpen} iconColor="text-amber-700" badge={scopedBooklets.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('booklets')} onClick={handleNavClick} />
             <NavItem id="nav-laundry" page="laundry" label="Laundry Support" icon={Waves} iconColor="text-cyan-700" active={isNavActive('laundry')} onClick={handleNavClick} />
             <NavItem id="nav-food" page="food" label="Hot Meals Tracker" icon={Soup} iconColor="text-emerald-600" active={isNavActive('food')} onClick={handleNavClick} />
-            <NavItem id="nav-food-surveys" page="foodSurveys" label="Food Surveys" icon={Soup} iconColor="text-emerald-600" badge={foodSurveys?.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('foodSurveys')} onClick={handleNavClick} />
-            <NavItem id="nav-food-wastage" page="foodWastage" label="Food Wastage Tracker" icon={Trash2} iconColor="text-amber-700" badge={foodWastageRecords.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodWastage')} onClick={handleNavClick} />
-            <NavItem id="nav-room-checks" page="roomChecks" label="Room Checks" icon={Building2} iconColor="text-cyan-700" badge={roomChecks?.length || null} badgeClass="bg-cyan-50 text-cyan-800" active={isNavActive('roomChecks')} onClick={handleNavClick} />
+            <NavItem id="nav-food-surveys" page="foodSurveys" label="Food Surveys" icon={Soup} iconColor="text-emerald-600" badge={scopedFoodSurveys.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('foodSurveys')} onClick={handleNavClick} />
+            <NavItem id="nav-food-wastage" page="foodWastage" label="Food Wastage Tracker" icon={Trash2} iconColor="text-amber-700" badge={scopedFoodWastage.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodWastage')} onClick={handleNavClick} />
+            <NavItem id="nav-room-checks" page="roomChecks" label="Room Checks" icon={Building2} iconColor="text-cyan-700" badge={scopedRoomChecks.length || null} badgeClass="bg-cyan-50 text-cyan-800" active={isNavActive('roomChecks')} onClick={handleNavClick} />
             <NavItem id="nav-escalations" page="escalations" label="Escalations Log" icon={Siren} iconColor="text-red-600" badge={activeEscalations || null} badgeClass="bg-red-100 text-red-800 font-bold" active={isNavActive('escalations')} onClick={handleNavClick} />
             <NavItem id="nav-documents" page="documents" label="Proof Documents" icon={FolderLock} iconColor="text-slate-600" active={isNavActive('documents')} onClick={handleNavClick} />
           </div>
@@ -399,15 +460,15 @@ export const Sidebar: React.FC = () => {
               Compliance &amp; Community
             </div>
 
-            <NavItem id="nav-compliance" page="compliance" label="SD-Compliance Tracker" icon={ShieldCheck} iconColor="text-emerald-700" badge={complianceRecords.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('compliance')} onClick={handleNavClick} />
-            <NavItem id="nav-vcs" page="vcsDirectory" label="SD VCS Directory" icon={HandHeart} iconColor="text-teal-700" badge={vcsAgencies.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('vcsDirectory')} onClick={handleNavClick} />
+            <NavItem id="nav-compliance" page="compliance" label="SD-Compliance Tracker" icon={ShieldCheck} iconColor="text-emerald-700" badge={scopedCompliance.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('compliance')} onClick={handleNavClick} />
+            <NavItem id="nav-vcs" page="vcsDirectory" label="SD VCS Directory" icon={HandHeart} iconColor="text-teal-700" badge={scopedVcsAgencies.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('vcsDirectory')} onClick={handleNavClick} />
             {(rolePermissions[currentUserRole]?.canExportData || canManageSettings()) && (
               <NavItem id="nav-reports" page="reports" label="Reports & SharePoint" icon={CloudUpload} iconColor="text-[#0d9488]" active={isNavActive('reports')} onClick={handleNavClick} />
             )}
             {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && (
               <NavItem id="nav-audit" page="audit" label="Audit Security Trail" icon={Fingerprint} iconColor="text-amber-700" active={isNavActive('audit')} onClick={handleNavClick} />
             )}
-            <NavItem id="nav-requests" page="requests" label="Requests & Approvals" icon={MessageSquareQuote} iconColor="text-blue-600" badge={dataChangeRequests?.filter(r => r.status === 'Pending').length || null} badgeClass="bg-amber-100 text-amber-800 font-bold" active={isNavActive('requests')} onClick={handleNavClick} />
+            <NavItem id="nav-requests" page="requests" label="Requests & Approvals" icon={MessageSquareQuote} iconColor="text-blue-600" badge={scopedChangeRequests.filter(r => r.status === 'Pending').length || null} badgeClass="bg-amber-100 text-amber-800 font-bold" active={isNavActive('requests')} onClick={handleNavClick} />
           </div>
 
           {/* Section: Admin & Governance (Super Admin & Admin Only) */}

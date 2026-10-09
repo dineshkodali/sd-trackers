@@ -45,7 +45,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
 }) => {
   const { properties, assignedSite, canAccessAllSites, authProfile, currentUserRole } = useApp();
 
-  const isEmployee = authProfile?.role === 'Employee' || authProfile?.role === 'Staff';
+  const isEmployee = authProfile?.role === 'Staff';
 
   // Strict page bill type (locked to the specific page)
   const billType: FinanceBillType = billToEdit?.billType || defaultBillType;

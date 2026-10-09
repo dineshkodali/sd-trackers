@@ -257,9 +257,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm(`Delete template "${template.name}"?`)) {
-                            onDeleteTemplate(template.id);
-                          }
+                          onDeleteTemplate(template.id);
                         }}
                         className="p-1 text-[#94a3b8] hover:text-red-600 rounded-xs"
                         title="Delete Template"

@@ -5,11 +5,12 @@ import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin, isSupabaseConfigured, getSupabaseUrl, getSupabaseAnon } from '../supabase.js';
 import { runDatabaseMigrations, loadSchemaSql } from '../migrate.js';
-import { toDatabaseRow, fromDatabaseRow, TABLE_COLUMNS, DATA_TABLES, moduleLabelFor } from '../schemaAdapter.js';
+import { toDatabaseRow, fromDatabaseRow, TABLE_COLUMNS, DATA_TABLES, moduleLabelFor, resolveSiteId, resolveSiteName } from '../schemaAdapter.js';
 import { requireRole } from '../middleware/requireAuth.js';
 import { getLiveSchema, getLiveColumns, invalidateLiveSchema } from '../liveSchema.js';
 import { seedReferenceData } from '../seed.js';
 import { INITIAL_ROLE_PERMISSIONS } from '../../src/data/initialData.js';
+import { masterDataStore } from '../masterDataStore.js';
 
 const router = Router();
 
@@ -56,6 +57,12 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   escalations: { page: 'Escalations Log', table: 'escalations' },
   documents: { page: 'Proof Documents', table: 'documents' },
   publicTransport: { page: 'Public Transport Tracker', table: 'public_transport_records' },
+  transportFeedback: { page: 'Transport Feedback', table: 'transport_feedback' },
+  transport_feedback: { page: 'Transport Feedback', table: 'transport_feedback', alias: true },
+  transportChallenges: { page: 'Transport Challenges', table: 'transport_challenges' },
+  transport_challenges: { page: 'Transport Challenges', table: 'transport_challenges', alias: true },
+  transportFundingRequests: { page: 'Transport Funding Requests', table: 'transport_funding_requests' },
+  transport_funding_requests: { page: 'Transport Funding Requests', table: 'transport_funding_requests', alias: true },
   compliance: { page: 'SD-Compliance Tracker', table: 'compliance_records' },
   gpAppointments: { page: 'GP Appointments', table: 'gp_appointments' },
   rfaWelfare: { page: 'RFA Welfare Checks', table: 'rfa_welfare_checks' },
@@ -132,6 +139,38 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   room_checks: { page: 'Room Checks', table: 'room_checks', alias: true },
   roomCheckItems: { page: 'Room Check Items', table: 'room_check_items' },
   room_check_items: { page: 'Room Check Items', table: 'room_check_items', alias: true },
+
+  // Service User Master entities
+  serviceUsers: { page: 'Service Users Master', table: 'service_users' },
+  service_users: { page: 'Service Users Master', table: 'service_users', alias: true },
+  suContacts: { page: 'Service Users - Contacts', table: 'service_user_contacts' },
+  service_user_contacts: { page: 'Service Users - Contacts', table: 'service_user_contacts', alias: true },
+  suHousehold: { page: 'Service Users - Household', table: 'service_user_household' },
+  service_user_household: { page: 'Service Users - Household', table: 'service_user_household', alias: true },
+  suSupport: { page: 'Service Users - Support', table: 'service_user_support' },
+  service_user_support: { page: 'Service Users - Support', table: 'service_user_support', alias: true },
+  suDocuments: { page: 'Service Users - Documents', table: 'service_user_documents' },
+  service_user_documents: { page: 'Service Users - Documents', table: 'service_user_documents', alias: true },
+
+  // Property Master entities
+  properties: { page: 'Properties Master', table: 'properties' },
+  propertyRooms: { page: 'Property Rooms', table: 'property_rooms' },
+  property_rooms: { page: 'Property Rooms', table: 'property_rooms', alias: true },
+  propertyFacilities: { page: 'Property Facilities', table: 'property_facilities' },
+  property_facilities: { page: 'Property Facilities', table: 'property_facilities', alias: true },
+  propertyAssets: { page: 'Property Assets', table: 'property_assets' },
+  property_assets: { page: 'Property Assets', table: 'property_assets', alias: true },
+  propertyCompliance: { page: 'Property Compliance', table: 'property_compliance' },
+  property_compliance: { page: 'Property Compliance', table: 'property_compliance', alias: true },
+  propertyDocuments: { page: 'Property Documents', table: 'property_documents' },
+  property_documents: { page: 'Property Documents', table: 'property_documents', alias: true },
+  propertyContacts: { page: 'Property Contacts', table: 'property_contacts' },
+  property_contacts: { page: 'Property Contacts', table: 'property_contacts', alias: true },
+
+  // Placements & Audit Logs
+  placements: { page: 'Placements Master', table: 'placements' },
+  auditLogs: { page: 'Master Audit Logs', table: 'audit_logs', read: 'admin', write: 'append', remove: 'superadmin' },
+  audit_logs: { page: 'Master Audit Logs', table: 'audit_logs', read: 'admin', write: 'append', remove: 'superadmin', alias: true },
 };
 
 /** Retained for callers that imported the old name. */
@@ -317,19 +356,160 @@ interface ListOptions {
   filters?: Array<[string, string]>;
 }
 
+const GLOBAL_SITE_ROLES = new Set(['Super Admin', 'Admin', 'Regional Manager']);
+
+export function userCanAccessAllSites(user?: Express.Request['user']): boolean {
+  if (!user) return false;
+  if (GLOBAL_SITE_ROLES.has(user.role)) return true;
+  const sites = Array.isArray(user.assignedSites) && user.assignedSites.length > 0
+    ? user.assignedSites
+    : (user.assignedSite ? [user.assignedSite] : []);
+  return sites.includes('All Sites') || sites.includes('All');
+}
+
+export function getUserAssignedSites(user?: Express.Request['user']): string[] {
+  if (!user) return [];
+  const sites = Array.isArray(user.assignedSites) && user.assignedSites.length > 0
+    ? user.assignedSites
+    : (user.assignedSite ? [user.assignedSite] : []);
+  return sites.map(s => String(s).trim()).filter(s => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'All');
+}
+
+export const TABLE_SITE_COLUMN: Record<string, string> = {
+  referrals: 'site',
+  vulnerable_residents: 'site',
+  challenging_behavior: 'site',
+  maintenance_records: 'site',
+  spcd_records: 'site_name',
+  laundry_logs: 'site',
+  hot_food_logs: 'site',
+  escalations: 'site',
+  documents: 'site',
+  public_transport_records: 'site_name',
+  transport_feedback: 'site_name',
+  transport_challenges: 'site_name',
+  transport_funding_requests: 'site_name',
+  transport_room_move_requests: 'site_name',
+  compliance_records: 'site_name',
+  gp_appointments: 'site_name',
+  rfa_welfare_checks: 'site_name',
+  dispersal_records: 'site_name',
+  booklet_collections: 'hotel_name',
+  vcs_agencies: 'hotel_name',
+  data_change_requests: 'site',
+  ir_records: 'site',
+  food_wastage_records: 'site',
+  daily_register_rooms: 'hotel',
+  daily_register_records: 'hotel',
+  new_arrivals_records: 'hotel',
+  eviction_records: 'hotel',
+  welfare_checks: 'site_name',
+  food_surveys: 'site_name',
+  room_checks: 'site_name',
+  doc_builder: 'site',
+  ho_report_records: 'site',
+  ho_report_audit_logs: 'site',
+  email_notification_logs: 'site',
+  audit_trails: 'site',
+  finance_bills: 'site_id',
+  vendor_invoices: 'site_id',
+  credit_card_bills: 'site_id',
+  delivery_notes: 'site_id',
+  finance_approvals: 'site_id',
+  service_users: 'site_id',
+  placements: 'site_id',
+  properties: 'site_id',
+  sites: 'name'
+};
+
+/** Match a row against user assigned sites supporting both site names and site IDs */
+function rowMatchesUserSites(row: any, userAssignedSites: string[]): boolean {
+  if (!row) return false;
+  const allowedNames = new Set(userAssignedSites.map(s => s.toLowerCase().trim()));
+  const allowedIds = new Set(userAssignedSites.map(s => (resolveSiteId(s) || s).toLowerCase().trim()));
+
+  // Extract all possible site and property identifiers from row
+  const rawSite = (
+    row.site ||
+    row.siteName ||
+    row.site_name ||
+    row.hotel ||
+    row.hotelName ||
+    row.hotel_name ||
+    row.propertyName ||
+    row.property_name ||
+    row.name ||
+    ''
+  ).toLowerCase().trim();
+
+  const rawSiteId = (row.siteId || row.site_id || '').toLowerCase().trim();
+
+  // If row has a site name/text that directly matches
+  if (rawSite && (allowedNames.has(rawSite) || allowedIds.has(rawSite))) {
+    return true;
+  }
+  // If row has a site_id/siteId that directly matches
+  if (rawSiteId && (allowedIds.has(rawSiteId) || allowedNames.has(rawSiteId))) {
+    return true;
+  }
+  // If rawSite resolves to an ID that matches
+  if (rawSite && allowedIds.has((resolveSiteId(rawSite) || '').toLowerCase().trim())) {
+    return true;
+  }
+  // If rawSiteId resolves to a Name that matches
+  if (rawSiteId && allowedNames.has((resolveSiteName(rawSiteId) || '').toLowerCase().trim())) {
+    return true;
+  }
+
+  return false;
+}
+
 async function selectRows(
   client: SupabaseClient,
   tableName: string,
-  opts: ListOptions = {}
+  opts: ListOptions = {},
+  user?: Express.Request['user']
 ): Promise<{ data: any[] | null; error: any; truncated: boolean }> {
   const rows: any[] = [];
   const cap = Math.min(opts.limit ?? MAX_ROWS, MAX_ROWS);
+
+  const isRestricted = user && !userCanAccessAllSites(user);
+  const siteCol = TABLE_SITE_COLUMN[tableName];
+  let allowedSites: string[] = [];
+
+  if (isRestricted && siteCol) {
+    allowedSites = getUserAssignedSites(user);
+    // If a restricted staff member has no assigned properties, return 0 rows
+    if (allowedSites.length === 0) {
+      return { data: [], error: null, truncated: false };
+    }
+  }
 
   while (rows.length < cap) {
     const from = rows.length;
     const to = Math.min(from + PAGE_SIZE, cap) - 1;
 
     let query = client.from(tableName).select('*');
+
+    // Enforce property-level scoping at database query layer
+    if (isRestricted && siteCol && allowedSites.length > 0) {
+      if (siteCol === 'site_id') {
+        const siteIds = allowedSites.map(s => resolveSiteId(s) || s).filter(Boolean);
+        if (siteIds.length === 1) {
+          query = query.eq('site_id', siteIds[0]);
+        } else {
+          query = query.in('site_id', siteIds);
+        }
+      } else {
+        const siteNames = allowedSites.map(s => resolveSiteName(s) || s).filter(Boolean);
+        if (siteNames.length === 1) {
+          query = query.eq(siteCol, siteNames[0]);
+        } else {
+          query = query.in(siteCol, siteNames);
+        }
+      }
+    }
+
     for (const [column, value] of opts.filters || []) {
       query = query.eq(column, value);
     }
@@ -372,16 +552,116 @@ function buildListOptions(src: { limit?: any; order?: any; eq?: Record<string, a
 function parseListOptions(req: Request, tableName: string): ListOptions {
   const eq: Record<string, string> = {};
   for (const [key, value] of Object.entries(req.query)) {
-    if (key.startsWith('eq.') && typeof value === 'string') eq[key.slice(3)] = value;
+    if (key.startsWith('eq.') && typeof value === 'string') {
+      const col = key.slice(3);
+      if (col === 'site_id' || col === 'siteId') {
+        eq['site_id'] = resolveSiteId(value) || value;
+      } else if (col === 'site' || col === 'site_name' || col === 'hotel') {
+        eq[col] = value.startsWith('site-') ? (resolveSiteName(value) || value) : value;
+      } else {
+        eq[col] = value;
+      }
+    }
   }
   return buildListOptions({ limit: req.query.limit, order: req.query.order, eq }, tableName);
 }
 
-async function readEntity(client: SupabaseClient, def: EntityDef, opts: ListOptions) {
-  const { data, error, truncated } = await selectRows(client, def.table, opts);
-  if (error) return { success: false as const, error: error.message, tableMissing: isMissingTableError(error), data: [] as any[] };
+/**
+ * Child tables carry no site column of their own; they belong to a site through
+ * their parent row. Without this map they were readable and writable across
+ * every site by any signed-in user.
+ */
+export const TABLE_PARENT_SCOPE: Record<string, { linkColumn: string; linkField: string; parentTable: string }> = {
+  service_user_contacts: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  service_user_household: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  service_user_support: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  service_user_documents: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  property_rooms: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  property_facilities: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  property_assets: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  property_compliance: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  property_documents: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  property_contacts: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  food_meal_ratings: { linkColumn: 'food_survey_id', linkField: 'foodSurveyId', parentTable: 'food_surveys' },
+  room_check_items: { linkColumn: 'room_check_id', linkField: 'roomCheckId', parentTable: 'room_checks' },
+  finance_bill_items: { linkColumn: 'bill_id', linkField: 'billId', parentTable: 'finance_bills' },
+  finance_bill_attachments: { linkColumn: 'bill_id', linkField: 'billId', parentTable: 'finance_bills' },
+};
+
+/** Parent id a child row/record points at, whichever naming it uses; null when absent. */
+function parentIdOf(record: any, scope: { linkColumn: string; linkField: string }): string | null {
+  const value = record?.[scope.linkField] ?? record?.[scope.linkColumn];
+  return value === undefined || value === null || value === '' ? null : String(value);
+}
+
+/** True when the caller's site scope must be applied through the parent row. */
+function needsParentScope(table: string, user?: Express.Request['user']): boolean {
+  return Boolean(user && !userCanAccessAllSites(user) && TABLE_PARENT_SCOPE[table]);
+}
+
+/** Ids of parent rows the caller may see (the parent read is itself site-scoped). */
+async function allowedParentIds(client: SupabaseClient, table: string, user: Express.Request['user']): Promise<Set<string>> {
+  const scope = TABLE_PARENT_SCOPE[table];
+  const parentDef: EntityDef = { page: scope.parentTable, table: scope.parentTable };
+  const result = await readEntityUnscopedChildren(client, parentDef, {}, user);
+  return new Set((result.data || []).map((r: any) => String(r.id)));
+}
+
+async function readEntity(client: SupabaseClient, def: EntityDef, opts: ListOptions, user?: Express.Request['user']) {
+  const result = await readEntityUnscopedChildren(client, def, opts, user);
+  if (!result.success || !needsParentScope(def.table, user)) return result;
+  const allowed = await allowedParentIds(client, def.table, user!);
+  const scope = TABLE_PARENT_SCOPE[def.table];
+  const data = (result.data || []).filter((r: any) => {
+    const parentId = parentIdOf(r, scope);
+    return parentId !== null && allowed.has(parentId);
+  });
+  return { ...result, data, total: data.length };
+}
+
+async function readEntityUnscopedChildren(client: SupabaseClient, def: EntityDef, opts: ListOptions, user?: Express.Request['user']) {
+  if (masterDataStore.isMasterTable(def.table)) {
+    const liveCols = await getLiveColumns(def.table);
+    if (!liveCols || liveCols.size === 0) {
+      let records = await masterDataStore.queryRecords(def.table, opts);
+      if (user && !userCanAccessAllSites(user) && TABLE_SITE_COLUMN[def.table]) {
+        const assigned = getUserAssignedSites(user);
+        records = records.filter((r: any) => rowMatchesUserSites(r, assigned));
+      }
+      return { success: true as const, data: records, total: records.length, truncated: false };
+    }
+  }
+  const { data, error, truncated } = await selectRows(client, def.table, opts, user);
+  if (error) {
+    if (isMissingTableError(error) && masterDataStore.isMasterTable(def.table)) {
+      let records = await masterDataStore.queryRecords(def.table, opts);
+      if (user && !userCanAccessAllSites(user) && TABLE_SITE_COLUMN[def.table]) {
+        const assigned = getUserAssignedSites(user);
+        records = records.filter((r: any) => rowMatchesUserSites(r, assigned));
+      }
+      return { success: true as const, data: records, total: records.length, truncated: false };
+    }
+    return { success: false as const, error: error.message, tableMissing: isMissingTableError(error), data: [] as any[] };
+  }
   let rows = (data || []).map((row: any) => fromDatabaseRow(def.table, row));
   if (def.variant) rows = rows.filter(def.variant);
+
+  // In-memory defense-in-depth scoping check for mapped rows
+  if (user && !userCanAccessAllSites(user) && TABLE_SITE_COLUMN[def.table]) {
+    const assigned = getUserAssignedSites(user);
+    rows = rows.filter((r: any) => rowMatchesUserSites(r, assigned));
+  }
+
+  if (rows.length === 0 && masterDataStore.isMasterTable(def.table)) {
+    let records = await masterDataStore.queryRecords(def.table, opts);
+    if (user && !userCanAccessAllSites(user) && TABLE_SITE_COLUMN[def.table]) {
+      const assigned = getUserAssignedSites(user);
+      records = records.filter((r: any) => rowMatchesUserSites(r, assigned));
+    }
+    if (records.length > 0) {
+      return { success: true as const, data: records, total: records.length, truncated: false };
+    }
+  }
   return { success: true as const, data: rows, total: rows.length, truncated };
 }
 
@@ -568,6 +848,16 @@ router.get('/checks-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request,
   res.type('text/plain').send(sql);
 });
 
+// GET /api/db/transport-migration-sql - returns Public Transport enhancements migration script (014)
+router.get('/transport-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
+  const migPath = path.join(process.cwd(), 'db', 'migrations', '014_public_transport_enhancements.sql');
+  if (!fs.existsSync(migPath)) {
+    return res.status(404).json({ success: false, error: 'Migration script db/migrations/014_public_transport_enhancements.sql not found' });
+  }
+  const sql = fs.readFileSync(migPath, 'utf8');
+  res.type('text/plain').send(sql);
+});
+
 router.get('/migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
   const sql = loadSchemaSql();
   if (!sql) return res.status(404).json({ success: false, error: 'db/schema.sql not found' });
@@ -604,7 +894,7 @@ router.post('/batch-read', async (req: Request, res: Response) => {
       return;
     }
     try {
-      results[key] = await readEntity(client, def, buildListOptions(r, def.table));
+      results[key] = await readEntity(client, def, buildListOptions(r, def.table), req.user);
     } catch (err: any) {
       results[key] = { success: false, error: err.message, data: [] };
     }
@@ -715,6 +1005,215 @@ async function bulkUpsert(
   return { data: saved, error: null };
 }
 
+// ---------------------------------------------------------------------------
+// Write-side authorization (site scope, protected fields)
+// ---------------------------------------------------------------------------
+
+const FINANCE_STATUS_TABLES = new Set(['finance_bills', 'vendor_invoices', 'credit_card_bills', 'delivery_notes', 'finance_approvals']);
+const FINANCE_PRIVILEGED_STATUSES = new Set(['approved', 'paid', 'under_review']);
+const SITE_FIELDS = ['site', 'siteName', 'site_name', 'hotel', 'hotelName', 'hotel_name', 'propertyName', 'property_name', 'siteId', 'site_id'];
+
+const SCOPE_UNVERIFIABLE = 'Unable to verify access to this record right now. Please retry.';
+
+/**
+ * Existing rows by id, from Supabase or (when the table is not migrated yet)
+ * the file-backed master store. Returns null when rows could not be read, so
+ * callers fail closed instead of treating "unknown" as "not found".
+ */
+async function loadExistingRows(client: SupabaseClient, table: string, ids: string[]): Promise<Map<string, any> | null> {
+  const map = new Map<string, any>();
+  const clean = Array.from(new Set(ids.filter(id => typeof id === 'string' && id.length > 0)));
+  if (clean.length === 0) return map;
+  for (let i = 0; i < clean.length; i += 200) {
+    const { data, error } = await client.from(table).select('*').in('id', clean.slice(i, i + 200));
+    if (error) {
+      if (isMissingTableError(error) && masterDataStore.isMasterTable(table)) {
+        const wanted = new Set(clean);
+        for (const row of await masterDataStore.queryRecords(table)) {
+          if (wanted.has(String(row.id))) map.set(String(row.id), row);
+        }
+        return map;
+      }
+      return null;
+    }
+    for (const row of data || []) map.set(String(row.id), row);
+  }
+  if (map.size < clean.length && masterDataStore.isMasterTable(table)) {
+    const wanted = new Set(clean.filter(id => !map.has(id)));
+    for (const row of await masterDataStore.queryRecords(table)) {
+      if (wanted.has(String(row.id))) map.set(String(row.id), row);
+    }
+  }
+  return map;
+}
+
+/** Child-table check: both the stored and the submitted parent must be visible to the caller. */
+async function parentScopeError(client: SupabaseClient, user: Express.Request['user'], table: string, records: any[], existing: Map<string, any>): Promise<string | null> {
+  if (!needsParentScope(table, user)) return null;
+  const scope = TABLE_PARENT_SCOPE[table];
+  const allowed = await allowedParentIds(client, table, user!);
+  for (const r of records) {
+    const prev = existing.get(String(r?.id));
+    const prevParent = prev ? parentIdOf(prev, scope) : null;
+    if (prev && (prevParent === null || !allowed.has(prevParent))) return 'This record belongs to a site outside your assignment.';
+    const nextParent = parentIdOf(r, scope);
+    if (nextParent !== null ? !allowed.has(nextParent) : !prev) return 'Records can only be saved for your assigned sites.';
+  }
+  return null;
+}
+
+/**
+ * Reads were site-scoped but writes were not, so a restricted user could update
+ * or delete another site's records by id, approve finance bills by editing the
+ * status column, or grant the Super Admin role. Returns an error or null.
+ */
+async function writeScopeError(client: SupabaseClient, req: Request, def: EntityDef, records: any[]): Promise<string | null> {
+  const user = req.user;
+  const role = user?.role || '';
+  const writeTable = VIEW_WRITE_TARGETS[def.table]?.table || def.table;
+  const existing = await loadExistingRows(client, writeTable, records.map(r => r?.id).filter(Boolean).map(String));
+  if (!existing) return SCOPE_UNVERIFIABLE;
+
+  if (def.table === 'profiles' && role !== 'Super Admin') {
+    for (const r of records) {
+      const prev = existing.get(String(r?.id));
+      if (r?.role === 'Super Admin' || prev?.role === 'Super Admin') {
+        return 'Only a Super Admin can grant or modify the Super Admin role.';
+      }
+    }
+  }
+
+  if (FINANCE_STATUS_TABLES.has(def.table) && !ADMIN_ROLES.includes(role)) {
+    for (const r of records) {
+      const prev = existing.get(String(r?.id));
+      const nextStatus = String(r?.status ?? '').toLowerCase();
+      if (nextStatus && nextStatus !== String(prev?.status ?? '').toLowerCase() && FINANCE_PRIVILEGED_STATUSES.has(nextStatus)) {
+        return 'Approval status can only be changed through the Finance approval workflow.';
+      }
+      const nextApprover = r?.final_approved_by ?? r?.finalApprovedBy;
+      if (nextApprover && String(nextApprover) !== String(prev?.final_approved_by ?? '')) {
+        return 'Approval fields can only be changed through the Finance approval workflow.';
+      }
+    }
+  }
+
+  // Append-only entities always get a fresh server-generated id (they can never
+  // overwrite another site's entry), so creation is not site-restricted.
+  if (def.write === 'append') return null;
+
+  if (user && !userCanAccessAllSites(user) && TABLE_SITE_COLUMN[def.table]) {
+    const sites = getUserAssignedSites(user);
+    for (const r of records) {
+      const prev = existing.get(String(r?.id));
+      if (prev && !rowMatchesUserSites(prev, sites)) return 'This record belongs to a site outside your assignment.';
+      const setsSite = SITE_FIELDS.some(f => r?.[f] !== undefined && r?.[f] !== null && r?.[f] !== '');
+      if (setsSite ? !rowMatchesUserSites(r, sites) : !prev) return 'Records can only be saved for your assigned sites.';
+    }
+  }
+
+  // Verify that any specified property exists and is not decommissioned
+  if (def.table !== 'properties' && def.table !== 'sites' && def.table !== 'audit_trails' && def.table !== 'app_settings') {
+    for (const r of records) {
+      const siteVal = (r?.site || r?.siteName || r?.site_name || r?.hotel || r?.hotelName || r?.hotel_name || r?.propertyName || r?.property_name || '').trim();
+      const siteIdVal = (r?.siteId || r?.site_id || '').trim();
+      if (siteVal || siteIdVal) {
+        try {
+          if (siteIdVal) {
+            const { data: propById } = await client.from('properties').select('id, status').eq('id', siteIdVal).maybeSingle();
+            if (propById && String(propById.status).toLowerCase() === 'decommissioned') {
+              return `The property with ID "${siteIdVal}" has been decommissioned and cannot accept new records.`;
+            }
+          }
+          if (siteVal) {
+            const { data: propByName } = await client.from('properties').select('id, status').ilike('property_name', siteVal).maybeSingle();
+            if (propByName && String(propByName.status).toLowerCase() === 'decommissioned') {
+              return `The property "${siteVal}" has been decommissioned and cannot accept new records.`;
+            }
+            const { data: siteByName } = await client.from('sites').select('id, status').ilike('name', siteVal).maybeSingle();
+            if (siteByName && String(siteByName.status).toLowerCase() === 'decommissioned') {
+              return `The property "${siteVal}" has been decommissioned and cannot accept new records.`;
+            }
+          }
+        } catch {
+          // Fall back gracefully
+        }
+      }
+    }
+  }
+
+  return parentScopeError(client, user, def.table, records, existing);
+}
+
+/** Cascade delete child property entities and matching site row */
+async function cascadeDeleteProperty(client: SupabaseClient, propertyIds: string[]) {
+  if (!propertyIds || propertyIds.length === 0) return;
+  const childTables = [
+    'property_rooms',
+    'property_facilities',
+    'property_assets',
+    'property_compliance',
+    'property_documents',
+    'property_contacts'
+  ];
+  for (const childTable of childTables) {
+    try {
+      await client.from(childTable).delete().in('property_id', propertyIds);
+    } catch (e) {
+      console.warn(`[Cascade Delete] error on ${childTable}:`, e);
+    }
+  }
+
+  // Also remove matching rows from sites table
+  try {
+    const { data: propRows } = await client.from('properties').select('id, property_name, property_reference').in('id', propertyIds);
+    const names = (propRows || []).map(p => p.property_name).filter(Boolean);
+    const refs = (propRows || []).map(p => p.property_reference).filter(Boolean);
+
+    await client.from('sites').delete().in('id', propertyIds);
+    if (names.length > 0) {
+      await client.from('sites').delete().in('name', names);
+    }
+    if (refs.length > 0) {
+      await client.from('sites').delete().in('site_code', refs);
+    }
+  } catch (e) {
+    console.warn(`[Cascade Delete] error on sites:`, e);
+  }
+}
+
+async function deleteScopeError(client: SupabaseClient, req: Request, def: EntityDef, ids: string[]): Promise<string | null> {
+  const user = req.user;
+  if (!user || userCanAccessAllSites(user)) return null;
+  const siteScoped = Boolean(TABLE_SITE_COLUMN[def.table]);
+  const parentScoped = needsParentScope(def.table, user);
+  if (!siteScoped && !parentScoped) return null;
+
+  const writeTable = VIEW_WRITE_TARGETS[def.table]?.table || def.table;
+  const existing = await loadExistingRows(client, writeTable, ids);
+  if (!existing) return SCOPE_UNVERIFIABLE;
+
+  if (siteScoped) {
+    const sites = getUserAssignedSites(user);
+    for (const row of existing.values()) {
+      if (!rowMatchesUserSites(row, sites)) return 'This record belongs to a site outside your assignment.';
+    }
+  }
+  if (parentScoped) {
+    const scope = TABLE_PARENT_SCOPE[def.table];
+    const allowed = await allowedParentIds(client, def.table, user);
+    for (const row of existing.values()) {
+      const parentId = parentIdOf(row, scope);
+      if (parentId === null || !allowed.has(parentId)) return 'This record belongs to a site outside your assignment.';
+    }
+  }
+  return null;
+}
+
+/** Append-only entities always get a server-generated id, so an existing entry can never be overwritten. */
+function freshIdIfAppendOnly(def: EntityDef, record: any) {
+  return def.write === 'append' ? { ...record, id: undefined } : record;
+}
+
 // POST /api/db/sync/push - bulk upsert of several entities at once
 router.post('/sync/push', async (req: Request, res: Response) => {
   const client = requireDatabase(res);
@@ -729,6 +1228,11 @@ router.post('/sync/push', async (req: Request, res: Response) => {
     const permitted = policy === 'any' || (policy === 'admin' && ADMIN_ROLES.includes(role)) || (policy === 'superadmin' && role === 'Super Admin');
     if (!permitted) {
       results[entity] = 'Error: insufficient privileges';
+      continue;
+    }
+    const scopeError = await writeScopeError(client, req, def, records);
+    if (scopeError) {
+      results[entity] = `Error: ${scopeError}`;
       continue;
     }
     const liveCols = await getLiveColumns(def.table);
@@ -759,7 +1263,7 @@ router.get('/:entity', async (req: Request, res: Response) => {
   if (!client) return;
 
   try {
-    const result = await readEntity(client, def, parseListOptions(req, def.table));
+    const result = await readEntity(client, def, parseListOptions(req, def.table), req.user);
     if (!result.success) {
       if (result.tableMissing) return tableMissing(res, def.table);
       return res.status(500).json({ success: false, error: result.error });
@@ -779,21 +1283,36 @@ router.post('/:entity/bulk', async (req: Request, res: Response) => {
   const client = requireDatabase(res);
   if (!client) return;
 
-  const records = req.body?.records;
-  if (!Array.isArray(records) || records.some(r => !r || typeof r !== 'object' || Array.isArray(r))) {
+  const rawRecords = req.body?.records;
+  if (!Array.isArray(rawRecords) || rawRecords.some(r => !r || typeof r !== 'object' || Array.isArray(r))) {
     return res.status(400).json({ success: false, error: 'Body must be { records: [ {...}, ... ] }' });
   }
-  if (records.length > 5000) {
+  if (rawRecords.length > 5000) {
     return res.status(413).json({ success: false, error: 'At most 5000 records per bulk request' });
   }
-  if (records.length === 0) return res.json({ success: true, count: 0, records: [] });
+  if (rawRecords.length === 0) return res.json({ success: true, count: 0, records: [] });
+  const records = rawRecords.map(r => freshIdIfAppendOnly(def, r));
+  const bulkScopeError = await writeScopeError(client, req, def, records);
+  if (bulkScopeError) return res.status(403).json({ success: false, error: bulkScopeError });
 
   const liveCols = await getLiveColumns(def.table);
-  if (liveCols && liveCols.size === 0) return tableMissing(res, def.table);
+  if (liveCols && liveCols.size === 0) {
+    if (masterDataStore.isMasterTable(def.table)) {
+      const saved = await masterDataStore.bulkUpsert(def.table, records);
+      return res.json({ success: true, count: saved.length, records: saved });
+    }
+    return tableMissing(res, def.table);
+  }
 
   const { data, error } = await bulkUpsert(client, req, def, records, liveCols || TABLE_COLUMNS[def.table]);
   if (error) {
-    if (isMissingTableError(error)) return tableMissing(res, def.table);
+    if (isMissingTableError(error)) {
+      if (masterDataStore.isMasterTable(def.table)) {
+        const saved = await masterDataStore.bulkUpsert(def.table, records);
+        return res.json({ success: true, count: saved.length, records: saved });
+      }
+      return tableMissing(res, def.table);
+    }
     return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
   }
 
@@ -820,8 +1339,13 @@ router.post('/:entity/bulk-delete', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'Body must be { ids: [ "id", ... ] }' });
   }
   if (ids.length === 0) return res.json({ success: true, deleted: 0 });
+  const bulkDeleteScopeError = await deleteScopeError(client, req, def, ids);
+  if (bulkDeleteScopeError) return res.status(403).json({ success: false, error: bulkDeleteScopeError });
 
   const writeTable = VIEW_WRITE_TARGETS[def.table]?.table || def.table;
+  if (def.table === 'properties') {
+    await cascadeDeleteProperty(client, ids);
+  }
   let deleted = 0;
   for (let i = 0; i < ids.length; i += 200) {
     const { data, error } = await client.from(writeTable).delete().in('id', ids.slice(i, i + 200)).select('id');
@@ -854,10 +1378,28 @@ router.post('/:entity', async (req: Request, res: Response) => {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
     return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
   }
+  req.body = freshIdIfAppendOnly(def, req.body);
+  const createScopeError = await writeScopeError(client, req, def, [req.body]);
+  if (createScopeError) return res.status(403).json({ success: false, error: createScopeError });
 
   try {
     const liveCols = await getLiveColumns(def.table);
-    if (liveCols && liveCols.size === 0) return tableMissing(res, def.table);
+    if (liveCols && liveCols.size === 0) {
+      if (masterDataStore.isMasterTable(def.table)) {
+        const caller = callerIdentity(req);
+        const withAudit = withVerifiedAuditIdentity(req, def, ensureId(def, req.body));
+        const saved = await masterDataStore.upsertRecord(def.table, withAudit);
+        recordAuditTrailEntry(req, {
+          defaultAction: 'CREATE',
+          entity: req.params.entity,
+          entityId: saved.id,
+          site: req.body.site || req.body.siteName,
+          defaultDetails: `Created ${req.params.entity} record [${saved.id}]`
+        });
+        return res.status(201).json({ success: true, record: saved, fullFidelity: true });
+      }
+      return tableMissing(res, def.table);
+    }
 
     const caller = callerIdentity(req);
     const withAudit = withVerifiedAuditIdentity(req, def, ensureId(def, req.body));
@@ -867,7 +1409,20 @@ router.post('/:entity', async (req: Request, res: Response) => {
 
     const { data, error } = await client.from(writeTable).upsert(dbRow).select().single();
     if (error) {
-      if (isMissingTableError(error)) return tableMissing(res, writeTable);
+      if (isMissingTableError(error)) {
+        if (masterDataStore.isMasterTable(writeTable)) {
+          const saved = await masterDataStore.upsertRecord(writeTable, record);
+          recordAuditTrailEntry(req, {
+            defaultAction: 'CREATE',
+            entity: req.params.entity,
+            entityId: saved.id,
+            site: record.site || record.siteName,
+            defaultDetails: `Created ${req.params.entity} record [${saved.id}]`
+          });
+          return res.status(201).json({ success: true, record: saved, fullFidelity: true });
+        }
+        return tableMissing(res, writeTable);
+      }
       console.error(`[DB POST /api/db/${req.params.entity}] ${error.message}`);
       return res.status(500).json({ success: false, error: error.message, details: error.details, hint: error.hint });
     }
@@ -901,10 +1456,25 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
     return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
   }
+  const updateScopeError = await writeScopeError(client, req, def, [{ ...req.body, id }]);
+  if (updateScopeError) return res.status(403).json({ success: false, error: updateScopeError });
 
   try {
     const liveCols = await getLiveColumns(def.table);
-    if (liveCols && liveCols.size === 0) return tableMissing(res, def.table);
+    if (liveCols && liveCols.size === 0) {
+      if (masterDataStore.isMasterTable(def.table)) {
+        const saved = await masterDataStore.upsertRecord(def.table, { ...req.body, id });
+        recordAuditTrailEntry(req, {
+          defaultAction: 'UPDATE',
+          entity: req.params.entity,
+          entityId: id,
+          site: req.body.site || req.body.siteName,
+          defaultDetails: `Updated ${req.params.entity} record [${id}]`
+        });
+        return res.json({ success: true, record: saved });
+      }
+      return tableMissing(res, def.table);
+    }
     const writeTarget = VIEW_WRITE_TARGETS[def.table];
     const writeTable = writeTarget?.table || def.table;
     const writeCols = writeTarget ? (await getLiveColumns(writeTable) || TABLE_COLUMNS[writeTable]) : null;
@@ -914,7 +1484,20 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
     // Read full existing record so untouched columns survive merging
     const { data: existingRow, error: readError } = await client.from(writeTable).select('*').eq('id', id).maybeSingle();
     if (readError) {
-      if (isMissingTableError(readError)) return tableMissing(res, writeTable);
+      if (isMissingTableError(readError)) {
+        if (masterDataStore.isMasterTable(writeTable)) {
+          const saved = await masterDataStore.upsertRecord(writeTable, { ...req.body, id });
+          recordAuditTrailEntry(req, {
+            defaultAction: 'UPDATE',
+            entity: req.params.entity,
+            entityId: id,
+            site: req.body.site || req.body.siteName,
+            defaultDetails: `Updated ${req.params.entity} record [${id}]`
+          });
+          return res.json({ success: true, record: saved });
+        }
+        return tableMissing(res, writeTable);
+      }
       return res.status(500).json({ success: false, error: readError.message });
     }
 
@@ -972,10 +1555,41 @@ router.delete('/:entity/:id', async (req: Request, res: Response) => {
 
   const { id } = req.params;
   const writeTable = VIEW_WRITE_TARGETS[def.table]?.table || def.table;
+  const singleDeleteScopeError = await deleteScopeError(client, req, def, [id]);
+  if (singleDeleteScopeError) return res.status(403).json({ success: false, error: singleDeleteScopeError });
   try {
+    const liveCols = await getLiveColumns(def.table);
+    if (liveCols && liveCols.size === 0) {
+      if (masterDataStore.isMasterTable(def.table)) {
+        await masterDataStore.deleteRecord(def.table, id);
+        recordAuditTrailEntry(req, {
+          defaultAction: 'DELETE',
+          entity: req.params.entity,
+          entityId: id,
+          defaultDetails: `Permanently deleted ${req.params.entity} record [${id}]`
+        });
+        return res.json({ success: true, id, deleted: 1 });
+      }
+      return tableMissing(res, def.table);
+    }
+    if (def.table === 'properties') {
+      await cascadeDeleteProperty(client, [id]);
+    }
     const { data, error } = await client.from(writeTable).delete().eq('id', id).select('id');
     if (error) {
-      if (isMissingTableError(error)) return tableMissing(res, def.table);
+      if (isMissingTableError(error)) {
+        if (masterDataStore.isMasterTable(def.table)) {
+          await masterDataStore.deleteRecord(def.table, id);
+          recordAuditTrailEntry(req, {
+            defaultAction: 'DELETE',
+            entity: req.params.entity,
+            entityId: id,
+            defaultDetails: `Permanently deleted ${req.params.entity} record [${id}]`
+          });
+          return res.json({ success: true, id, deleted: 1 });
+        }
+        return tableMissing(res, def.table);
+      }
       return res.status(500).json({ success: false, error: error.message });
     }
 

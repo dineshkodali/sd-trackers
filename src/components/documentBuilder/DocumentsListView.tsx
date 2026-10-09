@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import {
   FileText,
   Download,
@@ -40,11 +41,26 @@ interface DocumentsListViewProps {
 }
 
 export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditRecord }) => {
-  const { currentUserRole, canAccessAllSites, allowedSites } = useApp();
+  const { currentUserRole, canAccessAllSites, allowedSites , requestConfirmation } = useApp();
 
   const [records, setRecords] = useState<DocumentBuilderRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [selectedSite, setSelectedSite] = useState<string>('All Sites');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 

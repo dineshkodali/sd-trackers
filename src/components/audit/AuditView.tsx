@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   History, 
   Search, 
@@ -49,7 +50,7 @@ export const AuditView: React.FC = () => {
     assignedSite,
     authProfile,
     currentUserName
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   const loggedInUserName = useMemo(() => {
     return authProfile?.name || authProfile?.email || currentUserName || currentUserRole;
@@ -79,6 +80,21 @@ export const AuditView: React.FC = () => {
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [userFilter, setUserFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(settings.pageSize || 15);

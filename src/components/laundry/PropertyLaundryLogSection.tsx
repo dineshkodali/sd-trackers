@@ -627,7 +627,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
 
     const isSuperAdmin = currentUserRole === 'Super Admin';
     const isAdmin = currentUserRole === 'Admin';
-    const isSiteManager = currentUserRole === 'Site Manager';
+    const isSiteManager = currentUserRole === 'Area Manager';
     const isAuthorizedRole = isSuperAdmin || isAdmin || isSiteManager;
 
     // Operational cycle allows logging for the current week bounds (todayBounds.start) or later
@@ -997,9 +997,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                         {canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (confirm('Are you sure you want to delete this laundry log?')) {
-                                deletePropertyLaundryLog(log.id);
-                              }
+                              deletePropertyLaundryLog(log.id);
                             }}
                             className="p-1 hover:bg-red-50 text-[#a4262c] rounded"
                             title="Delete Record"

@@ -74,3 +74,40 @@ export function getClientOrigin(req: Request): string {
   // 7. Ultimate fallback
   return `http://localhost:${port}`;
 }
+
+/**
+ * Resolves the primary base URL of the application for external links (e.g. password resets).
+ * Prioritizes configured APP_URL (e.g. https://trackers.sdcdms.co.uk) so that links sent
+ * in emails always point to the production site rather than internal server ports or localhost.
+ */
+export function getAppBaseUrl(req?: Request): string {
+  const configuredAppUrl = (process.env.APP_URL || process.env.PUBLIC_URL)?.trim().replace(/\/+$/, '');
+
+  // 1. Configured production APP_URL always wins. These links carry recovery
+  // tokens, so they must never point at a host chosen by the request body or
+  // by request headers when a canonical URL is known.
+  if (configuredAppUrl) {
+    return configuredAppUrl;
+  }
+
+  if (req) {
+    // 2. HTTP Origin header from browser if not localhost
+    const headerOrigin = req.headers?.origin;
+    if (typeof headerOrigin === 'string' && headerOrigin.trim().startsWith('http') && !headerOrigin.includes('localhost')) {
+      return headerOrigin.trim().replace(/\/+$/, '');
+    }
+
+    // 3. Reverse proxy headers if behind HTTPS reverse proxy
+    const forwardedHost = req.headers?.['x-forwarded-host'];
+    const host = typeof forwardedHost === 'string' ? forwardedHost.split(',')[0].trim() : null;
+    if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+      const forwardedProto = req.headers?.['x-forwarded-proto'];
+      const proto = (typeof forwardedProto === 'string' ? forwardedProto.split(',')[0].trim() : null) || 'https';
+      return `${proto}://${host}`.replace(/\/+$/, '');
+    }
+  }
+
+  // 4. Fallback to getClientOrigin
+  return req ? getClientOrigin(req) : 'http://localhost:3020';
+}
+

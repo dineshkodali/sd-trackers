@@ -9,6 +9,7 @@
 
 import PDFDocument from 'pdfkit';
 import path from 'path';
+import { resolveTemplateAsset } from './templateAssets.js';
 import fs from 'fs';
 
 interface DocData {
@@ -108,18 +109,15 @@ function getPhotoBuffer(photo: any): { buffer: Buffer; caption: string } | null 
       } catch {}
     }
   } else if (urlOrData && (urlOrData.startsWith('/templates/') || urlOrData.startsWith('templates/'))) {
-    const cleanPath = urlOrData.startsWith('/') ? urlOrData.slice(1) : urlOrData;
-    const fullPath = path.join(process.cwd(), 'public', cleanPath);
-    if (fs.existsSync(fullPath)) {
+    // Bundled template images only: the resolved path must stay inside public/templates.
+    const fullPath = resolveTemplateAsset(urlOrData);
+    if (fullPath) {
       try {
         buf = fs.readFileSync(fullPath);
       } catch {}
     }
-  } else if (urlOrData && fs.existsSync(urlOrData)) {
-    try {
-      buf = fs.readFileSync(urlOrData);
-    } catch {}
   }
+  // Any other value is ignored: request-supplied strings are never used as server file paths.
 
   // Fallback to sample template image if photo exists but has no valid buffer
   if (!buf) {

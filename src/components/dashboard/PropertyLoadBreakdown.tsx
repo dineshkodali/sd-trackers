@@ -22,11 +22,24 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
     vulnerableSUs, 
     challengingSUs, 
     escalations, 
-    maintenanceRecords 
+    maintenanceRecords,
+    canAccessAllSites,
+    allowedSites,
+    assignedSite
   } = useApp();
 
+  const scopedProperties = properties.filter(prop => {
+    if (canAccessAllSites()) return true;
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
+    const propName = (prop.name || '').toLowerCase().trim();
+    return permitted.some(s => propName === s || propName.includes(s) || s.includes(propName));
+  });
+
   // Aggregate stats per property
-  const propertyLoads = properties.map(prop => {
+  const propertyLoads = scopedProperties.map(prop => {
     const siteReferrals = referrals.filter(r => r.site === prop.name && r.status !== 'Archived').length;
     const siteVulnerable = vulnerableSUs.filter(v => v.site === prop.name && v.status !== 'Archived');
     const highRiskVulnerable = siteVulnerable.filter(v => v.riskLevel === 'High' || v.riskLevel === 'Critical').length;

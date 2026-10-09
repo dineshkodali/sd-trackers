@@ -40,6 +40,114 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['attachmentUrl', 'attachment_url', 'text'],
     ['fileUrl', 'file_url', 'text'],
   ],
+  transport_feedback: [
+    ['siteName', 'site_name', 'text'],
+    ['reportingPerson', 'reporting_person', 'text'],
+    ['transportType', 'transport_type', 'text'],
+    ['pickupLocation', 'pickup_location', 'text'],
+    ['dropLocation', 'drop_location', 'text'],
+    ['travelDate', 'travel_date', 'text'],
+    ['travelTime', 'travel_time', 'text'],
+    ['issueCategory', 'issue_category', 'text'],
+    ['issueDescription', 'issue_description', 'text'],
+    ['impactLevel', 'impact_level', 'text'],
+    ['impactExplanation', 'impact_explanation', 'text'],
+    ['isResolved', 'is_resolved', 'bool'],
+    ['resolutionComments', 'resolution_comments', 'text'],
+    ['resolvedAt', 'resolved_at', 'text'],
+    ['resolvedBy', 'resolved_by', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  transport_challenges: [
+    ['siteName', 'site_name', 'text'],
+    ['siteManager', 'site_manager', 'text'],
+    ['reportingPeriod', 'reporting_period', 'text'],
+    ['guidanceShared', 'guidance_shared', 'bool'],
+    ['trackerInUse', 'tracker_in_use', 'bool'],
+    ['publicTransportDefault', 'public_transport_default', 'bool'],
+    ['taxiRestricted', 'taxi_restricted', 'bool'],
+    ['ptJourneysCount', 'pt_journeys_count', 'int'],
+    ['taxiRequestsRaised', 'taxi_requests_raised', 'int'],
+    ['taxiRequestsApproved', 'taxi_requests_approved', 'int'],
+    ['taxiRequestsDeclined', 'taxi_requests_declined', 'int'],
+    ['siteChallenges', 'site_challenges', 'text'],
+    ['commonIssues', 'common_issues', 'text'],
+    ['teamFeedback', 'team_feedback', 'text'],
+    ['hasSgConcerns', 'has_sg_concerns', 'bool'],
+    ['sgDetails', 'sg_details', 'text'],
+    ['comments', 'comments', 'text'],
+  ],
+  transport_funding_requests: [
+    ['siteName', 'site_name', 'text'],
+    ['mainAppRef', 'main_app_ref', 'text'],
+    ['mainAppInitials', 'main_app_initials', 'text'],
+    ['groupMember', 'group_member', 'text'],
+    ['phone', 'phone', 'text'],
+    ['additionalTravellersCount', 'additional_travellers_count', 'int'],
+    ['additionalTravellersReason', 'additional_travellers_reason', 'text'],
+    ['childrenAges', 'children_ages', 'text'],
+    ['requestDatetime', 'request_datetime', 'text'],
+    ['appointmentDate', 'appointment_date', 'text'],
+    ['appointmentTime', 'appointment_time', 'text'],
+    ['evidenceUrl', 'evidence_url', 'text'],
+    ['accommodationName', 'accommodation_name', 'text'],
+    ['accommodationAddress', 'accommodation_address', 'text'],
+    ['accommodationPostcode', 'accommodation_postcode', 'text'],
+    ['appointmentAddress', 'appointment_address', 'text'],
+    ['appointmentPostcode', 'appointment_postcode', 'text'],
+    ['appointmentNature', 'appointment_nature', 'text'],
+    ['distanceMiles', 'distance_miles', 'num'],
+    ['totalCost', 'total_cost', 'num'],
+    ['transportMethod', 'transport_method', 'text'],
+    ['hasAspen', 'has_aspen', 'bool'],
+    ['ticketsRequired', 'tickets_required', 'int'],
+    ['exceptionalCriteria', 'exceptional_criteria', 'text'],
+    ['exceptionalDetails', 'exceptional_details', 'text'],
+    ['status', 'status', 'text'],
+    ['hoInitials', 'ho_initials', 'text'],
+    ['decision', 'decision', 'text'],
+    ['rejectionReason', 'rejection_reason', 'text'],
+    ['approvedTransportMethod', 'approved_transport_method', 'text'],
+    ['paymentAmount', 'payment_amount', 'num'],
+    ['journeyUrn', 'journey_urn', 'text'],
+    ['approvedBy', 'approved_by', 'text'],
+    ['approvalDate', 'approval_date', 'text'],
+    ['internalComments', 'internal_comments', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  transport_room_move_requests: [
+    ['requestId', 'request_id', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['currentRoom', 'current_room', 'text'],
+    ['newRoom', 'new_room', 'text'],
+    ['occupantRef', 'occupant_ref', 'text'],
+    ['requestingStaff', 'requesting_staff', 'text'],
+    ['requestDate', 'request_date', 'text'],
+    ['requestedMoveDate', 'requested_move_date', 'text'],
+    ['preferredTransportTime', 'preferred_transport_time', 'text'],
+    ['peopleCount', 'people_count', 'int'],
+    ['bagsCount', 'bags_count', 'int'],
+    ['transportRequired', 'transport_required', 'bool'],
+    ['transportType', 'transport_type', 'text'],
+    ['moveReason', 'move_reason', 'text'],
+    ['accessibilityRequirements', 'accessibility_requirements', 'text'],
+    ['supportRequired', 'support_required', 'text'],
+    ['estimatedCost', 'estimated_cost', 'num'],
+    ['approvalRequired', 'approval_required', 'bool'],
+    ['approvalStatus', 'approval_status', 'text'],
+    ['assignedTransport', 'assigned_transport', 'text'],
+    ['completionStatus', 'completion_status', 'text'],
+    ['completionDate', 'completion_date', 'text'],
+    ['staffComments', 'staff_comments', 'text'],
+    ['notes', 'notes', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
   compliance_records: [
     ['srNo', 'sr_no', 'int'],
     ['complianceType', 'compliance_type', 'text'],
@@ -457,6 +565,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['windowRestrictorsIntact', 'window_restrictors_intact', 'bool'],
     ['smokeAlarmsWorking', 'smoke_alarms_working', 'bool'],
     ['status', 'status', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
   ],
   food_surveys: [
     ['siteId', 'site_id', 'text'],
@@ -478,6 +589,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['takeawayAwareness', 'takeaway_awareness', 'bool'],
     ['snackAwareness', 'snack_awareness', 'bool'],
     ['otherFeedback', 'other_feedback', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
   ],
   food_meal_ratings: [
     ['foodSurveyId', 'food_survey_id', 'text'],
@@ -495,6 +609,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['inspectionDate', 'inspection_date', 'text'],
     ['overallStatus', 'overall_status', 'text'],
     ['finalComments', 'final_comments', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
   ],
   room_check_items: [
     ['roomCheckId', 'room_check_id', 'text'],
@@ -505,12 +622,182 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['comment', 'comment', 'text'],
     ['sortOrder', 'sort_order', 'int'],
   ],
+  properties: [
+    ['propertyReference', 'property_reference', 'text'],
+    ['propertyName', 'property_name', 'text'],
+    ['propertyType', 'property_type', 'text'],
+    ['siteId', 'site_id', 'text'],
+    ['addressLine1', 'address_line_1', 'text'],
+    ['addressLine2', 'address_line_2', 'text'],
+    ['city', 'city', 'text'],
+    ['county', 'county', 'text'],
+    ['postcode', 'postcode', 'text'],
+    ['ownershipType', 'ownership_type', 'text'],
+    ['provider', 'provider', 'text'],
+    ['landlord', 'landlord', 'text'],
+    ['propertyManager', 'property_manager', 'text'],
+    ['maximumOccupancy', 'maximum_occupancy', 'int'],
+    ['bedrooms', 'bedrooms', 'int'],
+    ['bathrooms', 'bathrooms', 'int'],
+    ['numberOfFloors', 'number_of_floors', 'int'],
+    ['accessibilityInformation', 'accessibility_information', 'text'],
+    ['status', 'status', 'text'],
+    ['startDate', 'start_date', 'text'],
+    ['endDate', 'end_date', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  property_rooms: [
+    ['roomReference', 'room_reference', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['roomNumber', 'room_number', 'text'],
+    ['roomName', 'room_name', 'text'],
+    ['roomType', 'room_type', 'text'],
+    ['floor', 'floor', 'text'],
+    ['capacity', 'capacity', 'int'],
+    ['size', 'size', 'num'],
+    ['status', 'status', 'text'],
+    ['occupancyStatus', 'occupancy_status', 'text'],
+    ['description', 'description', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  placements: [
+    ['placementReference', 'placement_reference', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['siteId', 'site_id', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
+    ['startDate', 'start_date', 'text'],
+    ['endDate', 'end_date', 'text'],
+    ['status', 'status', 'text'],
+    ['placementType', 'placement_type', 'text'],
+    ['reason', 'reason', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  service_users: [
+    ['suReference', 'su_reference', 'text'],
+    ['firstName', 'first_name', 'text'],
+    ['middleName', 'middle_name', 'text'],
+    ['lastName', 'last_name', 'text'],
+    ['preferredName', 'preferred_name', 'text'],
+    ['dateOfBirth', 'date_of_birth', 'text'],
+    ['gender', 'gender', 'text'],
+    ['nationality', 'nationality', 'text'],
+    ['preferredLanguage', 'preferred_language', 'text'],
+    ['interpreterRequired', 'interpreter_required', 'bool'],
+    ['status', 'status', 'text'],
+    ['externalReference', 'external_reference', 'text'],
+    ['caseReference', 'case_reference', 'text'],
+    ['referralDate', 'referral_date', 'text'],
+    ['arrivalDate', 'arrival_date', 'text'],
+    ['siteId', 'site_id', 'text'],
+  ],
+  property_facilities: [
+    ['propertyId', 'property_id', 'text'],
+    ['facilityName', 'facility_name', 'text'],
+    ['facilityType', 'facility_type', 'text'],
+    ['isAvailable', 'is_available', 'bool'],
+    ['details', 'details', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  property_assets: [
+    ['assetReference', 'asset_reference', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
+    ['category', 'category', 'text'],
+    ['assetName', 'asset_name', 'text'],
+    ['serialNumber', 'serial_number', 'text'],
+    ['quantity', 'quantity', 'int'],
+    ['condition', 'condition', 'text'],
+    ['purchaseDate', 'purchase_date', 'text'],
+    ['warrantyExpiry', 'warranty_expiry', 'text'],
+    ['status', 'status', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  property_compliance: [
+    ['complianceReference', 'compliance_reference', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['type', 'type', 'text'],
+    ['certificateNumber', 'certificate_number', 'text'],
+    ['inspectionDate', 'inspection_date', 'text'],
+    ['expiryDate', 'expiry_date', 'text'],
+    ['provider', 'provider', 'text'],
+    ['status', 'status', 'text'],
+    ['documentId', 'document_id', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  property_documents: [
+    ['propertyId', 'property_id', 'text'],
+    ['documentType', 'document_type', 'text'],
+    ['documentName', 'document_name', 'text'],
+    ['referenceNumber', 'reference_number', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+    ['issueDate', 'issue_date', 'text'],
+    ['expiryDate', 'expiry_date', 'text'],
+    ['verificationStatus', 'verification_status', 'text'],
+    ['uploadedBy', 'uploaded_by', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  property_contacts: [
+    ['propertyId', 'property_id', 'text'],
+    ['name', 'name', 'text'],
+    ['organisation', 'organisation', 'text'],
+    ['role', 'role', 'text'],
+    ['phone', 'phone', 'text'],
+    ['email', 'email', 'text'],
+    ['contactType', 'contact_type', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  service_user_contacts: [
+    ['suId', 'su_id', 'text'],
+    ['mobile', 'mobile', 'text'],
+    ['alternativePhone', 'alternative_phone', 'text'],
+    ['email', 'email', 'text'],
+    ['preferredContactMethod', 'preferred_contact_method', 'text'],
+    ['emergencyContactName', 'emergency_contact_name', 'text'],
+    ['emergencyContactRelationship', 'emergency_contact_relationship', 'text'],
+    ['emergencyContactPhone', 'emergency_contact_phone', 'text'],
+    ['emergencyContactEmail', 'emergency_contact_email', 'text'],
+  ],
+  service_user_household: [
+    ['suId', 'su_id', 'text'],
+    ['name', 'name', 'text'],
+    ['dateOfBirth', 'date_of_birth', 'text'],
+    ['relationship', 'relationship', 'text'],
+    ['gender', 'gender', 'text'],
+    ['contact', 'contact', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  service_user_support: [
+    ['supportReference', 'support_reference', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['category', 'category', 'text'],
+    ['description', 'description', 'text'],
+    ['priority', 'priority', 'text'],
+    ['startDate', 'start_date', 'text'],
+    ['endDate', 'end_date', 'text'],
+    ['assignedStaff', 'assigned_staff', 'text'],
+    ['status', 'status', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  service_user_documents: [
+    ['suId', 'su_id', 'text'],
+    ['documentType', 'document_type', 'text'],
+    ['documentName', 'document_name', 'text'],
+    ['referenceNumber', 'reference_number', 'text'],
+    ['issueDate', 'issue_date', 'text'],
+    ['expiryDate', 'expiry_date', 'text'],
+    ['verificationStatus', 'verification_status', 'text'],
+    ['storageReference', 'storage_reference', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+    ['uploadedBy', 'uploaded_by', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
 };
 
 const DEFAULT_ORG_UUID = '00000000-0000-0000-0000-000000000001';
 const DEFAULT_PROFILE_UUID = 'ce98b46b-4a6a-4a66-a70a-72e6c56d7691';
 
-const SITE_NAME_TO_ID: Record<string, string> = {
+export const SITE_NAME_TO_ID: Record<string, string> = {
   'Brit Hotel': 'site-519',
   'Leigham Court Hotel': 'site-712',
   'Maida Vale Aparthotel': 'site-483',
@@ -529,11 +816,30 @@ const SITE_NAME_TO_ID: Record<string, string> = {
   'Burrows Court': 'site-burrows',
 };
 
-function resolveSiteId(siteInput?: string): string {
-  if (!siteInput) return 'site-519';
+export const SITE_ID_TO_NAME: Record<string, string> = Object.fromEntries(
+  Object.entries(SITE_NAME_TO_ID).map(([name, id]) => [id, name])
+);
+
+export function resolveSiteId(siteInput?: string): string {
+  if (!siteInput) return '';
   const trimmed = String(siteInput).trim();
   if (trimmed.startsWith('site-')) return trimmed;
-  return SITE_NAME_TO_ID[trimmed] || 'site-519';
+  if (SITE_NAME_TO_ID[trimmed]) return SITE_NAME_TO_ID[trimmed];
+  const lower = trimmed.toLowerCase();
+  for (const [name, id] of Object.entries(SITE_NAME_TO_ID)) {
+    if (name.toLowerCase() === lower) return id;
+  }
+  return trimmed;
+}
+
+export function resolveSiteName(siteInput?: string): string {
+  if (!siteInput) return '';
+  const trimmed = String(siteInput).trim();
+  if (SITE_ID_TO_NAME[trimmed]) return SITE_ID_TO_NAME[trimmed];
+  for (const [name, id] of Object.entries(SITE_NAME_TO_ID)) {
+    if (id.toLowerCase() === trimmed.toLowerCase()) return name;
+  }
+  return trimmed;
 }
 
 /** NOT NULL typed columns on FIELD_SPECS tables, with the fallback used when a record omits them. */
@@ -618,7 +924,8 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'created_by', 'created_at', 'updated_at'
   ]),
   sites: new Set([
-    'id', 'name', 'pid', 'address', 'city', 'total_rooms', 'active_residents',
+    'id', 'site_code', 'site_name', 'name', 'pid', 'address', 'address_line_1', 'address_line_2',
+    'city', 'county', 'postcode', 'total_rooms', 'active_residents',
     'status', 'manager_name', 'manager_email', 'manager_phone', 'attachments',
     'attachment_url', 'file_url', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
@@ -741,6 +1048,77 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'updated_by', 'updated_by_name', 'updated_by_role', 'finalized_at', 'finalized_by',
     'data', 'created_at', 'updated_at'
   ]),
+  properties: new Set([
+    'id', 'property_reference', 'property_name', 'property_type', 'site_id',
+    'address_line_1', 'address_line_2', 'city', 'county', 'postcode',
+    'ownership_type', 'provider', 'landlord', 'property_manager',
+    'maximum_occupancy', 'bedrooms', 'bathrooms', 'number_of_floors',
+    'accessibility_information', 'status', 'start_date', 'end_date',
+    'notes', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  property_rooms: new Set([
+    'id', 'room_reference', 'property_id', 'room_number', 'room_name',
+    'room_type', 'floor', 'capacity', 'size', 'status', 'occupancy_status',
+    'description', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  property_facilities: new Set([
+    'id', 'property_id', 'facility_name', 'facility_type', 'is_available',
+    'details', 'notes', 'data', 'created_at', 'updated_at'
+  ]),
+  property_assets: new Set([
+    'id', 'asset_reference', 'property_id', 'room_id', 'category',
+    'asset_name', 'serial_number', 'quantity', 'condition', 'purchase_date',
+    'warranty_expiry', 'status', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  property_compliance: new Set([
+    'id', 'compliance_reference', 'property_id', 'type', 'certificate_number',
+    'inspection_date', 'expiry_date', 'provider', 'status', 'document_id',
+    'notes', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  property_documents: new Set([
+    'id', 'property_id', 'document_type', 'document_name', 'reference_number',
+    'file_url', 'issue_date', 'expiry_date', 'verification_status', 'uploaded_by',
+    'notes', 'data', 'created_at', 'updated_at'
+  ]),
+  property_contacts: new Set([
+    'id', 'property_id', 'name', 'organisation', 'role', 'phone', 'email',
+    'contact_type', 'notes', 'data', 'created_at', 'updated_at'
+  ]),
+  service_users: new Set([
+    'id', 'su_reference', 'first_name', 'middle_name', 'last_name',
+    'preferred_name', 'date_of_birth', 'gender', 'nationality',
+    'preferred_language', 'interpreter_required', 'status', 'external_reference',
+    'case_reference', 'referral_date', 'arrival_date', 'site_id',
+    'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  service_user_contacts: new Set([
+    'id', 'su_id', 'mobile', 'alternative_phone', 'email', 'preferred_contact_method',
+    'emergency_contact_name', 'emergency_contact_relationship', 'emergency_contact_phone',
+    'emergency_contact_email', 'data', 'created_at', 'updated_at'
+  ]),
+  service_user_household: new Set([
+    'id', 'su_id', 'name', 'date_of_birth', 'relationship', 'gender',
+    'contact', 'notes', 'data', 'created_at', 'updated_at'
+  ]),
+  service_user_support: new Set([
+    'id', 'support_reference', 'su_id', 'category', 'description',
+    'priority', 'start_date', 'end_date', 'assigned_staff', 'status',
+    'notes', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  service_user_documents: new Set([
+    'id', 'su_id', 'document_type', 'document_name', 'reference_number',
+    'issue_date', 'expiry_date', 'verification_status', 'storage_reference',
+    'file_url', 'uploaded_by', 'notes', 'data', 'created_at', 'updated_at'
+  ]),
+  placements: new Set([
+    'id', 'placement_reference', 'su_id', 'site_id', 'property_id',
+    'room_id', 'start_date', 'end_date', 'status', 'placement_type',
+    'reason', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  audit_logs: new Set([
+    'id', 'user_id', 'user_name', 'action', 'entity_type', 'entity_id',
+    'old_values', 'new_values', 'data', 'created_at'
+  ]),
   ...Object.fromEntries(Object.keys(FIELD_SPECS).map(t => [t, new Set(specColumns(t))])),
 };
 
@@ -761,7 +1139,21 @@ export const ENTITY_MODULE_LABELS: Record<string, string> = {
   foodSurveys: 'Food Survey Checks', food_surveys: 'Food Survey Checks',
   foodMealRatings: 'Food Survey Checks', food_meal_ratings: 'Food Survey Checks',
   roomChecks: 'Room Checks', room_checks: 'Room Checks',
-  roomCheckItems: 'Room Checks', room_check_items: 'Room Checks'
+  roomCheckItems: 'Room Checks', room_check_items: 'Room Checks',
+  serviceUsers: 'Service Users', service_users: 'Service Users',
+  suContacts: 'Service Users', service_user_contacts: 'Service Users',
+  suHousehold: 'Service Users', service_user_household: 'Service Users',
+  suSupport: 'Service Users', service_user_support: 'Service Users',
+  suDocuments: 'Service Users', service_user_documents: 'Service Users',
+  properties: 'Property Management',
+  propertyRooms: 'Property Management', property_rooms: 'Property Management',
+  propertyFacilities: 'Property Management', property_facilities: 'Property Management',
+  propertyAssets: 'Property Management', property_assets: 'Property Management',
+  propertyCompliance: 'Property Management', property_compliance: 'Property Management',
+  propertyDocuments: 'Property Management', property_documents: 'Property Management',
+  propertyContacts: 'Property Management', property_contacts: 'Property Management',
+  placements: 'Placements',
+  auditLogs: 'Audit Logs', audit_logs: 'Audit Logs'
 };
 export const moduleLabelFor = (entity?: string | null) => (entity && ENTITY_MODULE_LABELS[entity]) || entity || 'Settings';
 
@@ -882,7 +1274,10 @@ export function toDatabaseRow(
 
   if (FIELD_SPECS[tableName]) {
     for (const [field, column, type] of FIELD_SPECS[tableName]) {
-      const value = coerce(record[field], type);
+      let value = coerce(record[field], type);
+      if (value === '' && (column.endsWith('_date') || column === 'date_of_birth' || column.endsWith('_at'))) {
+        value = null;
+      }
       if (value !== undefined) dbRow[column] = value;
     }
     for (const [column, fallback] of Object.entries(REQUIRED_SPEC_COLUMNS[tableName] || {})) {
@@ -1633,11 +2028,15 @@ export function fromDatabaseRow(tableName: string, row: any): any {
       if (FIELD_SPECS[tableName]) {
         const typed: Record<string, any> = {};
         for (const [field, column, type] of FIELD_SPECS[tableName]) {
-          if (column in row) {
-            typed[field] = row[column] !== null ? coerce(row[column], type) : (type === 'int' || type === 'num' ? null : '');
+            if (row[column] !== null && row[column] !== undefined) {
+              typed[field] = coerce(row[column], type);
+            } else if (fromData && fromData[field] !== undefined) {
+              typed[field] = fromData[field];
+            } else {
+              typed[field] = (type === 'int' || type === 'num' ? null : '');
+            }
           }
-        }
-        let atts = typed.attachments !== undefined ? typed.attachments : fromData.attachments;
+          let atts = typed.attachments !== undefined ? typed.attachments : fromData.attachments;
         if (typeof atts === 'string' && atts.trim().startsWith('[')) {
           try { atts = JSON.parse(atts); } catch { atts = []; }
         }

@@ -151,14 +151,22 @@ export function shouldPreferDirectSupabase(): boolean {
 }
 
 export function getApiBaseUrl(): string {
+  let url = '';
   if (typeof window !== 'undefined') {
     const override = localStorage.getItem('sd_api_url');
-    if (override) return override.replace(/\/+$/, '');
+    if (override) url = override.replace(/\/+$/, '');
     const winVal = (window as any).__VITE_API_URL__;
-    if (winVal) return String(winVal).replace(/\/+$/, '');
+    if (!url && winVal) url = String(winVal).replace(/\/+$/, '');
   }
-  const envVal = (import.meta as any).env?.VITE_API_URL || '';
-  return String(envVal || '').replace(/\/+$/, '');
+  if (!url) {
+    const envVal = (import.meta as any).env?.VITE_API_URL || '';
+    url = String(envVal || '').replace(/\/+$/, '');
+  }
+  // Safety guard: api.trackers.sdcdms.co.uk has no DNS record
+  if (url.includes('api.trackers.sdcdms.co.uk')) {
+    return '';
+  }
+  return url;
 }
 
 export function setApiBaseUrl(url: string): void {
@@ -846,19 +854,50 @@ export const apiService = {
     message?: string;
     error?: string;
   }> {
-    try {
-      const res = await fetch(getApiUrl('/api/auth/update-password'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
-        },
-        body: JSON.stringify({ password, accessToken })
-      });
-      return await parseApiResponse<any>(res);
-    } catch (err: any) {
-      return { error: err.message };
+    // 1. Direct browser Supabase client update
+    let lastSbError = '';
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        if (accessToken) {
+          try {
+            await sb.auth.setSession({ access_token: accessToken, refresh_token: '' });
+          } catch {}
+        }
+        const { error: sbErr } = await sb.auth.updateUser({ password });
+        if (!sbErr) {
+          return { success: true, message: 'Password updated successfully via Supabase.' };
+        }
+        lastSbError = sbErr.message;
+      } catch (sbEx: any) {
+        lastSbError = sbEx.message || String(sbEx);
+        console.warn('[apiService] Browser Supabase updateUser error:', sbEx);
+      }
     }
+
+    // 2. Fallback to server API /api/auth/update-password only if API base is configured
+    const apiBase = getApiBaseUrl();
+    if (apiBase) {
+      try {
+        const res = await fetch(getApiUrl('/api/auth/update-password'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+          },
+          body: JSON.stringify({ password, accessToken })
+        });
+        const json = await parseApiResponse<any>(res);
+        if (!res.ok || json?.error) {
+          return { error: json?.error || `HTTP ${res.status}` };
+        }
+        return { success: true, message: json?.message };
+      } catch (err: any) {
+        return { error: err.message || 'Failed to update password.' };
+      }
+    }
+
+    return { error: lastSbError || 'Unable to update password. Your recovery session may have expired. Please request a new reset link.' };
   },
 
   async login(email: string, password: string): Promise<{
@@ -1190,21 +1229,95 @@ export const apiService = {
     }
   },
 
-  async registerUser(userData: { email: string; password: string; name: string; role: string; assignedSite?: string }): Promise<{
+  async registerUser(userData: { email: string; password: string; name: string; role: string; assignedSite?: string; assignedSites?: string[] }): Promise<{
     success?: boolean;
     user?: any;
     error?: string;
     message?: string;
   }> {
     try {
+      const payload = {
+        ...userData,
+        assignedSites: userData.assignedSites || (userData.assignedSite ? [userData.assignedSite] : ['Pending Assignment']),
+        assignedSite: userData.assignedSite || (userData.assignedSites && userData.assignedSites[0]) || 'Pending Assignment'
+      };
       const res = await fetch(getApiUrl('/api/auth/signup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify(userData)
+        body: JSON.stringify(payload)
       });
       return await parseApiResponse<any>(res);
     } catch (err: any) {
       return { error: err.message };
+    }
+  },
+
+  async createUserAccount(userData: {
+    email: string;
+    password?: string;
+    name: string;
+    role: string;
+    assignedSite?: string;
+    status?: string;
+  }): Promise<{
+    success?: boolean;
+    user?: any;
+    error?: string;
+    message?: string;
+  }> {
+    return await this.registerUser({
+      email: userData.email,
+      password: userData.password || Array.from(crypto.getRandomValues(new Uint8Array(18)), b => b.toString(16).padStart(2, '0')).join(''), // unguessable; the user sets their own via password reset
+      name: userData.name,
+      role: userData.role,
+      assignedSite: userData.assignedSite || 'All Sites'
+    });
+  },
+
+  async bulkImportUsers(users: Array<{
+    email: string;
+    password?: string;
+    name?: string;
+    role?: string;
+    assignedSite?: string;
+    assignedSites?: string[];
+    status?: string;
+  }>): Promise<{
+    success: boolean;
+    total: number;
+    imported: number;
+    failed: number;
+    errors?: Array<{ email: string; error: string }>;
+    results?: Array<{ email: string; success: boolean; error?: string }>;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch(getApiUrl('/api/auth/bulk-import'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ users })
+      });
+      const data = await parseApiResponse<any>(res);
+      if (res.ok && data?.success) {
+        return data;
+      }
+      return {
+        success: false,
+        total: users.length,
+        imported: data?.imported || 0,
+        failed: data?.failed ?? users.length,
+        errors: data?.errors || [{ email: 'Bulk Import', error: data?.error || `HTTP ${res.status}` }],
+        error: data?.error || `Failed with status ${res.status}`
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        total: users.length,
+        imported: 0,
+        failed: users.length,
+        errors: [{ email: 'Bulk Import', error: err?.message || String(err) }],
+        error: err?.message || String(err)
+      };
     }
   },
 
@@ -1225,18 +1338,158 @@ export const apiService = {
     }
   },
 
-  async resetPassword(email: string): Promise<{ success?: boolean; message?: string; error?: string }> {
-    try {
-      const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : undefined;
-      const res = await fetch(getApiUrl('/api/auth/reset-password'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ email, origin })
-      });
-      return await parseApiResponse<any>(res);
-    } catch (err: any) {
-      return { error: err.message };
+  /**
+   * Request a Supabase password-recovery email for the given address.
+   * Returns { success, message } on success, { rateLimited, waitSeconds, error } on 429,
+   * or { error } on other failures.
+   */
+  async resetPassword(email: string): Promise<{
+    success?: boolean;
+    message?: string;
+    error?: string;
+    rateLimited?: boolean;
+    waitSeconds?: number;
+  }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    // 1. In browser environments (such as AWS Amplify static hosting),
+    // prioritize direct Supabase cloud password recovery to avoid 404 / Failed to fetch
+    let lastSbError = '';
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        const redirectUrl = typeof window !== 'undefined'
+          ? `${window.location.origin}/reset-password`
+          : undefined;
+        const { error: sbErr } = await sb.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: redirectUrl
+        });
+        if (!sbErr) {
+          return {
+            success: true,
+            message: `Password reset instructions sent to ${cleanEmail}. Please check your inbox.`
+          };
+        } else {
+          lastSbError = sbErr.message;
+          const waitMatch = sbErr.message.match(/after (\d+) seconds/i);
+          if (waitMatch) {
+            const wait = parseInt(waitMatch[1], 10);
+            return {
+              rateLimited: true,
+              waitSeconds: wait,
+              error: `Please wait ${wait} seconds before requesting another reset email.`
+            };
+          }
+          console.warn('[apiService] Browser Supabase reset note:', sbErr.message);
+        }
+      } catch (sbEx: any) {
+        lastSbError = sbEx.message || String(sbEx);
+        console.warn('[apiService] Browser Supabase reset error:', sbEx);
+      }
     }
+
+    // 2. Fallback: Request via backend API endpoint (/api/auth/reset-password) ONLY if backend is configured
+    const apiBase = getApiBaseUrl();
+    if (apiBase) {
+      try {
+        const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : undefined;
+        const res = await fetch(getApiUrl('/api/auth/reset-password'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, origin })
+        });
+        const json = await parseApiResponse<any>(res);
+        // Surface rate-limit details from a 429 response
+        if (res.status === 429 || json?.rateLimited) {
+          return {
+            rateLimited: true,
+            waitSeconds: json?.waitSeconds || 25,
+            error: json?.error || `Please wait ${json?.waitSeconds || 25} seconds before requesting another reset email.`
+          };
+        }
+        if (!res.ok || json?.error) {
+          return { error: json?.error || `HTTP ${res.status}` };
+        }
+        return { success: true, message: json?.message };
+      } catch (err: any) {
+        return { error: err.message || 'Failed to dispatch password recovery email.' };
+      }
+    }
+
+    return { error: lastSbError || 'Unable to send password recovery email. Please verify the email address or try again later.' };
+  },
+
+  /**
+   * Confirms a password reset using a 6-digit OTP code or token_hash obtained from
+   * the recovery email. Called when no live Supabase recovery session is available.
+   */
+  async confirmResetPassword(payload: {
+    email?: string;
+    otpCode?: string;
+    tokenHash?: string;
+    newPassword: string;
+  }): Promise<{ success?: boolean; message?: string; error?: string }> {
+    // 1. Direct browser Supabase verify & update
+    let lastSbError = '';
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        if (payload.tokenHash) {
+          const { error: vErr } = await sb.auth.verifyOtp({
+            token_hash: payload.tokenHash,
+            type: 'recovery'
+          });
+          if (!vErr) {
+            const { error: uErr } = await sb.auth.updateUser({ password: payload.newPassword });
+            if (!uErr) {
+              return { success: true, message: 'Password updated successfully via Supabase.' };
+            }
+            return { error: uErr.message || 'Failed to update password.' };
+          } else {
+            lastSbError = vErr.message;
+          }
+        } else if (payload.email && payload.otpCode) {
+          const { error: vErr } = await sb.auth.verifyOtp({
+            email: payload.email.trim().toLowerCase(),
+            token: payload.otpCode.trim(),
+            type: 'recovery'
+          });
+          if (!vErr) {
+            const { error: uErr } = await sb.auth.updateUser({ password: payload.newPassword });
+            if (!uErr) {
+              return { success: true, message: 'Password updated successfully via Supabase.' };
+            }
+            return { error: uErr.message || 'Failed to update password.' };
+          } else {
+            lastSbError = vErr.message;
+          }
+        }
+      } catch (sbEx: any) {
+        lastSbError = sbEx.message || String(sbEx);
+        console.warn('[apiService] Browser Supabase confirmResetPassword note:', sbEx);
+      }
+    }
+
+    // 2. Fallback to server API /api/auth/confirm-reset-password ONLY if backend is configured
+    const apiBase = getApiBaseUrl();
+    if (apiBase) {
+      try {
+        const res = await fetch(getApiUrl('/api/auth/confirm-reset-password'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const json = await parseApiResponse<any>(res);
+        if (!res.ok || json?.error) {
+          return { error: json?.error || `HTTP ${res.status}` };
+        }
+        return { success: true, message: json?.message };
+      } catch (err: any) {
+        return { error: err.message || 'Failed to confirm password reset.' };
+      }
+    }
+
+    return { error: lastSbError || 'Unable to confirm password reset. The verification code or link may have expired.' };
   },
 
   async fetchPasswordAuditLogs(): Promise<{ success?: boolean; logs?: any[]; error?: string }> {
@@ -1267,7 +1520,29 @@ export const apiService = {
         try {
           const { data, error } = await sb.from('profiles').select('*');
           if (!error && Array.isArray(data)) {
-            return { success: true, users: data };
+            const { data: pua } = await sb.from('property_user_assignments').select('*');
+            const puaMap = new Map<string, string[]>();
+            (pua || []).forEach((row: any) => {
+              if (row.user_id && row.property_name && row.property_name !== 'Pending Assignment') {
+                puaMap.set(row.user_id, Array.from(new Set([...(puaMap.get(row.user_id) || []), row.property_name])));
+              }
+            });
+
+            const mapped = data.map((p: any) => {
+              let sites = p.assigned_site ? (p.assigned_site.includes(',') ? p.assigned_site.split(',').map((s: string) => s.trim()) : [p.assigned_site]) : [];
+              const puaSites = puaMap.get(p.id);
+              if (puaSites && puaSites.length > 0) {
+                sites = Array.from(new Set([...sites.filter((s: string) => s !== 'Pending Assignment'), ...puaSites]));
+              }
+              const valid = sites.filter((s: string) => s && s !== 'Pending Assignment');
+              const finalSites = valid.length > 0 ? valid : (sites.includes('Pending Assignment') ? ['Pending Assignment'] : ['All Sites']);
+              return {
+                ...p,
+                assignedSite: finalSites[0] || 'All Sites',
+                assignedSites: finalSites
+              };
+            });
+            return { success: true, users: mapped };
           }
         } catch {}
       }
@@ -1282,7 +1557,15 @@ export const apiService = {
         try {
           const { data, error } = await sb.from('profiles').select('*');
           if (!error && Array.isArray(data)) {
-            return { success: true, users: data };
+            const mapped = data.map((p: any) => {
+              const sites = p.assigned_site ? (p.assigned_site.includes(',') ? p.assigned_site.split(',').map((s: string) => s.trim()) : [p.assigned_site]) : ['All Sites'];
+              return {
+                ...p,
+                assignedSite: sites[0] || 'All Sites',
+                assignedSites: sites
+              };
+            });
+            return { success: true, users: mapped };
           }
         } catch {}
       }

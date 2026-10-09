@@ -40,41 +40,85 @@ export const CommercialTrackersGrid: React.FC<CommercialTrackersGridProps> = ({
     properties,
     users,
     auditLogs,
-    financeBills
+    financeBills,
+    canAccessAllSites,
+    allowedSites,
+    assignedSite
   } = useApp();
 
-  const financeInvoices = (financeBills || []).filter(b => b.billType === 'vendor_invoice');
-  const financeCards = (financeBills || []).filter(b => b.billType === 'credit_card_expense' || b.billType === 'other_expense');
+  const siteFilterPredicate = (item: any) => {
+    if (canAccessAllSites()) return true;
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
+    const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
+    if (!itemSite) return true;
+    return permitted.some(s => itemSite === s || itemSite.includes(s) || s.includes(itemSite));
+  };
+
+  const scopedReferrals = referrals.filter(siteFilterPredicate);
+  const scopedVulnerable = vulnerableSUs.filter(siteFilterPredicate);
+  const scopedChallenging = challengingSUs.filter(siteFilterPredicate);
+  const scopedEscalations = escalations.filter(siteFilterPredicate);
+  const scopedLaundry = laundryRecords.filter(siteFilterPredicate);
+  const scopedFood = foodRecords.filter(siteFilterPredicate);
+  const scopedMaintenance = maintenanceRecords.filter(siteFilterPredicate);
+  const scopedSpcd = spcdRecords.filter(siteFilterPredicate);
+
+  const billSiteFilter = (b: any) => {
+    if (canAccessAllSites()) return true;
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
+    const bSiteName = (b.siteName || '').toLowerCase().trim();
+    const bSiteId = (b.siteId || '').toLowerCase().trim();
+    return permitted.some(s => bSiteName === s || bSiteName.includes(s) || bSiteId === s);
+  };
+
+  const scopedBills = (financeBills || []).filter(billSiteFilter);
+  const financeInvoices = scopedBills.filter(b => b.billType === 'vendor_invoice');
+  const financeCards = scopedBills.filter(b => b.billType === 'credit_card_expense' || b.billType === 'other_expense');
   const financeInvoicesCount = financeInvoices.length;
   const pendingFinanceInvoices = financeInvoices.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length;
   const financeCardsCount = financeCards.length;
   const pendingFinanceCards = financeCards.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length;
 
   // Metrics
-  const activeReferralsCount = referrals.filter(r => r.status !== 'Archived').length;
-  const openReferralsCount = referrals.filter(r => r.status === 'Open').length;
+  const activeReferralsCount = scopedReferrals.filter(r => r.status !== 'Archived').length;
+  const openReferralsCount = scopedReferrals.filter(r => r.status === 'Open').length;
 
-  const activeVulnerableCount = vulnerableSUs.filter(v => v.status !== 'Archived').length;
-  const highRiskVulnerableCount = vulnerableSUs.filter(v => v.riskLevel === 'High' || v.riskLevel === 'Critical').length;
+  const activeVulnerableCount = scopedVulnerable.filter(v => v.status !== 'Archived').length;
+  const highRiskVulnerableCount = scopedVulnerable.filter(v => v.riskLevel === 'High' || v.riskLevel === 'Critical').length;
 
-  const activeChallengingCount = challengingSUs.filter(c => c.status !== 'Archived').length;
-  const stageWarningCount = challengingSUs.filter(c => c.followUpRequired === 'Yes').length;
+  const activeChallengingCount = scopedChallenging.filter(c => c.status !== 'Archived').length;
+  const stageWarningCount = scopedChallenging.filter(c => c.followUpRequired === 'Yes').length;
 
-  const activeEscalationsCount = escalations.filter(e => e.status !== 'Resolved').length;
-  const criticalEscalationsCount = escalations.filter(e => e.status === 'Active' || e.urgency === 'Critical').length;
+  const activeEscalationsCount = scopedEscalations.filter(e => e.status !== 'Resolved').length;
+  const criticalEscalationsCount = scopedEscalations.filter(e => e.status === 'Active' || e.urgency === 'Critical').length;
 
-  const laundryActiveCount = laundryRecords.filter(l => l.status === 'Washing' || l.status === 'Queued' || l.status === 'Drying').length;
-  const laundryTotalBags = laundryRecords.reduce((acc, l) => acc + (l.bagCount || 1), 0);
+  const laundryActiveCount = scopedLaundry.filter(l => l.status === 'Washing' || l.status === 'Queued' || l.status === 'Drying').length;
+  const laundryTotalBags = scopedLaundry.reduce((acc, l) => acc + (l.bagCount || 1), 0);
 
-  const foodRecordsCount = foodRecords.length;
-  const foodTempPassing = foodRecords.filter(f => f.tempCheckedCelsius >= 63).length;
+  const foodRecordsCount = scopedFood.length;
+  const foodTempPassing = scopedFood.filter(f => f.tempCheckedCelsius >= 63).length;
   const foodComplianceRate = foodRecordsCount > 0 ? Math.round((foodTempPassing / foodRecordsCount) * 100) : 100;
 
-  const openMaintenanceCount = maintenanceRecords.filter(m => m.defectStatus !== 'Completed').length;
-  const urgentMaintenanceCount = maintenanceRecords.filter(m => m.priority === 'CAT 1' || (m as any).severity === 'Urgent').length;
+  const openMaintenanceCount = scopedMaintenance.filter(m => m.defectStatus !== 'Completed').length;
+  const urgentMaintenanceCount = scopedMaintenance.filter(m => m.priority === 'CAT 1' || (m as any).severity === 'Urgent').length;
 
-  const activeSpcdCount = spcdRecords.filter(s => !s.isArchived).length;
-  const propertiesCount = properties.length;
+  const activeSpcdCount = scopedSpcd.filter(s => !s.isArchived).length;
+  const scopedProperties = properties.filter(prop => {
+    if (canAccessAllSites()) return true;
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
+    const propName = (prop.name || '').toLowerCase().trim();
+    return permitted.some(s => propName === s || propName.includes(s) || s.includes(propName));
+  });
+  const propertiesCount = scopedProperties.length;
   const usersCount = users.length;
   const auditLogsCount = auditLogs.length;
 

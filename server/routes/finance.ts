@@ -4,8 +4,54 @@ import path from 'path';
 import crypto from 'crypto';
 import { getSupabaseAdmin } from '../supabase.js';
 import { requireAuth, requireRole } from '../middleware/requireAuth.js';
+import { resolveSiteId } from '../schemaAdapter.js';
 
 const router = Router();
+
+/**
+ * Site isolation for every per-bill route (/bills/:id and its queries, payments,
+ * history, reconciliations, attachments, approvals). Only the list route was
+ * scoped, so a restricted user holding a bill id from another site could read
+ * or act on it. Uses the same rule as GET /bills: global roles see everything,
+ * others only bills whose site is one of their assigned sites.
+ */
+router.use('/bills/:id', async (req, res, next) => {
+  const user = req.user;
+  if (!user || ['Super Admin', 'Admin', 'Regional Manager'].includes(user.role)) return next();
+
+  const userSites = (Array.isArray(user.assignedSites) && user.assignedSites.length > 0 ? user.assignedSites : [user.assignedSite])
+    .map(s => String(s || '').trim())
+    .filter(s => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'All');
+  const allowed = new Set<string>();
+  for (const s of userSites) {
+    allowed.add(s.toLowerCase());
+    const siteId = resolveSiteId(s);
+    if (siteId) allowed.add(siteId.toLowerCase());
+  }
+
+  const { id } = req.params;
+  let billSite: string | null | undefined;
+  const supabase = getSupabaseAdmin();
+  if (supabase && isValidUuid(id)) {
+    const { data, error } = await supabase.from('finance_bills').select('site_id').eq('id', id).maybeSingle();
+    if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+      return res.status(503).json({ success: false, error: 'Unable to verify access to this bill right now. Please retry.' });
+    }
+    if (data) billSite = data.site_id;
+  }
+  if (billSite === undefined) {
+    const local = readLocalStore().bills.find(b => b.id === id);
+    if (local) billSite = local.site_id || local.siteId;
+  }
+  if (billSite === undefined) return next(); // unknown bill: the route itself answers 404
+
+  const siteKey = String(billSite || '').trim().toLowerCase();
+  const siteIdKey = String(resolveSiteId(String(billSite || '')) || '').trim().toLowerCase();
+  if (!siteKey || !(allowed.has(siteKey) || (siteIdKey && allowed.has(siteIdKey)))) {
+    return res.status(404).json({ success: false, error: 'Bill not found' });
+  }
+  return next();
+});
 
 
 function toSupabaseBillRecord(bill: any, validVendorIds?: Set<string>): any {
@@ -589,6 +635,24 @@ router.get('/bills', requireAuth, async (req, res) => {
     const store = await getUnifiedStore(supabase);
     const { siteId, status, vendorId, billType, search } = req.query;
 
+    const user = req.user;
+    const GLOBAL_SITE_ROLES = new Set(['Super Admin', 'Admin', 'Regional Manager']);
+    const isRestricted = user && !GLOBAL_SITE_ROLES.has(user.role);
+    let allowedSiteIds: string[] = [];
+    let allowedSiteNames: string[] = [];
+
+    if (isRestricted) {
+      const userSites = Array.isArray(user.assignedSites) && user.assignedSites.length > 0
+        ? user.assignedSites
+        : (user.assignedSite ? [user.assignedSite] : []);
+      const cleanUserSites = userSites.map((s: string) => String(s).trim()).filter((s: string) => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'All');
+      if (cleanUserSites.length === 0) {
+        return res.json({ success: true, count: 0, bills: [] });
+      }
+      allowedSiteNames = cleanUserSites;
+      allowedSiteIds = cleanUserSites.map(s => resolveSiteId(s) || s).filter(Boolean);
+    }
+
     let dbBills: any[] = [];
     let dbSuccess = false;
 
@@ -602,6 +666,11 @@ router.get('/bills', requireAuth, async (req, res) => {
             vendor:finance_vendors(vendor_name)
           `)
           .order('bill_date', { ascending: false });
+
+        if (isRestricted && allowedSiteIds.length > 0) {
+          if (allowedSiteIds.length === 1) query = query.eq('site_id', allowedSiteIds[0]);
+          else query = query.in('site_id', allowedSiteIds);
+        }
 
         if (siteId && siteId !== 'all') query = query.eq('site_id', siteId);
         if (status && status !== 'all') query = query.eq('status', status);
@@ -628,6 +697,16 @@ router.get('/bills', requireAuth, async (req, res) => {
     }
 
     let rawList = Array.from(combinedMap.values());
+
+    if (isRestricted && (allowedSiteIds.length > 0 || allowedSiteNames.length > 0)) {
+      const allowedIdSet = new Set(allowedSiteIds.map(id => id.toLowerCase().trim()));
+      const allowedNameSet = new Set(allowedSiteNames.map(name => name.toLowerCase().trim()));
+      rawList = rawList.filter(b => {
+        const bId = String(b.site_id || b.siteId || '').toLowerCase().trim();
+        const bName = String(b.siteName || (b.site && b.site.name) || '').toLowerCase().trim();
+        return allowedIdSet.has(bId) || allowedNameSet.has(bName) || (bName && allowedSiteNames.some(s => bName.includes(s.toLowerCase().trim())));
+      });
+    }
 
     if (siteId && siteId !== 'all') {
       const s = String(siteId).toLowerCase();
@@ -1213,25 +1292,49 @@ router.post('/bills/:id/approve', requireAuth, async (req, res) => {
       return res.json({ success: true, status: 'under_review' });
     }
 
-    if (['Finance Admin', 'Finance Manager', 'Finance Staff'].includes(callerRole || '') && bill.status !== 'under_review') {
+    // Final approval is a Finance (Admin / Super Admin) decision only. Previously
+    // any other role fell through to the approval RPC below.
+    if (!['Admin', 'Super Admin'].includes(callerRole || '')) {
+      return res.status(403).json({ success: false, error: 'Only Finance (Admin / Super Admin) can grant final approval.' });
+    }
+
+    if (bill.status !== 'under_review') {
       return res.status(409).json({ success: false, error: 'Finance final approval is available after Regional Manager review.' });
     }
 
+    // Segregation of duties: the submitter cannot approve their own bill.
+    const submittedBy = bill.submitted_by || bill.submittedBy;
+    if (submittedBy && callerId && submittedBy === callerId && callerRole !== 'Super Admin') {
+      return res.status(403).json({ success: false, error: 'Segregation of duties: Submitter cannot grant final approval' });
+    }
+
+    // The approval RPC authorizes via auth.uid(), which is NULL for this
+    // service-role client, so the transition is performed here after the checks above.
     if (supabase) {
-      try {
-        const { data, error } = await supabase.rpc('fn_finance_final_approval', {
-          p_bill_id: id,
-          p_comments: comments || null
-        });
-        if (!error && data) return res.json(data);
-      } catch (e) {}
+      const nowIso = new Date().toISOString();
+      const { data: updatedRows, error } = await supabase.from('finance_bills').update({
+        status: 'approved',
+        final_approved_by: isValidUuid(callerId) ? callerId : null,
+        final_approved_at: nowIso,
+        updated_at: nowIso
+      }).eq('id', id).eq('status', 'under_review').select('id');
+      if (!error && updatedRows && updatedRows.length > 0) {
+        await supabase.from('finance_bill_status_history').insert({
+          bill_id: id,
+          old_status: 'under_review',
+          new_status: 'approved',
+          changed_by: isValidUuid(callerId) ? callerId : null,
+          reason: comments || 'Final Finance Approval granted'
+        }).then(() => {}, () => {});
+        return res.json({ success: true, status: 'approved' });
+      }
     }
 
     if (bill) {
       const oldStatus = bill.status;
       bill.status = 'approved';
       bill.final_approved_by = req.user?.id || '00000000-0000-0000-0000-000000000000';
-      bill.finalApprovedByName = req.user?.name || 'Finance Admin';
+      bill.finalApprovedByName = req.user?.name || 'Admin';
       bill.final_approved_at = new Date().toISOString();
       bill.updated_at = new Date().toISOString();
 
@@ -1241,7 +1344,7 @@ router.post('/bills/:id/approve', requireAuth, async (req, res) => {
         old_status: oldStatus,
         new_status: 'approved',
         changed_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
-        changed_by_name: req.user?.name || 'Finance Admin',
+        changed_by_name: req.user?.name || 'Admin',
         reason: comments || 'Finance final approval signed off',
         created_at: new Date().toISOString()
       });
@@ -1280,6 +1383,11 @@ router.post('/bills/:id/reject', requireAuth, async (req, res) => {
       });
     }
 
+    const isApproverRole = ['Regional Manager', 'Admin', 'Super Admin'].includes(callerRole || '');
+    if (!isApproverRole && !(assignedId && assignedId === callerId)) {
+      return res.status(403).json({ success: false, error: 'Only approvers can reject a bill.' });
+    }
+
     if (supabase) {
       try {
         const { data, error } = await supabase.rpc('fn_finance_reject_bill', {
@@ -1294,7 +1402,7 @@ router.post('/bills/:id/reject', requireAuth, async (req, res) => {
       const oldStatus = bill.status;
       bill.status = 'rejected';
       bill.rejected_by = req.user?.id || '00000000-0000-0000-0000-000000000000';
-      bill.rejectedByName = req.user?.name || 'Finance Admin';
+      bill.rejectedByName = req.user?.name || 'Admin';
       bill.rejected_at = new Date().toISOString();
       bill.rejection_reason = reason;
       bill.updated_at = new Date().toISOString();
@@ -1305,7 +1413,7 @@ router.post('/bills/:id/reject', requireAuth, async (req, res) => {
         old_status: oldStatus,
         new_status: 'rejected',
         changed_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
-        changed_by_name: req.user?.name || 'Finance Admin',
+        changed_by_name: req.user?.name || 'Admin',
         reason: reason,
         created_at: new Date().toISOString()
       });
@@ -2227,7 +2335,8 @@ router.post('/suppliers', requireAuth, async (req, res) => {
   }
 });
 
-router.delete('/suppliers/:id', requireAuth, async (req, res) => {
+// Same table as DELETE /vendors/:id, so the same Admin restriction applies.
+router.delete('/suppliers/:id', requireAuth, requireRole('Super Admin', 'Admin'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const store = await getUnifiedStore(supabase);

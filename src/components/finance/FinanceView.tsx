@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import {
   FileText,
   Plus,
@@ -30,7 +31,7 @@ export interface FinanceViewProps {
 }
 
 export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) => {
-  const { properties, assignedSite, canAccessAllSites, isFinanceUser, canManageFinance } = useApp();
+  const { properties, assignedSite, canAccessAllSites, isFinanceUser, canManageFinance , requestConfirmation } = useApp();
 
   const [activeTab, setActiveTab] = useState<'all' | 'awaiting_approval' | 'verification' | 'reconciliation' | 'payments' | 'vendors'>(initialTab);
 
@@ -49,6 +50,21 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) 
   const [selectedType, setSelectedType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
+
   // Modals
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [billToEdit, setBillToEdit] = useState<FinanceBill | null>(null);
@@ -65,7 +81,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) 
     : properties.filter(p => p.id === assignedSite || p.name === assignedSite);
 
   const handleDeleteVendor = async (vendorId: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to remove vendor "${name}"?`)) return;
+    
     try {
       await financeService.deleteVendor(vendorId);
       loadData();

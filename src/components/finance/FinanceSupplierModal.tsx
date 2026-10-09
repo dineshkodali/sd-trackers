@@ -113,7 +113,7 @@ export const FinanceSupplierModal: React.FC<FinanceSupplierModalProps> = ({
   };
 
   const handleDelete = async (supplierId: string, supplierName: string) => {
-    if (!window.confirm(`Are you sure you want to remove "${supplierName}"?`)) return;
+    
 
     setDeletingId(supplierId);
     setError(null);

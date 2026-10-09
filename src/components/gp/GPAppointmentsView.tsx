@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   Stethoscope, 
   Plus, 
@@ -47,7 +48,7 @@ export const GPAppointmentsView: React.FC = () => {
     canEditRecord,
     canDeleteRecord,
     currentUserRole
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   // Table Schema Hook
   const {
@@ -58,6 +59,21 @@ export const GPAppointmentsView: React.FC = () => {
   } = useTableSchema<GPAppointmentRecord>('gpAppointments', GP_APPOINTMENTS_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -423,9 +439,7 @@ export const GPAppointmentsView: React.FC = () => {
                         {canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete GP appointment for Room ${record.roomNo}?`)) {
-                                deleteGPAppointmentRecord(record.id);
-                              }
+                              deleteGPAppointmentRecord(record.id);
                             }}
                             className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
                             title="Delete Record"

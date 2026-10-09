@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   Users, 
   Search, 
@@ -15,7 +16,8 @@ import {
   UserPlus,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  KeyRound
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { UserAccount, RoleType, UserGroup } from '../../types';
@@ -24,6 +26,9 @@ import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { BulkUserActionModal, BulkActionType } from './BulkUserActionModal';
+import { BulkUserImportModal } from './BulkUserImportModal';
+import { Upload } from 'lucide-react';
 
 const usersExportColumns: ExportColumnOption[] = [
   { id: 'name', label: 'Full Name' },
@@ -46,19 +51,21 @@ export const UsersView: React.FC = () => {
     canManageUsers,
     currentUserRole,
     syncFromDatabase
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   const [activeMainTab, setActiveMainTab] = useState<'users' | 'groups'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+
+
   const [selectedRoles, setSelectedRoles] = useState<string[]>([
     'Super Admin',
     'Admin',
     'Regional Manager',
     'General Manager',
-    'Site Manager',
-    'Staff',
-    'Employee'
+    'Area Manager',
+    'Staff'
   ]);
   const [groupStatusFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
 
@@ -102,11 +109,38 @@ export const UsersView: React.FC = () => {
     email: '',
     password: '',
     role: 'Staff',
-    assignedSite: 'All Sites'
+    assignedSite: 'Pending Assignment'
   });
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccessNotice, setCreateSuccessNotice] = useState<string | null>(null);
+  const [resettingEmail, setResettingEmail] = useState<string | null>(null);
+  const [resetStatusNotice, setResetStatusNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleSendPasswordReset = async (targetUser: UserAccount) => {
+    if (!targetUser.email) return;
+    setResettingEmail(targetUser.email);
+    setResetStatusNotice(null);
+    try {
+      const res = await apiService.resetPassword(targetUser.email);
+      if (res.error) {
+        setResetStatusNotice({ type: 'error', text: `Failed to dispatch reset email to ${targetUser.email}: ${res.error}` });
+      } else {
+        setResetStatusNotice({ type: 'success', text: `Password recovery link successfully dispatched to ${targetUser.email}!` });
+        setTimeout(() => setResetStatusNotice(null), 5000);
+      }
+    } catch (err: any) {
+      setResetStatusNotice({ type: 'error', text: err.message || 'Failed to dispatch password recovery link.' });
+    } finally {
+      setResettingEmail(null);
+    }
+  };
+
+  // Bulk Actions
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [bulkActionState, setBulkActionState] = useState<BulkActionType>(null);
+  const [isBulkActionModalOpen, setIsBulkActionModalOpen] = useState(false);
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
 
   // Modal states for Group
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -139,14 +173,15 @@ export const UsersView: React.FC = () => {
 
   const handleOpenAssignProperties = (user: UserAccount) => {
     setAssigningUser(user);
-    const sites = Array.isArray(user.assignedSites) && user.assignedSites.length > 0
+    const rawSites = Array.isArray(user.assignedSites) && user.assignedSites.length > 0
       ? user.assignedSites
       : [(user as any).assignedSite || 'All Sites'];
 
-    const hasAll = sites.includes('All Sites') || sites.includes('All');
+    const hasAll = rawSites.includes('All Sites') || rawSites.includes('All');
     setIsAllSitesSelected(hasAll);
-    setSelectedSites(hasAll ? properties.map(p => p.name) : sites);
-    setSelectedRole(user.role || 'Employee');
+    const validSites = rawSites.filter(s => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'All');
+    setSelectedSites(hasAll ? properties.map(p => p.name) : validSites);
+    setSelectedRole(user.role || 'Staff');
     setSelectedStatus(user.status === 'Inactive' ? 'Inactive' : 'Active');
     setSaveSuccessNotice(null);
   };
@@ -157,10 +192,11 @@ export const UsersView: React.FC = () => {
       setSelectedSites([propName]);
       return;
     }
-    if (selectedSites.includes(propName)) {
-      setSelectedSites(selectedSites.filter(s => s !== propName));
+    const filtered = selectedSites.filter(s => s && s !== 'Pending Assignment');
+    if (filtered.includes(propName)) {
+      setSelectedSites(filtered.filter(s => s !== propName));
     } else {
-      setSelectedSites([...selectedSites, propName]);
+      setSelectedSites([...filtered, propName]);
     }
   };
 
@@ -180,12 +216,14 @@ export const UsersView: React.FC = () => {
 
     setIsSavingAssignment(true);
     try {
+      const cleanSites = selectedSites.filter(s => s && s !== 'Pending Assignment');
       const finalSites = isAllSitesSelected
         ? ['All Sites']
-        : (selectedSites.length > 0 ? selectedSites : ['All Sites']);
+        : (cleanSites.length > 0 ? cleanSites : ['Pending Assignment']);
 
       await updateUser(assigningUser.id, {
         assignedSites: finalSites,
+        assignedSite: finalSites[0] || 'Pending Assignment',
         role: selectedRole,
         status: selectedStatus
       });
@@ -212,19 +250,25 @@ export const UsersView: React.FC = () => {
       setCreateError('Please complete all required fields (Name, Email, and Password).');
       return;
     }
-    if (newUserFormData.password.length < 6) {
-      setCreateError('Password must be at least 6 characters long.');
+    if (newUserFormData.password.length < 12) {
+      setCreateError('Password must be at least 12 characters long.');
       return;
     }
 
     setIsCreatingUser(true);
     try {
+      const cleanAssignedSite = newUserFormData.assignedSite || 'Pending Assignment';
+      const assignedSitesArray = cleanAssignedSite !== 'Pending Assignment' && cleanAssignedSite !== 'All Sites'
+        ? [cleanAssignedSite]
+        : (cleanAssignedSite === 'All Sites' ? ['All Sites'] : ['Pending Assignment']);
+
       const res = await apiService.registerUser({
         name: newUserFormData.name.trim(),
         email: newUserFormData.email.trim().toLowerCase(),
         password: newUserFormData.password,
         role: newUserFormData.role,
-        assignedSite: newUserFormData.assignedSite
+        assignedSite: cleanAssignedSite,
+        assignedSites: assignedSitesArray
       });
 
       if (res.error) {
@@ -244,7 +288,7 @@ export const UsersView: React.FC = () => {
           email: '',
           password: '',
           role: 'Staff',
-          assignedSite: 'All Sites'
+          assignedSite: 'Pending Assignment'
         });
       }, 1100);
     } catch (err: any) {
@@ -320,12 +364,10 @@ export const UsersView: React.FC = () => {
         return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'General Manager':
         return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'Site Manager':
+      case 'Area Manager':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'Staff':
         return 'bg-emerald-50 text-emerald-800 border-emerald-200';
-      case 'Employee':
-        return 'bg-cyan-50 text-cyan-800 border-cyan-200';
       default:
         return 'bg-neutral-100 text-neutral-700 border-neutral-200';
     }
@@ -399,8 +441,34 @@ export const UsersView: React.FC = () => {
     });
   }, [filteredUsers, userSortField, userSortAsc]);
 
+  const dynamicPropertyGroups: UserGroup[] = useMemo(() => {
+    return properties.map(p => {
+      const teamUsers = users.filter(u => {
+        if (Array.isArray(u.assignedSites) && u.assignedSites.includes(p.name)) return true;
+        if (u.assignedSites && u.assignedSites.includes(p.name)) return true;
+        return false;
+      });
+
+      return {
+        id: `team-${p.id || p.name}`,
+        name: `${p.name} Team`,
+        description: `Auto-generated team for ${p.name}. Includes all staff assigned.`,
+        assignedProperty: p.name,
+        assignedProperties: [p.name],
+        userIds: teamUsers.map(u => u.id)
+      } as UserGroup;
+    });
+  }, [properties, users]);
+
+  const allGroups = useMemo(() => {
+    // We only show custom groups that are not already auto-generated properties to avoid duplicates,
+    // or just show all. Auto-generated have 'team-' prefix.
+    const customGroups = (userGroups || []).filter(g => !dynamicPropertyGroups.some(dg => dg.assignedProperty === g.assignedProperty));
+    return [...dynamicPropertyGroups, ...customGroups];
+  }, [dynamicPropertyGroups, userGroups]);
+
   const filteredGroups = useMemo(() => {
-    return (userGroups || []).filter(g => {
+    return allGroups.filter(g => {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -410,7 +478,7 @@ export const UsersView: React.FC = () => {
         (g.assignedProperties && g.assignedProperties.some(p => typeof p === 'string' && p.toLowerCase().includes(q)))
       );
     });
-  }, [userGroups, searchQuery]);
+  }, [allGroups, searchQuery]);
 
   const getExportDataForScope = (scope: ExportScope) => {
     return scope === 'filtered' ? sortedUsers : displayedUsers;
@@ -545,7 +613,7 @@ export const UsersView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
-            {hasAdminAuthority && (
+            {isAuthorized && (
               <button
                 onClick={() => {
                   setCreateError(null);
@@ -557,6 +625,17 @@ export const UsersView: React.FC = () => {
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>+ Add User</span>
+              </button>
+            )}
+
+            {isAuthorized && (
+              <button
+                onClick={() => setIsBulkImportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#f3f2f1] text-[#0d9488] border border-[#0d9488] rounded-xs text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                title="Bulk import users from a CSV file"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Import Users</span>
               </button>
             )}
 
@@ -625,7 +704,7 @@ export const UsersView: React.FC = () => {
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>Property Teams & Staff Groups ({userGroups.length})</span>
+            <span>Property Teams & Staff Groups ({allGroups.length})</span>
           </button>
         </div>
 
@@ -645,7 +724,7 @@ export const UsersView: React.FC = () => {
           {activeMainTab === 'users' && (
             <div className="flex items-center gap-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs px-2.5 py-1 text-xs flex-wrap">
               <span className="font-semibold text-neutral-500 mr-1 text-[11px]">Role Filter:</span>
-              {['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Site Manager', 'Staff', 'Employee'].map(r => {
+              {['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Area Manager', 'Staff'].map(r => {
                 const isChecked = selectedRoles.includes(r);
                 return (
                   <label key={r} className="flex items-center gap-1 cursor-pointer select-none px-1 py-0.5 hover:bg-neutral-200/60 rounded-xs">
@@ -673,10 +752,50 @@ export const UsersView: React.FC = () => {
       {/* TAB CONTENT: USERS */}
       {activeMainTab === 'users' && (
         <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
+          {selectedUserIds.length > 0 && hasAdminAuthority && (
+            <div className="bg-[#f0fdfa] border-b border-[#ccfbf1] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <span className="text-sm font-semibold text-[#0f766e]">
+                {selectedUserIds.length} user{selectedUserIds.length > 1 ? 's' : ''} selected
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={() => { setBulkActionState('role'); setIsBulkActionModalOpen(true); }} className="px-3 py-1.5 text-xs font-semibold bg-white text-[#0f766e] border border-[#99f6e4] rounded-xs hover:bg-[#ccfbf1] shadow-xs transition-colors">Change Role</button>
+                <button onClick={() => { setBulkActionState('status'); setIsBulkActionModalOpen(true); }} className="px-3 py-1.5 text-xs font-semibold bg-white text-[#0f766e] border border-[#99f6e4] rounded-xs hover:bg-[#ccfbf1] shadow-xs transition-colors">Set Status</button>
+                <button onClick={() => { setBulkActionState('assign_sites'); setIsBulkActionModalOpen(true); }} className="px-3 py-1.5 text-xs font-semibold bg-white text-[#0f766e] border border-[#99f6e4] rounded-xs hover:bg-[#ccfbf1] shadow-xs transition-colors">Assign Properties</button>
+                <button onClick={() => { setBulkActionState('remove_sites'); setIsBulkActionModalOpen(true); }} className="px-3 py-1.5 text-xs font-semibold bg-white text-[#0f766e] border border-[#99f6e4] rounded-xs hover:bg-[#ccfbf1] shadow-xs transition-colors">Remove Properties</button>
+                <button onClick={() => { setBulkActionState('delete'); setIsBulkActionModalOpen(true); }} className="px-3 py-1.5 text-xs font-semibold bg-white text-red-700 border border-red-200 rounded-xs hover:bg-red-50 shadow-xs transition-colors">Delete</button>
+              </div>
+            </div>
+          )}
+          {resetStatusNotice && (
+            <div className={`mx-4 my-2 p-3 rounded-xs text-xs flex items-center justify-between border ${
+              resetStatusNotice.type === 'success'
+                ? 'bg-teal-50 text-teal-800 border-teal-200'
+                : 'bg-red-50 text-red-800 border-red-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">{resetStatusNotice.type === 'success' ? '✓' : '⚠️'}</span>
+                <span>{resetStatusNotice.text}</span>
+              </div>
+              <button onClick={() => setResetStatusNotice(null)} className="text-neutral-500 hover:text-neutral-800 font-bold ml-2">×</button>
+            </div>
+          )}
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#edebe9] text-[#605e5c] font-semibold bg-[#faf9f8] select-none whitespace-nowrap">
+                  {hasAdminAuthority && (
+                    <th className="p-3 w-12 cursor-pointer bg-[#faf9f8]" title="Select All">
+                      <input 
+                        type="checkbox" 
+                        checked={sortedUsers.length > 0 && selectedUserIds.length === sortedUsers.length}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedUserIds(sortedUsers.map(u => u.id));
+                          else setSelectedUserIds([]);
+                        }}
+                        className="rounded-xs text-[#0d9488] focus:ring-[#0d9488]"
+                      />
+                    </th>
+                  )}
                   <th onClick={() => handleUserSort('name')} className="p-3 cursor-pointer hover:bg-[#edebe9] transition-colors" title="Sort by Name">
                     <div className="flex items-center gap-1">
                       <span>User &amp; Email</span>
@@ -707,7 +826,7 @@ export const UsersView: React.FC = () => {
                       {userSortField === 'lastActive' ? (userSortAsc ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />) : <ArrowUpDown className="w-3 h-3 text-neutral-400 opacity-50" />}
                     </div>
                   </th>
-                  <th className="p-3 text-right w-44 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)] z-10 select-none">Role &amp; Permissions</th>
+                  <th className="p-3 text-right w-72 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)] z-10 select-none">Account &amp; Role Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#edebe9]">
@@ -720,6 +839,19 @@ export const UsersView: React.FC = () => {
                 ) : (
                   sortedUsers.map(u => (
                     <tr key={u.id || `${u.email}-${u.name}`} className="hover:bg-[#f3f8fd] group transition-colors">
+                      {hasAdminAuthority && (
+                        <td className="p-3 border-b border-[#edebe9]">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedUserIds.includes(u.id)}
+                            onChange={e => {
+                              if (e.target.checked) setSelectedUserIds(prev => [...prev, u.id]);
+                              else setSelectedUserIds(prev => prev.filter(id => id !== u.id));
+                            }}
+                            className="rounded-xs text-[#0d9488] focus:ring-[#0d9488]"
+                          />
+                        </td>
+                      )}
                       <td className="p-3">
                         <div className="font-bold text-[#242424] flex items-center gap-1.5">
                           <span>{u.name}</span>
@@ -739,17 +871,20 @@ export const UsersView: React.FC = () => {
                           {Array.from(new Set(
                             (Array.isArray(u.assignedSites) && u.assignedSites.length > 0
                               ? u.assignedSites
-                              : [(u as any).assignedSite || 'All Sites']
+                              : [(u as any).assignedSite || 'Pending Assignment']
                             ).filter((s): s is string => Boolean(s && typeof s === 'string'))
                           )).map((site, sIdx) => {
                             const isAll = site === 'All Sites' || site === 'All';
+                            const isPending = site === 'Pending Assignment';
                             return (
                               <span 
                                 key={`${u.id || u.email || 'user'}-${site}-${sIdx}`} 
                                 className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
                                   isAll 
                                     ? 'bg-purple-50 text-purple-700 border-purple-200 font-semibold' 
-                                    : 'bg-teal-50 text-teal-800 border-teal-200'
+                                    : isPending
+                                      ? 'bg-red-50 text-red-700 border-red-200 font-semibold'
+                                      : 'bg-teal-50 text-teal-800 border-teal-200'
                                 }`}
                               >
                                 {site}
@@ -770,14 +905,25 @@ export const UsersView: React.FC = () => {
                       </td>
                       <td className="p-3 text-right sticky right-0 bg-white group-hover:bg-[#f3f8fd] shadow-[-2px_0_4px_rgba(0,0,0,0.04)] z-10">
                         {hasAdminAuthority && (
-                          <button
-                            onClick={() => handleOpenAssignProperties(u)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0d9488]/10 hover:bg-[#0d9488]/20 text-[#0f766e] border border-[#0d9488]/40 hover:border-[#0d9488] rounded-xs text-xs font-semibold transition-colors shadow-2xs"
-                            title="Assign role and property permissions to this user"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5 text-[#0d9488]" />
-                            <span>Assign Role</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleSendPasswordReset(u)}
+                              disabled={resettingEmail === u.email}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xs text-[11px] font-semibold transition-colors disabled:opacity-50 shadow-2xs cursor-pointer"
+                              title={`Send password reset link directly to ${u.email}`}
+                            >
+                              <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                              <span>{resettingEmail === u.email ? 'Sending...' : 'Reset Password'}</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenAssignProperties(u)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-[#0d9488]/10 hover:bg-[#0d9488]/20 text-[#0f766e] border border-[#0d9488]/40 hover:border-[#0d9488] rounded-xs text-[11px] font-semibold transition-colors shadow-2xs cursor-pointer"
+                              title="Assign role and property permissions to this user"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5 text-[#0d9488]" />
+                              <span>Assign Role</span>
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -918,14 +1064,10 @@ export const UsersView: React.FC = () => {
                 >
                   <option value="Super Admin">Super Admin</option>
                   <option value="Admin">Admin</option>
-                  <option value="Finance Admin">Finance Admin</option>
-                  <option value="Finance Manager">Finance Manager</option>
-                  <option value="Finance Staff">Finance Staff</option>
                   <option value="Regional Manager">Regional Manager</option>
                   <option value="General Manager">General Manager</option>
-                  <option value="Site Manager">Site Manager</option>
+                  <option value="Area Manager">Area Manager</option>
                   <option value="Staff">Staff</option>
-                  <option value="Employee">Employee</option>
                 </select>
                 <p className="text-[10px] text-neutral-500 mt-1">
                   Determines system permissions and view scope across modules.
@@ -1105,8 +1247,8 @@ export const UsersView: React.FC = () => {
                 <input
                   type="password"
                   required
-                  minLength={6}
-                  placeholder="Minimum 6 characters"
+                  minLength={12}
+                  placeholder="Minimum 12 characters"
                   value={newUserFormData.password}
                   onChange={e => setNewUserFormData({ ...newUserFormData, password: e.target.value })}
                   className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs bg-white focus:outline-hidden focus:border-[#0d9488]"
@@ -1122,13 +1264,9 @@ export const UsersView: React.FC = () => {
                     className="w-full px-2.5 py-1.5 border border-[#8a8886] rounded-xs bg-white focus:outline-hidden focus:border-[#0d9488]"
                   >
                     <option value="Staff">Staff</option>
-                    <option value="Employee">Employee</option>
-                    <option value="Site Manager">Site Manager</option>
+                    <option value="Area Manager">Area Manager</option>
                     <option value="General Manager">General Manager</option>
                     <option value="Regional Manager">Regional Manager</option>
-                    <option value="Finance Admin">Finance Admin</option>
-                    <option value="Finance Manager">Finance Manager</option>
-                    <option value="Finance Staff">Finance Staff</option>
                     <option value="Admin">Admin</option>
                     <option value="Super Admin">Super Admin</option>
                   </select>
@@ -1141,6 +1279,7 @@ export const UsersView: React.FC = () => {
                     onChange={e => setNewUserFormData({ ...newUserFormData, assignedSite: e.target.value })}
                     className="w-full px-2.5 py-1.5 border border-[#8a8886] rounded-xs bg-white focus:outline-hidden focus:border-[#0d9488]"
                   >
+                    <option value="Pending Assignment">Pending Assignment</option>
                     <option value="All Sites">All Sites (Global)</option>
                     {properties.map(p => (
                       <option key={p.id || p.name} value={p.name}>{p.name}</option>
@@ -1313,6 +1452,24 @@ export const UsersView: React.FC = () => {
           </div>
         </div>
       )}
+      <BulkUserActionModal 
+        isOpen={isBulkActionModalOpen}
+        onClose={() => { setIsBulkActionModalOpen(false); setBulkActionState(null); }}
+        selectedUserIds={selectedUserIds}
+        actionType={bulkActionState}
+        users={users}
+        onSuccess={() => {
+          setSelectedUserIds([]);
+          handleRefreshSupabase();
+        }}
+      />
+      <BulkUserImportModal
+        isOpen={isBulkImportModalOpen}
+        onClose={() => setIsBulkImportModalOpen(false)}
+        onSuccess={() => {
+          handleRefreshSupabase();
+        }}
+      />
     </div>
   );
 };

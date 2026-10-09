@@ -401,7 +401,7 @@ DECLARE
   v_role TEXT;
 BEGIN
   SELECT role INTO v_role FROM public.profiles WHERE id = p_user_id;
-  RETURN v_role IN ('Super Admin', 'Admin', 'Finance Admin', 'Finance Manager', 'Finance Staff');
+  RETURN v_role IN ('Super Admin', 'Admin');
 END;
 $$;
 
@@ -416,7 +416,7 @@ DECLARE
   v_assigned TEXT;
 BEGIN
   SELECT role, assigned_site INTO v_role, v_assigned FROM public.profiles WHERE id = p_user_id;
-  IF v_role IN ('Super Admin', 'Admin', 'Finance Admin', 'Finance Manager', 'Finance Staff', 'Regional Manager') THEN
+  IF v_role IN ('Super Admin', 'Admin', 'Regional Manager') THEN
     RETURN TRUE;
   END IF;
   IF v_assigned = 'All Sites' OR v_assigned = p_site_id THEN
@@ -590,7 +590,7 @@ BEGIN
 
   -- Ensure caller is authorized Finance user
   SELECT role INTO v_user_role FROM public.profiles WHERE id = auth.uid();
-  IF v_user_role NOT IN ('Super Admin', 'Admin', 'Finance Admin', 'Finance Manager') THEN
+  IF v_user_role IS NULL OR v_user_role NOT IN ('Super Admin', 'Admin') THEN
     RETURN jsonb_build_object('success', false, 'error', 'Unauthorized: Only Finance can grant final approval');
   END IF;
 

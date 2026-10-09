@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   BellRing, 
   Mail, 
@@ -51,7 +52,7 @@ const MODULE_COLORS: Record<NotificationModule, { bg: string; text: string; bord
   'Governance': { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' }
 };
 
-const AVAILABLE_ROLES: RoleType[] = ['Super Admin', 'Admin', 'Regional Manager', 'Site Manager', 'Staff'];
+const AVAILABLE_ROLES: RoleType[] = ['Super Admin', 'Admin', 'Regional Manager', 'Area Manager', 'Staff'];
 
 export const NotificationsManagementView: React.FC = () => {
   const { 
@@ -61,13 +62,28 @@ export const NotificationsManagementView: React.FC = () => {
     toggleNotificationRule, 
     resetNotificationRules, 
     refreshNotificationData 
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'smtp'>('rules');
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [selectedModule, setSelectedModule] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
@@ -259,9 +275,7 @@ export const NotificationsManagementView: React.FC = () => {
           </button>
           <button
             onClick={() => {
-              if (confirm('Are you sure you want to reset all notification rules to system factory defaults?')) {
-                resetNotificationRules();
-              }
+              resetNotificationRules();
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xs transition-colors"
           >

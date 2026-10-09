@@ -15,27 +15,47 @@ interface CommercialWelfareBreakdownProps {
 export const CommercialWelfareBreakdown: React.FC<CommercialWelfareBreakdownProps> = ({ 
   onNavigate 
 }) => {
-  const { foodRecords, laundryRecords } = useApp();
+  const { 
+    foodRecords, 
+    laundryRecords,
+    canAccessAllSites,
+    allowedSites,
+    assignedSite
+  } = useApp();
+
+  const siteFilterPredicate = (item: any) => {
+    if (canAccessAllSites()) return true;
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
+    const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
+    if (!itemSite) return true;
+    return permitted.some(s => itemSite === s || itemSite.includes(s) || s.includes(itemSite));
+  };
+
+  const scopedFood = foodRecords.filter(siteFilterPredicate);
+  const scopedLaundry = laundryRecords.filter(siteFilterPredicate);
 
   // Food Metrics
-  const totalMeals = foodRecords.length;
-  const compliantTemps = foodRecords.filter(f => f.tempCheckedCelsius >= 63).length;
+  const totalMeals = scopedFood.length;
+  const compliantTemps = scopedFood.filter(f => f.tempCheckedCelsius >= 63).length;
   const nonCompliantTemps = totalMeals - compliantTemps;
   const foodComplianceRate = totalMeals > 0 ? Math.round((compliantTemps / totalMeals) * 100) : 100;
 
   // Dietary requirements breakdown
-  const halalCount = foodRecords.filter(f => typeof f.dietaryRequirement === 'string' && f.dietaryRequirement.toLowerCase().includes('halal')).length;
-  const vegetarianCount = foodRecords.filter(f => typeof f.dietaryRequirement === 'string' && f.dietaryRequirement.toLowerCase().includes('veg')).length;
-  const diabeticCount = foodRecords.filter(f => typeof f.dietaryRequirement === 'string' && f.dietaryRequirement.toLowerCase().includes('diabetic')).length;
+  const halalCount = scopedFood.filter(f => typeof f.dietaryRequirement === 'string' && f.dietaryRequirement.toLowerCase().includes('halal')).length;
+  const vegetarianCount = scopedFood.filter(f => typeof f.dietaryRequirement === 'string' && f.dietaryRequirement.toLowerCase().includes('veg')).length;
+  const diabeticCount = scopedFood.filter(f => typeof f.dietaryRequirement === 'string' && f.dietaryRequirement.toLowerCase().includes('diabetic')).length;
   const standardCount = totalMeals - (halalCount + vegetarianCount + diabeticCount);
 
   // Laundry Metrics
-  const totalBags = laundryRecords.reduce((sum, l) => sum + (l.bagCount || 1), 0);
-  const washingCount = laundryRecords.filter(l => l.status === 'Washing').length;
-  const dryingCount = laundryRecords.filter(l => l.status === 'Drying').length;
-  const readyCount = laundryRecords.filter(l => l.status === 'Ready for Collection' || l.status === 'Collected').length;
-  const queuedCount = laundryRecords.filter(l => l.status === 'Queued').length;
-  const totalTokens = laundryRecords.reduce((sum, l) => sum + (l.tokensIssued || 0), 0);
+  const totalBags = scopedLaundry.reduce((sum, l) => sum + (l.bagCount || 1), 0);
+  const washingCount = scopedLaundry.filter(l => l.status === 'Washing').length;
+  const dryingCount = scopedLaundry.filter(l => l.status === 'Drying').length;
+  const readyCount = scopedLaundry.filter(l => l.status === 'Ready for Collection' || l.status === 'Collected').length;
+  const queuedCount = scopedLaundry.filter(l => l.status === 'Queued').length;
+  const totalTokens = scopedLaundry.reduce((sum, l) => sum + (l.tokensIssued || 0), 0);
 
   return (
     <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs p-4 space-y-3">

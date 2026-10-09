@@ -16,7 +16,9 @@ const regions = [
 
 async function testRegion(region: string) {
   const host = `aws-0-${region}.pooler.supabase.com`;
-  const connectionString = `postgresql://postgres.kxikojvpcyprfbyxsdaa:Focusmode123!@${host}:5432/postgres`;
+  const password = process.env.SUPABASE_DB_PASSWORD;
+  if (!password) throw new Error("Set SUPABASE_DB_PASSWORD in the environment");
+  const connectionString = `postgresql://postgres.kxikojvpcyprfbyxsdaa:${encodeURIComponent(password)}@${host}:5432/postgres`;
   const client = new Client({
     connectionString,
     ssl: { rejectUnauthorized: false },

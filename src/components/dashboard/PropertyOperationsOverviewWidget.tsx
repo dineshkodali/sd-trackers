@@ -21,32 +21,49 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
   const { 
     propertyLaundryLogs, 
     foodVendorBuffetLogs, 
-    foodVendorsList 
+    foodVendorsList,
+    canAccessAllSites,
+    allowedSites,
+    assignedSite
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'laundry' | 'food'>('laundry');
   const [selectedVendorFilter, setSelectedVendorFilter] = useState<string>('all');
   const [selectedPeriodType, setSelectedPeriodType] = useState<'all' | 'Weekly' | 'Monthly'>('all');
 
-  // Laundry aggregates
-  const totalSent = propertyLaundryLogs.reduce((acc, l) => acc + (l.dirtyLaundrySent || 0), 0);
-  const totalReturned = propertyLaundryLogs.reduce((acc, l) => acc + (l.cleanLaundryReturned || 0), 0);
-  const totalDiscrepancies = propertyLaundryLogs.reduce((acc, l) => acc + (l.discrepanciesCount || 0), 0);
-  const logsWithDiscrepancies = propertyLaundryLogs.filter(l => l.hasDiscrepancy || l.discrepanciesCount > 0);
+  const siteFilterPredicate = (item: any) => {
+    if (canAccessAllSites()) return true;
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
+    const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
+    if (!itemSite) return true;
+    return permitted.some(s => itemSite === s || itemSite.includes(s) || s.includes(itemSite));
+  };
 
-  const filteredLaundryLogs = propertyLaundryLogs.filter(l => {
+  const scopedLaundryLogs = propertyLaundryLogs.filter(siteFilterPredicate);
+  const scopedFoodLogs = foodVendorBuffetLogs.filter(siteFilterPredicate);
+
+  // Laundry aggregates
+  const totalSent = scopedLaundryLogs.reduce((acc, l) => acc + (l.dirtyLaundrySent || 0), 0);
+  const totalReturned = scopedLaundryLogs.reduce((acc, l) => acc + (l.cleanLaundryReturned || 0), 0);
+  const totalDiscrepancies = scopedLaundryLogs.reduce((acc, l) => acc + (l.discrepanciesCount || 0), 0);
+  const logsWithDiscrepancies = scopedLaundryLogs.filter(l => l.hasDiscrepancy || l.discrepanciesCount > 0);
+
+  const filteredLaundryLogs = scopedLaundryLogs.filter(l => {
     if (selectedPeriodType !== 'all' && l.periodType !== selectedPeriodType) return false;
     return true;
   });
 
   // Food aggregates across vendors
-  const filteredFoodLogs = foodVendorBuffetLogs.filter(f => {
+  const filteredFoodLogs = scopedFoodLogs.filter(f => {
     if (selectedVendorFilter !== 'all' && f.vendor !== selectedVendorFilter) return false;
     return true;
   });
 
   // Compute total weekly buffet meals delivered
-  const totalBuffetMealsCount = foodVendorBuffetLogs.reduce((acc, log) => {
+  const totalBuffetMealsCount = scopedFoodLogs.reduce((acc, log) => {
     let weekSum = 0;
     Object.values(log.dailyCounts || {}).forEach((day: FoodBuffetItemBreakdown | undefined) => {
       if (day) {

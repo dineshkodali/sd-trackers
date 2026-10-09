@@ -26,6 +26,7 @@ export interface AuthenticatedUser {
   name: string;
   role: string;
   assignedSite: string;
+  assignedSites: string[];
   provider: 'supabase' | 'built-in';
 }
 
@@ -72,6 +73,7 @@ export async function resolveUser(token: string): Promise<AuthenticatedUser | nu
       name: 'Stack Master',
       role: payload.role,
       assignedSite: 'All Sites',
+      assignedSites: ['All Sites'],
       provider: 'built-in',
     };
   }
@@ -110,12 +112,53 @@ export async function resolveUser(token: string): Promise<AuthenticatedUser | nu
       return null; // suspended or inactive accounts must not transact
     }
 
+    let sites: string[] = [];
+    if (profile.assigned_site) {
+      sites = profile.assigned_site.includes(',')
+        ? profile.assigned_site.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : [profile.assigned_site.trim()];
+    }
+
+    if (admin) {
+      try {
+        const { data: puaRows } = await admin
+          .from('property_user_assignments')
+          .select('property_name, assigned_properties')
+          .eq('user_id', data.user.id);
+
+        if (Array.isArray(puaRows) && puaRows.length > 0) {
+          const puaSites: string[] = [];
+          for (const row of puaRows) {
+            if (row.property_name && row.property_name !== 'Pending Assignment') {
+              puaSites.push(row.property_name);
+            }
+            if (Array.isArray(row.assigned_properties)) {
+              for (const ap of row.assigned_properties) {
+                if (ap && ap !== 'Pending Assignment') puaSites.push(ap);
+              }
+            }
+          }
+          if (puaSites.length > 0) {
+            sites = Array.from(new Set([...sites.filter(s => s !== 'Pending Assignment'), ...puaSites]));
+          }
+        }
+      } catch {
+        // Fallback to profile assigned_site
+      }
+    }
+
+    const actualSites = sites.filter(s => s && s !== 'Pending Assignment');
+    const finalSites = actualSites.length > 0
+      ? actualSites
+      : (sites.includes('Pending Assignment') ? ['Pending Assignment'] : ['All Sites']);
+
     const resolvedUser: AuthenticatedUser = {
       id: data.user.id,
       email: data.user.email || '',
       name: profile.name || data.user.user_metadata?.name || (data.user.email || '').split('@')[0],
       role: profile.role || 'Staff',
-      assignedSite: profile.assigned_site || 'All Sites',
+      assignedSite: finalSites[0] || 'All Sites',
+      assignedSites: finalSites,
       provider: 'supabase',
     };
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   ShieldCheck, 
   Plus, 
@@ -51,7 +52,7 @@ export const SDComplianceTrackerView: React.FC = () => {
     canDeleteRecord,
     currentUserRole,
     getFieldOptions
-  } = useApp();
+  , requestConfirmation } = useApp();
 
 
   // Dynamic compliance types and statuses from Field Options Setup
@@ -66,6 +67,21 @@ export const SDComplianceTrackerView: React.FC = () => {
   } = useTableSchema<SDComplianceRecord>('compliance', SD_COMPLIANCE_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
@@ -453,9 +469,7 @@ export const SDComplianceTrackerView: React.FC = () => {
                         {canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete ${record.complianceType}?`)) {
-                                deleteComplianceRecord(record.id);
-                              }
+                              deleteComplianceRecord(record.id);
                             }}
                             className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
                             title="Delete Certificate"

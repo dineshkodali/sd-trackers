@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   Soup, 
   Plus, 
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FoodSurveyRecord, FoodMealRating, MealRatingValue } from '../../types';
+import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -63,11 +65,26 @@ export const FoodSurveysView: React.FC = () => {
     currentUserRole,
     currentUserName,
     authProfile
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
   const [ratingFilter, setRatingFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -590,22 +607,29 @@ export const FoodSurveysView: React.FC = () => {
               {/* TAB 1: DETAILS */}
               {activeTab === 'details' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-medium text-neutral-700 mb-1">Site / Property *</label>
-                      <select
-                        value={formData.siteName}
-                        onChange={e => setFormData({ ...formData, siteName: e.target.value })}
-                        disabled={!canAccessAllSites() && assignedSite !== 'All Sites'}
-                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs"
-                      >
-                        {sites.map(s => (
-                          <option key={s.id} value={s.name}>{s.name}</option>
-                        ))}
-                      </select>
-                      {formErrors.siteName && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.siteName}</p>}
+                  {/* Central Master SU Selector */}
+                  <div className="p-3 bg-white border border-emerald-100 rounded-lg shadow-2xs space-y-2">
+                    <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">
+                      Master Data Selection
                     </div>
+                    <SiteServiceUserSelector
+                      selectedSiteId={formData.siteId}
+                      selectedSuId={formData.suId}
+                      onSelect={(sel) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          siteName: sel.siteName,
+                          siteId: sel.siteId,
+                          suId: sel.suId,
+                          propertyId: sel.propertyId,
+                          roomId: sel.roomId,
+                          portReference: sel.suReference || prev.portReference
+                        }));
+                      }}
+                    />
+                  </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block font-medium text-neutral-700 mb-1">Port Reference Number of SU *</label>
                       <input

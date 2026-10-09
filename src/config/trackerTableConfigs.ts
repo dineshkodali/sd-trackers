@@ -22,9 +22,12 @@ export const resolveConfigSiteOptions = (ctx: any): string[] => {
     return ctx.allowedSites.filter((s: string) => s && s !== 'All Sites' && s !== 'all');
   }
   if (ctx?.sites && Array.isArray(ctx.sites) && ctx.sites.length > 0) {
-    return ctx.sites.map((s: any) => typeof s === 'string' ? s : s?.name).filter(Boolean);
+    return ctx.sites
+      .filter((s: any) => s && s.status !== 'Decommissioned' && s.status !== 'Archived' && s.status !== 'Deleted')
+      .map((s: any) => typeof s === 'string' ? s : s?.name)
+      .filter(Boolean);
   }
-  return ['Brit Hotel', 'Holiday Inn Lambeth', 'Parmiter PDA', 'Stansted Hotel (Ibis Budget Bisop Stortford)'];
+  return [];
 };
 
 export const resolveConfigSiteDefault = (ctx: any): string => {

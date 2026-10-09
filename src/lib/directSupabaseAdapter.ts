@@ -107,7 +107,31 @@ export const ENTITY_TABLE_MAP: Record<string, EntityMapping> = {
   roomChecks: { table: 'room_checks' },
   room_checks: { table: 'room_checks' },
   roomCheckItems: { table: 'room_check_items' },
-  room_check_items: { table: 'room_check_items' }
+  room_check_items: { table: 'room_check_items' },
+  properties: { table: 'properties' },
+  propertyRooms: { table: 'property_rooms' },
+  property_rooms: { table: 'property_rooms' },
+  propertyFacilities: { table: 'property_facilities' },
+  property_facilities: { table: 'property_facilities' },
+  propertyAssets: { table: 'property_assets' },
+  property_assets: { table: 'property_assets' },
+  propertyCompliance: { table: 'property_compliance' },
+  property_compliance: { table: 'property_compliance' },
+  propertyDocuments: { table: 'property_documents' },
+  property_documents: { table: 'property_documents' },
+  propertyContacts: { table: 'property_contacts' },
+  property_contacts: { table: 'property_contacts' },
+  serviceUsers: { table: 'service_users' },
+  service_users: { table: 'service_users' },
+  suContacts: { table: 'service_user_contacts' },
+  service_user_contacts: { table: 'service_user_contacts' },
+  suHousehold: { table: 'service_user_household' },
+  service_user_household: { table: 'service_user_household' },
+  suSupport: { table: 'service_user_support' },
+  service_user_support: { table: 'service_user_support' },
+  suDocuments: { table: 'service_user_documents' },
+  service_user_documents: { table: 'service_user_documents' },
+  placements: { table: 'placements' }
 };
 
 function ensureId(entity: string, record: any): any {

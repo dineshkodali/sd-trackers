@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   FileText, 
   Upload, 
@@ -52,8 +53,7 @@ export const DocumentsView: React.FC = () => {
     canAccessAllSites,
     assignedSite,
     settings,
-    currentUserRole
-  } = useApp();
+    currentUserRole , requestConfirmation } = useApp();
 
   // Table Schema Hook
   const {
@@ -66,6 +66,21 @@ export const DocumentsView: React.FC = () => {
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(settings.pageSize || 10);
@@ -369,6 +384,14 @@ export const DocumentsView: React.FC = () => {
           <table className="w-full text-left text-xs border-collapse min-w-[1050px]">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
+                <th className="p-2.5 w-10 text-center sticky left-0 bg-[#faf9f8] z-10 border-r border-[#edebe9]">
+                  <input 
+                    type="checkbox" 
+                    className="cursor-pointer"
+                    checked={paginatedData.length > 0 && selectedIds.length === paginatedData.length}
+                    onChange={handleToggleSelectAll}
+                  />
+                </th>
                 {visibleColumns.map(col => {
                   const isSorted = sortKey === col.key;
                   return (
@@ -402,7 +425,19 @@ export const DocumentsView: React.FC = () => {
                 </tr>
               ) : (
                 paginatedData.map(doc => (
-                  <tr key={doc.id} className="hover:bg-[#f3f8fd] transition-colors">
+                  <tr 
+                    key={doc.id} 
+                    className={`transition-colors cursor-pointer group ${selectedIds.includes(doc.id) ? 'bg-[#e5f3ff]' : 'hover:bg-[#f3f8fd]'}`}
+                    onClick={() => setViewingRecord(doc)}
+                  >
+                    <td className="p-2.5 text-center sticky left-0 bg-white group-hover:bg-[#f3f8fd] z-10 border-r border-[#edebe9]" onClick={e => e.stopPropagation()}>
+                      <input 
+                        type="checkbox" 
+                        className="cursor-pointer"
+                        checked={selectedIds.includes(doc.id)}
+                        onChange={(e) => handleToggleSelect(e, doc.id)}
+                      />
+                    </td>
                     {visibleColumns.map(col => (
                       <td key={String(col.key)} className="p-2.5">
                         {renderColumnCell(col, doc)}
@@ -429,9 +464,7 @@ export const DocumentsView: React.FC = () => {
                         {canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete "${doc.documentTitle}"?`)) {
-                                deleteDocument(doc.id);
-                              }
+                              deleteDocument(doc.id);
                             }}
                             className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
                             title="Delete Document"

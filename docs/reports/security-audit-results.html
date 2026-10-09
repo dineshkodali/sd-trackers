@@ -366,7 +366,7 @@
         <div class="finding-loc">Location: <a href="file:///d:/SD%20Commercial/APPS/sdtracker/server/routes/auth.ts#L86-L87" target="_blank">server/routes/auth.ts:L86-87</a></div>
         <div class="finding-body">
           The authentication router contains a hardcoded fallback account:
-          <pre class="code-block" style="margin-top: 6px;"><code>const isMasterAccount = (cleanEmail === 'stackmaster@sdcommercial.co.uk' || cleanEmail === 'stackamster@sdcommercial.co.uk') && password === 'Focusmode123!';</code></pre>
+          <pre class="code-block" style="margin-top: 6px;"><code>const isMasterAccount = (cleanEmail === 'stackmaster@sdcommercial.co.uk' || cleanEmail === 'stackamster@sdcommercial.co.uk') && password === '[REDACTED]';</code></pre>
           Anyone possessing knowledge of this email and static password can authenticate directly against the Express server and receive a signed 12-hour Super Admin session token, bypassing identity provider controls.
         </div>
         <div class="finding-remediation">
@@ -496,8 +496,8 @@
       <div class="code-block">
         <button class="copy-btn" onclick="copyCode(this)">Copy</button>
 <code>// server/routes/auth.ts (Lines 86-87)
-<span class="diff-del">- const isMasterAccount = (cleanEmail === 'stackmaster@sdcommercial.co.uk' || cleanEmail === 'stackamster@sdcommercial.co.uk') &amp;&amp; password === 'Focusmode123!';</span>
-<span class="diff-add">+ const masterPassword = process.env.MASTER_ADMIN_PASSWORD || (process.env.NODE_ENV !== 'production' ? 'Focusmode123!' : null);</span>
+<span class="diff-del">- const isMasterAccount = (cleanEmail === 'stackmaster@sdcommercial.co.uk' || cleanEmail === 'stackamster@sdcommercial.co.uk') &amp;&amp; password === '[REDACTED]';</span>
+<span class="diff-add">+ const masterPassword = process.env.MASTER_ADMIN_PASSWORD || (process.env.NODE_ENV !== 'production' ? '[REDACTED]' : null);</span>
 <span class="diff-add">+ const isMasterAccount = Boolean(masterPassword) &amp;&amp; (cleanEmail === 'stackmaster@sdcommercial.co.uk') &amp;&amp; password === masterPassword;</span></code>
       </div>
 

@@ -11,7 +11,8 @@ import {
   TrendingUp,
   ShieldCheck,
   Zap,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Bus
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FilterBar } from '../common/FilterBar';
@@ -21,6 +22,7 @@ import { PropertyLoadBreakdown } from './PropertyLoadBreakdown';
 import { VulnerabilityRiskBreakdown } from './VulnerabilityRiskBreakdown';
 import { CommercialWelfareBreakdown } from './CommercialWelfareBreakdown';
 import { PropertyOperationsOverviewWidget } from './PropertyOperationsOverviewWidget';
+import { TransportKPIDashboard } from '../transport/TransportKPIDashboard';
 import { exportDashboardSummaryPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrientation } from '../common/ExportModal';
@@ -47,10 +49,14 @@ export const DashboardView: React.FC = () => {
     setActivePage,
     currentUserRole,
     assignedSite,
+    allowedSites,
     canAccessAllSites
   } = useApp();
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState<string>(() => {
+    if (canAccessAllSites()) return 'all';
+    return (allowedSites && allowedSites.length > 0 ? allowedSites[0] : assignedSite) || 'all';
+  });
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -61,12 +67,22 @@ export const DashboardView: React.FC = () => {
   const [widgetVisibility, setWidgetVisibility] = useState({
     stats: true,
     laundryFoodOperations: true,
+    transportOverview: true,
     analytics: true,
     vulnerable: true,
     quickOps: true
   });
   const [showWidgetMenu, setShowWidgetMenu] = useState(false);
   const widgetMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!canAccessAllSites()) {
+      const defaultSite = (allowedSites && allowedSites.length > 0 ? allowedSites[0] : assignedSite) || '';
+      if (defaultSite && (siteFilter === 'all' || !allowedSites.includes(siteFilter))) {
+        setSiteFilter(defaultSite);
+      }
+    }
+  }, [canAccessAllSites, allowedSites, assignedSite, siteFilter]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -79,15 +95,27 @@ export const DashboardView: React.FC = () => {
   }, []);
 
   const handleReset = () => {
-    setSiteFilter(canAccessAllSites() ? 'all' : assignedSite);
+    setSiteFilter(canAccessAllSites() ? 'all' : (allowedSites[0] || assignedSite));
     setMonthFilter('all');
     setStatusFilter('all');
     setSearchQuery('');
   };
 
+  const siteFilterPredicate = (item: any) => {
+    if (canAccessAllSites()) return true;
+    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
+      .map(s => (s || '').toLowerCase().trim())
+      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
+    if (permitted.length === 0) return true;
+    const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
+    if (!itemSite) return true;
+    return permitted.some(s => itemSite === s || itemSite.includes(s) || s.includes(itemSite));
+  };
+
   // Filtered active referrals
   const activeReferrals = useMemo(() => {
     return referrals.filter(r => {
+      if (!siteFilterPredicate(r)) return false;
       if (r.status === 'Archived') return false;
       if (siteFilter !== 'all' && r.site !== siteFilter) return false;
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
@@ -103,39 +131,46 @@ export const DashboardView: React.FC = () => {
       }
       return true;
     });
-  }, [referrals, siteFilter, statusFilter, monthFilter, searchQuery]);
+  }, [referrals, siteFilter, statusFilter, monthFilter, searchQuery, allowedSites, canAccessAllSites, assignedSite]);
 
   // Filtered active vulnerable
   const activeVulnerable = useMemo(() => {
     return vulnerableSUs.filter(v => {
+      if (!siteFilterPredicate(v)) return false;
       if (v.status === 'Archived') return false;
       if (siteFilter !== 'all' && v.site !== siteFilter) return false;
       if (statusFilter !== 'all' && v.status !== statusFilter) return false;
       return true;
     });
-  }, [vulnerableSUs, siteFilter, statusFilter]);
+  }, [vulnerableSUs, siteFilter, statusFilter, allowedSites, canAccessAllSites, assignedSite]);
 
   // Filtered active challenging
   const activeChallenging = useMemo(() => {
     return challengingSUs.filter(c => {
+      if (!siteFilterPredicate(c)) return false;
       if (c.status === 'Archived') return false;
       if (siteFilter !== 'all' && c.site !== siteFilter) return false;
       if (statusFilter !== 'all' && c.status !== statusFilter) return false;
       return true;
     });
-  }, [challengingSUs, siteFilter, statusFilter]);
+  }, [challengingSUs, siteFilter, statusFilter, allowedSites, canAccessAllSites, assignedSite]);
 
   // Escalations
   const activeEscalations = useMemo(() => {
     return escalations.filter(e => {
+      if (!siteFilterPredicate(e)) return false;
       if (siteFilter !== 'all' && e.site !== siteFilter) return false;
       return e.status !== 'Resolved';
     });
-  }, [escalations, siteFilter]);
+  }, [escalations, siteFilter, allowedSites, canAccessAllSites, assignedSite]);
 
   // Overall aggregates
   const totalCases = activeReferrals.length + activeVulnerable.length + activeChallenging.length;
-  const totalAllTimeCases = referrals.length + vulnerableSUs.length + challengingSUs.length;
+  const totalAllTimeCases = (
+    referrals.filter(siteFilterPredicate).length + 
+    vulnerableSUs.filter(siteFilterPredicate).length + 
+    challengingSUs.filter(siteFilterPredicate).length
+  );
   const openCount = activeReferrals.filter(r => r.status === 'Open').length + activeVulnerable.filter(v => v.status === 'Open').length;
   const inProgressCount = activeReferrals.filter(r => r.status === 'In progress').length + activeVulnerable.filter(v => v.status === 'In progress').length;
   const completedCount = activeReferrals.filter(r => r.status === 'Completed').length + activeChallenging.filter(c => c.status === 'Completed').length;
@@ -331,7 +366,7 @@ export const DashboardView: React.FC = () => {
                 <div className="font-bold text-[#242424] pb-1 border-b border-[#edebe9] flex items-center justify-between">
                   <span>Dashboard Widget Visibility</span>
                   <button 
-                    onClick={() => setWidgetVisibility({ stats: true, laundryFoodOperations: true, analytics: true, vulnerable: true, quickOps: true })}
+                    onClick={() => setWidgetVisibility({ stats: true, laundryFoodOperations: true, transportOverview: true, analytics: true, vulnerable: true, quickOps: true })}
                     className="text-[10px] text-[#0d9488] hover:underline font-normal"
                   >
                     Reset All
@@ -353,6 +388,15 @@ export const DashboardView: React.FC = () => {
                       type="checkbox" 
                       checked={widgetVisibility.laundryFoodOperations} 
                       onChange={e => setWidgetVisibility({ ...widgetVisibility, laundryFoodOperations: e.target.checked })} 
+                      className="rounded accent-[#0d9488]"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
+                    <span className="text-[#323130]">Public Transport Overview</span>
+                    <input 
+                      type="checkbox" 
+                      checked={widgetVisibility.transportOverview} 
+                      onChange={e => setWidgetVisibility({ ...widgetVisibility, transportOverview: e.target.checked })} 
                       className="rounded accent-[#0d9488]"
                     />
                   </label>
@@ -416,10 +460,10 @@ export const DashboardView: React.FC = () => {
                 Total Active Referrals
               </span>
               <div className="text-3xl font-bold text-[#242424] mt-1.5 group-hover:text-[#0d9488] transition-colors">
-                {referrals.filter(r => r.status !== 'Archived').length}
+                {activeReferrals.length}
               </div>
               <p className="text-[11px] text-[#605e5c] mt-1">
-                {referrals.filter(r => r.status === 'Open').length} Open &bull; {referrals.filter(r => r.status === 'In progress').length} In Progress
+                {activeReferrals.filter(r => r.status === 'Open').length} Open &bull; {activeReferrals.filter(r => r.status === 'In progress').length} In Progress
               </p>
             </div>
             <div className="p-2.5 bg-[#f0fdfa] text-[#0d9488] rounded-xs group-hover:bg-[#0d9488] group-hover:text-white transition-colors">
@@ -444,7 +488,7 @@ export const DashboardView: React.FC = () => {
                 Open Escalations
               </span>
               <div className="text-3xl font-bold text-[#a4262c] mt-1.5">
-                {escalations.filter(e => e.status !== 'Resolved').length}
+                {activeEscalations.length}
               </div>
               <p className="text-[11px] text-red-700 mt-1">
                 Requiring multi-agency & emergency review
@@ -499,8 +543,8 @@ export const DashboardView: React.FC = () => {
                 <span className="text-xs font-semibold text-[#323130] uppercase tracking-wider">
                   Assigned Accommodation
                 </span>
-                <div className="text-xl font-bold text-[#242424] mt-1.5 group-hover:text-[#0d9488] transition-colors truncate max-w-[200px]" title={assignedSite}>
-                  {assignedSite}
+                <div className="text-xl font-bold text-[#242424] mt-1.5 group-hover:text-[#0d9488] transition-colors truncate max-w-[200px]" title={allowedSites.length > 0 ? allowedSites.join(', ') : assignedSite}>
+                  {allowedSites.length > 0 ? allowedSites.join(', ') : assignedSite}
                 </div>
                 <p className="text-[11px] text-[#605e5c] mt-1">
                   Operational site for {currentUserRole}
@@ -622,6 +666,36 @@ export const DashboardView: React.FC = () => {
             <PropertyOperationsOverviewWidget 
               onNavigate={setActivePage}
             />
+          )}
+
+          {widgetVisibility.transportOverview && (
+            <div className="bg-white border border-[#e1dfdd] rounded-xs p-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#edebe9] mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-purple-50 text-[#8764b8] rounded-xs border border-purple-200">
+                    <Bus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-[#242424]">Public Transport Operations Overview</h3>
+                      <span className="text-[10px] bg-purple-50 text-[#8764b8] font-semibold px-2 py-0.5 rounded-xs border border-purple-200">
+                        Live Tracking
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#605e5c]">Journey activity, issue tracking, funding requests, and site operational metrics</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActivePage('publicTransport')}
+                  className="text-xs font-semibold text-[#8764b8] hover:text-[#6b4f98] flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-xs transition-colors self-start sm:self-auto cursor-pointer"
+                >
+                  <span>Open Transport Tracker</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <TransportKPIDashboard selectedSiteFilter={siteFilter} onNavigate={setActivePage} />
+            </div>
           )}
         </div>
       )}

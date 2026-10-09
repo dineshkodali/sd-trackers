@@ -250,6 +250,18 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     title: 'Email Notifications Management',
     category: 'Admin & Governance',
     description: 'Automated SMTP email triggers, recipient rules, and incident notification alerts.'
+  },
+  {
+    id: 'suUsers',
+    title: 'Service Users Master',
+    category: 'Safeguarding',
+    description: 'Central master database for Service Users, placements, household, support, and profiles.'
+  },
+  {
+    id: 'propertyManagement',
+    title: 'Property Management',
+    category: 'Facilities & Welfare',
+    description: 'Central master database for sites, properties, rooms, facilities, assets, and compliance.'
   }
 ];
 

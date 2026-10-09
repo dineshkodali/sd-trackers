@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   SlidersHorizontal, 
   Plus, 
@@ -67,6 +68,21 @@ export const FieldOptionsSetupView: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<'All' | 'Safeguarding' | 'Facilities' | 'Welfare' | 'Healthcare & Transport' | 'Compliance & Documents' | 'Operations & Governance'>('All');
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);

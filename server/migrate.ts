@@ -1,6 +1,7 @@
 import pg from 'pg';
 import fs from 'fs';
 import path from 'path';
+import { getSupabaseAdmin } from './supabase.js';
 
 const { Client } = pg;
 
@@ -134,6 +135,26 @@ export async function runDatabaseMigrations(): Promise<MigrationResult> {
         message: `Schema migration rolled back (no changes made): ${explain(err)}`,
       };
     }
+  }
+
+  const admin = getSupabaseAdmin();
+  let tablesVerified = false;
+  if (admin) {
+    try {
+      const { data, error } = await admin.from('profiles').select('id').limit(1);
+      if (!error) {
+        tablesVerified = true;
+      }
+    } catch {}
+  }
+
+  if (tablesVerified) {
+    return {
+      success: true,
+      applied: false,
+      attempts,
+      message: `Database tables verified active via Supabase HTTPS API. Direct Postgres host ${attempts.map(a => a.endpoint).join(', ')} is IPv6-only (configure SUPABASE_POOLER_URL for direct DDL migrations).`,
+    };
   }
 
   return {

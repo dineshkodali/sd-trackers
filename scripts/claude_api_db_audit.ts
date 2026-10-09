@@ -170,7 +170,7 @@ class ClaudeApiDbAuditor {
       path: '/api/auth/login',
       body: {
         email: 'stackmaster@sdcommercial.co.uk',
-        password: 'Focusmode123!'
+        password: (process.env.TEST_ADMIN_PASSWORD || '')
       }
     });
 

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { isSmtpConfigured, testSmtpConnection, sendEmail, getSmtpConfigSummary } from '../mailer.js';
 import { getSupabaseAdmin } from '../supabase.js';
 import { requireRole } from '../middleware/requireAuth.js';
+import { userCanAccessAllSites, getUserAssignedSites } from './db.js';
 
 const router = Router();
 
@@ -610,6 +611,15 @@ function severityRank(sev?: string): number {
   }
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Helper: Render modern, professional HTML notification email
 function renderNotificationHtml(options: {
   title: string;
@@ -620,16 +630,26 @@ function renderNotificationHtml(options: {
   actionRequired?: string;
   metadata?: Record<string, any>;
 }): string {
-  const { title, module, severity, message, details, actionRequired, metadata } = options;
+  // Every value can originate from a request body, so all of it is HTML-escaped:
+  // otherwise any signed-in user could inject links or markup into mail sent
+  // from the organisation's own SMTP account.
+  const title = escapeHtml(options.title);
+  const module = escapeHtml(options.module);
+  const rawSeverity = String(options.severity ?? '');
+  const severity = escapeHtml(rawSeverity);
+  const message = options.message ? escapeHtml(options.message) : '';
+  const actionRequired = options.actionRequired ? escapeHtml(options.actionRequired) : '';
+  const details = options.details.map(d => ({ label: escapeHtml(d.label), value: d.value ? escapeHtml(d.value) : '' }));
+  const metadata = options.metadata;
 
   let bannerBg = '#0d9488'; // Teal
   let bannerTextColor = '#ffffff';
 
-  if (severity === 'Critical') {
+  if (rawSeverity === 'Critical') {
     bannerBg = '#b91c1c'; // Red
-  } else if (severity === 'High') {
+  } else if (rawSeverity === 'High') {
     bannerBg = '#c2410c'; // Amber-orange
-  } else if (severity === 'Medium') {
+  } else if (rawSeverity === 'Medium') {
     bannerBg = '#0369a1'; // Sky blue
   }
 
@@ -685,7 +705,7 @@ function renderNotificationHtml(options: {
         ${metadata && Object.keys(metadata).length > 0 ? `
           <div style="margin-top: 14px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 12px; color: #475569;">
             <strong style="display: block; margin-bottom: 6px; color: #1e293b;">Additional Event Metadata:</strong>
-            ${Object.entries(metadata).map(([k, v]) => `<div><strong>${k}:</strong> ${typeof v === 'object' ? JSON.stringify(v) : v}</div>`).join('')}
+            ${Object.entries(metadata).map(([k, v]) => `<div><strong>${escapeHtml(k)}:</strong> ${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : v)}</div>`).join('')}
           </div>
         ` : ''}
       </div>
@@ -924,8 +944,20 @@ router.post('/trigger', async (req: Request, res: Response) => {
     resolvedRecipients.add(defaultRecipient);
   }
 
-  const recipientList = Array.from(resolvedRecipients);
-  const ccList = Array.isArray(rule.customCc) ? rule.customCc.filter((e: string) => e && e.includes('@')) : [];
+  const isRealDomainEmail = (email: string) => {
+    if (!email || typeof email !== 'string') return false;
+    const clean = email.trim().toLowerCase();
+    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(clean)) return false;
+    const domain = clean.split('@')[1];
+    return !(domain.endsWith('.local') || domain === 'localhost' || domain.endsWith('.test') || domain.endsWith('.invalid'));
+  };
+
+  // Filter out any non-routable / local placeholder emails
+  const validRecipients = Array.from(resolvedRecipients).filter(isRealDomainEmail);
+  const recipientList = validRecipients.length > 0
+    ? validRecipients
+    : [process.env.SMTP_USER || 'admin@sdcommercial.co.uk'];
+  const ccList = (Array.isArray(rule.customCc) ? rule.customCc : []).filter(isRealDomainEmail);
 
   // 5. Interpolate Dynamic Subject Line
   const mergedContext = {
@@ -1044,7 +1076,14 @@ router.post('/trigger', async (req: Request, res: Response) => {
 });
 
 // GET /api/smtp/logs - Fetch recent delivery logs
-router.get('/logs', async (_req: Request, res: Response) => {
+router.get('/logs', async (req: Request, res: Response) => {
+  // Delivery logs name sites and service users in their subjects, so
+  // site-restricted staff only see logs for their own sites.
+  const visible = (logs: any[]) => {
+    if (!req.user || userCanAccessAllSites(req.user)) return logs;
+    const sites = new Set(getUserAssignedSites(req.user).map(s => s.toLowerCase()));
+    return logs.filter(l => sites.has(String(l.site || '').trim().toLowerCase()));
+  };
   try {
     const admin = getSupabaseAdmin();
     if (admin) {
@@ -1070,12 +1109,12 @@ router.get('/logs', async (_req: Request, res: Response) => {
           payloadSummary: l.payload_summary,
           dispatchedAt: l.dispatched_at
         }));
-        return res.json({ success: true, logs: mapped, persisted: true });
+        return res.json({ success: true, logs: visible(mapped), persisted: true });
       }
     }
   } catch {}
 
-  res.json({ success: true, logs: runtimeLogs, persisted: false });
+  res.json({ success: true, logs: visible(runtimeLogs), persisted: false });
 });
 
 // POST /api/smtp/test-rule - Test dispatch a specific rule with mock payload

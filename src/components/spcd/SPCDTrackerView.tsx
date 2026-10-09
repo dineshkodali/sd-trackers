@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import {
   ClipboardList,
   UserCheck,
@@ -68,7 +69,7 @@ export const SPCDTrackerView: React.FC = () => {
     currentUserName,
     currentUserRole,
     authProfile
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Worker');
 
@@ -86,6 +87,21 @@ export const SPCDTrackerView: React.FC = () => {
   // Filters
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
 
   // Sync with global header search
   useEffect(() => {

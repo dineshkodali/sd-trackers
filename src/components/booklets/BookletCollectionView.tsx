@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   BookOpen, 
   Plus, 
@@ -16,7 +17,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BookletCollectionRecord } from '../../types';
-import { IA_HOTEL_NAMES } from '../../data/initialData';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
@@ -52,8 +52,18 @@ export const BookletCollectionView: React.FC = () => {
     currentUserRole,
     canAccessAllSites,
     assignedSite,
-    allowedSites
+    allowedSites,
+    sites,
+    requestConfirmation
   } = useApp();
+
+  const activeHotels = useMemo(() => {
+    const list = (sites || [])
+      .filter(s => (s as any).status !== 'Decommissioned' && (s as any).status !== 'Archived')
+      .map(s => typeof s === 'string' ? s : s.name)
+      .filter((n): n is string => Boolean(n && n.trim() && n !== 'All Sites' && n !== 'all'));
+    return Array.from(new Set(list));
+  }, [sites]);
 
   // Table Schema Hook
   const {
@@ -67,6 +77,21 @@ export const BookletCollectionView: React.FC = () => {
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [bookletTypeFilter, setBookletTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [sortKey, setSortKey] = useState<string>('hotelName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   // QA-08: Discoverability tracking for newly created booklet consignments
@@ -365,7 +390,7 @@ export const BookletCollectionView: React.FC = () => {
             className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
           >
             <option value="all">All Hotels</option>
-            {IA_HOTEL_NAMES.map(h => (
+            {activeHotels.map(h => (
               <option key={h} value={h}>{h}</option>
             ))}
           </select>
@@ -477,9 +502,7 @@ export const BookletCollectionView: React.FC = () => {
                         {canDeleteRecord && canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete ${record.bookletType} for ${record.hotelName}?`)) {
-                                deleteBookletRecord(record.id);
-                              }
+                              deleteBookletRecord(record.id);
                             }}
                             className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
                             title="Delete Record"

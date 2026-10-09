@@ -6,7 +6,7 @@ import { z } from 'zod';
 export const userAccountSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address format'),
-  role: z.enum(['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Employee', 'Site Manager', 'Staff']),
+  role: z.enum(['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Area Manager', 'Staff']),
   assignedSites: z.array(z.string()).min(1, 'At least one site must be assigned'),
   status: z.enum(['Active', 'Inactive', 'Suspended'])
 });

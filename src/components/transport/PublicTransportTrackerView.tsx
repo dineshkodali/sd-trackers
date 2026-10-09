@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   Bus, 
   Plus, 
@@ -9,7 +10,14 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  MessageSquareWarning,
+  BarChart3,
+  CreditCard,
+  ArrowRightLeft,
+  Building2,
+  ShieldCheck,
+  Activity
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PublicTransportRecord } from '../../types';
@@ -25,6 +33,12 @@ import { TableColumnConfig } from '../../types/tableSchema';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 
+import { TransportFeedbackSection } from './TransportFeedbackSection';
+import { TransportChallengesSection } from './TransportChallengesSection';
+import { TransportFundingSection } from './TransportFundingSection';
+
+export type TransportTab = 'overview' | 'feedback' | 'challenges' | 'funding';
+
 const transportExportColumns: ExportColumnOption[] = [
   { id: 'approvalUrn', label: 'Approval URN' },
   { id: 'suNames', label: 'Service User Name(s)' },
@@ -39,7 +53,8 @@ const transportExportColumns: ExportColumnOption[] = [
 ];
 
 export const PublicTransportTrackerView: React.FC = () => {
-  const {publicTransportRecords,
+  const {
+    publicTransportRecords,
     addPublicTransportRecord,
     updatePublicTransportRecord,
     deletePublicTransportRecord,
@@ -47,8 +62,18 @@ export const PublicTransportTrackerView: React.FC = () => {
     canEditRecord,
     canDeleteRecord,
     currentUserRole,
-    getFieldOptions
+    getFieldOptions,
+    requestConfirmation,
+    canAccessAllSites,
+    allowedSites,
+    assignedSite,
+    transportFeedbackRecords,
+    transportChallengeRecords,
+    transportFundingRequests,
+    transportRoomMoveRecords
   } = useApp();
+
+  const [activeTab, setActiveTab] = useState<TransportTab>('overview');
 
 
   // Dynamic transport modes and statuses from Field Options Setup
@@ -63,6 +88,21 @@ export const PublicTransportTrackerView: React.FC = () => {
   } = useTableSchema<PublicTransportRecord>('publicTransport', PUBLIC_TRANSPORT_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedRecords?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [modeFilter, setModeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,6 +118,15 @@ export const PublicTransportTrackerView: React.FC = () => {
 
   const filteredRecords = useMemo(() => {
     return publicTransportRecords.filter(r => {
+      // Site Isolation
+      if (!canAccessAllSites()) {
+        const allowed = new Set(allowedSites.map(s => s.toLowerCase().trim()));
+        if (assignedSite) allowed.add(assignedSite.toLowerCase().trim());
+        const site = ((r as any).siteName || r.accommodationAddress || '').toLowerCase().trim();
+        const matchesAllowed = Array.from(allowed).some(s => site.includes(s) || s.includes(site));
+        if (!matchesAllowed && allowed.size > 0) return false;
+      }
+
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         r.approvalUrn.toLowerCase().includes(q) ||
@@ -93,7 +142,7 @@ export const PublicTransportTrackerView: React.FC = () => {
 
       return matchesSearch && matchesMode && matchesStatus;
     });
-  }, [publicTransportRecords, searchQuery, modeFilter, statusFilter]);
+  }, [publicTransportRecords, searchQuery, modeFilter, statusFilter, canAccessAllSites, allowedSites, assignedSite]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -278,7 +327,7 @@ export const PublicTransportTrackerView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Top Banner, Header, Actions & Filters in ONE unified section */}
+      {/* Unified Top Banner with Tab Switcher */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -287,14 +336,116 @@ export const PublicTransportTrackerView: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-[#242424] tracking-tight">Public Transport Tracker</h1>
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Public Transport</h1>
                 <span className="text-xs bg-purple-50 text-[#8764b8] font-semibold px-2 py-0.5 rounded-xs border border-purple-200">
-                  {filteredRecords.length} Authorizations
+                  {activeTab === 'overview' ? `${filteredRecords.length} Authorizations` :
+                   activeTab === 'feedback' ? `${transportFeedbackRecords.length} Feedbacks` :
+                   activeTab === 'challenges' ? `${transportChallengeRecords.length} Periods` :
+                   `${transportFundingRequests.length} Requests`}
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Record, verify, and audit public transport allowances and exceptional travel authorizations.</p>
+              <p className="text-xs text-neutral-500">
+                Single operational location for journey authorizations, feedback, site challenges, and funding requests.
+              </p>
             </div>
           </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Tab Switcher Pills */}
+            <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-xs border border-[#e5e5e5]">
+              <button
+                type="button"
+                onClick={() => setActiveTab('overview')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer ${
+                  activeTab === 'overview'
+                    ? 'bg-white text-[#8764b8] shadow-2xs'
+                    : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                <Bus className="w-3.5 h-3.5" />
+                <span>Overview</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeTab === 'overview' ? 'bg-purple-100 text-[#8764b8]' : 'bg-[#e1dfdd] text-[#605e5c]'
+                }`}>
+                  {filteredRecords.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('feedback')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer ${
+                  activeTab === 'feedback'
+                    ? 'bg-white text-[#8764b8] shadow-2xs'
+                    : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                <MessageSquareWarning className="w-3.5 h-3.5" />
+                <span>Feedback</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeTab === 'feedback' ? 'bg-purple-100 text-[#8764b8]' : 'bg-[#e1dfdd] text-[#605e5c]'
+                }`}>
+                  {transportFeedbackRecords.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('challenges')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer ${
+                  activeTab === 'challenges'
+                    ? 'bg-white text-[#8764b8] shadow-2xs'
+                    : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Challenges</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeTab === 'challenges' ? 'bg-purple-100 text-[#8764b8]' : 'bg-[#e1dfdd] text-[#605e5c]'
+                }`}>
+                  {transportChallengeRecords.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('funding')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer ${
+                  activeTab === 'funding'
+                    ? 'bg-white text-[#8764b8] shadow-2xs'
+                    : 'text-[#605e5c] hover:text-[#242424]'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Funding Requests</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeTab === 'funding' ? 'bg-purple-100 text-[#8764b8]' : 'bg-[#e1dfdd] text-[#605e5c]'
+                }`}>
+                  {transportFundingRequests.length}
+                </span>
+              </button>
+            </div>
+
+            {!canAccessAllSites() && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xs bg-slate-50 text-xs text-slate-700 border border-slate-200">
+                <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                <span className="font-semibold">{assignedSite || 'Assigned Hotel'}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 1. OVERVIEW TAB: Transport Authorizations (Filters + Table only) */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Header, Actions & Filters card */}
+          <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-[#242424]">Transport Authorizations</h2>
+                <p className="text-xs text-neutral-500">Record, verify, and audit public transport allowances and exceptional travel authorizations.</p>
+              </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             {currentUserRole === 'Super Admin' && (
@@ -438,9 +589,7 @@ export const PublicTransportTrackerView: React.FC = () => {
                         {canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete authorization URN ${record.approvalUrn}?`)) {
-                                deletePublicTransportRecord(record.id);
-                              }
+                              deletePublicTransportRecord(record.id);
                             }}
                             className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
                             title="Delete Record"
@@ -466,6 +615,17 @@ export const PublicTransportTrackerView: React.FC = () => {
           onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
         />
       </div>
+      </>
+    )}
+
+    {/* 2. TRANSPORT FEEDBACK TAB */}
+    {activeTab === 'feedback' && <TransportFeedbackSection />}
+
+    {/* 3. TRANSPORT CHALLENGES TAB */}
+    {activeTab === 'challenges' && <TransportChallengesSection />}
+
+    {/* 4. FUNDING REQUESTS TAB */}
+    {activeTab === 'funding' && <TransportFundingSection />}
 
       {/* Dynamic Create Modal */}
       <DynamicRecordFormModal<PublicTransportRecord>

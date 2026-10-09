@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   KeyRound, 
   Check, 
@@ -39,7 +40,7 @@ export const RolesView: React.FC = () => {
     resetRolePermissions,
     canManageRoles,
     authProfile
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   const isSuperAdminUser = authProfile?.role === 'Super Admin' || (!authProfile && currentUserRole === 'Super Admin');
 
@@ -49,6 +50,21 @@ export const RolesView: React.FC = () => {
   
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'granted' | 'restricted'>('all');
 
@@ -78,30 +94,6 @@ export const RolesView: React.FC = () => {
       badgeColor: 'bg-[#f0fdfa] text-[#0f766e] border-[#5eead4]',
       scope: 'Multi-Site Scope'
     },
-    {
-      role: 'Finance Admin',
-      title: 'Finance Admin',
-      subtitle: 'Finance Controller',
-      desc: 'Full Finance module administration, approvals, supplier records, and controlled document deletion.',
-      badgeColor: 'bg-[#fff7ed] text-[#9a3412] border-[#fed7aa]',
-      scope: 'Finance Global Scope'
-    },
-    {
-      role: 'Finance Manager',
-      title: 'Finance Manager',
-      subtitle: 'Finance Approver',
-      desc: 'Finance review, approval, reconciliation, and operational bill management without destructive deletion.',
-      badgeColor: 'bg-[#fefce8] text-[#854d0e] border-[#fde68a]',
-      scope: 'Finance Global Scope'
-    },
-    {
-      role: 'Finance Staff',
-      title: 'Finance Staff',
-      subtitle: 'Finance Operator',
-      desc: 'Finance bills, suppliers, attachments, and approval submissions with controlled create and update access.',
-      badgeColor: 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]',
-      scope: 'Finance Global Scope'
-    },
     { 
       role: 'Regional Manager', 
       title: 'Regional Manager', 
@@ -118,23 +110,11 @@ export const RolesView: React.FC = () => {
       badgeColor: 'bg-[#fff8ed] text-[#8a3700] border-[#fedbb0]',
       scope: 'Assigned Property Scope'
     },
-    {
-      role: 'Employee',
-      title: 'Employee',
-      subtitle: 'Frontline Staff',
-      desc: 'Frontline duty staff handling daily welfare logs, hot meals, laundry support, and direct safeguarding referrals.',
-      badgeColor: 'bg-[#f1faf0] text-[#107c10] border-[#cbe8cb]',
-      scope: 'Assigned Property Scope'
-    },
-    // Site Manager and Staff were absent from this matrix while remaining
-    // assignable in the Add User form, present in userAccountSchema, and branched
-    // on explicitly by canEditRecord. Their permissions could therefore be held
-    // by real accounts but never configured or reviewed here (BUG-017).
-    {
-      role: 'Site Manager',
-      title: 'Site Manager',
+    { 
+      role: 'Area Manager', 
+      title: 'Area Manager', 
       subtitle: 'Property Supervisor',
-      desc: 'Supervises a single assigned property: resident records, incident logging, and day-to-day welfare oversight.',
+      desc: 'Supervises a single assigned area: resident records, incident logging, and day-to-day welfare oversight.',
       badgeColor: 'bg-[#eff6fc] text-[#004578] border-[#b3d7f2]',
       scope: 'Assigned Property Scope'
     },

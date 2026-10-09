@@ -135,7 +135,7 @@ class RufloQAAuditOrchestrator {
       const loginRes = await fetch(`${APP_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'stackmaster@sdcommercial.co.uk', password: 'Focusmode123!' })
+        body: JSON.stringify({ email: 'stackmaster@sdcommercial.co.uk', password: (process.env.TEST_ADMIN_PASSWORD || '') })
       });
       const loginData = await loginRes.json();
       const loginPass = loginRes.status === 200 && !!loginData.token && loginData.user?.role === 'Super Admin';
@@ -1147,8 +1147,8 @@ class RufloQAAuditOrchestrator {
       codeDiff: `--- a/.env
 +++ b/.env
 @@ -41,1 +41,1 @@
--DATABASE_URL=postgresql://postgres:Focusmode123!@db.kxikojvpcyprfbyxsdaa.supabase.co:5432/postgres
-+DATABASE_URL=postgresql://postgres.kxikojvpcyprfbyxsdaa:Focusmode123!@aws-0-eu-west-2.pooler.supabase.com:5432/postgres?sslmode=require`,
+-DATABASE_URL=postgresql://postgres:<DB_PASSWORD>@db.kxikojvpcyprfbyxsdaa.supabase.co:5432/postgres
++DATABASE_URL=postgresql://postgres.kxikojvpcyprfbyxsdaa:<DB_PASSWORD>@aws-0-eu-west-2.pooler.supabase.com:5432/postgres?sslmode=require`,
       recommendedFix: 'Update DATABASE_URL in .env to the Supabase Session Pooler connection string.',
       verificationCommand: 'npm run dev'
     });

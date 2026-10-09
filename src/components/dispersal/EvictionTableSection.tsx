@@ -462,9 +462,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
                         {canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete eviction notice for ${evict.suName}?`)) {
-                                deleteEvictionRecord(evict.id);
-                              }
+                              deleteEvictionRecord(evict.id);
                             }}
                             className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs cursor-pointer"
                             title="Delete Record"

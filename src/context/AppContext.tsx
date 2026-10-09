@@ -42,7 +42,11 @@ import {
   EvictionRecord,
   WelfareCheckRecord,
   FoodSurveyRecord,
-  RoomCheckRecord
+  RoomCheckRecord,
+  TransportFeedbackRecord,
+  TransportChallengeRecord,
+  TransportFundingRequestRecord,
+  TransportRoomMoveRecord
 } from '../types';
 import { checksService } from '../services/checksService';
 import {
@@ -62,7 +66,11 @@ import {
   INITIAL_SPCD_RECORDS,
   INITIAL_CHANGE_REQUESTS,
   INITIAL_BOOKLET_RECORDS,
-  INITIAL_VCS_AGENCIES
+  INITIAL_VCS_AGENCIES,
+  INITIAL_TRANSPORT_FEEDBACK,
+  INITIAL_TRANSPORT_CHALLENGES,
+  INITIAL_TRANSPORT_FUNDING_REQUESTS,
+  INITIAL_TRANSPORT_ROOM_MOVES
 } from '../data/initialData';
 import {
   INITIAL_PROPERTY_LAUNDRY_LOGS,
@@ -158,7 +166,7 @@ interface AppContextType {
   currentUserRole: RoleType;
   setCurrentUserRole: (role: RoleType) => void;
   currentUserName: string;
-  assignedSite: string; // for Site Manager and Staff
+  assignedSite: string; // for Area Manager and Staff
   setAssignedSite: (site: string) => void;
 
   // Selected Filter Site
@@ -237,6 +245,9 @@ interface AppContextType {
   canManageFinance: () => boolean;
   isFinanceUser: () => boolean;
 
+  // Audit
+  addAuditEntry: (action: string, module: string, targetItem: string, site: string, details: string) => void;
+
   // CRUD for Referrals
   addReferral: (referral: Omit<SGReferral, 'id' | 'srNo' | 'createdAt' | 'updatedAt' | 'lastUpdatedBy'>) => void;
   updateReferral: (id: string, updates: Partial<SGReferral>) => void;
@@ -306,6 +317,27 @@ interface AppContextType {
   addPublicTransportRecord: (record: Omit<PublicTransportRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updatePublicTransportRecord: (id: string, updates: Partial<PublicTransportRecord>) => void;
   deletePublicTransportRecord: (id: string) => void;
+
+  // 1b. Public Transport Enhancement CRUDs
+  transportFeedbackRecords: TransportFeedbackRecord[];
+  addTransportFeedbackRecord: (record: Omit<TransportFeedbackRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateTransportFeedbackRecord: (id: string, updates: Partial<TransportFeedbackRecord>) => void;
+  deleteTransportFeedbackRecord: (id: string) => void;
+
+  transportChallengeRecords: TransportChallengeRecord[];
+  addTransportChallengeRecord: (record: Omit<TransportChallengeRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateTransportChallengeRecord: (id: string, updates: Partial<TransportChallengeRecord>) => void;
+  deleteTransportChallengeRecord: (id: string) => void;
+
+  transportFundingRequests: TransportFundingRequestRecord[];
+  addTransportFundingRequest: (record: Omit<TransportFundingRequestRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateTransportFundingRequest: (id: string, updates: Partial<TransportFundingRequestRecord>) => void;
+  deleteTransportFundingRequest: (id: string) => void;
+
+  transportRoomMoveRecords: TransportRoomMoveRecord[];
+  addTransportRoomMoveRecord: (record: Omit<TransportRoomMoveRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateTransportRoomMoveRecord: (id: string, updates: Partial<TransportRoomMoveRecord>) => void;
+  deleteTransportRoomMoveRecord: (id: string) => void;
 
   // 2. CRUD for SD-Compliance Tracker
   complianceRecords: SDComplianceRecord[];
@@ -574,10 +606,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [activePage, setActivePageRaw] = useState<string>(() => {
     try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        const saved = sessionStorage.getItem('sg_tracker_active_page');
-        if (saved && typeof saved === 'string' && saved.trim()) {
-          return saved.trim();
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname.toLowerCase();
+        if (path === '/su-users') return 'suUsers';
+        if (path === '/property-management') return 'propertyManagement';
+        if (window.sessionStorage) {
+          const saved = sessionStorage.getItem('sg_tracker_active_page');
+          if (saved && typeof saved === 'string' && saved.trim()) {
+            return saved.trim();
+          }
         }
       }
     } catch {}
@@ -594,11 +631,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setActivePage = useCallback((page: string) => {
     setActivePageRaw(page);
     try {
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.setItem('sg_tracker_active_page', page);
+      if (typeof window !== 'undefined') {
+        if (page === 'suUsers') {
+          if (window.location.pathname !== '/su-users') {
+            window.history.pushState(null, '', '/su-users');
+          }
+        } else if (page === 'propertyManagement') {
+          if (window.location.pathname !== '/property-management') {
+            window.history.pushState(null, '', '/property-management');
+          }
+        } else {
+          if (window.location.pathname === '/su-users' || window.location.pathname === '/property-management') {
+            window.history.pushState(null, '', '/');
+          }
+        }
+        if (window.sessionStorage) {
+          sessionStorage.setItem('sg_tracker_active_page', page);
+        }
       }
     } catch {}
     setIsMobileSidebarOpen(false); // Automatically close mobile drawer when navigating
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase();
+      if (path === '/su-users') {
+        setActivePageRaw('suUsers');
+      } else if (path === '/property-management') {
+        setActivePageRaw('propertyManagement');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const [globalSearchFilter, setGlobalSearchFilter] = useState<string>('');
@@ -629,6 +694,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>(INITIAL_MAINTENANCE_RECORDS);
   const [spcdRecords, setSpcdRecords] = useState<SPCDRecord[]>(INITIAL_SPCD_RECORDS);
   const [publicTransportRecords, setPublicTransportRecords] = useState<PublicTransportRecord[]>([]);
+  const [transportFeedbackRecords, setTransportFeedbackRecords] = useState<TransportFeedbackRecord[]>(INITIAL_TRANSPORT_FEEDBACK);
+  const [transportChallengeRecords, setTransportChallengeRecords] = useState<TransportChallengeRecord[]>(INITIAL_TRANSPORT_CHALLENGES);
+  const [transportFundingRequests, setTransportFundingRequests] = useState<TransportFundingRequestRecord[]>(INITIAL_TRANSPORT_FUNDING_REQUESTS);
+  const [transportRoomMoveRecords, setTransportRoomMoveRecords] = useState<TransportRoomMoveRecord[]>(INITIAL_TRANSPORT_ROOM_MOVES);
   const [complianceRecords, setComplianceRecords] = useState<SDComplianceRecord[]>([]);
   const [gpAppointmentRecords, setGpAppointmentRecords] = useState<GPAppointmentRecord[]>([]);
   const [rfaWelfareRecords, setRfaWelfareRecords] = useState<RFAWelfareCheckRecord[]>([]);
@@ -678,13 +747,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refreshFinanceBills();
       }
     };
+    const handlePropertyDeleted = (e: any) => {
+      const deletedId = e.detail?.id;
+      const deletedRef = e.detail?.propertyReference;
+      const deletedName = e.detail?.propertyName;
+      if (deletedId || deletedRef || deletedName) {
+        setSites(prev => prev.filter(s => {
+          if (deletedId && (s.id === deletedId || (s as any).propertyId === deletedId)) return false;
+          if (deletedRef && (s.pid === deletedRef || (s as any).propertyReference === deletedRef)) return false;
+          if (deletedName && s.name && s.name.toLowerCase().trim() === deletedName.toLowerCase().trim()) return false;
+          return true;
+        }));
+      }
+    };
     window.addEventListener('finance-bills-changed', handleChanged);
     window.addEventListener('finance-vendors-changed', handleChanged);
     window.addEventListener('storage', handleStorage);
+    window.addEventListener('sdtracker:propertyDeleted', handlePropertyDeleted);
     return () => {
       window.removeEventListener('finance-bills-changed', handleChanged);
       window.removeEventListener('finance-vendors-changed', handleChanged);
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('sdtracker:propertyDeleted', handlePropertyDeleted);
     };
   }, [refreshFinanceBills]);
 
@@ -1022,17 +1106,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             passed: true
           });
 
+          const rawAssignedSites: string[] = Array.isArray((res.user as any).assignedSites) && (res.user as any).assignedSites.length > 0
+            ? (res.user as any).assignedSites
+            : (res.user.assignedSite ? res.user.assignedSite.split(',') : []);
+          const cleanAssignedSites = rawAssignedSites
+            .map(s => String(s).trim())
+            .filter(s => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'all');
+          const primarySite = cleanAssignedSites.length > 0
+            ? cleanAssignedSites[0]
+            : (res.user.assignedSite && res.user.assignedSite !== 'Pending Assignment' ? res.user.assignedSite : 'All Sites');
+
           const authUser: AuthUser = {
             id: res.user.id,
             email: res.user.email,
             name: res.user.name,
             role: res.user.role as RoleType,
-            assignedSite: res.user.assignedSite || 'All Sites'
+            assignedSite: primarySite,
+            assignedSites: cleanAssignedSites
           };
           setAuthBlockedState(null);
           setAuthProfileState(authUser);
           setCurrentUserRoleState(authUser.role);
-          if (authUser.assignedSite && authUser.assignedSite !== 'All Sites') {
+          if (authUser.assignedSite && authUser.assignedSite !== 'All Sites' && authUser.assignedSite !== 'Pending Assignment') {
             setAssignedSiteState(authUser.assignedSite);
           }
         } else if (res.transient) {
@@ -1116,9 +1211,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (session?.user?.email) {
             setRecoveryEmail(session.user.email);
           }
-          // Clean callback URL in browser address bar
-          if (window.location.pathname === '/auth/callback') {
-            window.history.replaceState(null, '', '/');
+          if (window.location.pathname !== '/reset-password') {
+            window.history.replaceState(null, '', '/reset-password' + (window.location.hash || ''));
+            window.dispatchEvent(new Event('popstate'));
           }
         }
       });
@@ -1132,11 +1227,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const type = hashParams.get('type') || searchParams.get('type');
       const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+      const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
+      const code = searchParams.get('code') || hashParams.get('code');
+      const errorDesc = searchParams.get('error_description') || hashParams.get('error_description') || hashParams.get('error');
 
-      // If user landed with recovery token (e.g. from password reset email link)
+      // Surface friendly auth error if directed from Supabase or reset link
+      if (errorDesc && !accessToken) {
+        const decoded = decodeURIComponent(errorDesc).replace(/\+/g, ' ');
+        setAuthError(decoded);
+
+        // If this is an OTP expired or recovery error and user is not at /reset-password, forward cleanly
+        if ((hashParams.get('error_code') === 'otp_expired' || decoded.toLowerCase().includes('expired')) && window.location.pathname !== '/reset-password') {
+          window.history.replaceState(null, '', '/reset-password' + (window.location.hash || window.location.search));
+          window.dispatchEvent(new Event('popstate'));
+        }
+      }
+
+      // Handle Supabase PKCE authorization code exchange
+      if (code) {
+        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+          if (!error && data?.session) {
+            setIsPasswordRecoveryMode(true);
+            if (data.session.access_token) {
+              setRecoveryAccessToken(data.session.access_token);
+            }
+            if (data.session.user?.email) {
+              setRecoveryEmail(data.session.user.email);
+            }
+            if (window.location.pathname !== '/reset-password') {
+              window.history.replaceState(null, '', '/reset-password');
+              window.dispatchEvent(new Event('popstate'));
+            }
+          }
+        }).catch(err => console.warn('Supabase exchangeCodeForSession recovery error:', err));
+      }
+
+      // If user landed with recovery token_hash directly (e.g. from password reset email)
+      if (tokenHash && (type === 'recovery' || !type)) {
+        supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery'
+        }).then(({ data, error }) => {
+          if (!error && data?.session) {
+            setIsPasswordRecoveryMode(true);
+            if (data.session.access_token) {
+              setRecoveryAccessToken(data.session.access_token);
+            }
+            if (data.session.user?.email) {
+              setRecoveryEmail(data.session.user.email);
+            }
+            if (window.location.pathname !== '/reset-password') {
+              window.history.replaceState(null, '', '/reset-password#access_token=' + data.session.access_token + '&type=recovery');
+              window.dispatchEvent(new Event('popstate'));
+            }
+          } else if (error) {
+            setAuthError(error.message || 'Password reset link is invalid or has expired.');
+            if (window.location.pathname !== '/reset-password') {
+              window.history.replaceState(null, '', '/reset-password#error=access_denied&error_code=otp_expired&error_description=' + encodeURIComponent(error.message || 'Password reset link is invalid or has expired.'));
+              window.dispatchEvent(new Event('popstate'));
+            }
+          }
+        }).catch(err => console.warn('Supabase verifyOtp recovery error:', err));
+      }
+
+      // If user landed with recovery access token (e.g. from server redirect or Supabase action link)
       if (type === 'recovery' && accessToken) {
         setIsPasswordRecoveryMode(true);
         setRecoveryAccessToken(accessToken);
+
+        if (window.location.pathname !== '/reset-password') {
+          window.history.replaceState(null, '', '/reset-password' + (window.location.hash || window.location.search));
+          window.dispatchEvent(new Event('popstate'));
+        }
 
         supabase.auth.setSession({
           access_token: accessToken,
@@ -1149,7 +1311,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Clean callback URL in address bar
         if (window.location.pathname === '/auth/callback') {
-          window.history.replaceState(null, '', '/');
+          window.history.replaceState(null, '', '/reset-password');
         }
       } else if (window.location.pathname === '/auth/callback') {
         // If landed on /auth/callback without recovery params, clean URL to root
@@ -1197,12 +1359,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (res.user && (res.token || res.session?.accessToken)) {
         const token = res.token || res.session!.accessToken;
+        const rawAssignedSites: string[] = Array.isArray((res.user as any).assignedSites) && (res.user as any).assignedSites.length > 0
+          ? (res.user as any).assignedSites
+          : (res.user.assignedSite ? res.user.assignedSite.split(',') : []);
+        const cleanAssignedSites = rawAssignedSites
+          .map(s => String(s).trim())
+          .filter(s => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'all');
+        const primarySite = cleanAssignedSites.length > 0
+          ? cleanAssignedSites[0]
+          : (res.user.assignedSite && res.user.assignedSite !== 'Pending Assignment' ? res.user.assignedSite : 'All Sites');
+
         const authUser: AuthUser = {
           id: res.user.id,
           email: res.user.email,
           name: res.user.name,
           role: res.user.role as RoleType,
-          assignedSite: res.user.assignedSite || 'All Sites'
+          assignedSite: primarySite,
+          assignedSites: cleanAssignedSites
         };
         setAuthBlockedState(null);
         setSessionTokenState(token);
@@ -1211,7 +1384,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveStorage('auth_user', authUser);
         saveStorage('role', authUser.role);
         setCurrentUserRoleState(authUser.role);
-        if (authUser.assignedSite && authUser.assignedSite !== 'All Sites') {
+        if (authUser.assignedSite && authUser.assignedSite !== 'All Sites' && authUser.assignedSite !== 'Pending Assignment') {
           setAssignedSiteState(authUser.assignedSite);
           saveStorage('assigned_site', authUser.assignedSite);
         }
@@ -1258,6 +1431,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMaintenanceRecords([]);
     setSpcdRecords([]);
     setPublicTransportRecords([]);
+    setTransportFeedbackRecords([]);
+    setTransportChallengeRecords([]);
+    setTransportFundingRequests([]);
+    setTransportRoomMoveRecords([]);
     setComplianceRecords([]);
     setGpAppointmentRecords([]);
     setRfaWelfareRecords([]);
@@ -1509,6 +1686,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apply<DocumentRecord>('documents', setDocuments);
       apply<UserGroup>('userGroups', setUserGroups);
       apply<PublicTransportRecord>('publicTransport', setPublicTransportRecords);
+      apply<TransportFeedbackRecord>('transportFeedback', rows => {
+        setTransportFeedbackRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_FEEDBACK);
+      });
+      apply<TransportChallengeRecord>('transportChallenges', rows => {
+        setTransportChallengeRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_CHALLENGES);
+      });
+      apply<TransportFundingRequestRecord>('transportFundingRequests', rows => {
+        setTransportFundingRequests(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_FUNDING_REQUESTS);
+      });
+      apply<TransportRoomMoveRecord>('transportRoomMoveRequests', rows => {
+        setTransportRoomMoveRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_ROOM_MOVES);
+      });
       apply<SDComplianceRecord>('compliance', setComplianceRecords);
       apply<GPAppointmentRecord>('gpAppointments', setGpAppointmentRecords);
       apply<RFAWelfareCheckRecord>('rfaWelfare', setRfaWelfareRecords);
@@ -1543,7 +1732,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apply<any>('rolePermissions', rows => setRolePermissions(rolePermissionsFromRows(rows)));
       apply<any>('appSettings', rows => {
         const global = rows.find(row => row.id === 'global');
-        if (global?.value && typeof global.value === 'object') setSettings({ ...INITIAL_SETTINGS, ...global.value });
+        if (global?.value && typeof global.value === 'object') {
+          setSettings({ 
+            ...INITIAL_SETTINGS, 
+            ...global.value,
+            requireConfirmForCreates: true,
+            requireConfirmForEdits: true,
+            requireConfirmForArchives: true,
+            requireConfirmForDeletes: true
+          });
+        }
       });
       apply<any>('tableSchemas', rows => {
         tableSchemaService.hydrate(Object.fromEntries(rows.filter(s => Array.isArray(s.columns)).map(s => [s.id, s.columns])));
@@ -1760,9 +1958,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Derive allowed sites based on role and settings
   const canAccessAllSites = useCallback(() => {
-    if (!settings.strictSiteIsolation) return true;
     return ['Regional Manager', 'Super Admin', 'Admin'].includes(currentUserRole);
-  }, [currentUserRole, settings.strictSiteIsolation]);
+  }, [currentUserRole]);
 
   const allowedSites = useMemo(() => {
     if (canAccessAllSites()) {
@@ -1771,15 +1968,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .filter((name): name is string => Boolean(name && typeof name === 'string' && name.trim() !== ''));
       return Array.from(new Set(names));
     }
-    return [assignedSite || 'Brit Hotel'];
-  }, [canAccessAllSites, sites, assignedSite]);
 
-  // When role changes, if restricted, force selectedSite to assignedSite
+    const siteSet = new Set<string>();
+    if (Array.isArray(authProfile?.assignedSites)) {
+      authProfile.assignedSites.forEach(s => {
+        if (s && typeof s === 'string' && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'all' && s.trim() !== '') {
+          siteSet.add(s.trim());
+        }
+      });
+    }
+    if (assignedSite && typeof assignedSite === 'string' && assignedSite !== 'Pending Assignment' && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+      assignedSite.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
+        if (s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'all') {
+          siteSet.add(s);
+        }
+      });
+    }
+
+    const list = Array.from(siteSet);
+    if (list.length > 0) return list;
+    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'Pending Assignment') return [assignedSite];
+    return [];
+  }, [canAccessAllSites, sites, authProfile?.assignedSites, assignedSite]);
+
+  // When role changes or allowed sites change, if restricted, force selectedSite to assigned property
   useEffect(() => {
     if (!canAccessAllSites()) {
-      setSelectedSite(assignedSite);
+      if (allowedSites.length > 0 && (!selectedSite || selectedSite === 'all' || !allowedSites.includes(selectedSite))) {
+        setSelectedSite(allowedSites[0]);
+      } else if (allowedSites.length === 0 && assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'Pending Assignment') {
+        setSelectedSite(assignedSite);
+      }
     }
-  }, [canAccessAllSites, assignedSite]);
+  }, [canAccessAllSites, allowedSites, selectedSite, assignedSite]);
 
   // Dynamic RBAC Permission Checks — the matrix lives in role_permissions (one row per role)
   const rolePermissionsRef = useRef(rolePermissions);
@@ -1829,10 +2050,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUserRole === 'Super Admin' || currentUserRole === 'Regional Manager' || currentUserRole === 'Admin') {
       return true;
     }
-    if (currentUserRole === 'Site Manager' || currentUserRole === 'General Manager') {
+    if (currentUserRole === 'Area Manager' || currentUserRole === 'General Manager') {
       return !recordSite || recordSite === assignedSite;
     }
-    if (currentUserRole === 'Staff' || currentUserRole === 'Employee') {
+    if (currentUserRole === 'Staff') {
       return !recordSite || recordSite === assignedSite;
     }
     return false;
@@ -1868,8 +2089,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (
       currentUserRole === 'Super Admin' ||
       currentUserRole === 'Admin' ||
-      currentUserRole === 'Finance Admin' ||
-      currentUserRole === 'Finance Manager' ||
       (rolePermissions[currentUserRole]?.canManageFinance ?? false)
     );
   }, [currentUserRole, rolePermissions]);
@@ -1878,9 +2097,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (
       currentUserRole === 'Super Admin' ||
       currentUserRole === 'Admin' ||
-      currentUserRole === 'Finance Admin' ||
-      currentUserRole === 'Finance Manager' ||
-      currentUserRole === 'Finance Staff' ||
       (rolePermissions[currentUserRole]?.canManageFinance ?? false)
     );
   }, [currentUserRole, rolePermissions]);
@@ -1934,7 +2150,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
     const previous = settingsRef.current;
-    const updated = { ...previous, ...newSettings };
+    const updated = { 
+      ...previous, 
+      ...newSettings,
+      requireConfirmForCreates: true,
+      requireConfirmForEdits: true,
+      requireConfirmForArchives: true,
+      requireConfirmForDeletes: true
+    };
     setSettings(updated);
     apiService.saveEntityRecord('appSettings', { id: 'global', value: updated }, {
       action: 'SETTINGS_UPDATE', module: 'Settings', targetItem: 'Application Configuration', site: 'System',
@@ -3079,6 +3302,279 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
   }, [publicTransportRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- 1b. CRUD: Transport Feedback (transport_feedback) ---
+  const addTransportFeedbackRecord = useCallback((data: Omit<TransportFeedbackRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const site = data.siteName || assignedSite || 'Site';
+    const newRecord: TransportFeedbackRecord = {
+      ...data,
+      id: 'tf-' + Date.now(),
+      siteName: site,
+      reportingPerson: data.reportingPerson || authProfile?.name || 'Staff Member',
+      createdBy: authProfile?.id,
+      createdByName: authProfile?.name,
+      createdAt: now,
+      updatedAt: now
+    };
+    setTransportFeedbackRecords(prev => [newRecord, ...prev]);
+    persistCreate('transportFeedback', 'Transport Feedback', setTransportFeedbackRecords, newRecord, {
+      action: 'CREATE', module: 'Settings', targetItem: `Feedback: ${newRecord.issueCategory} (${newRecord.siteName})`, site,
+      details: `Reported ${newRecord.impactLevel} impact transport issue: ${newRecord.issueDescription.slice(0, 100)}`
+    }).then(saved => {
+      if (!saved) return;
+      if (newRecord.impactLevel === 'Critical' || newRecord.impactLevel === 'High') {
+        triggerEmailNotification('transport.high_impact_issue', newRecord, {
+          site,
+          severity: newRecord.impactLevel === 'Critical' ? 'Critical' : 'High',
+          entityId: newRecord.id
+        });
+      }
+    });
+  }, [assignedSite, authProfile, persistCreate, triggerEmailNotification]);
+
+  const updateTransportFeedbackRecord = useCallback((id: string, updates: Partial<TransportFeedbackRecord>) => {
+    const current = transportFeedbackRecords.find(r => r.id === id);
+    if (!current) return;
+    const now = new Date().toISOString();
+    const changes: Partial<TransportFeedbackRecord> = {
+      ...updates,
+      updatedAt: now
+    };
+    if (updates.isResolved === 'Yes' || updates.isResolved === true) {
+      if (!current.resolvedAt) {
+        changes.resolvedAt = now;
+        changes.resolvedBy = authProfile?.name || 'Staff Member';
+      }
+    }
+    setTransportFeedbackRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('transportFeedback', 'Transport Feedback Changes', setTransportFeedbackRecords, current, changes, {
+      action: 'UPDATE', module: 'Settings', targetItem: `Feedback: ${current.issueCategory}`, site: current.siteName,
+      details: `Updated transport feedback record (${id}). Resolution: ${changes.isResolved ?? current.isResolved}`
+    });
+  }, [transportFeedbackRecords, authProfile, persistUpdate]);
+
+  const deleteTransportFeedbackRecord = useCallback((id: string) => {
+    const current = transportFeedbackRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Transport Feedback',
+      message: `Are you sure you want to remove feedback for "${current.issueCategory}" at ${current.siteName}?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: async () => {
+        setTransportFeedbackRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('transportFeedback', 'Transport Feedback Deletion', setTransportFeedbackRecords, current, {
+          action: 'DELETE', module: 'Settings', targetItem: `Feedback: ${current.issueCategory}`, site: current.siteName,
+          details: 'Deleted transport feedback record.'
+        });
+      }
+    });
+  }, [transportFeedbackRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- 1c. CRUD: Transport Challenges (transport_challenges) ---
+  const addTransportChallengeRecord = useCallback((data: Omit<TransportChallengeRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const site = data.siteName || assignedSite || 'Site';
+    const newRecord: TransportChallengeRecord = {
+      ...data,
+      id: 'tc-' + Date.now(),
+      siteName: site,
+      siteManager: data.siteManager || authProfile?.name || 'Site Manager',
+      createdBy: authProfile?.id,
+      createdByName: authProfile?.name,
+      createdAt: now,
+      updatedAt: now
+    };
+    setTransportChallengeRecords(prev => [newRecord, ...prev]);
+    persistCreate('transportChallenges', 'Transport Challenge Log', setTransportChallengeRecords, newRecord, {
+      action: 'CREATE', module: 'Settings', targetItem: `Challenge Log: ${newRecord.siteName} (${newRecord.reportingPeriod})`, site,
+      details: `Logged operational transport challenges for period ${newRecord.reportingPeriod}`
+    });
+  }, [assignedSite, authProfile, persistCreate]);
+
+  const updateTransportChallengeRecord = useCallback((id: string, updates: Partial<TransportChallengeRecord>) => {
+    const current = transportChallengeRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<TransportChallengeRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setTransportChallengeRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('transportChallenges', 'Transport Challenge Changes', setTransportChallengeRecords, current, changes, {
+      action: 'UPDATE', module: 'Settings', targetItem: `Challenge Log: ${current.siteName}`, site: current.siteName,
+      details: `Updated operational transport challenge summary for ${current.reportingPeriod}`
+    });
+  }, [transportChallengeRecords, persistUpdate]);
+
+  const deleteTransportChallengeRecord = useCallback((id: string) => {
+    const current = transportChallengeRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Transport Challenge Summary',
+      message: `Are you sure you want to remove challenge summary for ${current.siteName} (${current.reportingPeriod})?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: async () => {
+        setTransportChallengeRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('transportChallenges', 'Transport Challenge Deletion', setTransportChallengeRecords, current, {
+          action: 'DELETE', module: 'Settings', targetItem: `Challenge Log: ${current.siteName}`, site: current.siteName,
+          details: 'Deleted transport challenge report.'
+        });
+      }
+    });
+  }, [transportChallengeRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- 1d. CRUD: Transport Funding Requests (transport_funding_requests) ---
+  const addTransportFundingRequest = useCallback((data: Omit<TransportFundingRequestRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const site = data.siteName || assignedSite || 'Site';
+    const newRecord: TransportFundingRequestRecord = {
+      ...data,
+      id: 'tfr-' + Date.now(),
+      siteName: site,
+      status: data.status || 'Submitted',
+      createdBy: authProfile?.id,
+      createdByName: authProfile?.name,
+      createdAt: now,
+      updatedAt: now
+    };
+    setTransportFundingRequests(prev => [newRecord, ...prev]);
+    persistCreate('transportFundingRequests', 'Funding Request', setTransportFundingRequests, newRecord, {
+      action: 'CREATE', module: 'Settings', targetItem: `Funding Req: ${newRecord.mainAppRef} (${newRecord.mainAppInitials})`, site,
+      details: `Submitted transport funding request for ${newRecord.appointmentNature} (£${newRecord.totalCost})`
+    }).then(saved => {
+      if (!saved) return;
+      triggerEmailNotification('transport.funding_submitted', newRecord, {
+        site,
+        severity: 'Medium',
+        entityId: newRecord.mainAppRef
+      });
+    });
+  }, [assignedSite, authProfile, persistCreate, triggerEmailNotification]);
+
+  const updateTransportFundingRequest = useCallback((id: string, updates: Partial<TransportFundingRequestRecord>) => {
+    const current = transportFundingRequests.find(r => r.id === id);
+    if (!current) return;
+    const now = new Date().toISOString();
+    const changes: Partial<TransportFundingRequestRecord> = { ...updates, updatedAt: now };
+    
+    // Auto populate approver info if approved or rejected and not set
+    if (updates.status === 'Approved' && !updates.approvedBy) {
+      changes.approvedBy = authProfile?.name || 'Authorised Reviewer';
+      changes.approvalDate = now;
+      changes.decision = 'Approved';
+    } else if (updates.status === 'Rejected' && !updates.decision) {
+      changes.decision = 'Rejected';
+    }
+
+    setTransportFundingRequests(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('transportFundingRequests', 'Funding Request Changes', setTransportFundingRequests, current, changes, {
+      action: 'UPDATE', module: 'Settings', targetItem: `Funding Req: ${current.mainAppRef}`, site: current.siteName,
+      details: `Updated funding request status to ${changes.status ?? current.status}`
+    }).then(saved => {
+      if (!saved) return;
+      if (changes.status && changes.status !== current.status) {
+        if (changes.status === 'Approved') {
+          triggerEmailNotification('transport.funding_approved', { ...current, ...changes }, {
+            site: current.siteName, severity: 'Low', entityId: current.mainAppRef
+          });
+        } else if (changes.status === 'Clarification Required') {
+          triggerEmailNotification('transport.funding_clarification', { ...current, ...changes }, {
+            site: current.siteName, severity: 'Medium', entityId: current.mainAppRef
+          });
+        } else if (changes.status === 'Rejected') {
+          triggerEmailNotification('transport.funding_rejected', { ...current, ...changes }, {
+            site: current.siteName, severity: 'Medium', entityId: current.mainAppRef
+          });
+        }
+      }
+    });
+  }, [transportFundingRequests, authProfile, persistUpdate, triggerEmailNotification]);
+
+  const deleteTransportFundingRequest = useCallback((id: string) => {
+    const current = transportFundingRequests.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Transport Funding Request',
+      message: `Are you sure you want to remove funding request ${current.mainAppRef} for ${current.groupMember || current.mainAppInitials}?`,
+      confirmLabel: 'Delete Request',
+      isDanger: true,
+      onConfirm: async () => {
+        setTransportFundingRequests(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('transportFundingRequests', 'Funding Request Deletion', setTransportFundingRequests, current, {
+          action: 'DELETE', module: 'Settings', targetItem: `Funding Req: ${current.mainAppRef}`, site: current.siteName,
+          details: 'Deleted transport funding request.'
+        });
+      }
+    });
+  }, [transportFundingRequests, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- 1e. CRUD: Room Move Requests (transport_room_move_requests) ---
+  const addTransportRoomMoveRecord = useCallback((data: Omit<TransportRoomMoveRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const site = data.siteName || assignedSite || 'Site';
+    const autoRequestId = data.requestId || `RM-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newRecord: TransportRoomMoveRecord = {
+      ...data,
+      id: 'trm-' + Date.now(),
+      requestId: autoRequestId,
+      siteName: site,
+      requestingStaff: data.requestingStaff || authProfile?.name || 'Staff Member',
+      approvalStatus: data.approvalStatus || 'Submitted',
+      completionStatus: data.completionStatus || 'Pending',
+      createdBy: authProfile?.id,
+      createdByName: authProfile?.name,
+      createdAt: now,
+      updatedAt: now
+    };
+    setTransportRoomMoveRecords(prev => [newRecord, ...prev]);
+    persistCreate('transportRoomMoveRequests', 'Room Move Request', setTransportRoomMoveRecords, newRecord, {
+      action: 'CREATE', module: 'Settings', targetItem: `Room Move: ${newRecord.requestId} (${newRecord.occupantRef})`, site,
+      details: `Created internal room move transport request from ${newRecord.currentRoom} to ${newRecord.newRoom}`
+    }).then(saved => {
+      if (!saved) return;
+      triggerEmailNotification('transport.room_move_submitted', newRecord, {
+        site,
+        severity: 'Low',
+        entityId: newRecord.requestId
+      });
+    });
+  }, [assignedSite, authProfile, persistCreate, triggerEmailNotification]);
+
+  const updateTransportRoomMoveRecord = useCallback((id: string, updates: Partial<TransportRoomMoveRecord>) => {
+    const current = transportRoomMoveRecords.find(r => r.id === id);
+    if (!current) return;
+    const now = new Date().toISOString();
+    const changes: Partial<TransportRoomMoveRecord> = { ...updates, updatedAt: now };
+    if (updates.completionStatus === 'Completed' && !updates.completionDate) {
+      changes.completionDate = now;
+    }
+    setTransportRoomMoveRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('transportRoomMoveRequests', 'Room Move Changes', setTransportRoomMoveRecords, current, changes, {
+      action: 'UPDATE', module: 'Settings', targetItem: `Room Move: ${current.requestId}`, site: current.siteName,
+      details: `Updated room move status to ${changes.approvalStatus ?? current.approvalStatus}`
+    });
+  }, [transportRoomMoveRecords, persistUpdate]);
+
+  const deleteTransportRoomMoveRecord = useCallback((id: string) => {
+    const current = transportRoomMoveRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Room Move Transport Request',
+      message: `Are you sure you want to remove room move request ${current.requestId} (${current.occupantRef})?`,
+      confirmLabel: 'Delete Request',
+      isDanger: true,
+      onConfirm: async () => {
+        setTransportRoomMoveRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('transportRoomMoveRequests', 'Room Move Deletion', setTransportRoomMoveRecords, current, {
+          action: 'DELETE', module: 'Settings', targetItem: `Room Move: ${current.requestId}`, site: current.siteName,
+          details: 'Deleted room move request.'
+        });
+      }
+    });
+  }, [transportRoomMoveRecords, persistDelete, requestConfirmation, closeConfirmation]);
 
   // --- 2. CRUD: SD-Compliance Tracker (compliance_records) ---
   const addComplianceRecord = useCallback((data: Omit<SDComplianceRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -4766,6 +5262,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addPublicTransportRecord,
       updatePublicTransportRecord,
       deletePublicTransportRecord,
+      transportFeedbackRecords,
+      addTransportFeedbackRecord,
+      updateTransportFeedbackRecord,
+      deleteTransportFeedbackRecord,
+      transportChallengeRecords,
+      addTransportChallengeRecord,
+      updateTransportChallengeRecord,
+      deleteTransportChallengeRecord,
+      transportFundingRequests,
+      addTransportFundingRequest,
+      updateTransportFundingRequest,
+      deleteTransportFundingRequest,
+      transportRoomMoveRecords,
+      addTransportRoomMoveRecord,
+      updateTransportRoomMoveRecord,
+      deleteTransportRoomMoveRecord,
       complianceRecords,
       addComplianceRecord,
       updateComplianceRecord,
@@ -4949,7 +5461,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toggleNotificationRule,
       resetNotificationRules,
       triggerEmailNotification,
-      refreshNotificationData
+      refreshNotificationData,
+      addAuditEntry
     }}>
       {children}
     </AppContext.Provider>

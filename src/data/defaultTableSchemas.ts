@@ -36,9 +36,12 @@ export const resolveSiteOptions = (ctx: any) => {
     return ctx.allowedSites.filter((s: string) => s && s !== 'All Sites' && s !== 'all');
   }
   if (ctx?.sites && Array.isArray(ctx.sites) && ctx.sites.length > 0) {
-    return ctx.sites.map((s: any) => typeof s === 'string' ? s : s?.name).filter(Boolean);
+    return ctx.sites
+      .filter((s: any) => s && s.status !== 'Decommissioned' && s.status !== 'Archived' && s.status !== 'Deleted')
+      .map((s: any) => typeof s === 'string' ? s : s?.name)
+      .filter(Boolean);
   }
-  return ['Brit Hotel', 'Holiday Inn Lambeth', 'Victoria House', 'Stansted Hotel (Ibis Budget Bisop Stortford)'];
+  return [];
 };
 
 export const resolveSiteDefault = (ctx: any) => {
@@ -180,6 +183,10 @@ export const RFA_WELFARE_TABLE_COLUMNS: TableColumnConfig<RFAWelfareCheckRecord>
 ];
 
 export const PUBLIC_TRANSPORT_TABLE_COLUMNS: TableColumnConfig<PublicTransportRecord>[] = [
+  { key: 'siteName', label: 'Hotel / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Facility & Staff Context' },
+  { key: 'siteManager', label: 'Site Manager', type: 'text', section: 'Facility & Staff Context' },
+  { key: 'staffPlace', label: 'Staff Place', type: 'text', section: 'Facility & Staff Context' },
+  { key: 'reportingPerson', label: 'Reporting Staff Member', type: 'text', required: true, section: 'Facility & Staff Context' },
   { key: 'approvalUrn', label: 'Approval URN', type: 'text', required: true, section: 'Approval' },
   { key: 'suNames', label: 'Service User Name(s)', type: 'text', required: true, section: 'Traveler Details' },
   { key: 'portRefs', label: 'Port Ref(s)', type: 'text', section: 'Traveler Details' },

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   ClipboardList, 
   Plus, 
@@ -41,7 +42,7 @@ export const IRTrackerView: React.FC = () => {
     assignedSite,
     canAccessAllSites,
     sites
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   const {
     columns,
@@ -51,6 +52,21 @@ export const IRTrackerView: React.FC = () => {
   } = useTableSchema<IRRecord>('irRecords', IR_TRACKER_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [siteFilter, setSiteFilter] = useState('all');
   const [crhFilter, setCrhFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);

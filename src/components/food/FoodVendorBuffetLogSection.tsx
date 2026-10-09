@@ -556,7 +556,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
 
     const isSuperAdmin = currentUserRole === 'Super Admin';
     const isAdmin = currentUserRole === 'Admin';
-    const isSiteManager = currentUserRole === 'Site Manager';
+    const isSiteManager = currentUserRole === 'Area Manager';
     const isAuthorizedRole = isSuperAdmin || isAdmin || isSiteManager;
 
     // Operational cycle allows logging for the current week bounds (todayBounds.start) or later
@@ -1020,9 +1020,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                         {canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (confirm(`Delete buffet log for ${log.vendor} at ${log.site}?`)) {
-                                deleteFoodVendorBuffetLog(log.id);
-                              }
+                              deleteFoodVendorBuffetLog(log.id);
                             }}
                             className="p-1 hover:bg-red-50 text-[#a4262c] rounded"
                             title="Delete Matrix"
@@ -1194,9 +1192,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                           {canDeleteRecord() && (
                             <button
                               onClick={() => {
-                                if (confirm(`Delete buffet log for ${log.vendor} at ${log.site}?`)) {
-                                  deleteFoodVendorBuffetLog(log.id);
-                                }
+                                deleteFoodVendorBuffetLog(log.id);
                               }}
                               className="p-1 hover:bg-red-50 text-[#a4262c] rounded"
                               title="Delete Record"

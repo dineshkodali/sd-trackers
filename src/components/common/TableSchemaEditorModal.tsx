@@ -124,7 +124,7 @@ export function TableSchemaEditorModal<T = any>({
   };
 
   const handleDeleteColumn = (key: string) => {
-    if (!confirm(`Are you sure you want to remove the field "${key}" from the table and forms?`)) return;
+    
     setWorkingCols(prev => prev.filter(c => String(c.key) !== key));
   };
 
@@ -272,10 +272,8 @@ export function TableSchemaEditorModal<T = any>({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm('Reset table columns and forms to original system defaults?')) {
-                    onResetToDefault();
+                  onResetToDefault();
                     onClose();
-                  }
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 rounded border border-neutral-300 transition-colors cursor-pointer"
               >

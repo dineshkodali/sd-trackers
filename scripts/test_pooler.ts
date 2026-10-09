@@ -5,7 +5,9 @@ const regions = ['eu-west-2', 'eu-west-1', 'eu-central-1', 'us-east-1', 'us-west
 
 async function testRegion(region: string) {
   const host = `aws-0-${region}.pooler.supabase.com`;
-  const connectionString = `postgresql://postgres.kxikojvpcyprfbyxsdaa:Focusmode123!@${host}:5432/postgres`;
+  const password = process.env.SUPABASE_DB_PASSWORD;
+  if (!password) throw new Error("Set SUPABASE_DB_PASSWORD in the environment");
+  const connectionString = `postgresql://postgres.kxikojvpcyprfbyxsdaa:${encodeURIComponent(password)}@${host}:5432/postgres`;
   console.log(`Trying ${region}...`);
   const client = new Client({
     connectionString,

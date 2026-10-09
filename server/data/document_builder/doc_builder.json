@@ -10,17 +10,97 @@
     "data": {
       "id": "tmpl-incident-report",
       "name": "Incident Report",
-      "description": "Official UKVI & Clearsprings compliant incident report form with full factual disclosure, authority notifications, and evidence tracking (Super Admin Verified).",
       "category": "Operations",
       "isActive": true,
-      "createdBy": "system",
       "createdAt": "2026-01-01T00:00:00Z",
+      "createdBy": "system",
       "updatedAt": "2026-09-30T00:48:41.346Z",
+      "description": "Official UKVI & Clearsprings compliant incident report form with full factual disclosure, authority notifications, and evidence tracking (Super Admin Verified).",
       "currentVersion": {
         "id": "tver-447fb79b",
-        "templateId": "tmpl-incident-report",
         "version": 31,
+        "createdAt": "2026-09-30T00:48:41.346Z",
+        "createdBy": "usr-staff",
         "isCurrent": true,
+        "templateId": "tmpl-incident-report",
+        "footerConfig": {
+          "customText": "Please attach photos of any evidence where possible when submitting to CST.",
+          "showPageNumbers": true,
+          "showGeneratedTimestamp": true
+        },
+        "headerConfig": {
+          "showDate": true,
+          "showLogo": true,
+          "subtitle": "Please complete with as much detail as possible, stating only facts. Please email CST@Clearsprings.co.uk who will review and send it to UKVI where appropriate.",
+          "showCompanyName": true,
+          "showDocumentNumber": true,
+          "confidentialityLevel": "Confidential"
+        },
+        "layoutConfig": {
+          "margins": {
+            "top": 25,
+            "left": 20,
+            "right": 20,
+            "bottom": 25
+          },
+          "pageSize": "A4",
+          "sections": [
+            {
+              "id": "incident",
+              "order": 1,
+              "title": "Property & Reporting Details",
+              "columns": 2
+            },
+            {
+              "id": "persons",
+              "order": 2,
+              "title": "Persons Involved (Offenders / Victims / Witnesses)",
+              "columns": 1
+            },
+            {
+              "id": "description",
+              "order": 3,
+              "title": "Incident Description",
+              "columns": 1
+            },
+            {
+              "id": "actions",
+              "order": 4,
+              "title": "Action Taken",
+              "columns": 1
+            },
+            {
+              "id": "warnings",
+              "order": 5,
+              "title": "Warning Letter",
+              "columns": 2
+            },
+            {
+              "id": "authorities",
+              "order": 6,
+              "title": "Reported Authorities",
+              "columns": 2
+            },
+            {
+              "id": "evidence",
+              "order": 7,
+              "title": "Evidence & Photos",
+              "columns": 1
+            },
+            {
+              "id": "sec-1790300503117",
+              "order": 8,
+              "title": " ",
+              "columns": 2
+            },
+            {
+              "id": "sec-1790303164473",
+              "order": 9,
+              "title": "Tester",
+              "columns": 2
+            }
+          ]
+        },
         "fieldDefinitions": [
           {
             "id": "f-ir-1",
@@ -280,87 +360,7 @@
             "required": false,
             "placeholder": "Enter details..."
           }
-        ],
-        "layoutConfig": {
-          "margins": {
-            "top": 25,
-            "left": 20,
-            "right": 20,
-            "bottom": 25
-          },
-          "pageSize": "A4",
-          "sections": [
-            {
-              "id": "incident",
-              "order": 1,
-              "title": "Property & Reporting Details",
-              "columns": 2
-            },
-            {
-              "id": "persons",
-              "order": 2,
-              "title": "Persons Involved (Offenders / Victims / Witnesses)",
-              "columns": 1
-            },
-            {
-              "id": "description",
-              "order": 3,
-              "title": "Incident Description",
-              "columns": 1
-            },
-            {
-              "id": "actions",
-              "order": 4,
-              "title": "Action Taken",
-              "columns": 1
-            },
-            {
-              "id": "warnings",
-              "order": 5,
-              "title": "Warning Letter",
-              "columns": 2
-            },
-            {
-              "id": "authorities",
-              "order": 6,
-              "title": "Reported Authorities",
-              "columns": 2
-            },
-            {
-              "id": "evidence",
-              "order": 7,
-              "title": "Evidence & Photos",
-              "columns": 1
-            },
-            {
-              "id": "sec-1790300503117",
-              "order": 8,
-              "title": " ",
-              "columns": 2
-            },
-            {
-              "id": "sec-1790303164473",
-              "order": 9,
-              "title": "Tester",
-              "columns": 2
-            }
-          ]
-        },
-        "headerConfig": {
-          "showDate": true,
-          "showLogo": true,
-          "subtitle": "Please complete with as much detail as possible, stating only facts. Please email CST@Clearsprings.co.uk who will review and send it to UKVI where appropriate.",
-          "showCompanyName": true,
-          "showDocumentNumber": true,
-          "confidentialityLevel": "Confidential"
-        },
-        "footerConfig": {
-          "customText": "Please attach photos of any evidence where possible when submitting to CST.",
-          "showPageNumbers": true,
-          "showGeneratedTimestamp": true
-        },
-        "createdBy": "usr-staff",
-        "createdAt": "2026-09-30T00:48:41.346Z"
+        ]
       }
     },
     "created_by": "system",

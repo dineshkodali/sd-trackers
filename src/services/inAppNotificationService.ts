@@ -418,14 +418,14 @@ export function filterNotificationsForRole(
       return false;
     }
 
-    // 4. Site Manager / General Manager: Permitted across their managed site operations
-    if (userRole === 'Site Manager' || userRole === 'General Manager') {
+    // 4. Area Manager / General Manager: Permitted across their managed site operations
+    if (userRole === 'Area Manager' || userRole === 'General Manager') {
       if (isSelfAction || isSelfTarget || isSelfProfile || isSelfRequest) return true;
       if (effectiveAssignedSite && isSiteMatch(effectiveAssignedSite, n.site)) return true;
       return false;
     }
 
-    // 5. Frontline Staff / Employee / All other non-admin users:
+    // 5. Frontline Staff / All other non-admin users:
     // Strictly user-level isolated: only own actions, own profile, own requests, and critical safety alerts.
     // Zero cross-user audit logs!
     if (isSelfAction || isSelfProfile || isSelfRequest) {

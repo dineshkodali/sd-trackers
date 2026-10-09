@@ -36,7 +36,9 @@ function getUserIdentity(req: Request) {
     name: u?.name || 'Staff Member',
     role: u?.role || 'Staff',
     email: u?.email || 'staff@sdcdms.co.uk',
-    site: (req.headers['x-user-site'] as string) || u?.assignedSite || 'All Sites',
+    // Site scope comes only from the verified session, never from request headers.
+    site: u?.assignedSite || 'Pending Assignment',
+    sites: (u?.assignedSites && u.assignedSites.length > 0) ? u.assignedSites : [u?.assignedSite || 'Pending Assignment'],
   };
 }
 
@@ -44,6 +46,14 @@ const ADMIN_ROLES = new Set(['Super Admin', 'Admin', 'Regional Manager', 'Operat
 
 function isManagerOrAdmin(role: string): boolean {
   return ADMIN_ROLES.has(role);
+}
+
+/** True when the caller may see a record belonging to `site`. */
+function canAccessSite(author: ReturnType<typeof getUserIdentity>, site?: string): boolean {
+  if (isManagerOrAdmin(author.role)) return true;
+  if (author.sites.includes('All Sites') || author.sites.includes('All')) return true;
+  const target = String(site || '').trim().toLowerCase();
+  return author.sites.some(s => String(s).trim().toLowerCase() === target);
 }
 
 // ---------------------------------------------------------------------------
@@ -231,14 +241,7 @@ router.get('/records', async (req: Request, res: Response) => {
   const user = getUserIdentity(req);
 
   try {
-    let siteFilter: string | undefined = undefined;
-    if (!isManagerOrAdmin(user.role)) {
-      if (user.site && user.site !== 'All Sites') {
-        siteFilter = user.site;
-      }
-    }
-
-    const records = await getRecords(siteFilter);
+    const records = (await getRecords(undefined)).filter((r: any) => canAccessSite(user, r.site));
     res.json({ success: true, data: records });
   } catch (err: any) {
     console.error('[DocumentBuilder] GET /records error:', err.message);
@@ -253,7 +256,7 @@ router.get('/records', async (req: Request, res: Response) => {
 router.get('/records/:id', async (req: Request, res: Response) => {
   try {
     const record = await getRecordById(req.params.id);
-    if (!record) {
+    if (!record || !canAccessSite(getUserIdentity(req), record.site)) {
       return res.status(404).json({ success: false, error: 'Document record not found' });
     }
     res.json({ success: true, data: record });
@@ -284,6 +287,9 @@ router.post('/records', async (req: Request, res: Response) => {
 
   if (!templateId || !site || !title) {
     return res.status(400).json({ success: false, error: 'templateId, site, and title are required' });
+  }
+  if (!canAccessSite(author, site)) {
+    return res.status(403).json({ success: false, error: 'You cannot create a document for a site outside your assignment' });
   }
 
   try {
@@ -320,12 +326,15 @@ router.put('/records/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Document not found' });
     }
 
-    // RBAC: Non-admin can only edit their own draft, or records for their assigned site
+    // RBAC: Non-admin can only edit their own draft, or records for their assigned
+    // sites, and cannot move a record to a site outside their assignment.
     if (!isManagerOrAdmin(author.role)) {
-      if (existing.createdBy && existing.createdBy !== author.id && existing.createdBy !== author.email) {
-        if (author.site && author.site !== 'All Sites' && existing.site !== author.site) {
-          return res.status(403).json({ success: false, error: 'You do not have permission to edit this document' });
-        }
+      const isOwner = !existing.createdBy || existing.createdBy === author.id || existing.createdBy === author.email;
+      if (!isOwner && !canAccessSite(author, existing.site)) {
+        return res.status(403).json({ success: false, error: 'You do not have permission to edit this document' });
+      }
+      if (req.body?.site !== undefined && !canAccessSite(author, req.body.site)) {
+        return res.status(403).json({ success: false, error: 'You cannot assign a document to a site outside your assignment' });
       }
     }
 
@@ -381,6 +390,10 @@ router.delete('/records/:id', async (req: Request, res: Response) => {
 
 router.get('/records/:id/audit', async (req: Request, res: Response) => {
   try {
+    const record = await getRecordById(req.params.id);
+    if (record && !canAccessSite(getUserIdentity(req), record.site)) {
+      return res.status(404).json({ success: false, error: 'Document record not found' });
+    }
     const logs = await getAuditLogs(req.params.id);
     res.json({ success: true, data: logs });
   } catch (err: any) {
@@ -422,6 +435,9 @@ async function handleGenerateRequest(req: Request, res: Response) {
 
   const body = req.body || {};
   const record = (id && id !== 'direct') ? await getRecordById(id) : null;
+  if (record && !canAccessSite(author, record.site)) {
+    return res.status(404).json({ success: false, error: 'Document data or record not found' });
+  }
 
   // Load template version
   let template = record ? await getTemplateById(record.templateId) : null;

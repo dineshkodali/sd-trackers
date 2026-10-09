@@ -26,6 +26,7 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { referralsTableConfig } from '../../config/trackerTableConfigs';
 import { useTableSchema } from '../../hooks/useTableSchema';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { TableColumnConfig } from '../../types/tableSchema';
 
 const referralExportColumns: ExportColumnOption[] = [
@@ -108,6 +109,9 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
   const [sortField, setSortField] = useState<string>('dateReferred');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(settings.pageSize || 10);
@@ -188,6 +192,35 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     setStatusFilter('all');
     setSearchQuery('');
     setCurrentPage(1);
+    setSelectedIds([]);
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === paginatedData.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(paginatedData.map(r => r.id));
+    }
+  };
+
+  const handleToggleSelect = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    requestConfirmation({
+      title: 'Delete Selected Referrals',
+      message: `Are you sure you want to delete ${selectedIds.length} referrals? This action is permanent.`,
+      isDanger: true,
+      onConfirm: async () => {
+        for (const id of selectedIds) {
+          await deleteReferral(id);
+        }
+        setSelectedIds([]);
+      }
+    });
   };
 
   const handleOpenExportModal = (format: ExportFormat = 'pdf') => {

@@ -26,8 +26,9 @@ import { runDatabaseMigrations } from './migrate.js';
 import { seedReferenceData } from './seed.js';
 import { invalidateLiveSchema } from './liveSchema.js';
 import { isSupabaseConfigured } from './supabase.js';
-import { getNetworkIps, getClientOrigin } from './urlHelper.js';
-import { requireAuth, resolveUser } from './middleware/requireAuth.js';
+import { getNetworkIps } from './urlHelper.js';
+import { securityHeaders, sanitizeServerErrors } from './middleware/securityHeaders.js';
+import { requireAuth } from './middleware/requireAuth.js';
 
 const HOST = process.env.HOST || '0.0.0.0';
 const DEFAULT_PORT = Number(process.env.PORT || 3020);
@@ -98,6 +99,9 @@ async function startServer() {
     if (!isSupabaseConfigured()) {
       console.error('[Startup] Live database is NOT configured (SUPABASE_URL / SUPABASE_SECRET_KEY). Every save will be refused.');
     }
+    if (!process.env.APP_URL && !process.env.PUBLIC_URL) {
+      console.warn('[Startup] APP_URL is not set: password-reset links fall back to request headers. Set APP_URL to the canonical https URL.');
+    }
   }
 
   // Apply the (non-destructive, idempotent) schema, then seed reference data
@@ -122,9 +126,16 @@ async function startServer() {
       statusMonitor.setStartupResult({ migrationApplied: false, seedErrors: 1 });
     });
 
-  // Trust reverse proxies (Nginx, Apache, Caddy, Cloudflare, Docker, AWS ALB)
-  // Ensures req.protocol and req.get('host') adapt automatically to incoming domain/IP
-  app.set('trust proxy', true);
+  // Trust only real reverse proxies. `true` made req.ip the left-most
+  // X-Forwarded-For value, which any client can forge to dodge per-IP login
+  // throttling. Default: proxies on loopback/private networks (nginx, Docker).
+  // Set TRUST_PROXY to the number of proxy hops in front of the app (e.g. "2"
+  // for Cloudflare -> nginx -> app) or to a comma-separated list of proxy CIDRs.
+  const trustProxy = (process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal').trim();
+  app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+  app.disable('x-powered-by');
+  app.use(securityHeaders());
+  app.use(sanitizeServerErrors());
 
   /**
    * CORS allow-list.
@@ -203,16 +214,10 @@ async function startServer() {
   });
 
   // API routes FIRST
-  app.get('/api/health', (req, res) => {
-    const detectedOrigin = getClientOrigin(req);
-    const host = (req.headers['x-forwarded-host'] as string) || req.get('host');
+  app.get('/api/health', (_req, res) => {
     res.json({
       status: 'ok',
       service: 'SD Operations API',
-      detectedOrigin,
-      host,
-      protocol: req.protocol,
-      ip: req.ip,
       timestamp: new Date().toISOString()
     });
   });
@@ -238,43 +243,10 @@ async function startServer() {
   // Mount Finance module router
   app.use('/api/finance', requireAuth, financeRouter);
   // Mount HO Report Generator module router (concurrently supporting /api/document-builder and /api/ho-reports)
-  app.use(['/api/document-builder', '/api/ho-reports'], async (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7).trim();
-      if (token) {
-        try {
-          const user = await resolveUser(token);
-          if (user) {
-            req.user = user;
-            return documentBuilderRouter(req, res, next);
-          }
-        } catch (_) {}
-        return res.status(401).json({ success: false, error: 'Invalid or expired authorization token' });
-      }
-    }
-
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(401).json({ success: false, error: 'Authentication required' });
-    }
-
-    const clientRole = (req.headers['x-user-role'] as string) || 'Staff';
-    const clientName = (req.headers['x-user-name'] as string) || 'Staff Member';
-    const clientEmail = (req.headers['x-user-email'] as string) || 'staff@sdcdms.co.uk';
-    const clientSite = (req.headers['x-user-site'] as string) || 'All Sites';
-    const clientId = (req.headers['x-user-id'] as string) || 'usr-staff';
-
-    req.user = {
-      id: clientId,
-      email: clientEmail,
-      name: clientName,
-      role: clientRole,
-      assignedSite: clientSite,
-      provider: 'built-in',
-    };
-
-    return documentBuilderRouter(req, res, next);
-  });
+  // Identity always comes from a verified bearer token. The former non-production
+  // fallback trusted x-user-* headers, which made every role spoofable whenever
+  // NODE_ENV was not exactly "production" (the Docker image never set it).
+  app.use(['/api/document-builder', '/api/ho-reports'], requireAuth, documentBuilderRouter);
   // Public status monitoring endpoint (real-time health probes & incidents)
   app.use('/api/status', statusRouter);
 
@@ -330,10 +302,70 @@ async function startServer() {
     // Start background status probe monitoring immediately
     statusMonitor.start(local);
 
+    // If Supabase Auth redirects to default Site URL (http://localhost:3000),
+    // this lightweight bounce forwarder catches the browser and forwards it to the configured domain
+    const forwardTarget = PUBLIC_URL || `http://localhost:${PORT}`;
+    startPort3000Forwarder(forwardTarget);
+
     if (process.env.OPEN_BROWSER !== 'false') {
       openBrowser(local);
     }
   });
+}
+
+/**
+ * Starts a lightweight bounce server on port 3000.
+ * Intercepts any requests sent to http://localhost:3000 (such as Supabase's default Auth redirects)
+ * and immediately forwards the browser to the configured production domain preserving all query
+ * parameters and URL hash fragments (#access_token=... / #error=...).
+ */
+function startPort3000Forwarder(targetUrl: string) {
+  if (DEFAULT_PORT === 3000) return;
+
+  try {
+    const forwarder = express();
+    const cleanTarget = targetUrl.replace(/\/+$/, '');
+
+    forwarder.use((_req, res) => {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.status(200).send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting to SD Operations Platform...</title>
+  <script>
+    (function() {
+      var target = ${JSON.stringify(cleanTarget)};
+      var destination = target + window.location.pathname + window.location.search + window.location.hash;
+      window.location.replace(destination);
+    })();
+  </script>
+</head>
+<body style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #f8fafc;">
+  <div style="text-align: center; max-width: 480px; padding: 24px; background: #1e293b; border-radius: 12px; border: 1px solid #334155;">
+    <h3 style="margin-top: 0; color: #14b8a6;">Redirecting to SD Operations Platform...</h3>
+    <p style="font-size: 14px; color: #94a3b8; line-height: 1.5;">Forwarding your authentication session to ${cleanTarget}...</p>
+    <p style="font-size: 13px; margin-top: 16px;"><a id="dest" style="color: #38bdf8; text-decoration: underline;" href="${cleanTarget}">Click here if not redirected automatically</a></p>
+  </div>
+  <script>
+    document.getElementById("dest").href = ${JSON.stringify(cleanTarget)} + window.location.pathname + window.location.search + window.location.hash;
+  </script>
+</body>
+</html>`);
+    });
+
+    const server3000 = forwarder.listen(3000, HOST, () => {
+      console.log(`  ➜  Bounce 3000: http://localhost:3000 -> ${cleanTarget}\n`);
+    });
+
+    server3000.on('error', (err: any) => {
+      if (err.code !== 'EADDRINUSE') {
+        console.warn('[Forwarder] Port 3000 forwarder error:', err.message);
+      }
+    });
+  } catch (err: any) {
+    console.warn('[Forwarder] Could not initialize port 3000 forwarder:', err.message);
+  }
 }
 
 startServer();

@@ -66,6 +66,7 @@ Node.js 20+, and a Supabase project.
 ```bash
 npm run dev      # dev server + API on http://localhost:3020
 npm run build    # frontend to dist/, API bundled to dist/server.cjs
+npm run preview  # preview production build locally
 npm start        # run the production build
 npm run lint     # type-check
 npm run clean    # remove dist/
@@ -82,7 +83,7 @@ Useful environment flags:
 | `OPEN_BROWSER=false` | Do not open a browser on start |
 | `DISABLE_HMR=true` | Disable Vite file watching |
 
-## Testing
+## Testing & Maintenance
 
 Unit and integration test suites live in **[`tests/`](file:///d:/SD%20Commercial/APPS/sdtracker/tests)**, and end-to-end procedural test runners live in **[`.testing/`](file:///d:/SD%20Commercial/APPS/sdtracker/.testing)**.
 
@@ -91,7 +92,7 @@ Run all tests in one command:
 npm run test:all
 ```
 
-Or run individual suites:
+Or run individual suites & utility scripts:
 ```bash
 npm run test:unit         # Schema adapters, report generator & persistence tests
 npm run test:uat          # End-to-end User Acceptance Testing
@@ -100,5 +101,6 @@ npm run test:api          # Core Express API endpoints
 npm run test:db           # Supabase live database operations
 npm run test:security     # Security checks & vulnerability scans
 npm run db:coverage       # PostgreSQL 29-table & 31-page coverage
+npm run db:migrate        # Apply outstanding database migrations
 npm run test:qa:report    # Compile dated QA system diagnostics
 ```

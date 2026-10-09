@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { X, AlertCircle, Loader2, Lock, Building2, UserCheck, Calendar, Plus, Settings2 } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
 import { FieldOptionCategory } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { AttachmentsSection } from './AttachmentsSection';
 import { QuickOptionModal } from './QuickOptionModal';
+import { PropertyRelativeSUSelector } from './PropertyRelativeSUSelector';
 
 interface DynamicRecordFormModalProps<T = any> {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export function DynamicRecordFormModal<T = any>({
     canAccessAllSites,
     selectedSite,
     sites,
+    properties,
     authProfile,
     currentUserName,
     currentUserRole,
@@ -82,6 +84,30 @@ export function DynamicRecordFormModal<T = any>({
     return authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (Staff)` : 'Duty Officer');
   }, [authProfile, currentUserName, currentUserRole]);
 
+  const userStaffPlace = useMemo(() => {
+    return authProfile?.assignedSite || assignedSite || 'All Sites';
+  }, [authProfile, assignedSite]);
+
+  const resolveSiteManager = useCallback((siteIdentifier?: string): string => {
+    if (!siteIdentifier) return 'Unassigned';
+    const clean = String(siteIdentifier).trim().toLowerCase();
+    const foundSite = (sites || []).find(s => {
+      const name = typeof s === 'string' ? s : s?.name;
+      const id = typeof s === 'object' ? s?.id : '';
+      return (name && String(name).toLowerCase() === clean) || (id && String(id).toLowerCase() === clean);
+    });
+    if (foundSite && typeof foundSite === 'object' && foundSite.leadOfficer) {
+      return foundSite.leadOfficer;
+    }
+    const foundProp = (properties || []).find(p => {
+      const name = p?.name;
+      const id = p?.id;
+      return (name && String(name).toLowerCase() === clean) || (id && String(id).toLowerCase() === clean);
+    });
+    if (foundProp?.leadOfficer) return foundProp.leadOfficer;
+    return 'Site Manager';
+  }, [sites, properties]);
+
   const isSuperAdmin = currentUserRole === 'Super Admin';
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const isEditing = Boolean(isEdit || (initialValues as any)?.id);
@@ -92,7 +118,7 @@ export function DynamicRecordFormModal<T = any>({
       .map(s => (typeof s === 'string' ? s : s?.name))
       .filter((n): n is string => Boolean(n && typeof n === 'string' && n.trim() !== '' && n !== 'All Sites' && n !== 'all'));
     const combined = Array.from(new Set([...fromAllowed, ...fromSites, ...(userAssignedHotel ? [userAssignedHotel] : [])]));
-    return combined.length > 0 ? combined : (userAssignedHotel ? [userAssignedHotel] : ['Brit Hotel']);
+    return combined.length > 0 ? combined : (userAssignedHotel ? [userAssignedHotel] : []);
   }, [allowedSites, sites, userAssignedHotel]);
 
   const effectiveContext = useMemo(() => ({
@@ -138,6 +164,9 @@ export function DynamicRecordFormModal<T = any>({
       key === 'submittedby' ||
       key === 'personreporting' ||
       key === 'staffreporting' ||
+      key === 'reportingstaff' ||
+      key === 'reportingstaffmember' ||
+      key === 'reportingperson' ||
       key === 'auditedby' ||
       key === 'uploadedby' ||
       label === 'loggedby' ||
@@ -146,14 +175,42 @@ export function DynamicRecordFormModal<T = any>({
       label === 'submittedby' ||
       label === 'personreporting' ||
       label === 'staffreporting' ||
+      label === 'reportingstaff' ||
+      label === 'reportingstaffmember' ||
+      label === 'reportingperson' ||
       label === 'auditedby' ||
       label === 'uploadedby'
     );
   };
 
+  const isSiteManagerColumn = (col: TableColumnConfig<T>): boolean => {
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (
+      key === 'sitemanager' ||
+      key === 'propertymanager' ||
+      key === 'relatedmanagers' ||
+      label === 'sitemanager' ||
+      label === 'propertymanager' ||
+      label === 'relatedmanagers'
+    );
+  };
+
+  const isStaffPlaceColumn = (col: TableColumnConfig<T>): boolean => {
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (
+      key === 'staffplace' ||
+      key === 'stafflocation' ||
+      key === 'userassignedsite' ||
+      label === 'staffplace' ||
+      label === 'stafflocation'
+    );
+  };
+
   const isSiteColumn = (col: TableColumnConfig<T>): boolean => {
-    // If it's a logged-by field, it can NEVER be a site column
-    if (isLoggedByColumn(col)) {
+    // If it's a logged-by or manager field, it can NEVER be a site column
+    if (isLoggedByColumn(col) || isSiteManagerColumn(col) || isStaffPlaceColumn(col)) {
       return false;
     }
     // Textareas, dates, numbers, currency, checkboxes can NEVER be a site column
@@ -232,6 +289,20 @@ export function DynamicRecordFormModal<T = any>({
       key === 'birthdate' ||
       label.includes('dob') ||
       label.includes('birth')
+    );
+  };
+
+  const isServiceUserColumn = (col: TableColumnConfig<T>): boolean => {
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = String(col.label || '').toLowerCase();
+    return (
+      key === 'suname' ||
+      key === 'sunames' ||
+      key === 'serviceusername' ||
+      key === 'serviceusernames' ||
+      key === 'serviceuser' ||
+      key === 'residentname' ||
+      label.includes('service user name')
     );
   };
 
@@ -315,6 +386,8 @@ export function DynamicRecordFormModal<T = any>({
       const key = String(col.key);
       const isSite = isSiteColumn(col);
       const isLoggedBy = isLoggedByColumn(col);
+      const isSiteMgr = isSiteManagerColumn(col);
+      const isStaffPlc = isStaffPlaceColumn(col);
 
       if (isSite) {
         if (!canAccessAllSites()) {
@@ -335,6 +408,11 @@ export function DynamicRecordFormModal<T = any>({
         }
       } else if (isLoggedBy) {
         initial[key] = (initialValues && (initialValues as any)[key]) || loggedInUserName;
+      } else if (isSiteMgr) {
+        const targetSite = (initialValues && ((initialValues as any).siteName || (initialValues as any).site || (initialValues as any).siteId)) || initial.siteName || initial.site || initial.siteId || userAssignedHotel || allSiteNames[0] || '';
+        initial[key] = resolveSiteManager(targetSite);
+      } else if (isStaffPlc) {
+        initial[key] = userStaffPlace;
       } else if (initialValues && initialValues[col.key as keyof T] !== undefined) {
         const val = initialValues[col.key as keyof T];
         if (col.type === 'date' && !isEditing && !isDobColumn(col) && !isSuperAdmin) {
@@ -468,6 +546,11 @@ export function DynamicRecordFormModal<T = any>({
             : (selectedSite && selectedSite !== 'all' ? selectedSite : (assignedSite || allSiteNames[0] || userAssignedHotel));
         } else if (isLoggedByColumn(col)) {
           blank[key] = loggedInUserName;
+        } else if (isSiteManagerColumn(col)) {
+          const targetSite = blank.siteName || blank.site || (selectedSite && selectedSite !== 'all' ? selectedSite : (assignedSite || allSiteNames[0] || userAssignedHotel));
+          blank[key] = resolveSiteManager(targetSite);
+        } else if (isStaffPlaceColumn(col)) {
+          blank[key] = userStaffPlace;
         } else if (col.defaultValue !== undefined) {
           const resolved = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
           if (col.type === 'date' && !isDobColumn(col) && !isSuperAdmin) {
@@ -503,7 +586,19 @@ export function DynamicRecordFormModal<T = any>({
   if (!isOpen) return null;
 
   const handleChange = (key: string, value: any) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [key]: value };
+      const col = formColumns.find(c => String(c.key) === key);
+      if (col && isSiteColumn(col)) {
+        const mgr = resolveSiteManager(value);
+        formColumns.forEach(c => {
+          if (isSiteManagerColumn(c)) {
+            next[String(c.key)] = mgr;
+          }
+        });
+      }
+      return next;
+    });
     if (errors[key]) {
       setErrors(prev => {
         const next = { ...prev };
@@ -683,13 +778,28 @@ export function DynamicRecordFormModal<T = any>({
           }
         }
         if (isLoggedByColumn(col)) {
-          processed[key] = formData[key] || loggedInUserName;
+          processed[key] = loggedInUserName;
+          if (authProfile?.id) {
+            processed[`${key}Id`] = authProfile.id;
+          }
+        }
+        if (isSiteManagerColumn(col)) {
+          const sVal = processed.siteName || processed.site || processed.siteId || userAssignedHotel;
+          processed[key] = resolveSiteManager(sVal);
+        }
+        if (isStaffPlaceColumn(col)) {
+          processed[key] = userStaffPlace;
         }
         if (col.type === 'number' || col.type === 'currency') {
           const val = processed[key];
           processed[key] = val !== '' && val !== null && val !== undefined ? Number(val) : 0;
         }
       });
+
+      if (authProfile?.id) {
+        processed.reportingPersonId = authProfile.id;
+        processed.createdBy = authProfile.id;
+      }
 
       const saveFn = onSave || onSubmit;
       if (saveFn) {
@@ -748,10 +858,20 @@ export function DynamicRecordFormModal<T = any>({
                   const isFullWidth = col.colSpan === 2 || col.type === 'textarea';
                   const isSite = isSiteColumn(col);
                   const isLoggedBy = isLoggedByColumn(col);
-                  const displayLabel = isLoggedBy ? 'Logged By' : col.label;
+                  const isSiteManager = isSiteManagerColumn(col);
+                  const isStaffPlace = isStaffPlaceColumn(col);
+                  const displayLabel = isLoggedBy ? 'Reporting Staff Member' : isSiteManager ? 'Site Manager' : isStaffPlace ? 'Staff Place' : col.label;
                   const isLockedForStaff = isSite && !canAccessAllSites();
-                  const isReadOnly = col.editable === false || isLockedForStaff || isLoggedBy;
-                  const value = isLockedForStaff ? userAssignedHotel : (isLoggedBy ? (formData[key] || loggedInUserName) : (formData[key] ?? ''));
+                  const isReadOnly = col.editable === false || isLockedForStaff || isLoggedBy || isSiteManager || isStaffPlace;
+                  const value = isLockedForStaff
+                    ? userAssignedHotel
+                    : isLoggedBy
+                      ? (formData[key] || loggedInUserName)
+                      : isSiteManager
+                        ? (formData[key] || resolveSiteManager(formData.siteName || formData.site || formData.siteId || userAssignedHotel))
+                        : isStaffPlace
+                          ? (formData[key] || userStaffPlace)
+                          : (formData[key] ?? '');
                   const options = col.type === 'select' || isSite ? resolveOptions(col) : [];
 
                   return (
@@ -767,7 +887,15 @@ export function DynamicRecordFormModal<T = any>({
                         </span>
                         {isLoggedBy ? (
                           <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                            <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked to Logged-in User
+                            <Lock className="w-2.5 h-2.5 text-teal-600" /> Logged-in User (Locked)
+                          </span>
+                        ) : isSiteManager ? (
+                          <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-teal-600" /> Site Manager (Locked)
+                          </span>
+                        ) : isStaffPlace ? (
+                          <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-teal-600" /> Staff Place (Locked)
                           </span>
                         ) : isLockedForStaff ? (
                           <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
@@ -823,6 +951,30 @@ export function DynamicRecordFormModal<T = any>({
                           />
                           <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
                         </div>
+                      ) : isSiteManager ? (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={value}
+                            readOnly
+                            disabled
+                            className="w-full p-2 pr-8 border border-neutral-300 rounded-xs bg-neutral-100/70 text-neutral-800 font-medium cursor-not-allowed text-xs"
+                            title="Automatically populated with the Site Manager assigned to the selected site."
+                          />
+                          <Lock className="w-3.5 h-3.5 text-neutral-500 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                        </div>
+                      ) : isStaffPlace ? (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={value}
+                            readOnly
+                            disabled
+                            className="w-full p-2 pr-8 border border-neutral-300 rounded-xs bg-neutral-100/70 text-neutral-800 font-medium cursor-not-allowed text-xs"
+                            title="Automatically populated with the logged-in staff member's assigned site."
+                          />
+                          <Lock className="w-3.5 h-3.5 text-neutral-500 absolute right-2.5 top-1/2 -translate-y-1/2" />
+                        </div>
                       ) : isLockedForStaff ? (
                         <div className="relative">
                           <input
@@ -834,6 +986,58 @@ export function DynamicRecordFormModal<T = any>({
                           />
                           <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />
                         </div>
+                      ) : isServiceUserColumn(col) ? (
+                        <PropertyRelativeSUSelector
+                          siteOrPropertyName={
+                            formData.siteName ||
+                            formData.site ||
+                            formData.siteId ||
+                            formData.property ||
+                            formData.propertyName ||
+                            formData.propertyId ||
+                            formData.hotel ||
+                            formData.hotelName ||
+                            formData.accommodationAddress ||
+                            formData.address ||
+                            effectiveContext.assignedSite ||
+                            userAssignedHotel
+                          }
+                          value={String(value || '')}
+                          isMulti={String(col.key).toLowerCase() === 'sunames' || col.label.toLowerCase().includes('(s)')}
+                          placeholder={col.placeholder || `Select ${col.label}...`}
+                          required={col.required}
+                          disabled={isReadOnly || isSubmitting}
+                          hasError={!!errors[key]}
+                          onChange={(val, extra) => {
+                            handleChange(key, val);
+                            if (extra) {
+                              if (extra.portRef) {
+                                formColumns.forEach(c => {
+                                  const ck = String(c.key).toLowerCase();
+                                  if (ck === 'portref' || ck === 'portrefs' || ck === 'portreference' || ck === 'portornassref') {
+                                    handleChange(String(c.key), extra.portRef);
+                                  }
+                                });
+                              }
+                              if (extra.roomNumber) {
+                                formColumns.forEach(c => {
+                                  const ck = String(c.key).toLowerCase();
+                                  if (ck === 'roomno' || ck === 'roomnumber' || ck === 'roomorflatno' || ck === 'flatnumber') {
+                                    handleChange(String(c.key), extra.roomNumber);
+                                  }
+                                });
+                              }
+                              if (extra.address) {
+                                formColumns.forEach(c => {
+                                  const ck = String(c.key).toLowerCase();
+                                  if (ck === 'accommodationaddress' || ck === 'address') {
+                                    handleChange(String(c.key), extra.address);
+                                  }
+                                });
+                              }
+                            }
+                          }}
+                        />
                       ) : col.type === 'select' || isSite ? (
                         <select
                           value={value}

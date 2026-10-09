@@ -471,9 +471,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
                         {canDeleteRecord() && (
                           <button
                             onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete dispersal for ${record.suPortNassRef}?`)) {
-                                deleteDispersalRecord(record.id);
-                              }
+                              deleteDispersalRecord(record.id);
                             }}
                             className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors cursor-pointer"
                             title="Delete Record"

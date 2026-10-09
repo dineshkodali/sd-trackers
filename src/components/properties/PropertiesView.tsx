@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import {
   Building2,
   Plus,
@@ -56,9 +57,24 @@ export const PropertiesView: React.FC = () => {
     setCurrentUserRole,
     resetPropertiesToDefault,
     setActivePage
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Under Maintenance'>('All');
   const [syncSuccess, setSyncSuccess] = useState(false);
 
@@ -489,16 +505,7 @@ export const PropertiesView: React.FC = () => {
               onExport={handlePerformExport}
             />
 
-            {hasAdminAuthority && (
-              <button
-                id="btn-add-property"
-                onClick={handleOpenAdd}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Add Property</span>
-              </button>
-            )}
+
           </div>
         </div>
 

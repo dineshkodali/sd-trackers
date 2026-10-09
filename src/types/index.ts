@@ -1,13 +1,9 @@
 export type RoleType = 
   | 'Super Admin'
   | 'Admin'
-  | 'Finance Admin'
-  | 'Finance Manager'
-  | 'Finance Staff'
   | 'Regional Manager'
   | 'General Manager'
-  | 'Employee'
-  | 'Site Manager'
+  | 'Area Manager'
   | 'Staff';
 
 export * from './finance';
@@ -310,6 +306,7 @@ export interface UserAccount {
   email: string;
   role: RoleType;
   assignedSites: string[]; // ['Hotel A'] or ['All']
+  assignedSite?: string;
   status: 'Active' | 'Inactive';
   lastActive: string;
 }
@@ -428,6 +425,7 @@ export interface AuthUser {
   name: string;
   role: RoleType;
   assignedSite: string;
+  assignedSites?: string[];
 }
 
 export interface AuthSession {
@@ -504,6 +502,11 @@ export interface CustomFieldOption {
 export interface PublicTransportRecord {
   id: string;
   approvalUrn: string; // Approval URN
+  siteName?: string; // Associated Hotel / Site
+  siteManager?: string; // Auto-retrieved site manager for selected site
+  staffPlace?: string; // Logged-in staff member's assigned site
+  reportingPerson?: string; // Reporting Staff Member (auto-populated logged-in user)
+  reportingPersonId?: string; // Authenticated user ID
   suNames: string; // Service User Name(s)
   portRefs: string; // Port Ref Number(s)
   accommodationAddress: string; // Accommodation Address
@@ -938,6 +941,9 @@ export interface WelfareCheckRecord {
   windowRestrictorsIntact: boolean;
   smokeAlarmsWorking: boolean;
   status: string;
+  suId?: string;
+  propertyId?: string;
+  roomId?: string;
   data?: Record<string, any>;
   createdBy?: string;
   createdByName?: string;
@@ -983,6 +989,9 @@ export interface FoodSurveyRecord {
   snackAwareness?: boolean;
   otherFeedback?: string;
   mealRatings?: FoodMealRating[];
+  suId?: string;
+  propertyId?: string;
+  roomId?: string;
   data?: Record<string, any>;
   createdBy?: string;
   createdByName?: string;
@@ -1022,6 +1031,9 @@ export interface RoomCheckRecord {
   overallStatus: RoomCheckOverallStatus;
   finalComments?: string;
   items?: RoomCheckItem[];
+  suId?: string;
+  propertyId?: string;
+  roomId?: string;
   data?: Record<string, any>;
   createdBy?: string;
   createdByName?: string;
@@ -1030,4 +1042,184 @@ export interface RoomCheckRecord {
   createdAt?: string;
   updatedAt?: string;
 }
+
+// =====================================================================
+// Public Transport Enhancement Types
+// =====================================================================
+
+export type TransportImpactLevel = 'Low' | 'Medium' | 'High' | 'Critical';
+export type TransportFeedbackType = 'Aspen' | 'OOH' | string;
+
+export interface TransportFeedbackRecord {
+  id: string;
+  srNo?: number;
+  siteName: string;
+  siteManager?: string; // Auto-retrieved site manager
+  staffPlace?: string; // Auto-retrieved staff place
+  reportingPerson: string; // Reporting Staff Member
+  reportingPersonId?: string; // Authenticated user ID
+  transportType: TransportFeedbackType;
+  pickupLocation: string;
+  dropLocation: string;
+  travelDate: string;
+  travelTime: string;
+  issueCategory: string;
+  issueDescription: string;
+  impactLevel: TransportImpactLevel;
+  impactExplanation: string;
+  isResolved: boolean | 'Yes' | 'No';
+  resolutionComments?: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  fileUrl?: string;
+  data?: Record<string, any>;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TransportChallengeRecord {
+  id: string;
+  recordNo?: number;
+  siteName: string;
+  siteManager: string; // Auto-retrieved site manager
+  staffPlace?: string; // Auto-retrieved staff place
+  reportingPerson?: string; // Reporting Staff Member
+  reportingPersonId?: string; // Authenticated user ID
+  reportingPeriod: string;
+  guidanceShared: boolean | 'Yes' | 'No';
+  trackerInUse: boolean | 'Yes' | 'No';
+  publicTransportDefault: boolean | 'Yes' | 'No';
+  taxiRestricted: boolean | 'Yes' | 'No';
+  ptJourneysCount: number;
+  taxiRequestsRaised: number;
+  taxiRequestsApproved: number;
+  taxiRequestsDeclined: number;
+  siteChallenges: string;
+  commonIssues: string;
+  teamFeedback: string;
+  hasSgConcerns: boolean | 'Yes' | 'No';
+  sgDetails?: string;
+  comments?: string;
+  data?: Record<string, any>;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type FundingRequestStatus =
+  | 'Draft'
+  | 'Submitted'
+  | 'Under Review'
+  | 'Clarification Required'
+  | 'Approved'
+  | 'Rejected'
+  | 'Completed';
+
+export interface TransportFundingRequestRecord {
+  id: string;
+  siteName: string;
+  siteManager?: string; // Auto-retrieved site manager
+  staffPlace?: string; // Auto-retrieved staff place
+  reportingPerson?: string; // Reporting Staff Member
+  reportingPersonId?: string; // Authenticated user ID
+  mainAppRef: string;
+  mainAppInitials: string;
+  groupMember?: string;
+  phone?: string;
+  additionalTravellersCount: number;
+  additionalTravellersReason?: string;
+  childrenAges?: string;
+  requestDatetime: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  evidenceUrl?: string;
+  accommodationName: string;
+  accommodationAddress: string;
+  accommodationPostcode: string;
+  appointmentAddress: string;
+  appointmentPostcode: string;
+  appointmentNature: string;
+  distanceMiles: number | string;
+  totalCost: number | string;
+  transportMethod: string;
+  hasAspen: boolean | 'Yes' | 'No';
+  ticketsRequired: number;
+  exceptionalCriteria?: string;
+  exceptionalDetails?: string;
+  status: FundingRequestStatus;
+
+  // Restricted HO / Internal approval fields
+  hoInitials?: string;
+  decision?: string;
+  rejectionReason?: string;
+  approvedTransportMethod?: string;
+  paymentAmount?: number | string;
+  journeyUrn?: string;
+  approvedBy?: string;
+  approvalDate?: string;
+  internalComments?: string;
+
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  fileUrl?: string;
+  data?: Record<string, any>;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type RoomMoveApprovalStatus =
+  | 'Draft'
+  | 'Submitted'
+  | 'Approved'
+  | 'Transport Arranged'
+  | 'Completed'
+  | 'Cancelled';
+
+export interface TransportRoomMoveRecord {
+  id: string;
+  requestId: string;
+  siteName: string;
+  currentRoom: string;
+  newRoom: string;
+  occupantRef: string;
+  requestingStaff: string;
+  requestDate: string;
+  requestedMoveDate: string;
+  preferredTransportTime?: string;
+  peopleCount: number;
+  bagsCount: number;
+  transportRequired: boolean | 'Yes' | 'No';
+  transportType?: string;
+  moveReason: string;
+  accessibilityRequirements?: string;
+  supportRequired?: string;
+  estimatedCost?: number | string;
+  approvalRequired: boolean | 'Yes' | 'No';
+  approvalStatus: RoomMoveApprovalStatus;
+  assignedTransport?: string;
+  completionStatus?: 'Pending' | 'Completed' | 'Cancelled' | string;
+  completionDate?: string;
+  staffComments?: string;
+  notes?: string;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  fileUrl?: string;
+  data?: Record<string, any>;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Master Data Module re-exports
+export * from './masterData';
+
+
 

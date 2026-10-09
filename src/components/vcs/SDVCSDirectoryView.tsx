@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   HeartHandshake, 
   Search, 
@@ -18,7 +19,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SDVCSAgency } from '../../types';
-import { SD_VCS_HOTEL_NAMES } from '../../data/initialData';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -57,7 +57,7 @@ export const SDVCSDirectoryView: React.FC = () => {
     canDeleteRecord,
     currentUserRole,
     sites
-  } = useApp();
+  , requestConfirmation } = useApp();
 
   // Table Schema Hook
   const {
@@ -70,6 +70,21 @@ export const SDVCSDirectoryView: React.FC = () => {
   const [selectedProperty, setSelectedProperty] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (typeof requestConfirmation !== 'undefined') {
+      requestConfirmation({
+        title: 'Delete Selected', message: 'Are you sure you want to delete selected items?', isDanger: true,
+        onConfirm: async () => { /* Add logic */ setSelectedIds([]); }
+      });
+    }
+  };
+
   const [gridMode, setGridMode] = useState<'table' | 'matrix'>('table');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -93,19 +108,17 @@ export const SDVCSDirectoryView: React.FC = () => {
     'Statutory / Council'
   ];
 
-  // Dynamically assemble all known hotel names across clusters, sites and records
+  // Dynamically assemble authoritative active property names from Property Management
   const hotelFilterOptions = useMemo(() => {
     const set = new Set<string>();
-    SD_VCS_HOTEL_NAMES.forEach(h => set.add(h));
-    (sites || []).forEach(s => {
-      const name = typeof s === 'string' ? s : s?.name;
-      if (name) set.add(name);
-    });
-    vcsAgencies.forEach(a => {
-      if (a.hotelName) set.add(a.hotelName);
-    });
+    (sites || [])
+      .filter(s => (s as any).status !== 'Decommissioned' && (s as any).status !== 'Archived')
+      .forEach(s => {
+        const name = typeof s === 'string' ? s : s?.name;
+        if (name && name !== 'All Sites' && name !== 'all') set.add(name);
+      });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [sites, vcsAgencies]);
+  }, [sites]);
 
   // Robust property matching between cluster shorthands and full site names
   const matchesPropertyName = (recordHotel?: string, filterHotel?: string): boolean => {
@@ -530,9 +543,7 @@ export const SDVCSDirectoryView: React.FC = () => {
                           {canDeleteRecord() && (
                             <button
                               onClick={() => {
-                                if (window.confirm(`Are you sure you want to delete ${agency.agencyName}?`)) {
-                                  deleteVCSAgency(agency.id);
-                                }
+                                deleteVCSAgency(agency.id);
                               }}
                               className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors"
                               title="Delete Agency"

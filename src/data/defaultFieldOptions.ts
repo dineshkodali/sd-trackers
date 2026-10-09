@@ -634,12 +634,10 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   // 40. User System Roles
   { id: 'opt-urole-1', category: 'userRoles', label: 'Super Administrator', value: 'Super Admin', color: 'purple', description: 'Full system management and configuration permissions', isActive: true, isSystem: true, order: 1 },
   { id: 'opt-urole-2', category: 'userRoles', label: 'Administrator', value: 'Admin', color: 'blue', description: 'Operational administrator with management permissions', isActive: true, isSystem: true, order: 2 },
-  { id: 'opt-urole-3', category: 'userRoles', label: 'Finance Administrator', value: 'Finance Admin', color: 'amber', description: 'Finance administration and controlled destructive permissions', isActive: true, isSystem: true, order: 3 },
-  { id: 'opt-urole-4', category: 'userRoles', label: 'Finance Manager', value: 'Finance Manager', color: 'teal', description: 'Finance approval, review, and reconciliation permissions', isActive: true, isSystem: true, order: 4 },
-  { id: 'opt-urole-5', category: 'userRoles', label: 'Finance Staff', value: 'Finance Staff', color: 'emerald', description: 'Finance create, update, upload, and view permissions', isActive: true, isSystem: true, order: 5 },
-  { id: 'opt-urole-6', category: 'userRoles', label: 'Duty Staff Officer', value: 'Staff', color: 'emerald', description: 'Standard daily operational and logging permissions', isActive: true, isSystem: true, order: 6 },
-  { id: 'opt-urole-7', category: 'userRoles', label: 'Compliance & Quality Auditor', value: 'Auditor', color: 'amber', description: 'Read-only audit and reporting inspector access', isActive: true, isSystem: true, order: 7 },
-  { id: 'opt-urole-8', category: 'userRoles', label: 'Security & Concierge Lead', value: 'Security', color: 'slate', description: 'Night concierge and physical perimeter logging', isActive: true, isSystem: true, order: 8 }
+  { id: 'opt-urole-3', category: 'userRoles', label: 'Regional Manager', value: 'Regional Manager', color: 'amber', description: 'Regional management permissions', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-urole-4', category: 'userRoles', label: 'General Manager', value: 'General Manager', color: 'teal', description: 'General management permissions', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-urole-5', category: 'userRoles', label: 'Area Manager', value: 'Area Manager', color: 'indigo', description: 'Area management permissions', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-urole-6', category: 'userRoles', label: 'Duty Staff Officer', value: 'Staff', color: 'emerald', description: 'Standard daily operational and logging permissions', isActive: true, isSystem: true, order: 6 }
   ,
   // 41. Finance document types
   { id: 'opt-fin-type-1', category: 'financeBillTypes', label: 'Vendor Invoice', value: 'vendor_invoice', color: 'blue', description: 'Supplier invoice for goods or services', isActive: true, isSystem: true, order: 1 },

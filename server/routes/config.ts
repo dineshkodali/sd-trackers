@@ -1,47 +1,31 @@
 import { Router } from 'express';
 import { isSupabaseConfigured, testSupabaseConnection } from '../supabase.js';
 import { isSmtpConfigured, testSmtpConnection } from '../mailer.js';
-import { getClientOrigin, getNetworkIps } from '../urlHelper.js';
+import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 
 const router = Router();
 
-router.get('/status', async (req, res) => {
-  const supabaseSet = isSupabaseConfigured();
-  const smtpSet = isSmtpConfigured();
-
+// Public (used by the container health check): configuration flags only. Host
+// names, network addresses and mail account details are not disclosed.
+router.get('/status', async (_req, res) => {
   res.json({
     status: 'ok',
     environment: process.env.NODE_ENV || 'development',
-    hostInfo: {
-      origin: getClientOrigin(req),
-      host: req.get('host'),
-      protocol: req.protocol,
-      networkIps: getNetworkIps()
-    },
     services: {
-      supabase: {
-        configured: supabaseSet,
-        url: process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.substring(0, 20)}...` : null,
-        hasAnonKey: Boolean(process.env.SUPABASE_ANON_KEY),
-        hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)
-      },
-      smtp: {
-        configured: smtpSet,
-        host: process.env.SMTP_HOST || null,
-        port: process.env.SMTP_PORT || '587',
-        user: process.env.SMTP_USER ? `${process.env.SMTP_USER.split('@')[0]}@...` : null,
-        from: process.env.SMTP_FROM || null
-      }
+      supabase: { configured: isSupabaseConfigured() },
+      smtp: { configured: isSmtpConfigured() }
     }
   });
 });
 
-router.get('/test-supabase', async (req, res) => {
+// Live connectivity probes open outbound connections and return provider error
+// text, so they are administrator-only.
+router.get('/test-supabase', requireAuth, requireRole('Super Admin', 'Admin'), async (_req, res) => {
   const result = await testSupabaseConnection();
   res.json(result);
 });
 
-router.get('/test-smtp', async (req, res) => {
+router.get('/test-smtp', requireAuth, requireRole('Super Admin', 'Admin'), async (_req, res) => {
   const result = await testSmtpConnection();
   res.json(result);
 });

@@ -15,9 +15,14 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/apiService';
+import { getBrowserSupabaseClient } from '../../lib/supabaseClient';
 import { Logo } from '../common/Logo';
 
-export const LoginView: React.FC = () => {
+interface LoginViewProps {
+  onNavigateToResetPassword?: () => void;
+}
+
+export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword }) => {
   const { 
     login, 
     authError, 
@@ -105,12 +110,21 @@ export const LoginView: React.FC = () => {
     setResetStatusMessage(null);
     try {
       const res = await apiService.resetPassword(resetEmail.trim().toLowerCase());
+      if (res.rateLimited || res.waitSeconds || (res.error && res.error.includes('seconds'))) {
+        const wait = res.waitSeconds || parseInt(res.error?.match(/(\d+) seconds/)?.[1] || '25', 10);
+        setResetStatusMessage({
+          type: 'error',
+          text: `Please wait ${wait} seconds before requesting another reset email.`
+        });
+        return;
+      }
+
       if (res.error) {
         setResetStatusMessage({ type: 'error', text: res.error });
       } else {
         setResetStatusMessage({
           type: 'success',
-          text: `A password reset link has been dispatched to ${resetEmail.trim()}. Please inspect your inbox.`
+          text: res.message || `A password reset link has been dispatched to ${resetEmail.trim()}. Please inspect your inbox.`
         });
         setTimeout(() => {
           setIsResetModalOpen(false);
@@ -119,7 +133,12 @@ export const LoginView: React.FC = () => {
         }, 3500);
       }
     } catch (err: any) {
-      setResetStatusMessage({ type: 'error', text: err.message || 'Failed to dispatch reset instructions.' });
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('unreachable')) {
+        setResetStatusMessage({ type: 'error', text: 'Could not connect to authentication service. Please verify your network or try again in a few moments.' });
+      } else {
+        setResetStatusMessage({ type: 'error', text: msg || 'Failed to dispatch reset instructions.' });
+      }
     } finally {
       setResetLoading(false);
     }
@@ -129,8 +148,8 @@ export const LoginView: React.FC = () => {
     e.preventDefault();
     setRecoveryStatus(null);
 
-    if (!newPassword || newPassword.length < 6) {
-      setRecoveryStatus({ type: 'error', text: 'New password must be at least 6 characters long.' });
+    if (!newPassword || newPassword.length < 12) {
+      setRecoveryStatus({ type: 'error', text: 'New password must be at least 12 characters long.' });
       return;
     }
 
@@ -141,29 +160,87 @@ export const LoginView: React.FC = () => {
 
     setRecoverySubmitting(true);
     try {
-      const res = await apiService.updateUserPassword(newPassword, recoveryAccessToken || undefined);
-      if (res.error) {
-        setRecoveryStatus({ type: 'error', text: res.error });
-      } else {
-        setRecoveryStatus({
-          type: 'success',
-          text: 'Password updated successfully! You can now sign in with your new credentials.'
-        });
-        if (recoveryEmail) {
-          setEmail(recoveryEmail);
-        }
-        setTimeout(() => {
-          setIsPasswordRecoveryMode(false);
-          setRecoveryStatus(null);
-          setNewPassword('');
-          setConfirmPassword('');
-          if (typeof window !== 'undefined') {
-            window.history.replaceState(null, '', '/');
+      const sb = getBrowserSupabaseClient();
+      let updated = false;
+
+      if (sb) {
+        const search = typeof window !== 'undefined' ? window.location.search || '' : '';
+        const hash = typeof window !== 'undefined' ? window.location.hash || '' : '';
+        const searchParams = new URLSearchParams(search.replace(/^\?/, ''));
+        const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+        const urlTokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
+        const urlAccessToken = hashParams.get('access_token') || searchParams.get('access_token');
+        const effectiveToken = recoveryAccessToken || urlAccessToken;
+
+        // A. If token_hash is in URL, verify OTP first to establish recovery session
+        if (urlTokenHash) {
+          try {
+            const { data: vData, error: vErr } = await sb.auth.verifyOtp({
+              token_hash: urlTokenHash,
+              type: 'recovery'
+            });
+            if (!vErr && vData?.session) {
+              const { error: uErr } = await sb.auth.updateUser({ password: newPassword });
+              if (!uErr) updated = true;
+            }
+          } catch (vEx) {
+            console.warn('[Auth] verifyOtp exception:', vEx);
           }
-        }, 2500);
+        }
+
+        // B. If recovery access token is present, initialize session and update
+        if (!updated && effectiveToken) {
+          try {
+            await sb.auth.setSession({
+              access_token: effectiveToken,
+              refresh_token: ''
+            });
+          } catch {}
+          const { error: sbErr } = await sb.auth.updateUser({ password: newPassword });
+          if (!sbErr) updated = true;
+        }
+
+        // C. If active session already exists in client
+        if (!updated) {
+          const { error: sbErr } = await sb.auth.updateUser({ password: newPassword });
+          if (!sbErr) updated = true;
+        }
       }
+
+      // 2. Fallback: Update via apiService if direct client update wasn't possible
+      if (!updated) {
+        const res = await apiService.updateUserPassword(newPassword, recoveryAccessToken || undefined);
+        if (res.error) {
+          if (res.error.toLowerCase().includes('failed to fetch') || res.error.toLowerCase().includes('unreachable') || res.error.toLowerCase().includes('session')) {
+            throw new Error('This password reset link has expired or has already been used. Please request a fresh reset link.');
+          }
+          throw new Error(res.error);
+        }
+      }
+
+      setRecoveryStatus({
+        type: 'success',
+        text: 'Password updated successfully! You can now sign in with your new credentials.'
+      });
+      if (recoveryEmail) {
+        setEmail(recoveryEmail);
+      }
+      setTimeout(() => {
+        setIsPasswordRecoveryMode(false);
+        setRecoveryStatus(null);
+        setNewPassword('');
+        setConfirmPassword('');
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(null, '', '/');
+        }
+      }, 2500);
     } catch (err: any) {
-      setRecoveryStatus({ type: 'error', text: err.message || 'Failed to update password.' });
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('unreachable')) {
+        setRecoveryStatus({ type: 'error', text: 'This password reset link has expired or is invalid. Please request a fresh reset link.' });
+      } else {
+        setRecoveryStatus({ type: 'error', text: msg || 'Failed to update password.' });
+      }
     } finally {
       setRecoverySubmitting(false);
     }
@@ -249,7 +326,21 @@ export const LoginView: React.FC = () => {
               <div className="mb-6 p-3.5 bg-red-950/50 border border-red-500/50 rounded-lg flex items-start gap-3 text-xs text-red-200 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1 font-medium leading-relaxed">
-                  {localError || authError}
+                  <div>{localError || authError}</div>
+                  {(authError?.toLowerCase().includes('expired') || authError?.toLowerCase().includes('invalid')) && (
+                    <div className="mt-2 pt-2 border-t border-red-500/30">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsResetModalOpen(true);
+                          setResetEmail(email || '');
+                        }}
+                        className="text-teal-400 hover:text-teal-300 font-semibold underline cursor-pointer"
+                      >
+                        Click here to request a fresh password reset link →
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -286,10 +377,14 @@ export const LoginView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      setResetEmail(email);
-                      setIsResetModalOpen(true);
+                      if (onNavigateToResetPassword) {
+                        onNavigateToResetPassword();
+                      } else {
+                        setResetEmail(email);
+                        setIsResetModalOpen(true);
+                      }
                     }}
-                    className="text-[11px] text-teal-400 hover:text-teal-300 transition-colors font-medium"
+                    className="text-[11px] text-teal-400 hover:text-teal-300 transition-colors font-medium cursor-pointer"
                   >
                     Forgot password?
                   </button>
@@ -445,6 +540,19 @@ export const LoginView: React.FC = () => {
                   )}
                 </button>
               </div>
+
+              <div className="pt-2 text-center border-t border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResetModalOpen(false);
+                    if (onNavigateToResetPassword) onNavigateToResetPassword();
+                  }}
+                  className="text-[11px] text-teal-400 hover:text-teal-300 font-medium transition-colors cursor-pointer"
+                >
+                  Or open full verification &amp; OTP reset page &rarr;
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -486,7 +594,7 @@ export const LoginView: React.FC = () => {
                 </div>
               ) : (
                 <p className="text-slate-400 leading-relaxed">
-                  Enter your new password below. It must be at least 6 characters in length.
+                  Enter your new password below. It must be at least 12 characters in length.
                 </p>
               )}
 
@@ -498,10 +606,10 @@ export const LoginView: React.FC = () => {
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     required
-                    minLength={6}
+                    minLength={12}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter at least 6 characters"
+                    placeholder="Enter at least 12 characters"
                     className="w-full pl-3.5 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
                   />
                   <button
@@ -521,7 +629,7 @@ export const LoginView: React.FC = () => {
                 <input
                   type={showNewPassword ? 'text' : 'password'}
                   required
-                  minLength={6}
+                  minLength={12}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter your new password"

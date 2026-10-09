@@ -108,7 +108,7 @@ export const Header: React.FC = () => {
       case 'Super Admin': return 'Enterprise System Feed';
       case 'Admin': return 'Operations Activity Stream';
       case 'Regional Manager': return 'Regional Multi-Site Oversight';
-      case 'Site Manager':
+      case 'Area Manager':
       case 'General Manager': return 'Site Operations & Defect Feed';
       default: return 'Frontline Property Feed';
     }
@@ -119,7 +119,7 @@ export const Header: React.FC = () => {
       case 'Super Admin': return 'All properties, security events & RBAC governance';
       case 'Admin': return 'Cross-site operational records & approvals';
       case 'Regional Manager': return `${allowed?.length || 0} regional properties under oversight`;
-      case 'Site Manager':
+      case 'Area Manager':
       case 'General Manager': return `Managed Site: ${site && site !== 'All Sites' ? site : 'Assigned Property'}`;
       default: return `Assigned Site: ${site && site !== 'All Sites' ? site : 'Frontline Property'}`;
     }
@@ -190,18 +190,15 @@ export const Header: React.FC = () => {
   const rolesList: { role: RoleType; desc: string; accessLevel: string }[] = [
     { role: 'Super Admin', desc: 'Unrestricted system control, RBAC permissions, and database management', accessLevel: 'System Full' },
     { role: 'Admin', desc: 'Operational property management, user administration, and records', accessLevel: 'Operations Lead' },
-    { role: 'Finance Admin', desc: 'Finance administration, approvals, suppliers, and documents', accessLevel: 'Finance Full' },
-    { role: 'Finance Manager', desc: 'Finance review, approvals, and reconciliation', accessLevel: 'Finance Manager' },
-    { role: 'Finance Staff', desc: 'Finance bill and supplier operations', accessLevel: 'Finance Staff' },
     { role: 'Regional Manager', desc: 'Multi-property oversight, proof files CRUD, and compliance audits', accessLevel: 'Regional Level' },
     { role: 'General Manager', desc: 'Assigned property management, records creation & editing', accessLevel: 'Property Level' },
-    { role: 'Employee', desc: 'Assigned property daily logging, resident support entries', accessLevel: 'Frontline Level' }
+    { role: 'Area Manager', desc: 'Assigned area management, operations supervision', accessLevel: 'Property Level' },
+    { role: 'Staff', desc: 'Assigned property daily logging, resident support entries', accessLevel: 'Frontline Level' }
   ];
 
   const isPropertyBound = 
     currentUserRole === 'General Manager' || 
-    currentUserRole === 'Employee' || 
-    currentUserRole === 'Site Manager' || 
+    currentUserRole === 'Area Manager' || 
     currentUserRole === 'Staff';
 
   const isSuperAdminUser = authProfile?.role === 'Super Admin' || (!authProfile && currentUserRole === 'Super Admin');
