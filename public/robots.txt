@@ -1,0 +1,3 @@
+# Private operational system: not for indexing.
+User-agent: *
+Disallow: /

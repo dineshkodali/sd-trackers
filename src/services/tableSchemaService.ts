@@ -1,5 +1,6 @@
 import { TableColumnConfig } from '../types/tableSchema';
 import { apiService } from './apiService';
+import { isUserAssignmentField } from '../utils/userSelectOptions';
 
 /**
  * Administrator-defined table layouts (custom columns, ordering, visibility),
@@ -82,10 +83,12 @@ function merge<T>(saved: SerializedColumn[], defaultColumns: TableColumnConfig<T
   const merged: TableColumnConfig<T>[] = saved.map(savedCol => {
     const defaultCol = defaultMap.get(String(savedCol.key));
     if (defaultCol) {
+      const isUserField = isUserAssignmentField(String(defaultCol.key), defaultCol.label);
+      const isSelect = defaultCol.type === 'select' || typeof defaultCol.options === 'function' || isUserField;
       return {
         ...defaultCol,
         ...savedCol,
-        type: (defaultCol.type === 'select' || typeof defaultCol.options === 'function') ? defaultCol.type : (savedCol.type || defaultCol.type),
+        type: isSelect ? 'select' : (savedCol.type || defaultCol.type),
         // Retain default callbacks like options, optionCategory, and formatters if saved one doesn't supply them
         options: defaultCol.options || savedCol.options,
         optionCategory: defaultCol.optionCategory || savedCol.optionCategory,

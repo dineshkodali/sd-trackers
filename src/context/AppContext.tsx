@@ -88,6 +88,7 @@ import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 import { diagnosticLogger, parseJwtPayload } from '../utils/diagnosticLogger';
 import { AuthBlockedInfo } from '../components/auth/AuthenticationBlockedView';
 import { realtimeService, RealtimeTableChangeEvent } from '../services/realtimeService';
+import { LEAD_OFFICER_ROLES, findUserForOfficer, officerLabelFor, hasAllSitesAccess } from '../utils/leadOfficerSync';
 
 /**
  * Live-database connection state shown in the header and on Settings.
@@ -1763,7 +1764,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           role: u.role || 'Staff',
           assignedSites: Array.isArray(u.assignedSites) && u.assignedSites.length > 0
             ? u.assignedSites
-            : (u.assignedSite ? [u.assignedSite] : ['All Sites']),
+            : (u.assignedSite ? u.assignedSite.split(',').map((s: string) => s.trim()).filter(Boolean) : ['All Sites']),
           status: u.status === 'Inactive' ? 'Inactive' : 'Active',
           lastActive: u.lastActive || u.updatedAt || 'Recently'
         })));
@@ -4435,6 +4436,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [vcsAgencies, replaceWithMasterDataset]);
 
   // --- CRUD: Sites & Properties & Users ---
+  /**
+   * Keeps a user's site assignment in step with a property's lead officer.
+   * The officer is matched to exactly one account (see findUserForOfficer);
+   * a doubtful match changes nothing and is reported. A rejected save is rolled
+   * back and reported rather than ignored.
+   */
+  const syncOfficerSiteAccess = useCallback(async (officer: string | undefined, siteName: string, mode: 'add' | 'remove') => {
+    const { user, ambiguous } = findUserForOfficer(users, officer);
+    if (ambiguous) {
+      reportPersistFailure(
+        `Site access for "${officer}"`,
+        `More than one account matches "${officer}", so no site assignment was changed. Assign ${siteName} from Staff & User Accounts instead`
+      );
+      return;
+    }
+    if (!user || !siteName) return;
+
+    const previousSites = Array.isArray(user.assignedSites) ? user.assignedSites : [];
+    if (hasAllSitesAccess(previousSites)) return;
+    const alreadyAssigned = previousSites.includes(siteName);
+    if (mode === 'add' ? alreadyAssigned : !alreadyAssigned) return;
+
+    const nextSites = mode === 'add' ? [...previousSites, siteName] : previousSites.filter(s => s !== siteName);
+    setUsers(prev => prev.map(u => (u.id === user.id ? { ...u, assignedSites: nextSites } : u)));
+    const res = await apiService.updateUserAssignment(user.id, { assignedSites: nextSites });
+    if (!res.success) {
+      setUsers(prev => prev.map(u => (u.id === user.id ? { ...u, assignedSites: previousSites } : u)));
+      reportPersistFailure(`Site access for ${user.name}`, res.error);
+    }
+  }, [users, reportPersistFailure]);
+
   const addSite = useCallback((data: Omit<SiteInfo, 'id'>) => {
     const newSite: SiteInfo = {
       ...data,
@@ -4444,24 +4476,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistCreate('sites', 'Property', setSites, newSite, {
       action: 'CREATE', module: 'Properties', targetItem: `Property: ${newSite.name}${newSite.pid ? ` (${newSite.pid})` : ''}`, site: newSite.name,
       details: `Created accommodation property record: ${newSite.name} in ${newSite.city} (Capacity: ${newSite.capacity} residents, Status: ${newSite.status}${newSite.leadOfficer ? `, Lead Officer: ${newSite.leadOfficer}` : ''}${newSite.contactNumber ? `, Contact: ${newSite.contactNumber}` : ''}).`
+    }).then(saved => {
+      // Grant access only once the property itself has been accepted by the database.
+      if (saved && newSite.leadOfficer) void syncOfficerSiteAccess(newSite.leadOfficer, newSite.name, 'add');
     });
-
-    // Ensure fixed two-way connection: link this site to the assigned user's assignedSites in Staff Accounts
-    if (newSite.leadOfficer) {
-      const officerClean = newSite.leadOfficer.trim().toLowerCase();
-      const matchedUser = users.find(u =>
-        u.name.toLowerCase() === officerClean || u.email.toLowerCase() === officerClean
-      );
-      if (matchedUser) {
-        const curSites = Array.isArray(matchedUser.assignedSites) ? matchedUser.assignedSites : [];
-        if (!curSites.includes('All Sites') && !curSites.includes('All') && !curSites.includes(newSite.name)) {
-          const updatedSites = [...curSites, newSite.name];
-          setUsers(prev => prev.map(u => u.id === matchedUser.id ? { ...u, assignedSites: updatedSites } : u));
-          apiService.updateUserAssignment(matchedUser.id, { assignedSites: updatedSites }).catch(() => {});
-        }
-      }
-    }
-  }, [persistCreate, users]);
+  }, [persistCreate, syncOfficerSiteAccess]);
 
   const updateSite = useCallback((id: string, updates: Partial<SiteInfo>) => {
     const current = sites.find(s => s.id === id);
@@ -4498,25 +4517,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistUpdate('sites', 'Property changes', setSites, current, updates, {
       action: 'UPDATE', module: 'Properties', targetItem: `Property: ${propName}${updates.pid || current.pid ? ` (${updates.pid || current.pid})` : ''}`, site: propName,
       details: `Updated property record for ${propName}: ${desc}.`
+    }).then(saved => {
+      // Move site access between the outgoing and incoming lead officer only after the change is saved.
+      if (!saved || updates.leadOfficer === undefined) return;
+      const siteName = updates.name || current.name;
+      const previousOfficer = (current.leadOfficer || '').trim();
+      const nextOfficer = (updates.leadOfficer || '').trim();
+      if (!siteName || previousOfficer.toLowerCase() === nextOfficer.toLowerCase()) return;
+      if (previousOfficer) void syncOfficerSiteAccess(previousOfficer, current.name, 'remove');
+      if (nextOfficer) void syncOfficerSiteAccess(nextOfficer, siteName, 'add');
     });
-
-    // Ensure fixed two-way connection: link this site to the assigned user's assignedSites in Staff Accounts
-    if (updates.leadOfficer) {
-      const officerClean = updates.leadOfficer.trim().toLowerCase();
-      const matchedUser = users.find(u =>
-        u.name.toLowerCase() === officerClean || u.email.toLowerCase() === officerClean
-      );
-      if (matchedUser) {
-        const curSites = Array.isArray(matchedUser.assignedSites) ? matchedUser.assignedSites : [];
-        const siteName = updates.name || current.name;
-        if (siteName && !curSites.includes('All Sites') && !curSites.includes('All') && !curSites.includes(siteName)) {
-          const updatedSites = [...curSites, siteName];
-          setUsers(prev => prev.map(u => u.id === matchedUser.id ? { ...u, assignedSites: updatedSites } : u));
-          apiService.updateUserAssignment(matchedUser.id, { assignedSites: updatedSites }).catch(() => {});
-        }
-      }
-    }
-  }, [sites, persistUpdate, users]);
+  }, [sites, persistUpdate, syncOfficerSiteAccess]);
 
   const deleteSite = useCallback((id: string) => {
     const current = sites.find(s => s.id === id);
@@ -4575,9 +4586,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       changes.push(`Status: "${current.status}" → "${updates.status}"`);
     }
     if (updates.assignedSites && JSON.stringify(updates.assignedSites) !== JSON.stringify(current.assignedSites)) {
-      const currentSites = Array.isArray(current.assignedSites) ? current.assignedSites.join(', ') : ((current as any).assignedSite || 'All');
-      const newSites = Array.isArray(updates.assignedSites) ? updates.assignedSites.join(', ') : 'All';
-      changes.push(`Assigned Sites: [${currentSites}] → [${newSites}]`);
+      const currentSites = Array.isArray(current.assignedSites) ? current.assignedSites : [];
+      const newSites = Array.isArray(updates.assignedSites) ? updates.assignedSites : [];
+      const currentSitesStr = currentSites.join(', ') || ((current as any).assignedSite || 'All');
+      const newSitesStr = newSites.join(', ') || 'All';
+      changes.push(`Assigned Sites: [${currentSitesStr}] → [${newSitesStr}]`);
+
+      // Keep each property's lead officer in step with this account's site assignments.
+      // Computed here, outside any state updater, so the saves run exactly once.
+      const effectiveRole = updates.role || current.role;
+      const addedSites = newSites.filter(s => s !== 'All Sites' && s !== 'All' && !currentSites.includes(s));
+      const removedSites = currentSites.filter(s => s !== 'All Sites' && s !== 'All' && !newSites.includes(s));
+      const officerLabel = officerLabelFor(users, { ...current, ...updates } as UserAccount);
+
+      const officerChanges: Array<{ site: SiteInfo; leadOfficer: string }> = [];
+      for (const site of sites) {
+        const hasOfficer = Boolean(site.leadOfficer) && site.leadOfficer !== 'Unassigned';
+        if (addedSites.includes(site.name) && !hasOfficer && LEAD_OFFICER_ROLES.includes(effectiveRole)) {
+          officerChanges.push({ site, leadOfficer: officerLabel });
+        } else if (removedSites.includes(site.name) && hasOfficer && findUserForOfficer(users, site.leadOfficer).user?.id === id) {
+          officerChanges.push({ site, leadOfficer: '' });
+        }
+      }
+      if (officerChanges.length > 0) {
+        const byId = new Map(officerChanges.map(c => [c.site.id, c.leadOfficer]));
+        setSites(prev => prev.map(site => (byId.has(site.id) ? { ...site, leadOfficer: byId.get(site.id)! } : site)));
+        await Promise.all(officerChanges.map(c =>
+          persistUpdate('sites', `Lead officer for ${c.site.name}`, setSites, c.site, { leadOfficer: c.leadOfficer })
+        ));
+      }
     }
 
     const userName = updates.name || current.name || `User #${id}`;
@@ -4591,7 +4628,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       (updates.assignedSites && updates.assignedSites[0]) || (current.assignedSites && current.assignedSites[0]) || (current as any).assignedSite || 'All',
       `Updated user record for ${userName}: ${desc}.`
     );
-  }, [users, addAuditEntry, reportPersistFailure, triggerEmailNotification]);
+  }, [users, sites, persistUpdate, addAuditEntry, reportPersistFailure, triggerEmailNotification]);
 
   /**
    * Accounts need a password and must exist in Supabase Auth, so they are

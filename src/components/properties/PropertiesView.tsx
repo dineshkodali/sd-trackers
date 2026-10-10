@@ -34,6 +34,7 @@ import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { sitesTableConfig } from '../../config/trackerTableConfigs';
+import { getUserDropdownOptions } from '../../utils/userSelectOptions';
 
 const propertyExportColumns: ExportColumnOption[] = [
   { id: 'pid', label: 'PID (Hotel Code)' },
@@ -369,10 +370,50 @@ export const PropertiesView: React.FC = () => {
     }
 
     if (col.key === 'leadOfficer') {
+      if (!hasAdminAuthority) {
+        return (
+          <div className="flex items-center gap-1.5 text-[#242424]">
+            <UserCheck className="w-3 h-3 text-neutral-400 shrink-0" />
+            <span>{prop.leadOfficer || 'Unassigned'}</span>
+          </div>
+        );
+      }
+
+      const activeOfficerOptions = getUserDropdownOptions(users, {
+        siteName: prop.name,
+        includeRoleInLabel: true,
+        onlyActive: true
+      });
+      const currentVal = prop.leadOfficer || '';
+      const hasCurrentInOptions = activeOfficerOptions.some(
+        o => o.value.toLowerCase() === currentVal.toLowerCase()
+      );
+
       return (
-        <div className="flex items-center gap-1.5 text-[#242424]">
-          <UserCheck className="w-3 h-3 text-neutral-400 shrink-0" />
-          <span>{prop.leadOfficer || 'Unassigned'}</span>
+        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+          <UserCheck className="w-3 h-3 text-[#0d9488] shrink-0" />
+          <select
+            value={currentVal}
+            onChange={e => updateProperty(prop.id, { leadOfficer: e.target.value })}
+            className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
+              currentVal
+                ? 'bg-teal-50 text-teal-800 border-teal-300'
+                : 'bg-neutral-50 text-neutral-500 border-neutral-300'
+            }`}
+            title="Click to assign General Manager or Lead Contact Officer"
+          >
+            <option value="" className="bg-white text-neutral-900 font-normal">Unassigned</option>
+            {currentVal && !hasCurrentInOptions && (
+              <option value={currentVal} className="bg-white text-neutral-900 font-normal">
+                {currentVal} (Current)
+              </option>
+            )}
+            {activeOfficerOptions.map(opt => (
+              <option key={opt.value} value={opt.value} className="bg-white text-neutral-900 font-normal">
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
       );
     }

@@ -703,8 +703,11 @@ export function DynamicRecordFormModal<T = any>({
     }
 
     if (isUserColumn(col) && !col.options) {
-      const siteForUser = formData.siteName || formData.site || formData.siteId || effectiveContext.assignedSite;
-      const userOpts = getUserDropdownOptions(users, { siteName: siteForUser });
+      // `name` identifies the site only on the property form itself; on other forms it is a
+      // person or item, so it is used only when it matches a known site.
+      const nameAsSite = allSiteNames.find(s => s.trim().toLowerCase() === String(formData.name || '').trim().toLowerCase());
+      const siteForUser = nameAsSite || formData.siteName || formData.site || formData.siteId || effectiveContext.assignedSite;
+      const userOpts = getUserDropdownOptions(users, { siteName: siteForUser, includeRoleInLabel: true, onlyActive: true });
       const currentVal = formData[String(col.key)];
       if (currentVal && !userOpts.some(o => String(o.value).toLowerCase() === String(currentVal).toLowerCase())) {
         return [{ label: `${currentVal} (Current Value)`, value: currentVal }, ...userOpts];
@@ -898,7 +901,7 @@ export function DynamicRecordFormModal<T = any>({
                         : isStaffPlace
                           ? (formData[key] || userStaffPlace)
                           : (formData[key] ?? '');
-                  const options = col.type === 'select' || isSite ? resolveOptions(col) : [];
+                  const options = col.type === 'select' || isSite || isUserColumn(col) || isSiteManager ? resolveOptions(col) : [];
 
                   return (
                     <div 
@@ -1079,7 +1082,9 @@ export function DynamicRecordFormModal<T = any>({
                             errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
                           } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed font-medium' : ''}`}
                         >
-                          <option value="" disabled>{col.placeholder || `Select ${col.label}...`}</option>
+                          <option value="" disabled={Boolean(col.required)}>
+                            {col.placeholder || (col.required ? `Select ${col.label}...` : `Select ${col.label}... (Unassigned)`)}
+                          </option>
                           {options.map(opt => (
                             <option key={String(opt.value)} value={opt.value}>
                               {opt.label}
