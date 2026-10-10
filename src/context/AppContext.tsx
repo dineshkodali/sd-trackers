@@ -766,15 +766,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }));
       }
     };
+    const handleMasterDataUpdated = (e: any) => {
+      const type = e.detail?.type;
+      const data = e.detail?.data;
+      if (type === 'properties' && data) {
+        const mgr = data.propertyManager !== undefined ? data.propertyManager : data.housingOfficerName;
+        setSites(prev => {
+          let hasChanges = false;
+          const updated = prev.map(site => {
+            const isMatch =
+              (data.id && (site.id === data.id || site.id === String(data.id).replace('prop-', 'site-') || String(data.id) === site.id.replace('site-', 'prop-'))) ||
+              (data.siteId && site.id === data.siteId) ||
+              (data.propertyName && site.name.toLowerCase().trim() === data.propertyName.toLowerCase().trim()) ||
+              (data.propertyReference && site.pid && site.pid.toLowerCase().trim() === data.propertyReference.toLowerCase().trim());
+
+            if (!isMatch) return site;
+
+            const nextLead = mgr !== undefined ? mgr : site.leadOfficer;
+            const nextName = data.propertyName?.trim() || site.name;
+            const nextCity = data.city?.trim() || site.city;
+            const nextStatus = data.status === 'Under Maintenance' ? 'Under Maintenance' : (data.status === 'Active' ? 'Active' : site.status);
+
+            if (site.leadOfficer !== nextLead || site.name !== nextName || site.city !== nextCity || site.status !== nextStatus) {
+              hasChanges = true;
+              return {
+                ...site,
+                leadOfficer: nextLead,
+                name: nextName,
+                city: nextCity,
+                status: nextStatus
+              };
+            }
+            return site;
+          });
+          return hasChanges ? updated : prev;
+        });
+      }
+    };
     window.addEventListener('finance-bills-changed', handleChanged);
     window.addEventListener('finance-vendors-changed', handleChanged);
     window.addEventListener('storage', handleStorage);
     window.addEventListener('sdtracker:propertyDeleted', handlePropertyDeleted);
+    window.addEventListener('sdtracker:masterDataUpdated', handleMasterDataUpdated);
     return () => {
       window.removeEventListener('finance-bills-changed', handleChanged);
       window.removeEventListener('finance-vendors-changed', handleChanged);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('sdtracker:propertyDeleted', handlePropertyDeleted);
+      window.removeEventListener('sdtracker:masterDataUpdated', handleMasterDataUpdated);
     };
   }, [refreshFinanceBills]);
 
@@ -4480,6 +4519,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Grant access only once the property itself has been accepted by the database.
       if (saved && newSite.leadOfficer) void syncOfficerSiteAccess(newSite.leadOfficer, newSite.name, 'add');
     });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sdtracker:masterDataUpdated', {
+        detail: {
+          type: 'properties',
+          data: {
+            id: newSite.id,
+            propertyManager: newSite.leadOfficer,
+            propertyName: newSite.name,
+            city: newSite.city,
+            status: newSite.status
+          }
+        }
+      }));
+    }
   }, [persistCreate, syncOfficerSiteAccess]);
 
   const updateSite = useCallback((id: string, updates: Partial<SiteInfo>) => {
@@ -4527,6 +4581,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (previousOfficer) void syncOfficerSiteAccess(previousOfficer, current.name, 'remove');
       if (nextOfficer) void syncOfficerSiteAccess(nextOfficer, siteName, 'add');
     });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sdtracker:masterDataUpdated', {
+        detail: {
+          type: 'properties',
+          data: {
+            id,
+            propertyManager: updates.leadOfficer,
+            propertyName: updates.name,
+            city: updates.city,
+            status: updates.status
+          }
+        }
+      }));
+    }
   }, [sites, persistUpdate, syncOfficerSiteAccess]);
 
   const deleteSite = useCallback((id: string) => {

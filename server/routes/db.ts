@@ -1496,6 +1496,42 @@ router.post('/:entity', async (req: Request, res: Response) => {
     const saved = fromDatabaseRow(def.table, data || dbRow);
     if (def.table === 'role_permissions') permissionCache = null;
 
+    // Synchronize newly created property with sites (Properties Directory)
+    if (writeTable === 'properties') {
+      try {
+        const pMgr = saved.propertyManager || record.propertyManager || '';
+        const pName = saved.propertyName || record.propertyName || '';
+        const pRef = saved.propertyReference || record.propertyReference || '';
+        const sId = saved.siteId || record.siteId || (saved.id ? String(saved.id).replace('prop-', 'site-') : `site-${Date.now()}`);
+
+        if (pName) {
+          const { data: existingSite } = await client.from('sites').select('id').or(`id.eq.${sId},name.eq.${pName}`).maybeSingle();
+          if (!existingSite) {
+            await client.from('sites').insert({
+              id: sId,
+              name: pName,
+              pid: pRef,
+              city: saved.city || record.city || 'London',
+              address: saved.addressLine1 || record.addressLine1 || '',
+              total_rooms: Number(saved.maximumOccupancy || record.maximumOccupancy || 100),
+              active_residents: 0,
+              status: saved.status || record.status || 'Active',
+              manager_name: pMgr,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          } else {
+            await client.from('sites').update({
+              manager_name: pMgr,
+              updated_at: new Date().toISOString()
+            }).eq('id', existingSite.id);
+          }
+        }
+      } catch (syncErr) {
+        console.warn('[Sync create properties -> sites error]', syncErr);
+      }
+    }
+
     recordAuditTrailEntry(req, {
       defaultAction: 'CREATE',
       entity: req.params.entity,
@@ -1597,6 +1633,68 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
     }
 
     if (def.table === 'role_permissions') permissionCache = null;
+
+    // Synchronize Property Management (properties) <-> Properties Directory (sites)
+    if (writeTable === 'properties') {
+      try {
+        const pMgr = dbRow.property_manager !== undefined ? dbRow.property_manager : (req.body.propertyManager !== undefined ? req.body.propertyManager : req.body.property_manager);
+        const pName = dbRow.property_name || req.body.propertyName;
+        const pRef = dbRow.property_reference || req.body.propertyReference;
+        const sId = req.body.siteId || req.body.site_id || (merged as any).siteId || (merged as any).site_id || id.replace('prop-', 'site-');
+
+        const siteUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (pMgr !== undefined) siteUpdates.manager_name = pMgr;
+        if (pName) siteUpdates.name = pName;
+        if (dbRow.status) siteUpdates.status = dbRow.status;
+        if (dbRow.city) siteUpdates.city = dbRow.city;
+
+        const { data: updatedSites } = await client
+          .from('sites')
+          .update(siteUpdates)
+          .or(`id.eq.${sId},id.eq.${id}`)
+          .select('id');
+
+        if (!updatedSites || updatedSites.length === 0) {
+          if (pName) {
+            await client.from('sites').update(siteUpdates).eq('name', pName);
+          } else if (pRef) {
+            await client.from('sites').update(siteUpdates).eq('pid', pRef);
+          }
+        }
+      } catch (syncErr) {
+        console.warn('[Sync properties -> sites error]', syncErr);
+      }
+    } else if (writeTable === 'sites') {
+      try {
+        const sMgr = dbRow.manager_name !== undefined ? dbRow.manager_name : (req.body.leadOfficer !== undefined ? req.body.leadOfficer : req.body.manager_name);
+        const sName = dbRow.name || req.body.name;
+        const sPid = dbRow.pid || req.body.pid;
+
+        if (sMgr !== undefined) {
+          const propUpdates: Record<string, any> = {
+            property_manager: sMgr,
+            updated_at: new Date().toISOString()
+          };
+          const propIdVal = id.replace('site-', 'prop-');
+          const { data: updatedProps } = await client
+            .from('properties')
+            .update(propUpdates)
+            .or(`site_id.eq.${id},id.eq.${id},id.eq.${propIdVal}`)
+            .select('id');
+
+          if (!updatedProps || updatedProps.length === 0) {
+            if (sName) {
+              await client.from('properties').update(propUpdates).eq('property_name', sName);
+            } else if (sPid) {
+              await client.from('properties').update(propUpdates).eq('property_reference', sPid);
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn('[Sync sites -> properties error]', syncErr);
+      }
+    }
+
     recordAuditTrailEntry(req, {
       defaultAction: 'UPDATE',
       entity: req.params.entity,

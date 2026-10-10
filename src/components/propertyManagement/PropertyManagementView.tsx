@@ -88,6 +88,7 @@ export const PropertyManagementView: React.FC = () => {
       setProperties(loadedProps);
       setPlacements(loadedPlcs);
       setRooms(loadedRooms);
+      setSelectedProperty(prev => prev ? (loadedProps.find(p => p.id === prev.id) || prev) : null);
     } catch (err: any) {
       console.error('Failed to load property data:', err);
       setLoadError(err?.message || 'Network error connecting to master database.');

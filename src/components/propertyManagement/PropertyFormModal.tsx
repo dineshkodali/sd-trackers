@@ -34,7 +34,7 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
   propertyToEdit,
   onSuccess
 }) => {
-  const { sites } = useApp();
+  const { sites, updateProperty, addProperty } = useApp();
   const [activeTab, setActiveTab] = useState<PropertyTabType>('core');
 
   // Core & Address
@@ -301,12 +301,53 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
         targetPropId = res.record.id;
       }
 
+      // Synchronize changes with Properties Directory (sites in AppContext)
+      const targetManager = data.propertyManager || '';
+      const matchingSite = sites.find(s =>
+        (siteId && s.id === siteId) ||
+        (propertyToEdit && (
+          s.id === propertyToEdit.id ||
+          s.id === propertyToEdit.siteId ||
+          (propertyToEdit.id && s.id === propertyToEdit.id.replace('prop-', 'site-')) ||
+          (propertyToEdit.id && propertyToEdit.id === s.id.replace('site-', 'prop-')) ||
+          (propertyToEdit.propertyName && s.name.toLowerCase().trim() === propertyToEdit.propertyName.toLowerCase().trim()) ||
+          (propertyToEdit.propertyReference && s.pid && s.pid.toLowerCase().trim() === propertyToEdit.propertyReference.toLowerCase().trim())
+        )) ||
+        (data.propertyName && s.name.toLowerCase().trim() === data.propertyName.toLowerCase().trim())
+      );
+
+      if (matchingSite) {
+        updateProperty(matchingSite.id, {
+          leadOfficer: targetManager,
+          name: data.propertyName || matchingSite.name,
+          city: data.city || matchingSite.city,
+          address: data.addressLine1 || matchingSite.address,
+          status: data.status === 'Under Maintenance' ? 'Under Maintenance' : 'Active',
+          capacity: Number(data.maximumOccupancy) || matchingSite.capacity
+        });
+      } else if (data.propertyName) {
+        addProperty({
+          name: data.propertyName,
+          pid: (propertyToEdit as any)?.propertyReference || (data as any).propertyReference || data.propertyName.slice(0, 8),
+          city: data.city || 'London',
+          address: data.addressLine1 || '',
+          capacity: Number(data.maximumOccupancy) || 10,
+          status: data.status === 'Under Maintenance' ? 'Under Maintenance' : 'Active',
+          leadOfficer: targetManager,
+          contactNumber: contactsData.housingOfficerPhone || ''
+        });
+      }
+
       if (targetPropId) {
+        const effectiveContacts: PropertyContactsData = {
+          ...contactsData,
+          housingOfficerName: contactsData.housingOfficerName.trim() || targetManager
+        };
         await savePropertyRelatedData(
           targetPropId,
           initialRooms,
           complianceData,
-          contactsData,
+          effectiveContacts,
           initialDocs,
           suPropertyService,
           suPropertyDetailsService
