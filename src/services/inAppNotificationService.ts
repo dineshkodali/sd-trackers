@@ -418,10 +418,16 @@ export function filterNotificationsForRole(
       return false;
     }
 
-    // 4. Area Manager / General Manager: Permitted across their managed site operations
-    if (userRole === 'Area Manager' || userRole === 'General Manager') {
+    // 4. Site Manager / Area Manager / General Manager: Permitted across their managed site operations
+    if (
+      userRole === 'Area Manager' ||
+      userRole === 'General Manager' ||
+      (userRole as string) === 'Site Manager' ||
+      (userRole as string) === 'Manager'
+    ) {
       if (isSelfAction || isSelfTarget || isSelfProfile || isSelfRequest) return true;
       if (effectiveAssignedSite && isSiteMatch(effectiveAssignedSite, n.site)) return true;
+      if (allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site))) return true;
       return false;
     }
 

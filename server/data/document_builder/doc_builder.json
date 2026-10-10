@@ -10,97 +10,17 @@
     "data": {
       "id": "tmpl-incident-report",
       "name": "Incident Report",
+      "description": "Official UKVI & Clearsprings compliant incident report form with full factual disclosure, authority notifications, and evidence tracking (Super Admin Verified).",
       "category": "Operations",
       "isActive": true,
-      "createdAt": "2026-01-01T00:00:00Z",
       "createdBy": "system",
-      "updatedAt": "2026-09-30T00:48:41.346Z",
-      "description": "Official UKVI & Clearsprings compliant incident report form with full factual disclosure, authority notifications, and evidence tracking (Super Admin Verified).",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-10-09T22:22:53.832Z",
       "currentVersion": {
         "id": "tver-447fb79b",
-        "version": 31,
-        "createdAt": "2026-09-30T00:48:41.346Z",
-        "createdBy": "usr-staff",
-        "isCurrent": true,
         "templateId": "tmpl-incident-report",
-        "footerConfig": {
-          "customText": "Please attach photos of any evidence where possible when submitting to CST.",
-          "showPageNumbers": true,
-          "showGeneratedTimestamp": true
-        },
-        "headerConfig": {
-          "showDate": true,
-          "showLogo": true,
-          "subtitle": "Please complete with as much detail as possible, stating only facts. Please email CST@Clearsprings.co.uk who will review and send it to UKVI where appropriate.",
-          "showCompanyName": true,
-          "showDocumentNumber": true,
-          "confidentialityLevel": "Confidential"
-        },
-        "layoutConfig": {
-          "margins": {
-            "top": 25,
-            "left": 20,
-            "right": 20,
-            "bottom": 25
-          },
-          "pageSize": "A4",
-          "sections": [
-            {
-              "id": "incident",
-              "order": 1,
-              "title": "Property & Reporting Details",
-              "columns": 2
-            },
-            {
-              "id": "persons",
-              "order": 2,
-              "title": "Persons Involved (Offenders / Victims / Witnesses)",
-              "columns": 1
-            },
-            {
-              "id": "description",
-              "order": 3,
-              "title": "Incident Description",
-              "columns": 1
-            },
-            {
-              "id": "actions",
-              "order": 4,
-              "title": "Action Taken",
-              "columns": 1
-            },
-            {
-              "id": "warnings",
-              "order": 5,
-              "title": "Warning Letter",
-              "columns": 2
-            },
-            {
-              "id": "authorities",
-              "order": 6,
-              "title": "Reported Authorities",
-              "columns": 2
-            },
-            {
-              "id": "evidence",
-              "order": 7,
-              "title": "Evidence & Photos",
-              "columns": 1
-            },
-            {
-              "id": "sec-1790300503117",
-              "order": 8,
-              "title": " ",
-              "columns": 2
-            },
-            {
-              "id": "sec-1790303164473",
-              "order": 9,
-              "title": "Tester",
-              "columns": 2
-            }
-          ]
-        },
+        "version": 33,
+        "isCurrent": true,
         "fieldDefinitions": [
           {
             "id": "f-ir-1",
@@ -360,12 +280,252 @@
             "required": false,
             "placeholder": "Enter details..."
           }
-        ]
+        ],
+        "layoutConfig": {
+          "margins": {
+            "top": 25,
+            "left": 20,
+            "right": 20,
+            "bottom": 25
+          },
+          "pageSize": "A4",
+          "sections": [
+            {
+              "id": "incident",
+              "order": 1,
+              "title": "Property & Reporting Details",
+              "columns": 2
+            },
+            {
+              "id": "persons",
+              "order": 2,
+              "title": "Persons Involved (Offenders / Victims / Witnesses)",
+              "columns": 1
+            },
+            {
+              "id": "description",
+              "order": 3,
+              "title": "Incident Description",
+              "columns": 1
+            },
+            {
+              "id": "actions",
+              "order": 4,
+              "title": "Action Taken",
+              "columns": 1
+            },
+            {
+              "id": "warnings",
+              "order": 5,
+              "title": "Warning Letter",
+              "columns": 2
+            },
+            {
+              "id": "authorities",
+              "order": 6,
+              "title": "Reported Authorities",
+              "columns": 2
+            },
+            {
+              "id": "evidence",
+              "order": 7,
+              "title": "Evidence & Photos",
+              "columns": 1
+            },
+            {
+              "id": "sec-1790300503117",
+              "order": 8,
+              "title": " ",
+              "columns": 2
+            },
+            {
+              "id": "sec-1790303164473",
+              "order": 9,
+              "title": "Tester",
+              "columns": 2
+            }
+          ]
+        },
+        "headerConfig": {
+          "showDate": true,
+          "showLogo": true,
+          "subtitle": "Please complete with as much detail as possible, stating only facts. Please email CST@Clearsprings.co.uk who will review and send it to UKVI where appropriate.",
+          "showCompanyName": true,
+          "showDocumentNumber": true,
+          "confidentialityLevel": "Confidential"
+        },
+        "footerConfig": {
+          "customText": "Please attach photos of any evidence where possible when submitting to CST.",
+          "showPageNumbers": true,
+          "showGeneratedTimestamp": true
+        },
+        "createdBy": "super-admin-test",
+        "createdAt": "2026-10-09T22:22:53.832Z"
       }
     },
     "created_by": "system",
     "created_at": "2026-01-01T00:00:00Z",
-    "updated_at": "2026-09-30T00:48:41.346Z"
+    "updated_at": "2026-10-09T22:22:53.832Z"
+  },
+  {
+    "id": "aud-e4061349-b",
+    "record_type": "audit",
+    "template_id": "dbr-27e96b39",
+    "site": "741- Clacton Pier Avenue",
+    "title": "DOCUMENT_DELETED",
+    "status": "logged",
+    "data": {
+      "id": "aud-e4061349-b",
+      "documentId": "dbr-27e96b39",
+      "templateId": "tmpl-incident-report",
+      "action": "DOCUMENT_DELETED",
+      "userId": "super-admin-test",
+      "userName": "Stack Master",
+      "userRole": "Super Admin",
+      "userEmail": "admin@sdcdms.co.uk",
+      "site": "741- Clacton Pier Avenue",
+      "details": "Deleted report: \"Incident Report — E2E Test Verification (Updated)\"",
+      "timestamp": "2026-10-09T22:22:54.340Z"
+    },
+    "created_by": "super-admin-test",
+    "created_by_name": "Stack Master",
+    "created_by_role": "Super Admin",
+    "created_by_email": "admin@sdcdms.co.uk",
+    "created_at": "2026-10-09T22:22:54.340Z",
+    "updated_at": "2026-10-09T22:22:54.340Z"
+  },
+  {
+    "id": "aud-19dbc1d8-6",
+    "record_type": "audit",
+    "template_id": "tmpl-incident-report",
+    "site": "All Sites",
+    "title": "TEMPLATE_UPDATED",
+    "status": "logged",
+    "data": {
+      "id": "aud-19dbc1d8-6",
+      "templateId": "tmpl-incident-report",
+      "action": "TEMPLATE_UPDATED",
+      "userId": "super-admin-test",
+      "userName": "Stack Master",
+      "userRole": "Super Admin",
+      "userEmail": "admin@sdcdms.co.uk",
+      "details": "Updated master HO template: \"Incident Report\"",
+      "timestamp": "2026-10-09T22:22:53.966Z"
+    },
+    "created_by": "super-admin-test",
+    "created_by_name": "Stack Master",
+    "created_by_role": "Super Admin",
+    "created_by_email": "admin@sdcdms.co.uk",
+    "created_at": "2026-10-09T22:22:53.966Z",
+    "updated_at": "2026-10-09T22:22:53.966Z"
+  },
+  {
+    "id": "aud-e8b10af1-e",
+    "record_type": "audit",
+    "template_id": "dbr-27e96b39",
+    "site": "741- Clacton Pier Avenue",
+    "title": "PDF_EXPORTED",
+    "status": "logged",
+    "data": {
+      "id": "aud-e8b10af1-e",
+      "documentId": "dbr-27e96b39",
+      "templateId": "tmpl-incident-report",
+      "action": "PDF_EXPORTED",
+      "userId": "staff-test",
+      "userName": "Stack Master",
+      "userRole": "Staff",
+      "userEmail": "staff@sdcdms.co.uk",
+      "site": "741- Clacton Pier Avenue",
+      "details": "Generated and exported PDF for \"Incident Report — E2E Test Verification (Updated)\" (DOC-2026-571804)",
+      "timestamp": "2026-10-09T22:22:53.600Z"
+    },
+    "created_by": "staff-test",
+    "created_by_name": "Stack Master",
+    "created_by_role": "Staff",
+    "created_by_email": "staff@sdcdms.co.uk",
+    "created_at": "2026-10-09T22:22:53.600Z",
+    "updated_at": "2026-10-09T22:22:53.600Z"
+  },
+  {
+    "id": "aud-cbff1229-f",
+    "record_type": "audit",
+    "template_id": "dbr-27e96b39",
+    "site": "741- Clacton Pier Avenue",
+    "title": "DOCX_EXPORTED",
+    "status": "logged",
+    "data": {
+      "id": "aud-cbff1229-f",
+      "documentId": "dbr-27e96b39",
+      "templateId": "tmpl-incident-report",
+      "action": "DOCX_EXPORTED",
+      "userId": "staff-test",
+      "userName": "Stack Master",
+      "userRole": "Staff",
+      "userEmail": "staff@sdcdms.co.uk",
+      "site": "741- Clacton Pier Avenue",
+      "details": "Generated and exported DOCX for \"Incident Report — E2E Test Verification (Updated)\" (DOC-2026-571804)",
+      "timestamp": "2026-10-09T22:22:53.123Z"
+    },
+    "created_by": "staff-test",
+    "created_by_name": "Stack Master",
+    "created_by_role": "Staff",
+    "created_by_email": "staff@sdcdms.co.uk",
+    "created_at": "2026-10-09T22:22:53.123Z",
+    "updated_at": "2026-10-09T22:22:53.123Z"
+  },
+  {
+    "id": "aud-9035bb40-0",
+    "record_type": "audit",
+    "template_id": "dbr-27e96b39",
+    "site": "741- Clacton Pier Avenue",
+    "title": "DOCUMENT_FINALIZED",
+    "status": "logged",
+    "data": {
+      "id": "aud-9035bb40-0",
+      "documentId": "dbr-27e96b39",
+      "templateId": "tmpl-incident-report",
+      "action": "DOCUMENT_FINALIZED",
+      "userId": "staff-test",
+      "userName": "Stack Master",
+      "userRole": "Staff",
+      "userEmail": "staff@sdcdms.co.uk",
+      "site": "741- Clacton Pier Avenue",
+      "details": "Updated report: \"Incident Report — E2E Test Verification (Updated)\" (DOC-2026-571804)",
+      "timestamp": "2026-10-09T22:22:52.642Z"
+    },
+    "created_by": "staff-test",
+    "created_by_name": "Stack Master",
+    "created_by_role": "Staff",
+    "created_by_email": "staff@sdcdms.co.uk",
+    "created_at": "2026-10-09T22:22:52.642Z",
+    "updated_at": "2026-10-09T22:22:52.642Z"
+  },
+  {
+    "id": "aud-e27936b1-c",
+    "record_type": "audit",
+    "template_id": "dbr-27e96b39",
+    "site": "741- Clacton Pier Avenue",
+    "title": "DOCUMENT_CREATED",
+    "status": "logged",
+    "data": {
+      "id": "aud-e27936b1-c",
+      "documentId": "dbr-27e96b39",
+      "templateId": "tmpl-incident-report",
+      "action": "DOCUMENT_CREATED",
+      "userId": "staff-test",
+      "userName": "Stack Master",
+      "userRole": "Staff",
+      "userEmail": "staff@sdcdms.co.uk",
+      "site": "741- Clacton Pier Avenue",
+      "details": "Created report: \"Incident Report — E2E Test Verification\" (DOC-2026-571804)",
+      "timestamp": "2026-10-09T22:22:52.048Z"
+    },
+    "created_by": "staff-test",
+    "created_by_name": "Stack Master",
+    "created_by_role": "Staff",
+    "created_by_email": "staff@sdcdms.co.uk",
+    "created_at": "2026-10-09T22:22:52.048Z",
+    "updated_at": "2026-10-09T22:22:52.048Z"
   },
   {
     "id": "aud-436ec077-4",

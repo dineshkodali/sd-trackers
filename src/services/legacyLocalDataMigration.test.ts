@@ -26,7 +26,7 @@ let deletedAudit: any[] = [];
 let failBulkFor: string | null = null;
 
 (globalThis as any).fetch = async (url: string, init: any = {}) => {
-  const path = String(url);
+  const path = String(url).replace(/^https?:\/\/[^/]+/, '');
   const method = init.method || 'GET';
   const body = init.body ? JSON.parse(init.body) : undefined;
   calls.push({ method, path, body });
@@ -42,7 +42,7 @@ let failBulkFor: string | null = null;
 };
 
 const { migrateLegacyLocalData, hasLegacyLocalData } = await import('./legacyLocalDataMigration.ts');
-const { INITIAL_PUBLIC_TRANSPORT_RECORDS, INITIAL_BOOKLET_RECORDS, INITIAL_ROLE_PERMISSIONS } = await import('../data/initialData.ts');
+const { INITIAL_SITES, INITIAL_ROLE_PERMISSIONS } = await import('../data/initialData.ts');
 
 const put = (key: string, value: any) => storage.setItem(`sg_tracker_${key}`, JSON.stringify(value));
 const has = (key: string) => storage.getItem(`sg_tracker_${key}`) !== null;
@@ -89,25 +89,25 @@ test('records deleted from the database are not resurrected', async () => {
 });
 
 test('bundled demo records are never uploaded unless edited', async () => {
-  const demo = INITIAL_PUBLIC_TRANSPORT_RECORDS[0];
-  const edited = { ...INITIAL_PUBLIC_TRANSPORT_RECORDS[1], suNames: 'A real person entered over the demo row' };
-  put('public_transport_records', [demo, edited, { id: 'pt-real', approvalUrn: 'URN-REAL', suNames: 'Real' }]);
-  await migrateLegacyLocalData({ isAdmin: false, isSuperAdmin: false, snapshot: emptySnapshot() });
-  assert.deepEqual(uploadsFor('publicTransport').map(r => r.id).sort(), [edited.id, 'pt-real'].sort());
+  const demo = INITIAL_SITES[0];
+  const edited = { ...INITIAL_SITES[1], contactNumber: '07000000000' };
+  put('sites', [demo, edited, { id: 'site-real', pid: 'PID-999', name: 'Real Site' }]);
+  await migrateLegacyLocalData({ isAdmin: true, isSuperAdmin: true, snapshot: emptySnapshot() });
+  assert.deepEqual(uploadsFor('sites').map(r => r.id).sort(), [edited.id, 'site-real'].sort());
 });
 
 test('local edits to master data win only while the database still holds the default', async () => {
-  const [a, b] = INITIAL_BOOKLET_RECORDS;
-  const editedA = { ...a, collectedBooklets: 40 };
-  const editedB = { ...b, collectedBooklets: 12 };
-  put('booklet_records', [editedA, editedB]);
+  const [a, b] = INITIAL_SITES;
+  const editedA = { ...a, contactNumber: '07111111111' };
+  const editedB = { ...b, contactNumber: '07222222222' };
+  put('sites', [editedA, editedB]);
   const snapshot = emptySnapshot();
-  snapshot.booklets = [
+  snapshot.sites = [
     { ...a, createdAt: 'x', updatedAt: '2026-09-01T00:00:00Z' },          // still the seeded default
-    { ...b, collectedBooklets: 99, updatedAt: '2026-09-02T00:00:00Z' }     // someone already changed it in the database
+    { ...b, contactNumber: '07999999999', updatedAt: '2026-09-02T00:00:00Z' }     // someone already changed it in the database
   ];
-  await migrateLegacyLocalData({ isAdmin: false, isSuperAdmin: false, snapshot });
-  assert.deepEqual(uploadsFor('booklets').map(r => r.id), [a.id]);
+  await migrateLegacyLocalData({ isAdmin: true, isSuperAdmin: true, snapshot });
+  assert.deepEqual(uploadsFor('sites').map(r => r.id), [a.id]);
 });
 
 test('an edit made in this browser after the database copy is uploaded; an older one is not', async () => {

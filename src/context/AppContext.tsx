@@ -608,8 +608,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (typeof window !== 'undefined') {
         const path = window.location.pathname.toLowerCase();
-        if (path === '/su-users') return 'suUsers';
-        if (path === '/property-management') return 'propertyManagement';
+        if (path === '/su-users' || path === '/service-users') return 'suUsers';
+        if (path === '/property-management' || path === '/properties') return 'propertyManagement';
         if (window.sessionStorage) {
           const saved = sessionStorage.getItem('sg_tracker_active_page');
           if (saved && typeof saved === 'string' && saved.trim()) {
@@ -633,15 +633,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (typeof window !== 'undefined') {
         if (page === 'suUsers') {
-          if (window.location.pathname !== '/su-users') {
+          if (window.location.pathname !== '/su-users' && window.location.pathname !== '/service-users') {
             window.history.pushState(null, '', '/su-users');
           }
         } else if (page === 'propertyManagement') {
-          if (window.location.pathname !== '/property-management') {
+          if (window.location.pathname !== '/property-management' && window.location.pathname !== '/properties') {
             window.history.pushState(null, '', '/property-management');
           }
         } else {
-          if (window.location.pathname === '/su-users' || window.location.pathname === '/property-management') {
+          if (
+            window.location.pathname === '/su-users' ||
+            window.location.pathname === '/service-users' ||
+            window.location.pathname === '/property-management' ||
+            window.location.pathname === '/properties'
+          ) {
             window.history.pushState(null, '', '/');
           }
         }
@@ -656,9 +661,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname.toLowerCase();
-      if (path === '/su-users') {
+      if (path === '/su-users' || path === '/service-users') {
         setActivePageRaw('suUsers');
-      } else if (path === '/property-management') {
+      } else if (path === '/property-management' || path === '/properties') {
         setActivePageRaw('propertyManagement');
       }
     };

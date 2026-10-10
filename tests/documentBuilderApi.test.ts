@@ -12,8 +12,25 @@
  */
 
 import assert from 'assert';
+import { signAdminToken } from '../server/tokenSigner.js';
 
 const BASE_URL = 'http://localhost:3020/api/document-builder';
+
+const adminToken = signAdminToken({
+  sub: 'super-admin-test',
+  email: 'admin@sdcdms.co.uk',
+  role: 'Super Admin',
+  iss: 'sdtracker-internal',
+  exp: Math.floor(Date.now() / 1000) + 7200
+});
+
+const staffToken = signAdminToken({
+  sub: 'staff-test',
+  email: 'staff@sdcdms.co.uk',
+  role: 'Staff',
+  iss: 'sdtracker-internal',
+  exp: Math.floor(Date.now() / 1000) + 7200
+});
 
 async function runTests() {
   console.log('================================================================');
@@ -22,7 +39,9 @@ async function runTests() {
 
   // Test 1: Templates Retrieval
   console.log('Test 1: Fetch templates catalog...');
-  const tRes = await fetch(`${BASE_URL}/templates`);
+  const tRes = await fetch(`${BASE_URL}/templates`, {
+    headers: { Authorization: `Bearer ${staffToken}` }
+  });
   const tData = await tRes.json();
   assert.strictEqual(tRes.status, 200, 'Expected 200 OK for templates');
   assert.strictEqual(tData.success, true, 'Expected success: true');
@@ -61,6 +80,7 @@ async function runTests() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${staffToken}`,
       'x-user-role': 'Staff',
       'x-user-name': 'Test Staff Member',
       'x-user-email': 'staff@sdcdms.co.uk',
@@ -79,7 +99,11 @@ async function runTests() {
   // Test 3: Verify Persistence & Reflection in GET /records
   console.log('\nTest 3: Verify report reflection back in GET /records...');
   const listRes = await fetch(`${BASE_URL}/records`, {
-    headers: { 'x-user-role': 'Staff', 'x-user-site': '741- Clacton Pier Avenue' },
+    headers: {
+      'Authorization': `Bearer ${staffToken}`,
+      'x-user-role': 'Staff',
+      'x-user-site': '741- Clacton Pier Avenue'
+    },
   });
   const listData = await listRes.json();
   assert.strictEqual(listRes.status, 200, 'Expected 200 OK for records list');
@@ -96,6 +120,7 @@ async function runTests() {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${staffToken}`,
       'x-user-role': 'Staff',
       'x-user-id': 'usr-staff',
       'x-user-site': '741- Clacton Pier Avenue',
@@ -118,13 +143,19 @@ async function runTests() {
 
   // Test 5: Generate and Download DOCX & PDF
   console.log('\nTest 5: Export official DOCX and PDF from saved record...');
-  const docxRes = await fetch(`${BASE_URL}/records/${savedRecordId}/generate/docx`, { method: 'POST' });
+  const docxRes = await fetch(`${BASE_URL}/records/${savedRecordId}/generate/docx`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${staffToken}` }
+  });
   assert.strictEqual(docxRes.status, 200, 'Expected 200 OK for DOCX generation');
   assert.ok(docxRes.headers.get('content-type')?.includes('wordprocessingml'), 'Content-Type must be DOCX');
   const docxBuffer = await docxRes.arrayBuffer();
   assert.ok(docxBuffer.byteLength > 1000, `DOCX buffer must be non-empty (got ${docxBuffer.byteLength} bytes)`);
 
-  const pdfRes = await fetch(`${BASE_URL}/records/${savedRecordId}/generate/pdf`, { method: 'POST' });
+  const pdfRes = await fetch(`${BASE_URL}/records/${savedRecordId}/generate/pdf`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${staffToken}` }
+  });
   assert.strictEqual(pdfRes.status, 200, 'Expected 200 OK for PDF generation');
   assert.ok(pdfRes.headers.get('content-type')?.includes('application/pdf'), 'Content-Type must be PDF');
   const pdfBuffer = await pdfRes.arrayBuffer();
@@ -137,6 +168,7 @@ async function runTests() {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminToken}`,
       'x-user-role': 'Super Admin',
       'x-user-name': 'Stack Master',
     },
@@ -157,6 +189,7 @@ async function runTests() {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${staffToken}`,
       'x-user-role': 'Staff',
       'x-user-name': 'Regular Staff',
     },
@@ -171,7 +204,10 @@ async function runTests() {
   console.log('\nTest 8: Cleanup test record via DELETE /records/:id...');
   const deleteRes = await fetch(`${BASE_URL}/records/${savedRecordId}`, {
     method: 'DELETE',
-    headers: { 'x-user-role': 'Super Admin' },
+    headers: {
+      'Authorization': `Bearer ${adminToken}`,
+      'x-user-role': 'Super Admin'
+    },
   });
   const deleteData = await deleteRes.json();
   assert.strictEqual(deleteRes.status, 200, 'Expected 200 OK for record deletion');

@@ -19,8 +19,8 @@ import {
   FINANCE_APPROVALS_TABLE_COLUMNS
 } from '../src/data/defaultTableSchemas.js';
 
-test('Field Options: All 47 categories are registered and accounted for', () => {
-  assert.equal(FIELD_CATEGORIES_META.length, 47);
+test('Field Options: All 49 categories are registered and accounted for', () => {
+  assert.equal(FIELD_CATEGORIES_META.length, 49);
   const metaKeys = new Set(FIELD_CATEGORIES_META.map(m => m.key));
   
   // Every option in DEFAULT_FIELD_OPTIONS belongs to a valid metadata category
@@ -33,7 +33,8 @@ const FIXED_SELECT_KEYS = new Set([
   'siteId', 'site', 'siteName', 'propertyId', 'assignedProperty',
   'gender', 'followUpRequired', 'action',
   'acknowledgementReceived', 'responseReceivedFromLA',
-  'warningLetterIssued', 'residentMeetingRequired', 'policeAttended'
+  'warningLetterIssued', 'residentMeetingRequired', 'policeAttended',
+  'leadOfficer'
 ]);
 
 test('Field Options: Tracker table configs have optionCategory and allowQuickAdd on all dynamic select columns', () => {

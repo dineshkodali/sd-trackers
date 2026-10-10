@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Building2, Plus, Search, RefreshCw, Eye, Edit3, 
-  DoorClosed, Users, MapPin 
+  DoorClosed, Users, MapPin, AlertCircle 
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
@@ -63,9 +63,11 @@ export const PropertyManagementView: React.FC = () => {
 
   // Bulk Selection State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const activeSiteId = siteFilter !== 'all' && siteFilter !== 'All Sites' ? siteFilter : undefined;
       const [propsRes, plcsRes, roomsRes] = await Promise.all([
@@ -73,6 +75,10 @@ export const PropertyManagementView: React.FC = () => {
         suPropertyService.getPlacements({ status: 'Active', siteId: activeSiteId }),
         suPropertyService.getRooms()
       ]);
+
+      if (!propsRes.success) {
+        setLoadError(propsRes.error || 'Failed to authenticate or load property master data.');
+      }
 
       const loadedProps = propsRes.success && propsRes.data ? propsRes.data : [];
       const loadedPlcs = plcsRes.success && plcsRes.data ? plcsRes.data : [];
@@ -82,8 +88,9 @@ export const PropertyManagementView: React.FC = () => {
       setProperties(loadedProps);
       setPlacements(loadedPlcs);
       setRooms(loadedRooms);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load property data:', err);
+      setLoadError(err?.message || 'Network error connecting to master database.');
     } finally {
       setLoading(false);
     }
@@ -238,6 +245,20 @@ export const PropertyManagementView: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full animate-fade-in">
+      {loadError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-xs flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-800 rounded font-medium text-xs transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* Top Banner, Header, Actions & Filters in ONE unified card */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
