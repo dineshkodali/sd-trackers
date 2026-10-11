@@ -65,7 +65,7 @@ export const PropertiesView: React.FC = () => {
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
-  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedProperties?.map(p => p.id) || []); };
   const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
   const handleDeleteSelected = () => {
     if (selectedIds.length === 0) return;
@@ -637,7 +637,7 @@ export const PropertiesView: React.FC = () => {
                     ))}
                     <td className="p-3 text-[#323130]">
                       {(() => {
-                        const assigned = users.filter(u => u.assignedSites?.includes(prop.name) || u.assignedSites?.includes('All'));
+                        const assigned = users.filter(u => u.assignedSites?.includes(prop.name) || u.assignedSites?.includes('All Sites') || u.assignedSites?.includes('All'));
                         if (assigned.length === 0) return <span className="text-neutral-400 italic text-[11px]">No staff assigned</span>;
                         return (
                           <div className="flex flex-wrap gap-1 max-w-xs">
