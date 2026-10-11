@@ -190,7 +190,16 @@ export class SmartCacheManager {
     }
 
     // In-memory seed initialization before live database sync completes
-    const initialData: UserAccount[] = INITIAL_USERS;
+    let initialData: UserAccount[] = INITIAL_USERS;
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('sg_tracker_users');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) initialData = parsed;
+        }
+      } catch {}
+    }
     const metadata: CacheMetadata = {
       key: 'users',
       version: 1,

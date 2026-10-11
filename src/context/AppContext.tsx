@@ -721,7 +721,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [roomChecks, setRoomChecks] = useState<RoomCheckRecord[]>([]);
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
   const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>([]);
-  const [users, setUsers] = useState<UserAccount[]>(() => INITIAL_USERS);
+  const [users, setUsers] = useState<UserAccount[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('sg_tracker_users');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return INITIAL_USERS;
+  });
   const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT);
   const [dataChangeRequests, setDataChangeRequests] = useState<DataChangeRequest[]>(INITIAL_CHANGE_REQUESTS);
@@ -751,6 +762,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'sd_finance_bills_ts' || e.key === 'sg_tracker_finance_bills') {
         refreshFinanceBills();
+      }
+      if (e.key === 'sg_tracker_users' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && parsed.length > 0) setUsers(parsed);
+        } catch {}
       }
     };
     const handlePropertyDeleted = (e: any) => {
@@ -803,15 +820,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
     };
+    const handleUsersEvent = (e: any) => {
+      if (Array.isArray(e.detail) && e.detail.length > 0) {
+        setUsers(e.detail);
+      }
+    };
     window.addEventListener('finance-bills-changed', handleChanged);
     window.addEventListener('finance-vendors-changed', handleChanged);
     window.addEventListener('storage', handleStorage);
+    window.addEventListener('sd_users_updated', handleUsersEvent);
     window.addEventListener('sdtracker:propertyDeleted', handlePropertyDeleted);
     window.addEventListener('sdtracker:masterDataUpdated', handleMasterDataUpdated);
     return () => {
       window.removeEventListener('finance-bills-changed', handleChanged);
       window.removeEventListener('finance-vendors-changed', handleChanged);
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('sd_users_updated', handleUsersEvent);
       window.removeEventListener('sdtracker:propertyDeleted', handlePropertyDeleted);
       window.removeEventListener('sdtracker:masterDataUpdated', handleMasterDataUpdated);
     };
@@ -1796,7 +1820,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? supaUsersRes.users
         : got<any>('users');
       if (supaUsers && supaUsers.length > 0) {
-        setUsers(supaUsers.map((u: any) => ({
+        const mappedUsers: UserAccount[] = supaUsers.map((u: any) => ({
           id: u.id || `usr-${Date.now()}`,
           name: u.name || u.email?.split('@')[0] || 'User',
           email: u.email || '',
@@ -1806,7 +1830,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : (u.assignedSite ? u.assignedSite.split(',').map((s: string) => s.trim()).filter(Boolean) : ['All Sites']),
           status: u.status === 'Inactive' ? 'Inactive' : 'Active',
           lastActive: u.lastActive || u.updatedAt || 'Recently'
-        })));
+        }));
+        setUsers(mappedUsers);
+        try {
+          localStorage.setItem('sg_tracker_users', JSON.stringify(mappedUsers));
+        } catch {}
       }
 
       refreshNotificationData();
@@ -4626,11 +4654,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateUser = useCallback(async (id: string, updates: Partial<UserAccount>) => {
     const current = users.find(u => u.id === id);
     if (!current) return;
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updates } : u));
+    setUsers(prev => {
+      const next = prev.map(u => u.id === id ? { ...u, ...updates } : u);
+      try { localStorage.setItem('sg_tracker_users', JSON.stringify(next)); } catch {}
+      return next;
+    });
 
     const res = await apiService.updateUserAssignment(id, updates);
     if (!res.success) {
-      setUsers(prev => prev.map(u => (u.id === id ? current : u)));
+      setUsers(prev => {
+        const next = prev.map(u => (u.id === id ? current : u));
+        try { localStorage.setItem('sg_tracker_users', JSON.stringify(next)); } catch {}
+        return next;
+      });
       reportPersistFailure(`Account changes for ${current.name}`, res.error);
       return;
     }
@@ -4720,13 +4756,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       confirmLabel: 'Delete User',
       isDanger: true,
       onConfirm: async () => {
-        setUsers(prev => prev.filter(u => u.id !== id));
+        setUsers(prev => {
+          const next = prev.filter(u => u.id !== id);
+          try { localStorage.setItem('sg_tracker_users', JSON.stringify(next)); } catch {}
+          return next;
+        });
         closeConfirmation();
         // Deletes the Supabase Auth account; deleting only the profile row (as
         // before) left the person able to sign in.
         const res = await apiService.deleteUserAccount(id);
         if (!res.success) {
-          setUsers(prev => (prev.some(u => u.id === id) ? prev : [...prev, current]));
+          setUsers(prev => {
+            const next = prev.some(u => u.id === id) ? prev : [...prev, current];
+            try { localStorage.setItem('sg_tracker_users', JSON.stringify(next)); } catch {}
+            return next;
+          });
           reportPersistFailure(`Deletion of ${current.name}`, res.error);
           return;
         }

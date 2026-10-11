@@ -331,10 +331,26 @@ export async function directUpdateEntityRecord<T = any>(
       .update(dbRow)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       return { success: false, error: error.message, status };
+    }
+
+    // If the update matched 0 rows (id not found in DB), try to upsert the full record instead
+    if (!data) {
+      const upsertRow = toDatabaseRow(mapping.table, fullRecord, activeUser?.userId);
+      const { data: upserted, error: upsertErr } = await supabase
+        .from(mapping.table)
+        .upsert(upsertRow, { onConflict: 'id' })
+        .select()
+        .maybeSingle();
+      if (upsertErr) {
+        return { success: false, error: upsertErr.message };
+      }
+      const saved = upserted ? fromDatabaseRow(mapping.table, upserted) as T : fullRecord as T;
+      await recordDirectAudit('UPDATE', entity, { id, ...record }, audit, activeUser);
+      return { success: true, record: saved };
     }
 
     const updated = fromDatabaseRow(mapping.table, data) as T;

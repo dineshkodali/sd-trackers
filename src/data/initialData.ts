@@ -79,9 +79,9 @@ export const INITIAL_USERS: UserAccount[] = [
     lastActive: 'Recently'
   },
   {
-    id: '1c6508c5-ee2a-498c-a265-b324b03f0a1b',
-    name: 'Dinesh Kodali',
-    email: 'dineshkodali16@gmail.com',
+    id: 'f9857dea-3bf4-4be4-8157-e24b97e5a4d4',
+    name: 'Amplify Tester',
+    email: 'aws@sdcommercial.co.uk',
     role: 'Super Admin',
     assignedSites: ['All Sites'],
     status: 'Active',
@@ -97,11 +97,29 @@ export const INITIAL_USERS: UserAccount[] = [
     lastActive: 'Recently'
   },
   {
-    id: '1038e785-7dc0-4827-975d-3278a09b3742',
-    name: 'dd',
-    email: 'dineshkodali7@gmail.com',
-    role: 'Staff',
-    assignedSites: ['Brit Hotel', 'Ibis Styles - Seven Kings'],
+    id: '1c6508c5-ee2a-498c-a265-b324b03f0a1b',
+    name: 'Dinesh Kodali',
+    email: 'dineshkodali16@gmail.com',
+    role: 'General Manager',
+    assignedSites: ['Parmiter PDA', 'Holiday Inn Lambeth', 'Brit Hotel'],
+    status: 'Active',
+    lastActive: 'Recently'
+  },
+  {
+    id: 'd74df452-3a4f-43aa-a7af-fb545c379d2c',
+    name: 'tahir',
+    email: 'tahir@sdcommercial.co.uk',
+    role: 'General Manager',
+    assignedSites: ['Clacton Pier Avenue'],
+    status: 'Active',
+    lastActive: 'Recently'
+  },
+  {
+    id: 'cf7dac16-f306-491f-b268-9fd01ecccbd5',
+    name: 'manoj',
+    email: 'manoj@sdcommercial.co.uk',
+    role: 'Regional Manager',
+    assignedSites: ['All Sites'],
     status: 'Active',
     lastActive: 'Recently'
   },
@@ -111,6 +129,24 @@ export const INITIAL_USERS: UserAccount[] = [
     email: 'dineshkodali.uk@gmail.com',
     role: 'Regional Manager',
     assignedSites: ['All Sites'],
+    status: 'Active',
+    lastActive: 'Recently'
+  },
+  {
+    id: '82c079dd-ac07-48c8-84de-9ef2bb7d3260',
+    name: 'dineshkodali7',
+    email: 'dineshkodali7@gmail.com',
+    role: 'Staff',
+    assignedSites: ['Hilton Hampton - Ealing'],
+    status: 'Active',
+    lastActive: 'Recently'
+  },
+  {
+    id: 'cf952765-33aa-4ba9-8261-3c3d4c66ade8',
+    name: 'sdt-swetha',
+    email: 'sdt-swetha@sdcommercial.co.uk',
+    role: 'Staff',
+    assignedSites: ['Clacton Pier Avenue'],
     status: 'Active',
     lastActive: 'Recently'
   }

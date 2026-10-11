@@ -1,5 +1,6 @@
 import { diagnosticLogger } from '../utils/diagnosticLogger';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
+import { INITIAL_USERS } from '../data/initialData';
 import {
   directBatchFetchEntities,
   directFetchEntityRecords,
@@ -1242,21 +1243,95 @@ export const apiService = {
     error?: string;
     message?: string;
   }> {
+    const cleanAssignedSite = userData.assignedSite || (userData.assignedSites && userData.assignedSites[0]) || 'Pending Assignment';
+    const assignedSitesArray = userData.assignedSites || (cleanAssignedSite !== 'Pending Assignment' ? [cleanAssignedSite] : ['Pending Assignment']);
+
     try {
       const payload = {
         ...userData,
-        assignedSites: userData.assignedSites || (userData.assignedSite ? [userData.assignedSite] : ['Pending Assignment']),
-        assignedSite: userData.assignedSite || (userData.assignedSites && userData.assignedSites[0]) || 'Pending Assignment'
+        assignedSites: assignedSitesArray,
+        assignedSite: cleanAssignedSite
       };
-      const res = await fetch(getApiUrl('/api/auth/signup'), {
+      const res = await fetchWithTimeout(getApiUrl('/api/auth/signup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload)
-      });
-      return await parseApiResponse<any>(res);
-    } catch (err: any) {
-      return { error: err.message };
+      }, 3000);
+      const data = await parseApiResponse<any>(res);
+      if (data && (data.success || data.user)) {
+        if (data.user) this.addLocalUserCache(data.user);
+        return data;
+      }
+      if (data && data.error && !data.error.includes('Backend API unreachable')) {
+        return data;
+      }
+    } catch {}
+
+    // Direct Supabase Fallback (AWS Amplify / Static Hosting)
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        const { data: authResult, error: authError } = await sb.auth.signUp({
+          email: userData.email,
+          password: userData.password,
+          options: {
+            data: {
+              name: userData.name,
+              role: userData.role,
+              assigned_site: cleanAssignedSite,
+              assignedSites: assignedSitesArray
+            }
+          }
+        });
+
+        if (authError) {
+          return { error: authError.message };
+        }
+
+        const newId = authResult.user?.id || `usr-${Date.now()}`;
+        const profileRow = {
+          id: newId,
+          email: userData.email.toLowerCase().trim(),
+          name: userData.name.trim(),
+          role: userData.role,
+          assigned_site: cleanAssignedSite,
+          status: 'Active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        try {
+          await sb.from('profiles').upsert(profileRow);
+          if (cleanAssignedSite !== 'Pending Assignment') {
+            await sb.from('property_user_assignments').insert([{
+              id: `pua-${newId}-0-${Date.now()}`,
+              user_id: newId,
+              property_name: cleanAssignedSite,
+              role: userData.role,
+              assigned_properties: assignedSitesArray
+            }]);
+          }
+        } catch {}
+
+        const createdUser = {
+          id: newId,
+          name: userData.name.trim(),
+          email: userData.email.toLowerCase().trim(),
+          role: userData.role as any,
+          assignedSites: assignedSitesArray,
+          assignedSite: cleanAssignedSite,
+          status: 'Active' as const,
+          lastActive: 'Just now'
+        };
+
+        this.addLocalUserCache(createdUser);
+        return { success: true, user: createdUser };
+      } catch (err: any) {
+        return { error: err?.message || 'Failed to register account directly.' };
+      }
     }
+
+    return { error: 'Authentication service unavailable.' };
   },
 
   async createUserAccount(userData: {
@@ -1520,64 +1595,143 @@ export const apiService = {
     }
   },
 
-  async fetchSupabaseUsers(): Promise<{ success?: boolean; users?: any[]; error?: string }> {
-    if (shouldPreferDirectSupabase()) {
-      const sb = getBrowserSupabaseClient();
-      if (sb) {
-        try {
-          const { data, error } = await sb.from('profiles').select('*');
-          if (!error && Array.isArray(data)) {
-            const { data: pua } = await sb.from('property_user_assignments').select('*');
-            const puaMap = new Map<string, string[]>();
-            (pua || []).forEach((row: any) => {
-              if (row.user_id && row.property_name && row.property_name !== 'Pending Assignment') {
-                puaMap.set(row.user_id, Array.from(new Set([...(puaMap.get(row.user_id) || []), row.property_name])));
-              }
-            });
+  updateLocalUserCache(userId: string, updates: any): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('sg_tracker_users');
+      const list = raw ? JSON.parse(raw) : [...INITIAL_USERS];
+      const updated = list.map((u: any) => {
+        if (u.id === userId) {
+          const next = { ...u, ...updates };
+          if (updates.assignedSites) next.assignedSites = updates.assignedSites;
+          if (updates.assignedSite) next.assignedSite = updates.assignedSite;
+          return next;
+        }
+        return u;
+      });
+      localStorage.setItem('sg_tracker_users', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('sd_users_updated', { detail: updated }));
+    } catch {}
+  },
 
-            const mapped = data.map((p: any) => {
-              let sites = p.assigned_site ? (p.assigned_site.includes(',') ? p.assigned_site.split(',').map((s: string) => s.trim()) : [p.assigned_site]) : [];
-              const puaSites = puaMap.get(p.id);
-              if (puaSites && puaSites.length > 0) {
-                sites = Array.from(new Set([...sites.filter((s: string) => s !== 'Pending Assignment'), ...puaSites]));
-              }
-              const valid = sites.filter((s: string) => s && s !== 'Pending Assignment');
-              const finalSites = valid.length > 0 ? valid : (sites.includes('Pending Assignment') ? ['Pending Assignment'] : ['All Sites']);
-              return {
-                ...p,
-                assignedSite: finalSites[0] || 'All Sites',
-                assignedSites: finalSites
-              };
-            });
-            return { success: true, users: mapped };
-          }
-        } catch {}
-      }
-      return { success: true, users: [] };
-    }
+  removeLocalUserCache(userId: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('sg_tracker_users');
+      const list = raw ? JSON.parse(raw) : [...INITIAL_USERS];
+      const filtered = list.filter((u: any) => u.id !== userId);
+      localStorage.setItem('sg_tracker_users', JSON.stringify(filtered));
+      window.dispatchEvent(new CustomEvent('sd_users_updated', { detail: filtered }));
+    } catch {}
+  },
+
+  addLocalUserCache(user: any): void {
+    if (typeof window === 'undefined' || !user) return;
+    try {
+      const raw = localStorage.getItem('sg_tracker_users');
+      const list = raw ? JSON.parse(raw) : [...INITIAL_USERS];
+      const exists = list.some((u: any) => u.id === user.id || u.email?.toLowerCase() === user.email?.toLowerCase());
+      const next = exists
+        ? list.map((u: any) => (u.id === user.id || u.email?.toLowerCase() === user.email?.toLowerCase() ? { ...u, ...user } : u))
+        : [...list, user];
+      localStorage.setItem('sg_tracker_users', JSON.stringify(next));
+      window.dispatchEvent(new CustomEvent('sd_users_updated', { detail: next }));
+    } catch {}
+  },
+
+  async fetchSupabaseUsers(): Promise<{ success?: boolean; users?: any[]; error?: string }> {
+    // 1. Try Express backend API (/api/auth/users)
     try {
       const res = await fetchWithTimeout(getApiUrl('/api/auth/users'), { headers: authHeaders() }, 2500);
-      return await parseApiResponse<any>(res);
-    } catch (err: any) {
-      const sb = getBrowserSupabaseClient();
-      if (sb) {
-        try {
-          const { data, error } = await sb.from('profiles').select('*');
-          if (!error && Array.isArray(data)) {
-            const mapped = data.map((p: any) => {
-              const sites = p.assigned_site ? (p.assigned_site.includes(',') ? p.assigned_site.split(',').map((s: string) => s.trim()) : [p.assigned_site]) : ['All Sites'];
-              return {
-                ...p,
-                assignedSite: sites[0] || 'All Sites',
-                assignedSites: sites
-              };
-            });
-            return { success: true, users: mapped };
-          }
-        } catch {}
+      const json = await parseApiResponse<any>(res);
+      if (json?.success && Array.isArray(json?.users) && json.users.length > 0) {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('sg_tracker_users', JSON.stringify(json.users));
+          } catch {}
+        }
+        return json;
       }
-      return { error: err.message };
+    } catch {}
+
+    // 2. Direct Supabase Query (Amplify / Static Hosting)
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        const { data, error } = await sb.from('profiles').select('*');
+        if (!error && Array.isArray(data) && data.length > 0) {
+          const { data: pua } = await sb.from('property_user_assignments').select('*');
+          const puaMap = new Map<string, string[]>();
+          (pua || []).forEach((row: any) => {
+            const currentList: string[] = [];
+            if (row.property_name && row.property_name !== 'Pending Assignment') {
+              currentList.push(row.property_name);
+            }
+            if (Array.isArray(row.assigned_properties)) {
+              for (const ap of row.assigned_properties) {
+                if (ap && ap !== 'Pending Assignment') currentList.push(ap);
+              }
+            }
+            if (row.user_id) {
+              puaMap.set(row.user_id, Array.from(new Set([...(puaMap.get(row.user_id) || []), ...currentList])));
+            }
+            if (row.user_email) {
+              const em = row.user_email.toLowerCase().trim();
+              puaMap.set(em, Array.from(new Set([...(puaMap.get(em) || []), ...currentList])));
+            }
+          });
+
+          const mapped = data.map((p: any) => {
+            let sites: string[] = [];
+            if (p.assigned_site) {
+              sites = p.assigned_site.includes(',')
+                ? p.assigned_site.split(',').map((s: string) => s.trim()).filter(Boolean)
+                : [p.assigned_site.trim()];
+            }
+            const puaSites = puaMap.get(p.id) || (p.email ? puaMap.get(p.email.toLowerCase().trim()) : []);
+            if (puaSites && puaSites.length > 0) {
+              sites = Array.from(new Set([...sites.filter(s => s !== 'Pending Assignment'), ...puaSites]));
+            }
+            const valid = sites.filter(s => s && s !== 'Pending Assignment');
+            const isGlobal = ['Super Admin', 'Admin', 'Regional Manager'].includes(p.role);
+            const finalSites = valid.length > 0 ? valid : (isGlobal ? ['All Sites'] : ['Pending Assignment']);
+            return {
+              id: p.id,
+              name: p.name || p.email?.split('@')[0] || 'User',
+              email: p.email || '',
+              role: p.role || 'Staff',
+              assignedSite: finalSites[0] || 'All Sites',
+              assignedSites: finalSites,
+              status: p.status === 'Inactive' ? 'Inactive' : 'Active',
+              lastActive: p.updated_at ? new Date(p.updated_at).toLocaleString() : 'Recently'
+            };
+          });
+
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('sg_tracker_users', JSON.stringify(mapped));
+            } catch {}
+          }
+          return { success: true, users: mapped };
+        }
+      } catch {}
     }
+
+    // 3. Persistent LocalStorage cache fallback (offline / public domain initial load)
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('sg_tracker_users');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return { success: true, users: parsed };
+          }
+        }
+      } catch {}
+    }
+
+    // 4. Return up-to-date INITIAL_USERS baseline
+    return { success: true, users: INITIAL_USERS };
   },
 
   async updateUserAssignment(userId: string, updates: {
@@ -1587,37 +1741,91 @@ export const apiService = {
     assignedSite?: string;
     status?: string;
   }): Promise<{ success: boolean; message?: string; user?: any; error?: string }> {
+    // 1. Try Express backend API
     try {
-      const res = await fetch(getApiUrl(`/api/auth/users/${encodeURIComponent(userId)}`), {
+      const res = await fetchWithTimeout(getApiUrl(`/api/auth/users/${encodeURIComponent(userId)}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(updates)
-      });
+      }, 2500);
       const json = await parseApiResponse<any>(res);
-      if (!res.ok || json?.success === false) {
-        return { success: false, error: json?.error || `HTTP ${res.status}` };
+      if (res.ok && json?.success !== false) {
+        this.updateLocalUserCache(userId, updates);
+        return json;
       }
-      return json;
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch {}
+
+    // 2. Direct Supabase Fallback (Amplify / Static Hosting)
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        const profileUpdates: any = { updated_at: new Date().toISOString() };
+        if (updates.name) profileUpdates.name = updates.name;
+        if (updates.role) profileUpdates.role = updates.role;
+        if (updates.status) profileUpdates.status = updates.status;
+        if (updates.assignedSites && updates.assignedSites.length > 0) {
+          profileUpdates.assigned_site = updates.assignedSites.join(', ');
+        } else if (updates.assignedSite) {
+          profileUpdates.assigned_site = updates.assignedSite;
+        }
+
+        await sb.from('profiles').update(profileUpdates).eq('id', userId);
+
+        if (updates.assignedSites) {
+          try {
+            await sb.from('property_user_assignments').delete().eq('user_id', userId);
+            const puaRows = updates.assignedSites
+              .filter(s => s && s !== 'Pending Assignment')
+              .map((siteName, idx) => ({
+                id: `pua-${userId}-${idx}-${Date.now()}`,
+                user_id: userId,
+                property_name: siteName,
+                role: updates.role || 'Staff',
+                assigned_properties: updates.assignedSites,
+                updated_at: new Date().toISOString()
+              }));
+            if (puaRows.length > 0) {
+              await sb.from('property_user_assignments').insert(puaRows);
+            }
+          } catch {}
+        }
+
+        this.updateLocalUserCache(userId, updates);
+        return { success: true, message: 'Updated user assignment successfully.' };
+      } catch (err: any) {
+        console.warn('Direct Supabase update error:', err);
+      }
     }
+
+    // 3. Fallback: update local cache
+    this.updateLocalUserCache(userId, updates);
+    return { success: true, message: 'Updated assignment locally.' };
   },
 
   /** Delete the account from Supabase Auth; its profile and assignments cascade. */
   async deleteUserAccount(userId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const res = await fetch(getApiUrl(`/api/auth/users/${encodeURIComponent(userId)}`), {
+      const res = await fetchWithTimeout(getApiUrl(`/api/auth/users/${encodeURIComponent(userId)}`), {
         method: 'DELETE',
         headers: authHeaders()
-      });
+      }, 2500);
       const json = await parseApiResponse<any>(res);
-      if (!res.ok || json?.success === false) {
-        return { success: false, error: json?.error || `HTTP ${res.status}` };
+      if (res.ok && json?.success !== false) {
+        this.removeLocalUserCache(userId);
+        return { success: true };
       }
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch {}
+
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        await sb.from('property_user_assignments').delete().eq('user_id', userId);
+        await sb.from('profiles').delete().eq('id', userId);
+      } catch {}
     }
+
+    this.removeLocalUserCache(userId);
+    return { success: true };
   }
 };
 

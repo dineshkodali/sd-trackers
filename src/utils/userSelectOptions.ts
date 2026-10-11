@@ -21,9 +21,20 @@ export function getUserDropdownOptions(
     onlyActive?: boolean;
   }
 ): { label: string; value: string; role?: string }[] {
-  const allUsers: UserAccount[] = (Array.isArray(users) && users.length > 0)
+  let allUsers: UserAccount[] = (Array.isArray(users) && users.length > 0)
     ? users
-    : INITIAL_USERS;
+    : (() => {
+        if (typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem('sg_tracker_users');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+          } catch {}
+        }
+        return INITIAL_USERS;
+      })();
 
   let filtered = allUsers.filter(u => u && (options?.onlyActive !== false ? u.status !== 'Inactive' : true));
 
