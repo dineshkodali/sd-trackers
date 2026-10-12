@@ -350,35 +350,21 @@ export const IncidentBuilderForm: React.FC<FormProps> = ({
             No incident type matches that – try another word, or use &ldquo;Blank – write your own&rdquo;.
           </p>
         )}
-        <div className="space-y-2">
+        <label htmlFor="irb_scenario" className={LABEL}>Incident type</label>
+        <select
+          id="irb_scenario"
+          className={INPUT}
+          value={state.scenarioId}
+          onChange={e => onChange(applyScenario(clone(state), e.target.value))}
+        >
           {groups.out.map(g => (
-            <div key={g.name}>
-              <h4 className="text-[10px] font-bold text-[#64748b] uppercase tracking-wide mb-1">{g.name}</h4>
-              <div className="flex flex-wrap gap-1">
-                {g.items.map(s => {
-                  const active = s.id === state.scenarioId;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      aria-pressed={active}
-                      title={s.draft ? 'Draft wording – not yet agreed' : undefined}
-                      onClick={() => { const next = clone(state); onChange(applyScenario(next, s.id)); }}
-                      className={`px-2 py-1 text-[11px] rounded-xs border transition-colors cursor-pointer ${
-                        active
-                          ? 'bg-[#0d9488] border-[#0d9488] text-white'
-                          : `bg-white text-[#334155] border-[#cbd5e1] hover:border-[#0d9488] hover:bg-[#f0fdfa] ${s.draft ? 'border-dashed' : ''}`
-                      }`}
-                    >
-                      <b>{s.label}</b>
-                      {s.sub ? <span className={active ? 'text-white/80' : 'text-[#64748b]'}> {'·'} {s.sub}</span> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <optgroup key={g.name} label={g.name}>
+              {g.items.map(s => (
+                <option key={s.id} value={s.id}>{s.label}{s.sub ? ` · ${s.sub}` : ''}</option>
+              ))}
+            </optgroup>
           ))}
-        </div>
+        </select>
 
         <div className={`mt-2 p-2 text-[11px] rounded-xs border space-y-1 ${state.review ? 'bg-[#fde8e6] border-[#e6a39c] text-[#7a1e16]' : 'bg-[#f0fdfa] border-[#99f6e4] text-[#134e4a]'}`}>
           {state.review && <div><b>Marked for review: </b>download the report and send it to your line manager for review before it goes to CST.</div>}
