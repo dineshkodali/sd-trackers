@@ -931,7 +931,7 @@ export const sitesTableConfig: TableColumnConfig<SiteInfo>[] = [
     key: 'attachments',
     label: 'Attached Files',
     type: 'text',
-    visibleInTable: true,
+    visibleInTable: false,
     renderCell: renderAttachmentCell
   },
   // System metadata
