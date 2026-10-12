@@ -234,8 +234,8 @@ export const Header: React.FC = () => {
 
       {/* Right controls */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Assigned Property Selector: Switchable for Admins, GMs & RMs; Strictly Locked for Staff */}
-        {currentUserRole === 'Staff' ? (
+        {/* Assigned Property Selector: Switchable for Admins, GMs & RMs, or multi-site staff; Strictly Locked for single-site staff */}
+        {(!canAccessAllSites() && (allowedSites || []).length <= 1) ? (
           <div 
             id="assigned-property-topbar-tag"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4] rounded-xs shadow-xs"

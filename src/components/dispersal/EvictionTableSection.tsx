@@ -141,7 +141,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
     const recordStatus = data.status || 'Notice Issued';
     let effectiveSite = data.hotel || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Brit Hotel'));
     if (!canAccessAllSites()) {
-      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+      if ((allowedSites || []).length <= 1) {
         effectiveSite = allowedSites[0] || assignedSite;
       } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
         alert('You can only record evictions for your assigned sites.');

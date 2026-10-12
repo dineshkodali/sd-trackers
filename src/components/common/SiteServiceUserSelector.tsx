@@ -53,9 +53,8 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
     if (canAccessAllSites()) return sites;
     const allowed = (allowedSites || []).map(a => a.toLowerCase().trim());
     const matched = sites.filter(s => allowed.some(a => a === s.name.toLowerCase().trim() || a === s.id.toLowerCase().trim()));
-    if (currentUserRole === 'Staff') return matched.slice(0, 1);
     return matched.length > 0 ? matched : sites.slice(0, 1);
-  }, [sites, allowedSites, canAccessAllSites, currentUserRole]);
+  }, [sites, allowedSites, canAccessAllSites]);
 
   const [currentSiteId, setCurrentSiteId] = useState<string>(selectedSiteId || '');
   const [currentPropertyId, setCurrentPropertyId] = useState<string>(selectedPropertyId || '');

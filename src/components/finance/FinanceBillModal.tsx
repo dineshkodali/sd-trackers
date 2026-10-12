@@ -194,7 +194,8 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
       }
     } else {
       const prefix = billType === 'credit_card_expense' ? 'CC' : billType === 'delivery_note' ? 'DN' : 'INV';
-      setSiteId(availableProperties[0]?.id || assignedSite || '');
+      const defaultProp = availableProperties.find(p => p.id === assignedSite || p.name === assignedSite)?.id || availableProperties[0]?.id || assignedSite || '';
+      setSiteId(defaultProp);
       setVendorId('');
       setVendorName('');
       setBillNumber(`${prefix}-${Date.now().toString().slice(-6)}`);
@@ -510,12 +511,12 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                 <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
                   <span>Property / Site <span className="text-red-500">*</span></span>
                 </label>
-                {isEmployee && assignedSite ? (
+                {!canAccessAllSites() && (allowedSites || []).length <= 1 ? (
                   <div className="relative">
                     <input
                       type="text"
                       disabled
-                      value={availableProperties.find(p => p.id === assignedSite || p.name === assignedSite)?.name || assignedSite}
+                      value={availableProperties.find(p => p.id === assignedSite || p.name === assignedSite)?.name || assignedSite || (allowedSites && allowedSites[0]) || ''}
                       className="w-full p-2 pr-8 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
                     />
                     <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2.5 top-1/2 -translate-y-1/2" />

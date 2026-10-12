@@ -150,7 +150,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
   const handleCreateSubmit = (data: Partial<DispersalRecord>) => {
     let effectiveSite = data.siteName || (siteFilter !== 'all' ? siteFilter : allowedSites[0]);
     if (!canAccessAllSites()) {
-      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+      if ((allowedSites || []).length <= 1) {
         effectiveSite = allowedSites[0] || assignedSite;
       } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
         alert('You can only record dispersals for your assigned sites.');

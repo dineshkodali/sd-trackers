@@ -143,7 +143,7 @@ export const DocumentsView: React.FC = () => {
   const handleCreateSubmit = (data: Partial<DocumentRecord>) => {
     let effectiveSite = data.site || (siteFilter !== 'all' ? siteFilter : allowedSites[0]);
     if (!canAccessAllSites()) {
-      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+      if ((allowedSites || []).length <= 1) {
         effectiveSite = allowedSites[0] || assignedSite;
       } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
         alert('You can only upload documents for your assigned sites.');

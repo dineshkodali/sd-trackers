@@ -193,7 +193,7 @@ export const SDVCSDirectoryView: React.FC = () => {
   const handleCreateSubmit = (data: Partial<SDVCSAgency>) => {
     let effectiveHotel = data.hotelName || (selectedProperty !== 'all' ? selectedProperty : allowedSites[0]);
     if (!canAccessAllSites()) {
-      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+      if ((allowedSites || []).length <= 1) {
         effectiveHotel = allowedSites[0] || assignedSite;
       } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveHotel || '').toLowerCase())) {
         alert('You can only add agencies for your assigned sites.');

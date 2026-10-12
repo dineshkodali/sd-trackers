@@ -243,7 +243,7 @@ export const TransportFeedbackSection: React.FC = () => {
 
     let effectiveSite = formData.siteName || defaultSite;
     if (!canAccessAllSites()) {
-      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+      if ((allowedSites || []).length <= 1) {
         effectiveSite = allowedSites[0] || defaultSite;
       } else if (!allowedSites.includes(effectiveSite)) {
         alert('You can only report issues for your assigned sites.');
@@ -630,13 +630,13 @@ export const TransportFeedbackSection: React.FC = () => {
                 <div>
                   <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
                     <span>Site / Hotel *</span>
-                    {(currentUserRole === 'Staff' || (!canAccessAllSites() && (allowedSites || []).length <= 1)) && (
+                    {(!canAccessAllSites() && (allowedSites || []).length <= 1) && (
                       <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium flex items-center gap-0.5">
                         <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
                       </span>
                     )}
                   </label>
-                  {(currentUserRole === 'Staff' || (!canAccessAllSites() && (allowedSites || []).length <= 1)) ? (
+                  {(!canAccessAllSites() && (allowedSites || []).length <= 1) ? (
                     <div className="relative">
                       <input
                         type="text"

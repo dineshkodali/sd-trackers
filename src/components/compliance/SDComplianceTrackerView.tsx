@@ -160,7 +160,7 @@ export const SDComplianceTrackerView: React.FC = () => {
   const handleCreateSubmit = (data: Partial<SDComplianceRecord>) => {
     let effectiveSite = data.siteName || (siteFilter !== 'all' ? siteFilter : allowedSites[0]);
     if (!canAccessAllSites()) {
-      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+      if ((allowedSites || []).length <= 1) {
         effectiveSite = allowedSites[0] || assignedSite;
       } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
         alert('You can only create compliance records for your assigned sites.');
