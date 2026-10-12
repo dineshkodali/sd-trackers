@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   CreditCard, 
   Plus, 
@@ -90,7 +90,8 @@ export const TransportFundingSection: React.FC = () => {
     canDeleteRecord,
     authProfile,
     sites,
-    properties
+    properties,
+    isSitePermitted
   } = useApp();
 
   const isManagementOrHo = ['Super Admin', 'Admin', 'Regional Manager'].includes(currentUserRole);
@@ -108,6 +109,13 @@ export const TransportFundingSection: React.FC = () => {
     return 'Site Manager';
   }, [sites, properties]);
 
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSite, setSelectedSite] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [methodFilter, setMethodFilter] = useState<string>('all');
+  const [exceptionalFilter, setExceptionalFilter] = useState<string>('all');
+
   const defaultSite = useMemo(() => {
     if (!canAccessAllSites() && (allowedSites || []).length <= 1 && assignedSite) return assignedSite;
     if (selectedSite !== 'all' && selectedSite) return selectedSite;
@@ -115,13 +123,6 @@ export const TransportFundingSection: React.FC = () => {
     if (sites.length > 0) return sites[0].name;
     return '';
   }, [canAccessAllSites, assignedSite, allowedSites, sites, selectedSite]);
-
-  // Filters & Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSite, setSelectedSite] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [methodFilter, setMethodFilter] = useState<string>('all');
-  const [exceptionalFilter, setExceptionalFilter] = useState<string>('all');
 
   // Sync with active property switcher in Header
   useEffect(() => {
@@ -203,20 +204,13 @@ export const TransportFundingSection: React.FC = () => {
 
   // Site Scoped
   const siteScopedRecords = useMemo(() => {
-    return transportFundingRequests.filter(r => {
-      if (!canAccessAllSites()) {
-        const allowed = new Set(allowedSites.map(s => s.toLowerCase().trim()));
-        if (assignedSite) allowed.add(assignedSite.toLowerCase().trim());
-        return allowed.has((r.siteName || '').toLowerCase().trim());
-      }
-      return true;
-    });
-  }, [transportFundingRequests, canAccessAllSites, allowedSites, assignedSite]);
+    return transportFundingRequests.filter(r => isSitePermitted(r.siteName, 'all'));
+  }, [transportFundingRequests, isSitePermitted]);
 
   // Filtered
   const filteredRecords = useMemo(() => {
     return siteScopedRecords.filter(r => {
-      if (selectedSite !== 'all' && (r.siteName || '').toLowerCase().trim() !== selectedSite.toLowerCase().trim()) {
+      if (!isSitePermitted(r.siteName, selectedSite)) {
         return false;
       }
       if (statusFilter !== 'all' && r.status !== statusFilter) {
@@ -241,7 +235,7 @@ export const TransportFundingSection: React.FC = () => {
       }
       return true;
     });
-  }, [siteScopedRecords, selectedSite, statusFilter, methodFilter, exceptionalFilter, searchQuery]);
+  }, [siteScopedRecords, selectedSite, statusFilter, methodFilter, exceptionalFilter, searchQuery, isSitePermitted]);
 
   // Sorted
   const sortedRecords = useMemo(() => {
@@ -287,6 +281,10 @@ export const TransportFundingSection: React.FC = () => {
     }
 
     const targetSite = formData.siteName || defaultSite;
+    if (!isSitePermitted(targetSite)) {
+      alert('You are not permitted to submit funding requests for this property.');
+      return;
+    }
     addTransportFundingRequest({
       ...formData,
       siteName: targetSite,

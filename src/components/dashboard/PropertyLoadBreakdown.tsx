@@ -25,17 +25,12 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
     maintenanceRecords,
     canAccessAllSites,
     allowedSites,
-    assignedSite
+    assignedSite,
+    isSitePermitted
   } = useApp();
 
   const scopedProperties = properties.filter(prop => {
-    if (canAccessAllSites()) return true;
-    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
-      .map(s => (s || '').toLowerCase().trim())
-      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
-    if (permitted.length === 0) return true;
-    const propName = (prop.name || '').toLowerCase().trim();
-    return permitted.some(s => propName === s || propName.includes(s) || s.includes(propName));
+    return isSitePermitted(prop.name, 'all');
   });
 
   // Aggregate stats per property

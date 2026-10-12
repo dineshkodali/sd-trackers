@@ -13,7 +13,8 @@ import {
   ArrowDown,
   Sparkles,
   CheckCircle2,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BookletCollectionRecord } from '../../types';
@@ -51,6 +52,7 @@ export const BookletCollectionView: React.FC = () => {
     canDeleteRecord,
     currentUserRole,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     allowedSites,
     sites,
@@ -73,10 +75,25 @@ export const BookletCollectionView: React.FC = () => {
     resetToDefault
   } = useTableSchema<BookletCollectionRecord>('booklets', BOOKLETS_TABLE_COLUMNS);
 
-  const [selectedHotel, setSelectedHotel] = useState<string>(!canAccessAllSites() ? assignedSite : 'all');
+  const [selectedHotel, setSelectedHotel] = useState<string>('all');
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [bookletTypeFilter, setBookletTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Sync with active property switcher in Header
+  React.useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSelectedHotel('all');
+    } else if (assignedSite) {
+      setSelectedHotel(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
+
+  // Strict Site Isolation - only single-site staff are locked
+  const isLockedToSingleSite = !canAccessAllSites() && (allowedSites || []).length <= 1;
+  const effectiveHotel = isLockedToSingleSite && assignedSite && assignedSite !== 'All Sites'
+    ? assignedSite
+    : selectedHotel;
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
@@ -105,7 +122,7 @@ export const BookletCollectionView: React.FC = () => {
 
   const filteredRecords = useMemo(() => {
     return bookletRecords.filter(r => {
-      const matchesHotel = selectedHotel === 'all' || r.hotelName === selectedHotel;
+      if (!isSitePermitted(r.hotelName, effectiveHotel)) return false;
       const matchesAgent = selectedAgent === 'all' || r.agentName === selectedAgent;
       const matchesType = bookletTypeFilter === 'all' || r.bookletType === bookletTypeFilter;
       const q = searchQuery.toLowerCase().trim();
@@ -114,9 +131,9 @@ export const BookletCollectionView: React.FC = () => {
         r.bookletType.toLowerCase().includes(q) ||
         (r.notes && r.notes.toLowerCase().includes(q));
 
-      return matchesHotel && matchesAgent && matchesType && matchesQuery;
+      return matchesAgent && matchesType && matchesQuery;
     });
-  }, [bookletRecords, selectedHotel, selectedAgent, bookletTypeFilter, searchQuery]);
+  }, [bookletRecords, isSitePermitted, effectiveHotel, selectedAgent, bookletTypeFilter, searchQuery]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -147,9 +164,14 @@ export const BookletCollectionView: React.FC = () => {
 
   const handleCreateSubmit = (data: Partial<BookletCollectionRecord>) => {
     const generatedId = 'bkl-' + Date.now();
-    const assignedTargetHotel = !canAccessAllSites() 
-      ? assignedSite 
-      : (data.hotelName || (selectedHotel !== 'all' ? selectedHotel : (assignedSite || allowedSites[0])));
+    const assignedTargetHotel = isLockedToSingleSite 
+      ? (assignedSite && assignedSite !== 'All Sites' ? assignedSite : (allowedSites[0] || 'Brit Hotel'))
+      : (data.hotelName || (selectedHotel !== 'all' ? selectedHotel : (allowedSites[0] || 'Brit Hotel')));
+
+    if (!canAccessAllSites() && !isSitePermitted(assignedTargetHotel, 'all')) {
+      alert(`You do not have permission to add booklet records for site: ${assignedTargetHotel}`);
+      return;
+    }
 
     addBookletRecord({
       id: generatedId,
@@ -384,16 +406,28 @@ export const BookletCollectionView: React.FC = () => {
             />
           </div>
 
-          <select
-            value={selectedHotel}
-            onChange={e => setSelectedHotel(e.target.value)}
-            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
-          >
-            <option value="all">All Hotels</option>
-            {activeHotels.map(h => (
-              <option key={h} value={h}>{h}</option>
-            ))}
-          </select>
+          {!isLockedToSingleSite ? (
+            <select
+              value={selectedHotel}
+              onChange={e => setSelectedHotel(e.target.value)}
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
+            >
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? 'All Hotels' : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
+              {(canAccessAllSites() ? activeHotels : (allowedSites || [])).map(h => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs" title="Locked to your assigned site">
+              <Lock className="w-3 h-3 text-[#0f766e]" />
+              <span className="font-semibold text-neutral-600">Site:</span>
+              <span className="font-bold text-[#0f766e] truncate">{assignedSite || 'Assigned Site'}</span>
+            </div>
+          )}
 
           <select
             value={bookletTypeFilter}
@@ -527,7 +561,9 @@ export const BookletCollectionView: React.FC = () => {
         title="Add Booklet Consignment"
         columns={columns}
         initialValues={{
-          hotelName: !canAccessAllSites() ? assignedSite : (selectedHotel !== 'all' ? selectedHotel : (assignedSite || allowedSites[0])),
+          hotelName: isLockedToSingleSite 
+            ? (assignedSite && assignedSite !== 'All Sites' ? assignedSite : (allowedSites[0] || 'Brit Hotel'))
+            : (selectedHotel !== 'all' ? selectedHotel : (allowedSites[0] || 'Brit Hotel')),
           agentName: 'Ready Homes',
           bookletType: 'Migrant Help booklets',
           language: 'English',

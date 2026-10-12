@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Send, 
   Plus, 
@@ -65,6 +65,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
     allowedSites,
     assignedSite,
     canAccessAllSites,
+    isSitePermitted,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -112,14 +113,14 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
         (r.reasonFailedToTravel && r.reasonFailedToTravel.toLowerCase().includes(q)) ||
         (r.reasonFailedToTravelSecond && r.reasonFailedToTravelSecond.toLowerCase().includes(q));
 
-      const matchesSite = siteFilter === 'all' || r.siteName === siteFilter;
+      const matchesSite = isSitePermitted(r.siteName, siteFilter);
       const matchesTravelled = travelledFilter === 'all' || r.travelled === travelledFilter;
       const matchesSecond = secondDispersalFilter === 'all' || 
         (secondDispersalFilter === 'yes' ? Boolean(r.secondDispersalDate && r.secondDispersalDate.trim()) : !r.secondDispersalDate);
 
       return matchesSearch && matchesSite && matchesTravelled && matchesSecond;
     });
-  }, [dispersalRecords, searchQuery, siteFilter, travelledFilter, secondDispersalFilter]);
+  }, [dispersalRecords, isSitePermitted, searchQuery, siteFilter, travelledFilter, secondDispersalFilter]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -147,11 +148,19 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
   };
 
   const handleCreateSubmit = (data: Partial<DispersalRecord>) => {
+    let effectiveSite = data.siteName || (siteFilter !== 'all' ? siteFilter : allowedSites[0]);
+    if (!canAccessAllSites()) {
+      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+        effectiveSite = allowedSites[0] || assignedSite;
+      } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
+        alert('You can only record dispersals for your assigned sites.');
+        return;
+      }
+    }
+
     addDispersalRecord({
       sno: dispersalRecords.length + 1,
-      siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1)
-        ? assignedSite 
-        : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
+      siteName: effectiveSite || '',
       dateReceived: data.dateReceived || new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
       suPortNassRef: data.suPortNassRef || '',
       reasonForDeparture: data.reasonForDeparture || 'Dispersal to Long-Term NASS accommodation',

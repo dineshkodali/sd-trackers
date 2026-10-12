@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   FileText, 
@@ -51,6 +51,7 @@ export const DocumentsView: React.FC = () => {
     canEditRecord,
     canCreateRecord,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     settings,
     currentUserRole , requestConfirmation } = useApp();
@@ -104,7 +105,7 @@ export const DocumentsView: React.FC = () => {
 
   const filteredData = useMemo(() => {
     return documents.filter(d => {
-      if (siteFilter !== 'all' && d.site !== siteFilter) return false;
+      if (!isSitePermitted(d.site, siteFilter)) return false;
       if (categoryFilter !== 'all' && d.category !== categoryFilter) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -113,7 +114,7 @@ export const DocumentsView: React.FC = () => {
       }
       return true;
     });
-  }, [documents, siteFilter, categoryFilter, searchQuery]);
+  }, [documents, isSitePermitted, siteFilter, categoryFilter, searchQuery]);
 
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a: any, b: any) => {
@@ -140,15 +141,21 @@ export const DocumentsView: React.FC = () => {
   };
 
   const handleCreateSubmit = (data: Partial<DocumentRecord>) => {
-    const effectiveSite = !canAccessAllSites() 
-      ? assignedSite 
-      : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+    let effectiveSite = data.site || (siteFilter !== 'all' ? siteFilter : allowedSites[0]);
+    if (!canAccessAllSites()) {
+      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+        effectiveSite = allowedSites[0] || assignedSite;
+      } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
+        alert('You can only upload documents for your assigned sites.');
+        return;
+      }
+    }
     addDocument({
       documentTitle: data.documentTitle || 'Untitled Document',
       suName: data.suName || '',
       refNumber: data.refNumber || '',
       category: (data.category as any) || 'Risk Assessment',
-      site: effectiveSite,
+      site: effectiveSite || '',
       fileFormat: (data.fileFormat as any) || 'PDF',
       fileSizeKb: Number(data.fileSizeKb) || 1420,
       confidentiality: (data.confidentiality as any) || 'Restricted',
@@ -515,7 +522,7 @@ export const DocumentsView: React.FC = () => {
           suName: '',
           refNumber: '',
           category: 'Risk Assessment',
-          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          site: !canAccessAllSites() ? (siteFilter !== 'all' && allowedSites.includes(siteFilter) ? siteFilter : (allowedSites[0] || assignedSite)) : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           fileFormat: 'PDF',
           fileSizeKb: 1420,
           confidentiality: 'Restricted',

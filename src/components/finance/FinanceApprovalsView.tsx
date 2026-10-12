@@ -40,7 +40,7 @@ const approvalExportColumns: ExportColumnOption[] = [
 ];
 
 export const FinanceApprovalsView: React.FC = () => {
-  const { properties, isFinanceUser, currentUserRole, authProfile, requestConfirmation, closeConfirmation } = useApp();
+  const { properties, isFinanceUser, currentUserRole, authProfile, requestConfirmation, closeConfirmation, canAccessAllSites, isSitePermitted, allowedSites, assignedSite } = useApp();
 
   const { columns, saveColumns, resetToDefault } = useTableSchema('finance_approvals', FINANCE_APPROVALS_TABLE_COLUMNS);
 
@@ -48,7 +48,15 @@ export const FinanceApprovalsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(() => financeService.getCachedBills().length === 0);
 
   // Filters
-  const [siteFilter, setSiteFilter] = useState<string>('all');
+  const [siteFilter, setSiteFilter] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [statusFilter, setStatusFilter] = useState<string>('pending_any');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -97,20 +105,7 @@ export const FinanceApprovalsView: React.FC = () => {
 
   const filteredBills = useMemo(() => {
     return bills.filter(b => {
-      if (siteFilter !== 'all') {
-        const filter = siteFilter.toLowerCase().trim();
-        const bSiteName = (b.siteName || '').toLowerCase().trim();
-        const bSiteId = (b.siteId || '').toLowerCase().trim();
-        const prop = properties.find(p => p.id?.toLowerCase() === filter || p.name?.toLowerCase() === filter);
-        const propName = (prop?.name || '').toLowerCase();
-        const propId = (prop?.id || '').toLowerCase();
-        const matchesFilter =
-          bSiteName === filter || (filter && bSiteName.includes(filter)) ||
-          bSiteId === filter || (filter && bSiteId.includes(filter)) ||
-          (propName && (bSiteName === propName || bSiteName.includes(propName))) ||
-          (propId && (bSiteId === propId || bSiteId.includes(propId)));
-        if (!matchesFilter) return false;
-      }
+      if (!isSitePermitted(b.siteName, siteFilter)) return false;
 
       if (statusFilter !== 'all') {
         if (statusFilter === 'pending_any') {
@@ -371,12 +366,17 @@ export const FinanceApprovalsView: React.FC = () => {
           <div>
             <select
               value={siteFilter}
-              onChange={e => setSiteFilter(e.target.value)}
-              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
             >
-              <option value="all">All Properties / Sites</option>
-              {properties.map(p => (
-                <option key={p.id} value={p.name}>{p.name}</option>
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? 'All Properties' : `All Assigned Properties (${allowedSites.length})`}
+                </option>
+              )}
+              {allowedSites.map(s => (
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </div>

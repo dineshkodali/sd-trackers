@@ -241,6 +241,7 @@ interface AppContextType {
   canManageRoles: () => boolean;
   canAccessAllSites: () => boolean;
   canSwitchSites: () => boolean;
+  isSitePermitted: (itemSite?: string | null, activeFilter?: string | null) => boolean;
   canManageFiles: () => boolean;
   canManageProperties: () => boolean;
   canManageUsers: () => boolean;
@@ -2033,10 +2034,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Derive allowed sites based on role and settings
   const canAccessAllSites = useCallback(() => {
     if (currentUserRole === 'Super Admin' || currentUserRole === 'Admin') return true;
+    if (currentUserRole === 'Regional Manager') return true;
     if (hasAllSitesAccess(authProfile?.assignedSites)) return true;
-    if (currentUserRole === 'Regional Manager' && (!authProfile?.assignedSites || authProfile.assignedSites.length === 0 || authProfile.assignedSites.includes('All Sites') || authProfile.assignedSites.includes('All'))) {
-      return true;
-    }
     return false;
   }, [currentUserRole, authProfile?.assignedSites]);
 
@@ -2046,8 +2045,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .filter((name): name is string => Boolean(name && typeof name === 'string' && name.trim() !== ''));
     const uniqueAllSites = Array.from(new Set(allSiteNames));
 
-    // Super Admin & Admin have access to all sites
-    if (currentUserRole === 'Super Admin' || currentUserRole === 'Admin') {
+    // Super Admin, Admin & Regional Manager have access to all sites
+    if (currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || currentUserRole === 'Regional Manager') {
       return uniqueAllSites;
     }
 
@@ -2087,16 +2086,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const list = Array.from(siteSet);
 
-    // Frontline staff restriction: strictly limited to ONE site
+    // Frontline staff: retain all assigned sites if assigned to multiple sites; otherwise fallback to single site
     if (currentUserRole === 'Staff') {
-      if (list.length > 0) return [list[0]];
-      if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'Pending Assignment') return [assignedSite.split(',')[0].trim()];
+      if (list.length > 0) return list;
+      if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'Pending Assignment') {
+        const parsed = assignedSite.split(',').map(s => s.trim()).filter(Boolean);
+        return parsed.length > 0 ? parsed : ['Brit Hotel'];
+      }
       return uniqueAllSites.length > 0 ? [uniqueAllSites[0]] : ['Brit Hotel'];
-    }
-
-    // Regional Manager fallback to all sites if no specific sites assigned
-    if (currentUserRole === 'Regional Manager' && list.length === 0) {
-      return uniqueAllSites;
     }
 
     if (list.length > 0) return list;
@@ -2105,28 +2102,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUserRole, authProfile?.assignedSites, authProfile?.id, authProfile?.email, users, assignedSite, sites]);
 
   const canSwitchSites = useCallback(() => {
-    if (currentUserRole === 'Staff') return false;
     if (canAccessAllSites()) return true;
     return (allowedSites || []).length > 1;
-  }, [currentUserRole, canAccessAllSites, allowedSites]);
+  }, [canAccessAllSites, allowedSites]);
+
+  const isSitePermitted = useCallback((itemSite?: string | null, activeFilter?: string | null) => {
+    // If an explicit filter is set and not 'all' / 'All Sites'
+    if (activeFilter && activeFilter !== 'all' && activeFilter !== 'All Sites') {
+      if (!itemSite) return false;
+      const s = itemSite.trim().toLowerCase();
+      const f = activeFilter.trim().toLowerCase();
+      return s === f || s.includes(f) || f.includes(s);
+    }
+    // When viewing 'all' or 'All Sites' or no specific filter:
+    if (canAccessAllSites()) return true;
+    if (!itemSite) return false;
+    const s = itemSite.trim().toLowerCase();
+    return (allowedSites || []).some(allowed => {
+      const a = (allowed || '').trim().toLowerCase();
+      return a && (s === a || s.includes(a) || a.includes(s));
+    });
+  }, [canAccessAllSites, allowedSites]);
 
   // When role changes or allowed sites change, keep assignedSite and selectedSite valid
   useEffect(() => {
-    if (currentUserRole === 'Staff') {
-      const staffSite = (allowedSites && allowedSites.length > 0 ? allowedSites[0] : 'Brit Hotel');
-      if (assignedSite !== staffSite) {
-        setAssignedSiteState(staffSite);
+    if (!canAccessAllSites() && (allowedSites || []).length <= 1) {
+      const singleSite = (allowedSites && allowedSites.length > 0 ? allowedSites[0] : 'Brit Hotel');
+      if (assignedSite !== singleSite) {
+        setAssignedSiteState(singleSite);
       }
-      if (selectedSite !== staffSite) {
-        setSelectedSite(staffSite);
+      if (selectedSite !== singleSite) {
+        setSelectedSite(singleSite);
       }
     } else if (allowedSites.length > 0) {
       if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all' && !allowedSites.includes(assignedSite)) {
         setAssignedSiteState(allowedSites[0]);
+      }
+      if (selectedSite && selectedSite !== 'All Sites' && selectedSite !== 'all' && !allowedSites.includes(selectedSite)) {
         setSelectedSite(allowedSites[0]);
       }
     }
-  }, [currentUserRole, allowedSites, assignedSite, selectedSite]);
+  }, [canAccessAllSites, allowedSites, assignedSite, selectedSite]);
 
   // Dynamic RBAC Permission Checks — the matrix lives in role_permissions (one row per role)
   const rolePermissionsRef = useRef(rolePermissions);
@@ -2173,17 +2189,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const canEditRecord = useCallback((recordSite?: string) => {
     const perm = rolePermissions[currentUserRole]?.canEditRecords ?? true;
     if (!perm) return false;
-    if (currentUserRole === 'Super Admin' || currentUserRole === 'Regional Manager' || currentUserRole === 'Admin') {
+    if (canAccessAllSites()) {
       return true;
     }
-    if (currentUserRole === 'Area Manager' || currentUserRole === 'General Manager') {
-      return !recordSite || recordSite === assignedSite;
-    }
-    if (currentUserRole === 'Staff') {
-      return !recordSite || recordSite === assignedSite;
-    }
-    return false;
-  }, [currentUserRole, assignedSite, rolePermissions]);
+    return !recordSite || isSitePermitted(recordSite, 'all');
+  }, [currentUserRole, rolePermissions, canAccessAllSites, isSitePermitted]);
 
   const canCreateRecord = useCallback(() => {
     return rolePermissions[currentUserRole]?.canCreateRecords ?? true;
@@ -2263,14 +2273,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUserRole, authProfile, requestConfirmation, addAuditEntry, assignedSite, closeConfirmation]);
 
   const setAssignedSite = useCallback((newSite: string) => {
-    if (currentUserRole === 'Staff') {
-      console.warn('[RBAC] Frontline staff accounts are restricted to a single assigned property.');
+    if (!canAccessAllSites() && (allowedSites || []).length <= 1) {
+      console.warn('[RBAC] Single-property accounts are restricted to their assigned property.');
+      return;
+    }
+    if (!canAccessAllSites() && newSite !== 'All Sites' && newSite !== 'All' && !(allowedSites || []).some(s => s.toLowerCase() === newSite.toLowerCase())) {
+      console.warn('[RBAC] Cannot switch to unassigned property:', newSite);
       return;
     }
     setAssignedSiteState(newSite);
     setSelectedSite(newSite === 'All Sites' || newSite === 'All' ? 'all' : newSite);
     saveStorage('assigned_site', newSite);
-  }, [currentUserRole]);
+  }, [canAccessAllSites, allowedSites]);
 
   // Settings updater — system preferences are one row (id 'global') in app_settings
   const settingsRef = useRef(settings);
@@ -5628,6 +5642,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canManageRoles,
       canAccessAllSites,
       canSwitchSites,
+      isSitePermitted,
       canManageFiles,
       canManageProperties,
       canManageUsers,

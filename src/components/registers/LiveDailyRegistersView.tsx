@@ -64,6 +64,7 @@ export const LiveDailyRegistersView: React.FC = () => {
     dispersalRecords,
     currentUserRole,
     canCreateRecord,
+    isSitePermitted,
     syncFromDatabase
   } = useApp();
 
@@ -120,11 +121,7 @@ export const LiveDailyRegistersView: React.FC = () => {
   }, [sites]);
 
   const isSiteMatch = (recordSite?: string | null, targetSite?: string | null) => {
-    if (!targetSite || targetSite === 'all' || targetSite === 'All Sites') return true;
-    if (!recordSite) return false;
-    const r = recordSite.trim().toLowerCase();
-    const t = targetSite.trim().toLowerCase();
-    return r === t || r === 'all sites' || r.includes(t) || t.includes(r);
+    return isSitePermitted(recordSite, targetSite);
   };
 
   // Scoped Data strictly bounded by effectiveSite

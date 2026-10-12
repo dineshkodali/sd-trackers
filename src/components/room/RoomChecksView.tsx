@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   Building2, 
@@ -130,6 +130,7 @@ export const RoomChecksView: React.FC = () => {
     updateRoomCheck,
     deleteRoomCheck,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     allowedSites,
     sites,
@@ -168,7 +169,7 @@ export const RoomChecksView: React.FC = () => {
     }
   };
 
-  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+  const [siteFilter, setSiteFilter] = useState(canAccessAllSites() ? 'all' : assignedSite);
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -220,9 +221,8 @@ export const RoomChecksView: React.FC = () => {
   // Site filter & search
   const accessibleRecords = useMemo(() => {
     if (canAccessAllSites()) return roomChecks;
-    if (!assignedSite || assignedSite === 'All Sites') return roomChecks;
-    return roomChecks.filter(r => r.siteName?.toLowerCase() === assignedSite.toLowerCase());
-  }, [roomChecks, canAccessAllSites, assignedSite]);
+    return roomChecks.filter(r => isSitePermitted(r.siteName, 'all'));
+  }, [roomChecks, canAccessAllSites, isSitePermitted]);
 
   const filteredRecords = useMemo(() => {
     return accessibleRecords.filter(r => {
@@ -233,12 +233,12 @@ export const RoomChecksView: React.FC = () => {
         (r.aicReference && r.aicReference.toLowerCase().includes(q)) ||
         (r.officerName && r.officerName.toLowerCase().includes(q));
 
-      const matchesSite = siteFilter === 'all' || r.siteName === siteFilter;
+      const matchesSite = isSitePermitted(r.siteName, siteFilter);
       const matchesStatus = statusFilter === 'all' || r.overallStatus === statusFilter;
 
       return matchesSearch && matchesSite && matchesStatus;
     });
-  }, [accessibleRecords, searchQuery, siteFilter, statusFilter]);
+  }, [accessibleRecords, searchQuery, siteFilter, statusFilter, isSitePermitted]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {

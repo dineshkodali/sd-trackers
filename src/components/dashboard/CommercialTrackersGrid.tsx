@@ -43,24 +43,13 @@ export const CommercialTrackersGrid: React.FC<CommercialTrackersGridProps> = ({
     financeBills,
     canAccessAllSites,
     allowedSites,
-    assignedSite
+    assignedSite,
+    isSitePermitted
   } = useApp();
 
   const siteFilterPredicate = (item: any) => {
-    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
-      const target = assignedSite.toLowerCase().trim();
-      const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
-      if (!itemSite) return true;
-      return itemSite === target || itemSite.includes(target) || target.includes(itemSite);
-    }
-    if (canAccessAllSites()) return true;
-    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
-      .map(s => (s || '').toLowerCase().trim())
-      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
-    if (permitted.length === 0) return true;
-    const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
-    if (!itemSite) return true;
-    return permitted.some(s => itemSite === s || itemSite.includes(s) || s.includes(itemSite));
+    const itemSite = item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name;
+    return isSitePermitted(itemSite, assignedSite || 'all');
   };
 
   const scopedReferrals = referrals.filter(siteFilterPredicate);
@@ -73,14 +62,7 @@ export const CommercialTrackersGrid: React.FC<CommercialTrackersGridProps> = ({
   const scopedSpcd = spcdRecords.filter(siteFilterPredicate);
 
   const billSiteFilter = (b: any) => {
-    if (canAccessAllSites()) return true;
-    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
-      .map(s => (s || '').toLowerCase().trim())
-      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
-    if (permitted.length === 0) return true;
-    const bSiteName = (b.siteName || '').toLowerCase().trim();
-    const bSiteId = (b.siteId || '').toLowerCase().trim();
-    return permitted.some(s => bSiteName === s || bSiteName.includes(s) || bSiteId === s);
+    return isSitePermitted(b.siteName || b.siteId, assignedSite || 'all');
   };
 
   const scopedBills = (financeBills || []).filter(billSiteFilter);

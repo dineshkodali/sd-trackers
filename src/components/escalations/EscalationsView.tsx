@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   AlertOctagon,
@@ -53,6 +53,7 @@ export const EscalationsView: React.FC = () => {
     canDeleteRecord,
     canEditRecord,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     settings,
     currentUserRole,
@@ -129,7 +130,7 @@ export const EscalationsView: React.FC = () => {
       const eWl = getWlIssued(e);
       const eStatus = e.status || 'Active';
 
-      if (siteFilter !== 'all' && eSite !== siteFilter) return false;
+      if (!isSitePermitted(eSite, siteFilter)) return false;
       if (wlFilter !== 'all' && eWl !== wlFilter) return false;
       if (statusFilter !== 'all' && eStatus !== statusFilter) return false;
 
@@ -650,8 +651,8 @@ export const EscalationsView: React.FC = () => {
           dateOfIncident: new Date().toISOString().slice(0, 10),
           suPortNassRef: '',
           suName: '',
-          siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
-          site: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
+          site: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
           personReporting: loggedInUserName,
           incidentType: 'Safeguarding Concern',
           wlIssued: 'No',

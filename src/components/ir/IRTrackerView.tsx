@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   ClipboardList, 
@@ -10,7 +10,8 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { IRRecord } from '../../types';
@@ -40,9 +41,12 @@ export const IRTrackerView: React.FC = () => {
     canDeleteRecord,
     currentUserRole,
     assignedSite,
+    allowedSites,
     canAccessAllSites,
-    sites
-  , requestConfirmation } = useApp();
+    isSitePermitted,
+    sites,
+    requestConfirmation
+  } = useApp();
 
   const {
     columns,
@@ -74,34 +78,47 @@ export const IRTrackerView: React.FC = () => {
   const [sortKey, setSortKey] = useState<string>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
+
   // Modals
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<IRRecord | null>(null);
   const [viewingRecord, setViewingRecord] = useState<IRRecord | null>(null);
 
+  // Strict Site Isolation - only single-site staff are locked
+  const isLockedToSingleSite = !canAccessAllSites() && (allowedSites || []).length <= 1;
+  const effectiveSite = isLockedToSingleSite && assignedSite && assignedSite !== 'All Sites'
+    ? assignedSite
+    : siteFilter;
+
   // Site isolation filter
   const accessibleRecords = useMemo(() => {
-    if (canAccessAllSites()) return irRecords;
-    if (!assignedSite || assignedSite === 'All Sites') return irRecords;
-    return irRecords.filter(r => r.site?.toLowerCase() === assignedSite.toLowerCase());
-  }, [irRecords, canAccessAllSites, assignedSite]);
+    return irRecords.filter(r => isSitePermitted(r.site, 'all'));
+  }, [irRecords, isSitePermitted]);
 
   const filteredRecords = useMemo(() => {
-    return accessibleRecords.filter(r => {
+    return irRecords.filter(r => {
+      if (!isSitePermitted(r.site, effectiveSite)) return false;
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         r.suName.toLowerCase().includes(q) ||
-        r.site.toLowerCase().includes(q) ||
+        (r.site && r.site.toLowerCase().includes(q)) ||
         (r.portRef && r.portRef.toLowerCase().includes(q)) ||
         (r.irSummary && r.irSummary.toLowerCase().includes(q));
 
-      const matchesSite = siteFilter === 'all' || r.site === siteFilter;
       const matchesCrh = crhFilter === 'all' || (r.submittedToCrh || 'Pending') === crhFilter;
 
-      return matchesSearch && matchesSite && matchesCrh;
+      return matchesSearch && matchesCrh;
     });
-  }, [accessibleRecords, searchQuery, siteFilter, crhFilter]);
+  }, [irRecords, isSitePermitted, effectiveSite, searchQuery, crhFilter]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -131,8 +148,13 @@ export const IRTrackerView: React.FC = () => {
   };
 
   const handleCreateSubmit = (data: Partial<IRRecord>) => {
+    const chosenSite = data.site || (assignedSite && assignedSite !== 'All Sites' ? assignedSite : (allowedSites[0] || 'Brit Hotel'));
+    if (!canAccessAllSites() && !isSitePermitted(chosenSite, 'all')) {
+      alert(`You do not have permission to add records for site: ${chosenSite}`);
+      return;
+    }
     addIRRecord({
-      site: data.site || (assignedSite && assignedSite !== 'All Sites' ? assignedSite : 'Brit Hotel'),
+      site: chosenSite,
       date: data.date || new Date().toISOString().slice(0, 10),
       suName: data.suName || '',
       portRef: data.portRef || '',
@@ -264,7 +286,7 @@ export const IRTrackerView: React.FC = () => {
         </div>
 
         {/* Integrated Filter Row */}
-        <div className={`mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 ${canAccessAllSites() ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-2.5`}>
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
@@ -276,15 +298,25 @@ export const IRTrackerView: React.FC = () => {
             />
           </div>
 
-          {canAccessAllSites() && (
+          {!isLockedToSingleSite ? (
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
             >
-              <option value="all">All Sites</option>
-              {availableSites.map(s => <option key={s} value={s}>{s}</option>)}
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? 'All Sites' : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
+              {(canAccessAllSites() ? availableSites : (allowedSites || [])).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs" title="Locked to your assigned site">
+              <Lock className="w-3 h-3 text-[#0f766e]" />
+              <span className="font-semibold text-neutral-600">Site:</span>
+              <span className="font-bold text-[#0f766e] truncate">{assignedSite || 'Assigned Site'}</span>
+            </div>
           )}
 
           <select
@@ -398,7 +430,7 @@ export const IRTrackerView: React.FC = () => {
         title="Log Incident Report (IR Tracker)"
         columns={columns}
         initialValues={{
-          site: assignedSite && assignedSite !== 'All Sites' ? assignedSite : 'Brit Hotel',
+          site: assignedSite && assignedSite !== 'All Sites' ? assignedSite : (allowedSites[0] || 'Brit Hotel'),
           date: new Date().toISOString().slice(0, 10),
           suName: '',
           portRef: '',

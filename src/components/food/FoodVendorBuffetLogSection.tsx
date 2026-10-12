@@ -169,6 +169,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
     canDeleteRecord,
     canEditRecord,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     sites,
     authProfile,
@@ -421,7 +422,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
   const filteredLogs = useMemo(() => {
     return foodVendorBuffetLogs.filter(log => {
       const normVendor = log.vendor === '9 cusines' ? '9 Cuisines' : log.vendor === 'sands' ? 'Sands' : log.vendor;
-      if (siteFilter !== 'all' && log.site !== siteFilter) return false;
+      if (!isSitePermitted(log.site, siteFilter)) return false;
       if ((vendorFilter as string) !== 'all' && normVendor !== vendorFilter && log.vendor !== vendorFilter) return false;
 
       // Week filter
@@ -1319,17 +1320,17 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                 <div>
                   <label className="font-semibold text-[#605e5c] block mb-1 flex items-center justify-between">
                     <span>Contracted Property *</span>
-                    {!canAccessAllSites() && (
+                    {(currentUserRole === 'Staff' || (!canAccessAllSites() && (allowedSites || []).length <= 1)) && (
                       <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium flex items-center gap-0.5">
                         <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
                       </span>
                     )}
                   </label>
-                  {!canAccessAllSites() ? (
+                  {(currentUserRole === 'Staff' || (!canAccessAllSites() && (allowedSites || []).length <= 1)) ? (
                     <div className="relative">
                       <input
                         type="text"
-                        value={userAssignedHotel}
+                        value={userAssignedHotel || (allowedSites && allowedSites[0])}
                         readOnly
                         disabled
                         className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"

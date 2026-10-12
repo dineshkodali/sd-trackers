@@ -59,7 +59,8 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
     canEditRecord,
     canDeleteRecord,
     currentUserRole,
-    assignedSite
+    assignedSite,
+    isSitePermitted
   } = useApp();
 
   const {
@@ -109,13 +110,13 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
         (r.nationality && r.nationality.toLowerCase().includes(q)) ||
         (r.language && r.language.toLowerCase().includes(q));
 
-      const matchesSite = selectedSite === 'all' || r.hotel?.toLowerCase() === selectedSite.toLowerCase();
+      const matchesSite = isSitePermitted(r.hotel, selectedSite);
       const matchesOcc = occupancyFilter === 'all' || 
         (occupancyFilter === 'Occupied' ? (r.occupied === 'Yes' || !r.occupied) : r.occupied === 'No');
 
       return matchesSearch && matchesSite && matchesOcc;
     });
-  }, [dailyRegisterRecords, searchQuery, selectedSite, occupancyFilter]);
+  }, [dailyRegisterRecords, searchQuery, selectedSite, occupancyFilter, isSitePermitted]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -145,8 +146,13 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
   };
 
   const handleCreateSubmit = (data: Partial<DailyRegisterRecord>) => {
+    const targetSite = data.hotel || (selectedSite !== 'all' ? selectedSite : (assignedSite || 'Brit Hotel'));
+    if (!isSitePermitted(targetSite)) {
+      alert('You are not permitted to log records for this property.');
+      return;
+    }
     addDailyRegisterRecord({
-      hotel: data.hotel || (selectedSite !== 'all' ? selectedSite : (assignedSite || 'Brit Hotel')),
+      hotel: targetSite,
       roomNo: data.roomNo || '',
       floor: data.floor || 'Ground',
       roomMakeup: data.roomMakeup || '',

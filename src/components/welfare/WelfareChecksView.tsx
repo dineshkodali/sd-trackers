@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   HeartHandshake, 
@@ -58,6 +58,8 @@ export const WelfareChecksView: React.FC = () => {
     updateWelfareCheck,
     deleteWelfareCheck,
     canAccessAllSites,
+    isSitePermitted,
+    allowedSites,
     assignedSite,
     sites,
     canCreateRecord,
@@ -86,17 +88,17 @@ export const WelfareChecksView: React.FC = () => {
     }
   };
 
-  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+  const [siteFilter, setSiteFilter] = useState(canAccessAllSites() ? 'all' : assignedSite);
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Sync with active property switcher in Header
   useEffect(() => {
     if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites()) setSiteFilter('all');
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
     } else if (assignedSite) {
       setSiteFilter(assignedSite);
     }
-  }, [assignedSite, canAccessAllSites]);
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<keyof WelfareCheckRecord>('checkDatetime');
@@ -159,9 +161,8 @@ export const WelfareChecksView: React.FC = () => {
   // Filter records by site permissions & search
   const accessibleRecords = useMemo(() => {
     if (canAccessAllSites()) return welfareChecks;
-    if (!assignedSite || assignedSite === 'All Sites') return welfareChecks;
-    return welfareChecks.filter(r => r.siteName?.toLowerCase() === assignedSite.toLowerCase());
-  }, [welfareChecks, canAccessAllSites, assignedSite]);
+    return welfareChecks.filter(r => isSitePermitted(r.siteName, 'all'));
+  }, [welfareChecks, canAccessAllSites, isSitePermitted]);
 
   const filteredRecords = useMemo(() => {
     return accessibleRecords.filter(r => {
@@ -172,12 +173,12 @@ export const WelfareChecksView: React.FC = () => {
         (r.flatNumber && r.flatNumber.toLowerCase().includes(q)) ||
         (r.officerName && r.officerName.toLowerCase().includes(q));
 
-      const matchesSite = siteFilter === 'all' || r.siteName === siteFilter;
+      const matchesSite = isSitePermitted(r.siteName, siteFilter);
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
 
       return matchesSearch && matchesSite && matchesStatus;
     });
-  }, [accessibleRecords, searchQuery, siteFilter, statusFilter]);
+  }, [accessibleRecords, searchQuery, siteFilter, statusFilter, isSitePermitted]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {

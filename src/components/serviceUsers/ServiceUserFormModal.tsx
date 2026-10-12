@@ -28,7 +28,13 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
   serviceUserToEdit,
   onSuccess
 }) => {
-  const { sites } = useApp();
+  const { sites, canAccessAllSites, allowedSites, isSitePermitted } = useApp();
+
+  const permittedSites = React.useMemo(() => {
+    if (canAccessAllSites()) return sites;
+    return sites.filter(s => isSitePermitted(s.name, 'all') || isSitePermitted(s.id, 'all'));
+  }, [sites, canAccessAllSites, isSitePermitted]);
+
   const [formMode, setFormMode] = useState<'standard' | 'arrival'>('standard');
   const [activeTab, setActiveTab] = useState<SUTabType>('personal');
 
@@ -106,7 +112,7 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
     setReferralDate(today); setArrivalDate(today);
     setMobile(''); setAlternativePhone(''); setEmail(''); setPreferredContactMethod('Mobile');
     setEmergencyName(''); setEmergencyRelationship(''); setEmergencyPhone(''); setEmergencyEmail('');
-    setHouseholdMembers([]); setIncludeAccommodation(true); setSiteId(sites[0]?.id || '');
+    setHouseholdMembers([]); setIncludeAccommodation(true); setSiteId(permittedSites[0]?.id || sites[0]?.id || '');
     setPlacementStartDate(today); setPlacementType('Standard'); setAccommodationNotes('');
     setVulnerabilityFlags(''); setDietaryNeeds(''); setMedicalConditions(''); setMobilityNeeds('');
     setSupportPriority('Medium'); setAssignedStaff('');
@@ -243,6 +249,15 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
       return;
     }
 
+    if (siteId) {
+      const selectedSite = sites.find(s => s.id === siteId || s.name === siteId);
+      const siteName = selectedSite?.name || siteId;
+      if (!canAccessAllSites() && !isSitePermitted(siteName, 'all')) {
+        setErrorMsg(`You do not have permission to register or place service users for site: ${siteName}`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setErrorMsg('');
 
@@ -377,7 +392,7 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
               nationality={nationality} setNationality={setNationality}
               preferredLanguage={preferredLanguage} setPreferredLanguage={setPreferredLanguage}
               interpreterRequired={interpreterRequired} setInterpreterRequired={setInterpreterRequired}
-              siteId={siteId} setSiteId={setSiteId} sites={sites}
+              siteId={siteId} setSiteId={setSiteId} sites={permittedSites}
               propertyId={propertyId} setPropertyId={setPropertyId} properties={properties}
               roomId={roomId} setRoomId={setRoomId} rooms={rooms}
               luggageChecked={luggageChecked} setLuggageChecked={setLuggageChecked}
@@ -424,7 +439,7 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
               {activeTab === 'accommodation' && (
                 <AccommodationSection
                   includeAccommodation={includeAccommodation} setIncludeAccommodation={setIncludeAccommodation}
-                  siteId={siteId} setSiteId={setSiteId} sites={sites}
+                  siteId={siteId} setSiteId={setSiteId} sites={permittedSites}
                   propertyId={propertyId} setPropertyId={setPropertyId} properties={properties}
                   roomId={roomId} setRoomId={setRoomId} rooms={rooms}
                   placementStartDate={placementStartDate} setPlacementStartDate={setPlacementStartDate}

@@ -54,7 +54,8 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     currentUserRole,
     assignedSite,
     syncFromDatabase,
-    liveDataStatus
+    liveDataStatus,
+    isSitePermitted
   } = useApp();
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -117,18 +118,10 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         (r.room && r.room.toLowerCase().includes(q)) ||
         (r.country && r.country.toLowerCase().includes(q));
 
-      const hotelName = (r.hotel || '').trim().toLowerCase();
-      const siteFilter = (selectedSite || 'all').trim().toLowerCase();
-      const matchesSite = siteFilter === 'all' || 
-        !hotelName || 
-        hotelName === 'all sites' || 
-        hotelName === siteFilter ||
-        hotelName.includes(siteFilter) ||
-        siteFilter.includes(hotelName);
-
+      const matchesSite = isSitePermitted(r.hotel, selectedSite);
       return matchesSearch && matchesSite;
     });
-  }, [newArrivalsRecords, searchQuery, selectedSite]);
+  }, [newArrivalsRecords, searchQuery, selectedSite, isSitePermitted]);
 
   const sortedArrivals = useMemo(() => {
     return [...filteredArrivals].sort((a: any, b: any) => {
@@ -158,6 +151,11 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     const finalHotel = (data.hotel && data.hotel !== 'All Sites' && data.hotel !== 'all')
       ? data.hotel
       : defaultSite;
+
+    if (!isSitePermitted(finalHotel)) {
+      alert('You are not permitted to add arrival records for this property.');
+      return;
+    }
 
     addNewArrivalRecord({
       portReference: data.portReference || '',

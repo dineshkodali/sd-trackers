@@ -50,6 +50,7 @@ export const RFAWelfareChecksView: React.FC = () => {
     allowedSites,
     assignedSite,
     canAccessAllSites,
+    isSitePermitted,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -118,7 +119,7 @@ export const RFAWelfareChecksView: React.FC = () => {
         r.mhTicket.toLowerCase().includes(q) ||
         r.siteName.toLowerCase().includes(q);
 
-      const matchesSite = siteFilter === 'all' || r.siteName === siteFilter;
+      const matchesSite = isSitePermitted(r.siteName, siteFilter);
       const matchesGroup = groupFilter === 'all' || r.group === groupFilter;
 
       return matchesSearch && matchesSite && matchesGroup;
@@ -156,8 +157,8 @@ export const RFAWelfareChecksView: React.FC = () => {
     addRFAWelfareRecord({
       date: data.date || new Date().toISOString().slice(0, 10),
       siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1)
-        ? assignedSite 
-        : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
+        ? (assignedSite || (allowedSites && allowedSites[0]))
+        : (data.siteName || (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite))),
       roomOrFlatNo: data.roomOrFlatNo || '',
       name: data.name || '',
       dob: data.dob || '1995-01-01',
@@ -511,7 +512,7 @@ export const RFAWelfareChecksView: React.FC = () => {
         columns={columns}
         initialValues={{
           date: new Date().toISOString().slice(0, 10),
-          siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
           roomOrFlatNo: '',
           name: '',
           dob: '1995-01-01',

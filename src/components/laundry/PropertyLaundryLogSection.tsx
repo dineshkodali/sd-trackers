@@ -153,6 +153,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
     canDeleteRecord,
     canEditRecord,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     sites,
     authProfile,
@@ -249,7 +250,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
 
   const initialFormData = {
     site: !canAccessAllSites() 
-      ? userAssignedHotel 
+      ? (siteFilter !== 'all' && allowedSites.includes(siteFilter) ? siteFilter : (allowedSites[0] || userAssignedHotel || ''))
       : (siteFilter !== 'all' ? siteFilter : (userAssignedHotel || allowedSites[0] || '')),
     periodType: 'Weekly' as 'Weekly' | 'Monthly',
     periodLabel: initialWeeklyPeriod.periodLabel,
@@ -274,10 +275,10 @@ export const PropertyLaundryLogSection: React.FC = () => {
   const [formData, setFormData] = useState(initialFormData);
 
   useEffect(() => {
-    if (!canAccessAllSites() && assignedSite) {
+    if (currentUserRole === 'Staff' && assignedSite) {
       setFormData(prev => ({ ...prev, site: assignedSite }));
     }
-  }, [canAccessAllSites, assignedSite]);
+  }, [currentUserRole, assignedSite]);
 
   // Handle Date From change with restricted 1-week (max 7 days) enforcement
   const handleStartDateChange = (newStartDate: string, periodType: 'Weekly' | 'Monthly') => {
@@ -438,7 +439,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
   // Filtered dataset
   const filteredData = useMemo(() => {
     return propertyLaundryLogs.filter(l => {
-      if (siteFilter !== 'all' && l.site !== siteFilter) return false;
+      if (!isSitePermitted(l.site, siteFilter)) return false;
       if (periodTypeFilter !== 'all' && l.periodType !== periodTypeFilter) return false;
       if (discrepancyFilter === 'flagged' && !l.hasDiscrepancy && (l.discrepanciesCount || 0) === 0) return false;
       if (discrepancyFilter === 'reconciled' && (l.hasDiscrepancy || (l.discrepanciesCount || 0) > 0)) return false;
@@ -650,9 +651,14 @@ export const PropertyLaundryLogSection: React.FC = () => {
       return;
     }
 
-    const effectiveSite = !canAccessAllSites()
-      ? userAssignedHotel
-      : (formData.site || userAssignedHotel || allowedSites[0] || '');
+    let effectiveSite = formData.site || userAssignedHotel || allowedSites[0] || '';
+    if (!canAccessAllSites()) {
+      if (currentUserRole === 'Staff' || allowedSites.length <= 1) {
+        effectiveSite = allowedSites[0] || userAssignedHotel || '';
+      } else {
+        effectiveSite = allowedSites.includes(formData.site) ? formData.site : (allowedSites[0] || userAssignedHotel || '');
+      }
+    }
 
     // The two attested counts are held as '' until the operator types a figure,
     // so normalise them to numbers before they leave the form.
@@ -840,7 +846,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                   const bounds = todayBounds;
                   const wk = formatPeriodFromDates(bounds.start, bounds.end, 'Weekly');
                   const effectiveSite = !canAccessAllSites()
-                    ? userAssignedHotel
+                    ? (siteFilter !== 'all' && allowedSites.includes(siteFilter) ? siteFilter : (allowedSites[0] || userAssignedHotel || ''))
                     : (siteFilter !== 'all' ? siteFilter : (userAssignedHotel || allowedSites[0] || ''));
                   setFormData({ 
                     ...initialFormData, 
@@ -1062,17 +1068,17 @@ export const PropertyLaundryLogSection: React.FC = () => {
                 <div>
                   <label className="font-semibold text-[#605e5c] block mb-1 flex items-center justify-between">
                     <span>Property / Hotel *</span>
-                    {!canAccessAllSites() && (
+                    {(currentUserRole === 'Staff' || (!canAccessAllSites() && allowedSites.length <= 1)) && (
                       <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium flex items-center gap-0.5">
                         <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
                       </span>
                     )}
                   </label>
-                  {!canAccessAllSites() ? (
+                  {(currentUserRole === 'Staff' || (!canAccessAllSites() && allowedSites.length <= 1)) ? (
                     <div className="relative">
                       <input
                         type="text"
-                        value={userAssignedHotel}
+                        value={formData.site || allowedSites[0] || userAssignedHotel}
                         readOnly
                         disabled
                         className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"

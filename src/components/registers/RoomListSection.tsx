@@ -49,7 +49,8 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
     canDeleteRecord,
     currentUserRole,
     canAccessAllSites,
-    assignedSite
+    assignedSite,
+    isSitePermitted
   } = useApp();
 
   const {
@@ -96,10 +97,10 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
         (r.roomType && r.roomType.toLowerCase().includes(q)) ||
         (r.suCohort && r.suCohort.toLowerCase().includes(q));
 
-      const matchesSite = selectedSite === 'all' || r.hotel?.toLowerCase() === selectedSite.toLowerCase();
+      const matchesSite = isSitePermitted(r.hotel, selectedSite);
       return matchesSearch && matchesSite;
     });
-  }, [dailyRegisterRooms, searchQuery, selectedSite]);
+  }, [dailyRegisterRooms, searchQuery, selectedSite, isSitePermitted]);
 
   const sortedRooms = useMemo(() => {
     return [...filteredRooms].sort((a: any, b: any) => {
@@ -126,9 +127,14 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
   };
 
   const handleCreateSubmit = (data: Partial<DailyRegisterRoom>) => {
+    const targetSite = data.hotel || (selectedSite !== 'all' ? selectedSite : (assignedSite || 'Brit Hotel'));
+    if (!isSitePermitted(targetSite)) {
+      alert('You are not permitted to add rooms for this property.');
+      return;
+    }
     addDailyRegisterRoom({
       date: data.date || new Date().toISOString().slice(0, 10),
-      hotel: data.hotel || (selectedSite !== 'all' ? selectedSite : (assignedSite || 'Brit Hotel')),
+      hotel: targetSite,
       roomNo: data.roomNo || '',
       floor: data.floor || 'Ground',
       roomType: data.roomType || 'Single',

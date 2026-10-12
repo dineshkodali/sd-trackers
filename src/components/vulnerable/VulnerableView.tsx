@@ -64,6 +64,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
     canCreateRecord,
     canEditRecord,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     currentUserRole,
     currentUserName,
@@ -111,11 +112,11 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
   // Sync with active property switcher in Header
   useEffect(() => {
     if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites()) setSiteFilter('all');
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
     } else if (assignedSite) {
       setSiteFilter(assignedSite);
     }
-  }, [assignedSite, canAccessAllSites]);
+  }, [assignedSite, canAccessAllSites, allowedSites]);
 
   // Dynamic Table Schema & Columns (Local persistence with fallback to trackerTableConfigs)
   const {
@@ -156,7 +157,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
         if (v.status === 'Archived') return false;
       }
 
-      if (siteFilter !== 'all' && v.site !== siteFilter) return false;
+      if (!isSitePermitted(v.site, siteFilter)) return false;
       if (statusFilter !== 'all' && v.status !== statusFilter) return false;
       if (monthFilter !== 'all' && (!v.reviewDate || !v.reviewDate.startsWith(monthFilter))) return false;
 
@@ -755,7 +756,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
         title="Log Vulnerable / Safeguarding Service User"
         columns={vulnerableColumns}
         initialValues={{
-          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          site: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
           riskLevel: 'Low',
           status: 'Open',
           group: 'Single Adult',
@@ -764,7 +765,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
           attachments: []
         }}
         onSave={(data) => {
-          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (data.site || (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)));
           addVulnerableSU({
             site: effectiveSite,
             roomOrFlatNo: data.roomOrFlatNo || '',

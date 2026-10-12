@@ -44,7 +44,8 @@ export const RequestsApprovalsView: React.FC = () => {
     allowedSites,
     sites,
     authProfile,
-    canAccessAllSites
+    canAccessAllSites,
+    isSitePermitted
   } = useApp();
 
   const userAssignedHotel = React.useMemo(() => {
@@ -74,14 +75,32 @@ export const RequestsApprovalsView: React.FC = () => {
     return '';
   }, [assignedSite, authProfile, allowedSites, sites]);
 
+  const isLockedToSingleSite = !canAccessAllSites() && (allowedSites || []).length <= 1;
+  const siteOptions = useMemo(() => {
+    if (canAccessAllSites()) {
+      return (sites || []).map(s => typeof s === 'string' ? s : s?.name).filter(Boolean);
+    }
+    return allowedSites || [];
+  }, [canAccessAllSites, sites, allowedSites]);
+
+  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : (assignedSite || 'all'));
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [moduleFilter, setModuleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Sync with active property switcher in Header
+  React.useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
+
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   const initialForm = {
-    site: !canAccessAllSites() 
+    site: isLockedToSingleSite 
       ? userAssignedHotel 
       : (userAssignedHotel || allowedSites[0] || ''),
     module: 'Referrals' as DataChangeRequest['module'],
@@ -96,11 +115,13 @@ export const RequestsApprovalsView: React.FC = () => {
 
   React.useEffect(() => {
     if (isNewModalOpen) {
-      if (!canAccessAllSites()) {
+      if (isLockedToSingleSite) {
         setFormData(prev => ({ ...prev, site: userAssignedHotel }));
+      } else if (!formData.site || formData.site === 'All Sites' || formData.site === 'all') {
+        setFormData(prev => ({ ...prev, site: allowedSites[0] || userAssignedHotel || '' }));
       }
     }
-  }, [isNewModalOpen, canAccessAllSites, userAssignedHotel]);
+  }, [isNewModalOpen, isLockedToSingleSite, userAssignedHotel, allowedSites]);
 
   const [reviewModalRequest, setReviewModalRequest] = useState<DataChangeRequest | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
@@ -110,6 +131,7 @@ export const RequestsApprovalsView: React.FC = () => {
 
   const filteredRequests = useMemo(() => {
     return dataChangeRequests.filter(req => {
+      if (!isSitePermitted(req.site, siteFilter)) return false;
       if (statusFilter !== 'all' && req.status !== statusFilter) return false;
       if (moduleFilter !== 'all' && req.module !== moduleFilter) return false;
       if (searchQuery) {
@@ -119,15 +141,20 @@ export const RequestsApprovalsView: React.FC = () => {
       }
       return true;
     });
-  }, [dataChangeRequests, statusFilter, moduleFilter, searchQuery]);
+  }, [dataChangeRequests, isSitePermitted, siteFilter, statusFilter, moduleFilter, searchQuery]);
 
   const handleSubmitNew = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.recordTitle || !formData.reason) return;
 
-    const effectiveSite = !canAccessAllSites()
+    const effectiveSite = isLockedToSingleSite
       ? userAssignedHotel
       : (formData.site || userAssignedHotel || allowedSites[0] || '');
+
+    if (!canAccessAllSites() && !isSitePermitted(effectiveSite, 'all')) {
+      alert(`You do not have permission to submit change requests for site: ${effectiveSite}`);
+      return;
+    }
 
     addDataChangeRequest({
       requestedBy: currentUserName,
@@ -282,7 +309,7 @@ export const RequestsApprovalsView: React.FC = () => {
         </div>
 
         {/* Integrated Filter Row */}
-        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-neutral-400" />
             <input
@@ -293,6 +320,29 @@ export const RequestsApprovalsView: React.FC = () => {
               className="w-full pl-9 pr-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             />
           </div>
+
+          {!isLockedToSingleSite ? (
+            <select
+              value={siteFilter}
+              onChange={e => setSiteFilter(e.target.value)}
+              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
+            >
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? 'All Sites' : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
+              {siteOptions.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs" title="Locked to your assigned site">
+              <Lock className="w-3 h-3 text-[#0f766e]" />
+              <span className="font-semibold text-neutral-600">Site:</span>
+              <span className="font-bold text-[#0f766e] truncate">{assignedSite || 'Assigned Site'}</span>
+            </div>
+          )}
 
           <div>
             <select
@@ -318,10 +368,10 @@ export const RequestsApprovalsView: React.FC = () => {
               <option value="Vulnerable SUs">Vulnerable SUs</option>
               <option value="Challenging SUs">Challenging SUs</option>
               <option value="Maintenance">Maintenance</option>
-              <option value="SPCD">SPCD</option>
-              <option value="Hot Food">Hot Food</option>
               <option value="Laundry">Laundry</option>
               <option value="Escalations">Escalations</option>
+              <option value="SPCD">SPCD</option>
+              <option value="Hot Food">Hot Food</option>
             </select>
           </div>
         </div>
@@ -484,13 +534,13 @@ export const RequestsApprovalsView: React.FC = () => {
                 <div>
                   <label className="block font-semibold text-[#323130] mb-1 flex items-center justify-between">
                     <span>Property / Site *</span>
-                    {!canAccessAllSites() && (
+                    {isLockedToSingleSite && (
                       <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium flex items-center gap-0.5">
                         <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
                       </span>
                     )}
                   </label>
-                  {!canAccessAllSites() ? (
+                  {isLockedToSingleSite ? (
                     <div className="relative">
                       <input
                         type="text"
@@ -505,9 +555,9 @@ export const RequestsApprovalsView: React.FC = () => {
                     <select
                       value={formData.site}
                       onChange={e => setFormData({ ...formData, site: e.target.value })}
-                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white"
+                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-xs cursor-pointer"
                     >
-                      {allowedSites.map((s, idx) => (
+                      {siteOptions.map((s, idx) => (
                         <option key={`${s}-${idx}`} value={s}>{s}</option>
                       ))}
                     </select>

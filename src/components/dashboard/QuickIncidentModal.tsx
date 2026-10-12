@@ -48,6 +48,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
     assignedSite, 
     sites,
     canAccessAllSites, 
+    isSitePermitted,
     addEscalation, 
     setActivePage,
     currentUserRole,
@@ -88,19 +89,29 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
     return '';
   }, [assignedSite, authProfile, allowedSites, sites]);
 
-  const defaultSite = canAccessAllSites() ? (allowedSites[0] || userAssignedHotel) : userAssignedHotel;
+  const isLockedToSingleSite = !canAccessAllSites() && (allowedSites || []).length <= 1;
+  const siteOptions = useMemo(() => {
+    if (canAccessAllSites()) {
+      return (sites || []).map(s => typeof s === 'string' ? s : s?.name).filter(Boolean);
+    }
+    return allowedSites || [];
+  }, [canAccessAllSites, sites, allowedSites]);
+
+  const defaultSite = canAccessAllSites() 
+    ? (siteOptions[0] || userAssignedHotel) 
+    : (allowedSites[0] || userAssignedHotel);
 
   const [site, setSite] = useState<string>(defaultSite);
 
   useEffect(() => {
     if (isOpen) {
-      if (!canAccessAllSites()) {
+      if (isLockedToSingleSite) {
         setSite(userAssignedHotel);
-      } else if (!site) {
+      } else if (!site || site === 'All Sites' || site === 'all') {
         setSite(defaultSite);
       }
     }
-  }, [isOpen, canAccessAllSites, userAssignedHotel, defaultSite]);
+  }, [isOpen, isLockedToSingleSite, userAssignedHotel, defaultSite]);
   const [suName, setSuName] = useState<string>('');
   const [suPortNassRef, setSuPortNassRef] = useState<string>('');
   const [roomNumber, setRoomNumber] = useState<string>('');
@@ -296,7 +307,12 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
       ? `[Room: ${roomNumber}] [Time: ${timeOfIncident}] ${incidentNotes.trim()}`
       : `[Time: ${timeOfIncident}] ${incidentNotes.trim()}`;
 
-    const effectiveSite = !canAccessAllSites() ? userAssignedHotel : (site || userAssignedHotel);
+    const effectiveSite = isLockedToSingleSite ? userAssignedHotel : (site || userAssignedHotel);
+
+    if (!canAccessAllSites() && !isSitePermitted(effectiveSite, 'all')) {
+      setErrorMsg(`You do not have permission to add records for site: ${effectiveSite}`);
+      return;
+    }
 
     // Dispatch escalation via AppContext
     addEscalation({
@@ -503,13 +519,13 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
               <div>
                 <label className="font-semibold text-neutral-700 block mb-1 flex items-center justify-between">
                   <span>Hotel / Site <span className="text-red-600">*</span></span>
-                  {!canAccessAllSites() && (
+                  {isLockedToSingleSite && (
                     <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5">
                       <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
                     </span>
                   )}
                 </label>
-                {!canAccessAllSites() ? (
+                {isLockedToSingleSite ? (
                   <div className="relative">
                     <input
                       type="text"
@@ -527,7 +543,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                     onChange={(e) => setSite(e.target.value)}
                     className="w-full p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500 text-xs"
                   >
-                    {allowedSites.map((s, idx) => (
+                    {siteOptions.map((s, idx) => (
                       <option key={`${s}-${idx}`} value={s}>{s}</option>
                     ))}
                   </select>

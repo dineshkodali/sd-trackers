@@ -60,6 +60,7 @@ export const SPCDTrackerView: React.FC = () => {
     deleteSPCDRecord,
     allowedSites,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     canEditRecord,
     canDeleteRecord,
@@ -155,7 +156,7 @@ export const SPCDTrackerView: React.FC = () => {
   const displayedRecords = useMemo(() => {
     const list = activeTab === 'current' ? currentSUs : archivedSUs;
     return list.filter(item => {
-      if (siteFilter !== 'all' && item.siteName !== siteFilter) return false;
+      if (!isSitePermitted(item.siteName, siteFilter)) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return (
@@ -754,7 +755,7 @@ export const SPCDTrackerView: React.FC = () => {
         columns={spcdColumns}
         initialValues={{
           date: new Date().toISOString().slice(0, 10),
-          siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
           staffReporting: loggedInUserName,
           suDob: '1990-01-01',
           sgReview: 'Pending Safeguarding Lead Review',
@@ -762,7 +763,7 @@ export const SPCDTrackerView: React.FC = () => {
         }}
         onSave={(data) => {
           const reporter = data.staffReporting || loggedInUserName;
-          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (data.siteName || (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)));
           addSPCDRecord({
             ...data,
             date: data.date || new Date().toISOString().slice(0, 10),

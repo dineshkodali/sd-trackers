@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   BarChart3, 
   Plus, 
@@ -66,7 +66,8 @@ export const TransportChallengesSection: React.FC = () => {
     authProfile,
     currentUserName,
     canEditRecord,
-    canDeleteRecord
+    canDeleteRecord,
+    isSitePermitted
   } = useApp();
 
   const loggedInUserName = useMemo(() => {
@@ -158,15 +159,8 @@ export const TransportChallengesSection: React.FC = () => {
 
   // Scoped Data
   const siteScopedRecords = useMemo(() => {
-    return transportChallengeRecords.filter(r => {
-      if (!canAccessAllSites()) {
-        const allowed = new Set(allowedSites.map(s => s.toLowerCase().trim()));
-        if (assignedSite) allowed.add(assignedSite.toLowerCase().trim());
-        return allowed.has((r.siteName || '').toLowerCase().trim());
-      }
-      return true;
-    });
-  }, [transportChallengeRecords, canAccessAllSites, allowedSites, assignedSite]);
+    return transportChallengeRecords.filter(r => isSitePermitted(r.siteName, 'all'));
+  }, [transportChallengeRecords, isSitePermitted]);
 
   // Unique periods for dropdown
   const uniquePeriods = useMemo(() => {
@@ -177,7 +171,7 @@ export const TransportChallengesSection: React.FC = () => {
   // Filtered Records
   const filteredRecords = useMemo(() => {
     return siteScopedRecords.filter(r => {
-      if (selectedSite !== 'all' && (r.siteName || '').toLowerCase().trim() !== selectedSite.toLowerCase().trim()) {
+      if (!isSitePermitted(r.siteName, selectedSite)) {
         return false;
       }
       if (periodFilter !== 'all' && r.reportingPeriod !== periodFilter) {
@@ -201,7 +195,7 @@ export const TransportChallengesSection: React.FC = () => {
       }
       return true;
     });
-  }, [siteScopedRecords, selectedSite, periodFilter, sgFilter, searchQuery]);
+  }, [siteScopedRecords, selectedSite, periodFilter, sgFilter, searchQuery, isSitePermitted]);
 
   // Sorted Records
   const sortedRecords = useMemo(() => {
@@ -230,10 +224,16 @@ export const TransportChallengesSection: React.FC = () => {
       return;
     }
 
+    const targetSite = formData.siteName || defaultSite;
+    if (!isSitePermitted(targetSite)) {
+      alert('You are not permitted to add records for this property.');
+      return;
+    }
+
     const payload: Partial<TransportChallengeRecord> = {
       ...formData,
-      siteName: formData.siteName || defaultSite,
-      siteManager: resolveSiteManager(formData.siteName || defaultSite),
+      siteName: targetSite,
+      siteManager: resolveSiteManager(targetSite),
       staffPlace: userStaffPlace,
       reportingPerson: loggedInUserName,
       reportingPersonId: authProfile?.id

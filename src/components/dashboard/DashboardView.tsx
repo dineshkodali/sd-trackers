@@ -50,11 +50,12 @@ export const DashboardView: React.FC = () => {
     currentUserRole,
     assignedSite,
     allowedSites,
-    canAccessAllSites
+    canAccessAllSites,
+    isSitePermitted
   } = useApp();
 
   const [siteFilter, setSiteFilter] = useState<string>(() => {
-    if (canAccessAllSites()) return 'all';
+    if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) return 'all';
     return (allowedSites && allowedSites.length > 0 ? allowedSites[0] : assignedSite) || 'all';
   });
   const [monthFilter, setMonthFilter] = useState<string>('all');
@@ -77,7 +78,7 @@ export const DashboardView: React.FC = () => {
 
   useEffect(() => {
     if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites()) {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
         setSiteFilter('all');
       } else if (allowedSites && allowedSites.length > 0) {
         setSiteFilter(allowedSites[0]);
@@ -98,29 +99,22 @@ export const DashboardView: React.FC = () => {
   }, []);
 
   const handleReset = () => {
-    setSiteFilter(canAccessAllSites() ? 'all' : (allowedSites[0] || assignedSite));
+    setSiteFilter(canAccessAllSites() || (allowedSites && allowedSites.length > 1) ? 'all' : (allowedSites[0] || assignedSite));
     setMonthFilter('all');
     setStatusFilter('all');
     setSearchQuery('');
   };
 
   const siteFilterPredicate = (item: any) => {
-    if (canAccessAllSites()) return true;
-    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
-      .map(s => (s || '').toLowerCase().trim())
-      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
-    if (permitted.length === 0) return true;
-    const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
-    if (!itemSite) return true;
-    return permitted.some(s => itemSite === s || itemSite.includes(s) || s.includes(itemSite));
+    const itemSite = item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name;
+    return isSitePermitted(itemSite, siteFilter);
   };
 
   // Filtered active referrals
   const activeReferrals = useMemo(() => {
     return referrals.filter(r => {
-      if (!siteFilterPredicate(r)) return false;
+      if (!isSitePermitted(r.site, siteFilter)) return false;
       if (r.status === 'Archived') return false;
-      if (siteFilter !== 'all' && r.site !== siteFilter) return false;
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
       if (monthFilter !== 'all' && !r.dateReferred.startsWith(monthFilter)) return false;
       if (searchQuery) {
@@ -134,45 +128,42 @@ export const DashboardView: React.FC = () => {
       }
       return true;
     });
-  }, [referrals, siteFilter, statusFilter, monthFilter, searchQuery, allowedSites, canAccessAllSites, assignedSite]);
+  }, [referrals, isSitePermitted, siteFilter, statusFilter, monthFilter, searchQuery]);
 
   // Filtered active vulnerable
   const activeVulnerable = useMemo(() => {
     return vulnerableSUs.filter(v => {
-      if (!siteFilterPredicate(v)) return false;
+      if (!isSitePermitted(v.site, siteFilter)) return false;
       if (v.status === 'Archived') return false;
-      if (siteFilter !== 'all' && v.site !== siteFilter) return false;
       if (statusFilter !== 'all' && v.status !== statusFilter) return false;
       return true;
     });
-  }, [vulnerableSUs, siteFilter, statusFilter, allowedSites, canAccessAllSites, assignedSite]);
+  }, [vulnerableSUs, isSitePermitted, siteFilter, statusFilter]);
 
   // Filtered active challenging
   const activeChallenging = useMemo(() => {
     return challengingSUs.filter(c => {
-      if (!siteFilterPredicate(c)) return false;
+      if (!isSitePermitted(c.site, siteFilter)) return false;
       if (c.status === 'Archived') return false;
-      if (siteFilter !== 'all' && c.site !== siteFilter) return false;
       if (statusFilter !== 'all' && c.status !== statusFilter) return false;
       return true;
     });
-  }, [challengingSUs, siteFilter, statusFilter, allowedSites, canAccessAllSites, assignedSite]);
+  }, [challengingSUs, isSitePermitted, siteFilter, statusFilter]);
 
   // Escalations
   const activeEscalations = useMemo(() => {
     return escalations.filter(e => {
-      if (!siteFilterPredicate(e)) return false;
-      if (siteFilter !== 'all' && e.site !== siteFilter) return false;
+      if (!isSitePermitted(e.siteName || e.site, siteFilter)) return false;
       return e.status !== 'Resolved';
     });
-  }, [escalations, siteFilter, allowedSites, canAccessAllSites, assignedSite]);
+  }, [escalations, isSitePermitted, siteFilter]);
 
   // Overall aggregates
   const totalCases = activeReferrals.length + activeVulnerable.length + activeChallenging.length;
   const totalAllTimeCases = (
-    referrals.filter(siteFilterPredicate).length + 
-    vulnerableSUs.filter(siteFilterPredicate).length + 
-    challengingSUs.filter(siteFilterPredicate).length
+    referrals.filter(r => isSitePermitted(r.site, 'all')).length + 
+    vulnerableSUs.filter(v => isSitePermitted(v.site, 'all')).length + 
+    challengingSUs.filter(c => isSitePermitted(c.site, 'all')).length
   );
   const openCount = activeReferrals.filter(r => r.status === 'Open').length + activeVulnerable.filter(v => v.status === 'Open').length;
   const inProgressCount = activeReferrals.filter(r => r.status === 'In progress').length + activeVulnerable.filter(v => v.status === 'In progress').length;
@@ -203,10 +194,10 @@ export const DashboardView: React.FC = () => {
   };
 
   const getDashboardExportData = (scope: ExportScope, startDate?: string, endDate?: string) => {
-    let refData = referrals;
-    let vulData = vulnerableSUs;
-    let chData = challengingSUs;
-    let escData = escalations;
+    let refData = referrals.filter(r => isSitePermitted(r.site, 'all'));
+    let vulData = vulnerableSUs.filter(v => isSitePermitted(v.site, 'all'));
+    let chData = challengingSUs.filter(c => isSitePermitted(c.site, 'all'));
+    let escData = escalations.filter(e => isSitePermitted(e.siteName || e.site, 'all'));
 
     if (scope === 'filtered') {
       refData = activeReferrals;
@@ -214,10 +205,10 @@ export const DashboardView: React.FC = () => {
       chData = activeChallenging;
       escData = activeEscalations;
     } else if (scope === 'custom' && startDate && endDate) {
-      refData = referrals.filter(r => r.dateReferred >= startDate && r.dateReferred <= endDate);
-      vulData = vulnerableSUs.filter(v => v.reviewDate >= startDate && v.reviewDate <= endDate);
-      chData = challengingSUs.filter(c => c.date >= startDate && c.date <= endDate);
-      escData = escalations.filter(e => {
+      refData = refData.filter(r => r.dateReferred >= startDate && r.dateReferred <= endDate);
+      vulData = vulData.filter(v => v.reviewDate >= startDate && v.reviewDate <= endDate);
+      chData = chData.filter(c => c.date >= startDate && c.date <= endDate);
+      escData = escData.filter(e => {
         const d = e.dateOfIncident || (e.dateTime ? e.dateTime.slice(0, 10) : '');
         return d >= startDate && d <= endDate;
       });

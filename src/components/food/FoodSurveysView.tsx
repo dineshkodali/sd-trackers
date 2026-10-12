@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   Soup, 
@@ -57,6 +57,7 @@ export const FoodSurveysView: React.FC = () => {
     updateFoodSurvey,
     deleteFoodSurvey,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     allowedSites,
     sites,
@@ -86,7 +87,7 @@ export const FoodSurveysView: React.FC = () => {
     }
   };
 
-  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+  const [siteFilter, setSiteFilter] = useState(canAccessAllSites() ? 'all' : assignedSite);
 
   // Sync with active property switcher in Header
   useEffect(() => {
@@ -161,9 +162,8 @@ export const FoodSurveysView: React.FC = () => {
   // Filter records by site permissions & search
   const accessibleRecords = useMemo(() => {
     if (canAccessAllSites()) return foodSurveys;
-    if (!assignedSite || assignedSite === 'All Sites') return foodSurveys;
-    return foodSurveys.filter(r => r.siteName?.toLowerCase() === assignedSite.toLowerCase());
-  }, [foodSurveys, canAccessAllSites, assignedSite]);
+    return foodSurveys.filter(r => isSitePermitted(r.siteName, 'all'));
+  }, [foodSurveys, canAccessAllSites, isSitePermitted]);
 
   const filteredRecords = useMemo(() => {
     return accessibleRecords.filter(r => {
@@ -174,12 +174,12 @@ export const FoodSurveysView: React.FC = () => {
         (r.houseOfficerName && r.houseOfficerName.toLowerCase().includes(q)) ||
         (r.favouriteDish && r.favouriteDish.toLowerCase().includes(q));
 
-      const matchesSite = siteFilter === 'all' || r.siteName === siteFilter;
+      const matchesSite = isSitePermitted(r.siteName, siteFilter);
       const matchesRating = ratingFilter === 'all' || r.overallFoodQuality === ratingFilter;
 
       return matchesSearch && matchesSite && matchesRating;
     });
-  }, [accessibleRecords, searchQuery, siteFilter, ratingFilter]);
+  }, [accessibleRecords, searchQuery, siteFilter, ratingFilter, isSitePermitted]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {

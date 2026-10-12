@@ -31,7 +31,7 @@ export interface FinanceViewProps {
 }
 
 export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) => {
-  const { properties, assignedSite, canAccessAllSites, isFinanceUser, canManageFinance , requestConfirmation } = useApp();
+  const { properties, assignedSite, allowedSites, canAccessAllSites, isSitePermitted, isFinanceUser, canManageFinance , requestConfirmation } = useApp();
 
   const [activeTab, setActiveTab] = useState<'all' | 'awaiting_approval' | 'verification' | 'reconciliation' | 'payments' | 'vendors'>(initialTab);
 
@@ -78,7 +78,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) 
   // Filter accessible sites
   const availableProperties = canAccessAllSites()
     ? properties
-    : properties.filter(p => p.id === assignedSite || p.name === assignedSite);
+    : properties.filter(p => (allowedSites || []).some(s => s.toLowerCase() === p.name?.toLowerCase() || s.toLowerCase() === p.id?.toLowerCase()));
 
   const handleDeleteVendor = async (vendorId: string, name: string) => {
     
@@ -125,20 +125,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) 
       }
 
       // Site filter
-      if (selectedSite !== 'all') {
-        const filter = selectedSite.toLowerCase().trim();
-        const bSiteName = (bill.siteName || '').toLowerCase().trim();
-        const bSiteId = (bill.siteId || '').toLowerCase().trim();
-        const prop = properties.find(p => p.id?.toLowerCase() === filter || p.name?.toLowerCase() === filter);
-        const propName = (prop?.name || '').toLowerCase();
-        const propId = (prop?.id || '').toLowerCase();
-        const matchesFilter =
-          bSiteName === filter || (filter && bSiteName.includes(filter)) ||
-          bSiteId === filter || (filter && bSiteId.includes(filter)) ||
-          (propName && (bSiteName === propName || bSiteName.includes(propName))) ||
-          (propId && (bSiteId === propId || bSiteId.includes(propId)));
-        if (!matchesFilter) return false;
-      }
+      if (!isSitePermitted(bill.siteName, selectedSite)) return false;
 
       // Status filter
       if (selectedStatus !== 'all' && bill.status !== selectedStatus) return false;
@@ -159,15 +146,16 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) 
 
       return true;
     });
-  }, [bills, activeTab, selectedSite, selectedStatus, selectedType, searchQuery]);
+  }, [bills, isSitePermitted, activeTab, selectedSite, selectedStatus, selectedType, searchQuery]);
 
   // Metrics
   const metrics = useMemo(() => {
-    const awaitingApproval = bills.filter(b => ['submitted', 'under_review', 'awaiting_approval'].includes(b.status));
-    const approvedPendingPay = bills.filter(b => ['approved', 'payment_pending'].includes(b.status));
-    const paidBills = bills.filter(b => ['paid', 'reconciled'].includes(b.status));
-    const queryBills = bills.filter(b => b.status === 'query_raised');
-    const reconciliationPending = bills.filter(b => b.status === 'reconciliation_pending' || b.status === 'approved');
+    const accessibleBills = bills.filter(b => isSitePermitted(b.siteName, selectedSite));
+    const awaitingApproval = accessibleBills.filter(b => ['submitted', 'under_review', 'awaiting_approval'].includes(b.status));
+    const approvedPendingPay = accessibleBills.filter(b => ['approved', 'payment_pending'].includes(b.status));
+    const paidBills = accessibleBills.filter(b => ['paid', 'reconciled'].includes(b.status));
+    const queryBills = accessibleBills.filter(b => b.status === 'query_raised');
+    const reconciliationPending = accessibleBills.filter(b => b.status === 'reconciliation_pending' || b.status === 'approved');
 
     const totalAwaitingAmount = awaitingApproval.reduce((sum, b) => sum + b.totalAmount, 0);
     const totalApprovedAmount = approvedPendingPay.reduce((sum, b) => sum + b.totalAmount, 0);
@@ -412,11 +400,16 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ initialTab = 'all' }) 
               <select
                 value={selectedSite}
                 onChange={e => setSelectedSite(e.target.value)}
-                className="text-xs rounded-lg border border-gray-300 px-3 py-1.5 bg-white"
+                disabled={!canAccessAllSites() && availableProperties.length <= 1}
+                className="text-xs rounded-lg border border-gray-300 px-3 py-1.5 bg-white disabled:opacity-60"
               >
-                <option value="all">All Properties</option>
+                {(canAccessAllSites() || availableProperties.length > 1) && (
+                  <option value="all">
+                    {canAccessAllSites() ? 'All Properties' : `All Assigned Properties (${availableProperties.length})`}
+                  </option>
+                )}
                 {availableProperties.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.name}>{p.name}</option>
                 ))}
               </select>
 

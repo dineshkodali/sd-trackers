@@ -43,7 +43,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
   defaultBillType = 'vendor_invoice',
   title
 }) => {
-  const { properties, assignedSite, canAccessAllSites, authProfile, currentUserRole } = useApp();
+  const { properties, assignedSite, allowedSites, canAccessAllSites, authProfile, currentUserRole } = useApp();
 
   const isEmployee = authProfile?.role === 'Staff';
 
@@ -103,8 +103,8 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
 
   const availableProperties = useMemo(() => {
     if (canAccessAllSites()) return properties;
-    return properties.filter(p => p.id === assignedSite || p.name === assignedSite);
-  }, [properties, assignedSite, canAccessAllSites]);
+    return properties.filter(p => (allowedSites || []).some(s => s.toLowerCase() === p.name?.toLowerCase() || s.toLowerCase() === p.id?.toLowerCase()));
+  }, [properties, allowedSites, canAccessAllSites]);
 
   // Sync vendors and approvers on open
   useEffect(() => {
@@ -302,6 +302,14 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
     if (totalAmountInput <= 0) {
       setError('Total amount must be greater than £0.00');
       return;
+    }
+
+    if (!canAccessAllSites()) {
+      const isPermitted = availableProperties.some(p => p.id === siteId || p.name === siteId);
+      if (!isPermitted) {
+        setError('You can only create or edit records for your assigned properties.');
+        return;
+      }
     }
 
     setIsSubmitting(true);

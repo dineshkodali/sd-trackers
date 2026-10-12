@@ -44,6 +44,7 @@ export const GPAppointmentsView: React.FC = () => {
     allowedSites,
     assignedSite,
     canAccessAllSites,
+    isSitePermitted,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -111,11 +112,11 @@ export const GPAppointmentsView: React.FC = () => {
         (r.siteName && r.siteName.toLowerCase().includes(q));
 
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-      const matchesSite = siteFilter === 'all' || r.siteName === siteFilter;
+      const matchesSite = isSitePermitted(r.siteName, siteFilter);
 
       return matchesSearch && matchesStatus && matchesSite;
     });
-  }, [gpAppointmentRecords, searchQuery, statusFilter, siteFilter]);
+  }, [gpAppointmentRecords, isSitePermitted, searchQuery, statusFilter, siteFilter]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -145,6 +146,16 @@ export const GPAppointmentsView: React.FC = () => {
   };
 
   const handleCreateSubmit = (data: Partial<GPAppointmentRecord>) => {
+    let effectiveSite = data.siteName || (siteFilter !== 'all' ? siteFilter : allowedSites[0]);
+    if (!canAccessAllSites()) {
+      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+        effectiveSite = allowedSites[0] || assignedSite;
+      } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
+        alert('You can only book GP appointments for your assigned sites.');
+        return;
+      }
+    }
+
     addGPAppointmentRecord({
       roomNo: data.roomNo || '',
       portReference: data.portReference || '',
@@ -153,9 +164,7 @@ export const GPAppointmentsView: React.FC = () => {
       timeOfGp: data.timeOfGp || '10:00',
       comments: data.comments || '',
       status: (data.status as any) || 'Scheduled',
-      siteName: !canAccessAllSites() 
-        ? assignedSite 
-        : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
+      siteName: effectiveSite || '',
       suName: data.suName || '',
       ...data,
       attachments: Array.isArray(data.attachments) ? data.attachments : []
@@ -368,7 +377,9 @@ export const GPAppointmentsView: React.FC = () => {
             className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
-              <option value="all">All Assigned Sites</option>
+              <option value="all">
+                {canAccessAllSites() ? 'All Properties' : `All Assigned Sites (${allowedSites.length})`}
+              </option>
             )}
             {allowedSites.map(s => (
               <option key={s} value={s}>{s}</option>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { UsersRound, Plus, Search, Building2, Home, DoorOpen, Eye, Edit3, ArrowRightLeft, RefreshCw, CheckCircle2, AlertCircle, Trash2, UserMinus } from 'lucide-react';
+import { UsersRound, Plus, Search, Building2, Home, DoorOpen, Eye, Edit3, ArrowRightLeft, RefreshCw, CheckCircle2, AlertCircle, Trash2, UserMinus, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';
@@ -27,7 +27,7 @@ const suExportColumns: ExportColumnOption[] = [
 ];
 
 export const ServiceUsersView: React.FC = () => {
-  const { sites, canAccessAllSites, assignedSite, allowedSites, canManageUsers , requestConfirmation } = useApp();
+  const { sites, canAccessAllSites, assignedSite, allowedSites, isSitePermitted, canManageUsers, requestConfirmation } = useApp();
   const canCRUD = canManageUsers();
 
   const [serviceUsers, setServiceUsers] = useState<ServiceUserMaster[]>([]);
@@ -47,6 +47,7 @@ export const ServiceUsersView: React.FC = () => {
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
   const [siteFilter, setSiteFilter] = useState(initialSiteFilter);
+  const isLockedToSingleSite = !canAccessAllSites() && (allowedSites || []).length <= 1;
 
   useEffect(() => {
     if (assignedSite === 'All Sites' || assignedSite === 'all') {
@@ -169,8 +170,15 @@ export const ServiceUsersView: React.FC = () => {
       const loadedProps = propRes.success && propRes.data ? propRes.data : [];
       const loadedPlcs = plcRes.success && plcRes.data ? plcRes.data : [];
 
+      const accessibleProps = canAccessAllSites()
+        ? loadedProps
+        : loadedProps.filter(p => {
+            const siteObj = sites.find(s => s.id === p.siteId || s.name === p.siteId);
+            return isSitePermitted(siteObj?.name || p.propertyName || p.siteId, 'all');
+          });
+
       setServiceUsers(loadedSUs);
-      setProperties(loadedProps);
+      setProperties(accessibleProps);
       setPlacements(loadedPlcs);
 
       if (loadedProps.length > 0) {
@@ -210,13 +218,24 @@ export const ServiceUsersView: React.FC = () => {
     return map;
   }, [placements]);
 
-  const totalCount = serviceUsers.length;
-  const activeCount = serviceUsers.filter(u => u.status === 'Active').length;
-  const placedCount = serviceUsers.filter(u => activePlacementMap.has(u.id)).length;
+  // Strict Site Isolation - users only see records from permitted sites
+  const accessibleUsers = useMemo(() => {
+    return serviceUsers.filter(u => {
+      const plc = activePlacementMap.get(u.id);
+      const siteId = plc?.siteId || u.siteId;
+      const siteObj = sites.find(s => s.id === siteId || s.name === siteId);
+      const siteName = siteObj?.name || siteId || '';
+      return isSitePermitted(siteName, 'all');
+    });
+  }, [serviceUsers, activePlacementMap, sites, isSitePermitted]);
+
+  const totalCount = accessibleUsers.length;
+  const activeCount = accessibleUsers.filter(u => u.status === 'Active').length;
+  const placedCount = accessibleUsers.filter(u => activePlacementMap.has(u.id)).length;
   const unplacedCount = totalCount - placedCount;
 
   const filteredUsers = useMemo(() => {
-    return serviceUsers.filter(u => {
+    return accessibleUsers.filter(u => {
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
         const matchesName = `${u.firstName} ${u.lastName}`.toLowerCase().includes(q);
@@ -230,7 +249,7 @@ export const ServiceUsersView: React.FC = () => {
       if (placementFilter === 'unplaced' && isPlaced) return false;
       return true;
     });
-  }, [serviceUsers, searchTerm, statusFilter, placementFilter, activePlacementMap]);
+  }, [accessibleUsers, searchTerm, statusFilter, placementFilter, activePlacementMap]);
 
   const paginatedUsers = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -388,24 +407,30 @@ export const ServiceUsersView: React.FC = () => {
           </div>
 
           <div>
-            <select
-              value={siteFilter}
-              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
-              title={!canAccessAllSites() && (allowedSites || []).length <= 1 ? "Locked to your assigned site" : "Filter by site"}
-              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
-                <option value="all">
-                  {canAccessAllSites() ? `All Sites (${sites.length})` : `All Assigned Sites (${allowedSites.length})`}
-                </option>
-              )}
-              {sites
-                .filter(s => canAccessAllSites() || (allowedSites || []).includes(s.name) || (allowedSites || []).includes(s.id))
-                .map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-            </select>
+            {!isLockedToSingleSite ? (
+              <select
+                value={siteFilter}
+                onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
+                className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all cursor-pointer"
+              >
+                {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                  <option value="all">
+                    {canAccessAllSites() ? `All Sites (${sites.length})` : `All Assigned Sites (${allowedSites.length})`}
+                  </option>
+                )}
+                {sites
+                  .filter(s => canAccessAllSites() || isSitePermitted(s.name, 'all') || isSitePermitted(s.id, 'all'))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+              </select>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs" title="Locked to your assigned site">
+                <Lock className="w-3 h-3 text-[#0f766e]" />
+                <span className="font-semibold text-neutral-600">Site:</span>
+                <span className="font-bold text-[#0f766e] truncate">{assignedSite || 'Assigned Site'}</span>
+              </div>
+            )}
           </div>
 
           <div>

@@ -47,6 +47,7 @@ export const SDComplianceTrackerView: React.FC = () => {
     allowedSites,
     assignedSite,
     canAccessAllSites,
+    isSitePermitted,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -123,11 +124,11 @@ export const SDComplianceTrackerView: React.FC = () => {
 
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
       const matchesType = typeFilter === 'all' || r.complianceType.toLowerCase().includes(typeFilter.toLowerCase());
-      const matchesSite = siteFilter === 'all' || r.siteName === siteFilter;
+      const matchesSite = isSitePermitted(r.siteName, siteFilter);
 
       return matchesSearch && matchesStatus && matchesType && matchesSite;
     });
-  }, [complianceRecords, searchQuery, statusFilter, typeFilter, siteFilter]);
+  }, [complianceRecords, isSitePermitted, searchQuery, statusFilter, typeFilter, siteFilter]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -157,6 +158,16 @@ export const SDComplianceTrackerView: React.FC = () => {
   };
 
   const handleCreateSubmit = (data: Partial<SDComplianceRecord>) => {
+    let effectiveSite = data.siteName || (siteFilter !== 'all' ? siteFilter : allowedSites[0]);
+    if (!canAccessAllSites()) {
+      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+        effectiveSite = allowedSites[0] || assignedSite;
+      } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
+        alert('You can only create compliance records for your assigned sites.');
+        return;
+      }
+    }
+
     addComplianceRecord({
       srNo: complianceRecords.length + 1,
       complianceType: data.complianceType || 'Fire Risk Assessment (FRA)',
@@ -168,9 +179,7 @@ export const SDComplianceTrackerView: React.FC = () => {
       status: (data.status as any) || 'Compliant',
       actionTaken: data.actionTaken || '',
       previousContractor: data.previousContractor || '',
-      siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1)
-        ? assignedSite 
-        : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
+      siteName: effectiveSite || '',
       ...data,
       attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
@@ -382,7 +391,9 @@ export const SDComplianceTrackerView: React.FC = () => {
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
-                <option value="all">All Assigned Sites</option>
+                <option value="all">
+                  {canAccessAllSites() ? 'All Properties' : `All Assigned Sites (${allowedSites.length})`}
+                </option>
               )}
               {allowedSites.map(s => (
                 <option key={s} value={s}>{s}</option>

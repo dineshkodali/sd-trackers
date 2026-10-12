@@ -52,7 +52,7 @@ const deliveryNoteExportColumns: ExportColumnOption[] = [
 ];
 
 export const DeliveryNotesView: React.FC = () => {
-  const { properties, assignedSite, canAccessAllSites, currentUserRole, isFinanceUser, canManageFinance, authProfile, requestConfirmation, closeConfirmation } = useApp();
+  const { properties, assignedSite, allowedSites, canAccessAllSites, isSitePermitted, currentUserRole, isFinanceUser, canManageFinance, authProfile, requestConfirmation, closeConfirmation } = useApp();
 
   const { columns, saveColumns, resetToDefault } = useTableSchema('delivery_notes', FINANCE_DELIVERY_NOTES_TABLE_COLUMNS);
 
@@ -134,10 +134,6 @@ export const DeliveryNotesView: React.FC = () => {
     });
   };
 
-  const allowedSites = canAccessAllSites()
-    ? properties.map(p => p.name)
-    : properties.filter(p => p.id === assignedSite || p.name === assignedSite).map(p => p.name);
-
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -171,37 +167,8 @@ export const DeliveryNotesView: React.FC = () => {
   }, []);
 
   const siteScopedBills = useMemo(() => {
-    return bills.filter(b => {
-      if (!canAccessAllSites()) {
-        const allowed = (assignedSite || '').toLowerCase().trim();
-        const bSiteName = (b.siteName || '').toLowerCase().trim();
-        const bSiteId = (b.siteId || '').toLowerCase().trim();
-        const prop = properties.find(p => p.id?.toLowerCase() === allowed || p.name?.toLowerCase() === allowed);
-        const propName = (prop?.name || '').toLowerCase();
-        const propId = (prop?.id || '').toLowerCase();
-        const matchesAllowed = 
-          bSiteName === allowed || (allowed && bSiteName.includes(allowed)) ||
-          bSiteId === allowed || (allowed && bSiteId.includes(allowed)) ||
-          (propName && (bSiteName === propName || bSiteName.includes(propName))) ||
-          (propId && (bSiteId === propId || bSiteId.includes(propId)));
-        if (allowed && !matchesAllowed) return false;
-      } else if (siteFilter !== 'all') {
-        const filter = siteFilter.toLowerCase().trim();
-        const bSiteName = (b.siteName || '').toLowerCase().trim();
-        const bSiteId = (b.siteId || '').toLowerCase().trim();
-        const prop = properties.find(p => p.id?.toLowerCase() === filter || p.name?.toLowerCase() === filter);
-        const propName = (prop?.name || '').toLowerCase();
-        const propId = (prop?.id || '').toLowerCase();
-        const matchesFilter =
-          bSiteName === filter || (filter && bSiteName.includes(filter)) ||
-          bSiteId === filter || (filter && bSiteId.includes(filter)) ||
-          (propName && (bSiteName === propName || bSiteName.includes(propName))) ||
-          (propId && (bSiteId === propId || bSiteId.includes(propId)));
-        if (!matchesFilter) return false;
-      }
-      return true;
-    });
-  }, [bills, siteFilter, canAccessAllSites, assignedSite, properties]);
+    return bills.filter(b => isSitePermitted(b.siteName, siteFilter));
+  }, [bills, isSitePermitted, siteFilter]);
 
   const availableVendors = useMemo(() => {
     const set = new Set<string>();

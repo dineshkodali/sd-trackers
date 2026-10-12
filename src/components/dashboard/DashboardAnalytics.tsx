@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { SGReferral, EscalationRecord, ChallengingSU } from '../../types';
 import { MonthlyIncidentsTable } from './MonthlyIncidentsTable';
+import { useApp } from '../../context/AppContext';
 
 interface DashboardAnalyticsProps {
   referrals: SGReferral[];
@@ -138,21 +139,20 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   const [incidentChartMode, setIncidentChartMode] = useState<'stacked' | 'grouped' | 'distribution'>('stacked');
   const [referralChartMode, setReferralChartMode] = useState<'area' | 'line'>('area');
 
+  const { isSitePermitted } = useApp();
+
   // Filter datasets by selected site if not 'all'
   const filteredEscalations = useMemo(() => {
-    if (selectedSite === 'all') return escalations;
-    return escalations.filter(e => e.site === selectedSite || e.siteName === selectedSite);
-  }, [escalations, selectedSite]);
+    return escalations.filter(e => isSitePermitted(e.site || e.siteName, selectedSite));
+  }, [escalations, selectedSite, isSitePermitted]);
 
   const filteredChallenging = useMemo(() => {
-    if (selectedSite === 'all') return challengingSUs;
-    return challengingSUs.filter(c => c.site === selectedSite);
-  }, [challengingSUs, selectedSite]);
+    return challengingSUs.filter(c => isSitePermitted(c.site, selectedSite));
+  }, [challengingSUs, selectedSite, isSitePermitted]);
 
   const filteredReferrals = useMemo(() => {
-    if (selectedSite === 'all') return referrals;
-    return referrals.filter(r => r.site === selectedSite);
-  }, [referrals, selectedSite]);
+    return referrals.filter(r => isSitePermitted(r.site, selectedSite));
+  }, [referrals, selectedSite, isSitePermitted]);
 
   // Baseline standard chronological 6 months for clear executive trends
   const standardMonths = useMemo(() => {

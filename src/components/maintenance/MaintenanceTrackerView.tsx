@@ -66,6 +66,7 @@ export const MaintenanceTrackerView: React.FC = () => {
     deleteMaintenanceRecord,
     allowedSites,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     canEditRecord,
     canDeleteRecord,
@@ -102,11 +103,11 @@ export const MaintenanceTrackerView: React.FC = () => {
   // Sync with active property switcher in Header
   useEffect(() => {
     if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites()) setSiteFilter('all');
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
     } else if (assignedSite) {
       setSiteFilter(assignedSite);
     }
-  }, [assignedSite, canAccessAllSites]);
+  }, [assignedSite, canAccessAllSites, allowedSites]);
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
@@ -293,7 +294,7 @@ export const MaintenanceTrackerView: React.FC = () => {
   // Filtered maintenance list
   const filteredRecords = useMemo(() => {
     return maintenanceRecords.filter(item => {
-      if (siteFilter !== 'all' && item.site !== siteFilter) return false;
+      if (!isSitePermitted(item.site, siteFilter)) return false;
       if (priorityFilter !== 'all' && item.priority !== priorityFilter) return false;
       if (statusFilter !== 'all' && item.defectStatus !== statusFilter) return false;
       if (actionFilter !== 'all' && item.action !== actionFilter) return false;
@@ -1224,13 +1225,13 @@ export const MaintenanceTrackerView: React.FC = () => {
           priorityTimeScale: '5 Working Days',
           defectStatus: 'In Process',
           action: 'Open',
-          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          site: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
           raisedBy: loggedInUserName,
           attachments: []
         }}
         onSave={(data) => {
           const today = data.date || new Date().toISOString().slice(0, 10);
-          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (data.site || (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)));
           const fullLocation = data.room ? `${effectiveSite} - ${data.room}` : `${effectiveSite} - ${data.location || 'General Premises'}`;
           addMaintenanceRecord({
             ...data,

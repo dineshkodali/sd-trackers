@@ -34,7 +34,11 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
   propertyToEdit,
   onSuccess
 }) => {
-  const { sites, updateProperty, addProperty } = useApp();
+  const { sites, updateProperty, addProperty, canAccessAllSites, allowedSites } = useApp();
+  const availableSites = React.useMemo(() => {
+    if (canAccessAllSites()) return sites;
+    return sites.filter(s => (allowedSites || []).some(a => a.toLowerCase() === s.name.toLowerCase() || a.toLowerCase() === s.id.toLowerCase()));
+  }, [sites, canAccessAllSites, allowedSites]);
   const [activeTab, setActiveTab] = useState<PropertyTabType>('core');
 
   // Core & Address
@@ -215,7 +219,7 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
       } else {
         setPropertyName('');
         setPropertyType('HMO');
-        setSiteId(sites[0]?.id || '');
+        setSiteId(availableSites[0]?.id || sites[0]?.id || '');
         setAddressLine1('');
         setAddressLine2('');
         setCity('');
@@ -388,7 +392,7 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
           {activeTab === 'core' && (
             <PropertyCoreSection
               propertyName={propertyName} setPropertyName={setPropertyName}
-              siteId={siteId} setSiteId={setSiteId} sites={sites}
+              siteId={siteId} setSiteId={setSiteId} sites={availableSites}
               propertyType={propertyType} setPropertyType={setPropertyType}
               status={status} setStatus={setStatus}
               addressLine1={addressLine1} setAddressLine1={setAddressLine1}

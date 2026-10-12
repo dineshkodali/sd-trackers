@@ -18,20 +18,12 @@ export const CommercialWelfareBreakdown: React.FC<CommercialWelfareBreakdownProp
   const { 
     foodRecords, 
     laundryRecords,
-    canAccessAllSites,
-    allowedSites,
-    assignedSite
+    isSitePermitted
   } = useApp();
 
   const siteFilterPredicate = (item: any) => {
-    if (canAccessAllSites()) return true;
-    const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
-      .map(s => (s || '').toLowerCase().trim())
-      .filter(s => s && s !== 'all sites' && s !== 'pending assignment' && s !== 'all');
-    if (permitted.length === 0) return true;
-    const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
-    if (!itemSite) return true;
-    return permitted.some(s => itemSite === s || itemSite.includes(s) || s.includes(itemSite));
+    const itemSite = item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '';
+    return isSitePermitted(itemSite, 'all');
   };
 
   const scopedFood = foodRecords.filter(siteFilterPredicate);

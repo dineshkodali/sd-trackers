@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   UserMinus, 
   Send,
@@ -60,6 +60,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
     allowedSites,
     assignedSite,
     canAccessAllSites,
+    isSitePermitted,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -105,12 +106,12 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
         (r.hotel && r.hotel.toLowerCase().includes(q)) ||
         (r.notes && r.notes.toLowerCase().includes(q));
 
-      const matchesSite = siteFilter === 'all' || r.hotel?.toLowerCase() === siteFilter.toLowerCase();
+      const matchesSite = isSitePermitted(r.hotel, siteFilter);
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
 
       return matchesSearch && matchesSite && matchesStatus;
     });
-  }, [evictionRecords, searchQuery, siteFilter, statusFilter]);
+  }, [evictionRecords, isSitePermitted, searchQuery, siteFilter, statusFilter]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -138,9 +139,15 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
 
   const handleCreateSubmit = (data: Partial<EvictionRecord>) => {
     const recordStatus = data.status || 'Notice Issued';
-    const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1)
-      ? assignedSite
-      : (data.hotel || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Brit Hotel')));
+    let effectiveSite = data.hotel || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Brit Hotel'));
+    if (!canAccessAllSites()) {
+      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+        effectiveSite = allowedSites[0] || assignedSite;
+      } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveSite || '').toLowerCase())) {
+        alert('You can only record evictions for your assigned sites.');
+        return;
+      }
+    }
 
     addEvictionRecord({
       hotel: effectiveSite,

@@ -68,6 +68,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
     canCreateRecord,
     canEditRecord,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     currentUserRole,
     currentUserName,
@@ -153,7 +154,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
         if (c.status === 'Archived') return false;
       }
 
-      if (siteFilter !== 'all' && c.site !== siteFilter) return false;
+      if (!isSitePermitted(c.site, siteFilter)) return false;
       if (statusFilter !== 'all' && c.status !== statusFilter) return false;
       if (monthFilter !== 'all' && (!c.date || !c.date.startsWith(monthFilter))) return false;
 
@@ -827,7 +828,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
         columns={challengingColumns}
         initialValues={{
           date: new Date().toISOString().slice(0, 10),
-          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          site: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
           riskFactor: 'Medium',
           status: 'Open',
           group: 'Single Adult',
@@ -840,7 +841,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
           followUpNotes: ''
         }}
         onSave={(data) => {
-          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (data.site || (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)));
           addChallengingSU({
             ...data,
             date: data.date || new Date().toISOString().slice(0, 10),

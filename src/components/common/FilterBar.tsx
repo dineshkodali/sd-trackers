@@ -44,7 +44,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
-  const isSiteLocked = !canAccessAllSites();
+  const isSiteLocked = !canAccessAllSites() && (allowedSites || []).length <= 1;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,10 +86,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             onChange={e => setSiteFilter(e.target.value)}
             disabled={isSiteLocked}
             className={`w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:outline-2 focus:outline-[#71afe5] ${
-              isSiteLocked ? 'bg-[#faf9f8] cursor-not-allowed opacity-80' : ''
+              isSiteLocked ? 'bg-[#faf9f8] cursor-not-allowed opacity-80' : 'cursor-pointer'
             }`}
           >
-            {canAccessAllSites() && <option value="all">All Permitted Sites ({allowedSites.length})</option>}
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">
+                {canAccessAllSites() ? `All Sites (${allowedSites.length})` : `All Assigned Sites (${allowedSites.length})`}
+              </option>
+            )}
             {allowedSites.map((s, idx) => (
               <option key={`${s}-${idx}`} value={s}>{s}</option>
             ))}

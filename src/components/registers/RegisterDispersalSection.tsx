@@ -30,7 +30,8 @@ export const RegisterDispersalSection: React.FC<RegisterDispersalSectionProps> =
     updateDispersalRecord,
     dailyRegisterRecords,
     updateDailyRegisterRecord,
-    canEditRecord
+    canEditRecord,
+    isSitePermitted
   } = useApp();
 
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -47,7 +48,7 @@ export const RegisterDispersalSection: React.FC<RegisterDispersalSectionProps> =
         (r.flatRoomNumber && r.flatRoomNumber.toLowerCase().includes(q)) ||
         (r.siteName && r.siteName.toLowerCase().includes(q));
 
-      const matchesSite = selectedSite === 'all' || r.siteName?.toLowerCase() === selectedSite.toLowerCase();
+      const matchesSite = isSitePermitted(r.siteName, selectedSite);
       
       const isCompleted = r.travelled === 'Yes' || Boolean(r.dateLeftProperty);
       const matchesStatus = statusFilter === 'all' || 
@@ -55,7 +56,7 @@ export const RegisterDispersalSection: React.FC<RegisterDispersalSectionProps> =
 
       return matchesSearch && matchesSite && matchesStatus;
     });
-  }, [dispersalRecords, searchQuery, selectedSite, statusFilter]);
+  }, [dispersalRecords, searchQuery, selectedSite, statusFilter, isSitePermitted]);
 
   const paginatedDispersals = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;

@@ -52,7 +52,8 @@ export const RegisterEvictionSection: React.FC<RegisterEvictionSectionProps> = (
     canEditRecord,
     canDeleteRecord,
     currentUserRole,
-    assignedSite
+    assignedSite,
+    isSitePermitted
   } = useApp();
 
   const {
@@ -108,10 +109,10 @@ export const RegisterEvictionSection: React.FC<RegisterEvictionSectionProps> = (
         (r.roomNo && r.roomNo.toLowerCase().includes(q)) ||
         (r.evictionReason && r.evictionReason.toLowerCase().includes(q));
 
-      const matchesSite = selectedSite === 'all' || r.hotel?.toLowerCase() === selectedSite.toLowerCase();
+      const matchesSite = isSitePermitted(r.hotel, selectedSite);
       return matchesSearch && matchesSite;
     });
-  }, [evictionRecords, searchQuery, selectedSite]);
+  }, [evictionRecords, searchQuery, selectedSite, isSitePermitted]);
 
   const sortedEvictions = useMemo(() => {
     return [...filteredEvictions].sort((a: any, b: any) => {
@@ -139,8 +140,13 @@ export const RegisterEvictionSection: React.FC<RegisterEvictionSectionProps> = (
 
   const handleCreateSubmit = (data: Partial<EvictionRecord>) => {
     const recordStatus = data.status || 'Notice Issued';
+    const targetSite = data.hotel || (selectedSite !== 'all' ? selectedSite : (assignedSite || 'Brit Hotel'));
+    if (!isSitePermitted(targetSite)) {
+      alert('You are not permitted to add eviction records for this property.');
+      return;
+    }
     addEvictionRecord({
-      hotel: data.hotel || (selectedSite !== 'all' ? selectedSite : (assignedSite || 'Brit Hotel')),
+      hotel: targetSite,
       roomNo: data.roomNo || '',
       portRef: data.portRef || '',
       suName: data.suName || '',

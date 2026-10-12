@@ -67,6 +67,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     canEditRecord,
     canCreateRecord,
     canAccessAllSites,
+    isSitePermitted,
     assignedSite,
     currentUserRole,
     currentUserName,
@@ -149,7 +150,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
       }
 
       // Site filter
-      if (siteFilter !== 'all' && r.site !== siteFilter) return false;
+      if (!isSitePermitted(r.site, siteFilter)) return false;
 
       // Status filter
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
@@ -810,7 +811,9 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         title="New SG Referral Submission"
         columns={referralsColumns}
         initialValues={{
-          site: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          site: (!canAccessAllSites() && (allowedSites || []).length <= 1)
+            ? (assignedSite || (allowedSites && allowedSites[0]))
+            : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
           dateReferred: new Date().toISOString().slice(0, 10),
           status: 'Open',
           methodOfReferral: 'Encrypted Email',
@@ -820,7 +823,9 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         }}
         onSave={(data) => {
           const currentOfficer = (data as any).raisedBy || (data as any).officerLeadingHotel || loggedInUserName;
-          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1)
+            ? (assignedSite || (allowedSites && allowedSites[0]))
+            : (data.site || (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)));
           addReferral({
             site: effectiveSite,
             referralCouncil: data.referralCouncil || '',

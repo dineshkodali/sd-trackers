@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   MessageSquareWarning, 
   Plus, 
@@ -73,6 +73,8 @@ export const TransportFeedbackSection: React.FC = () => {
     updateTransportFeedbackRecord, 
     deleteTransportFeedbackRecord,
     canAccessAllSites,
+    isSitePermitted,
+    currentUserRole,
     allowedSites,
     assignedSite,
     sites,
@@ -171,23 +173,11 @@ export const TransportFeedbackSection: React.FC = () => {
 
   const [formData, setFormData] = useState<Partial<TransportFeedbackRecord>>(initialFormData);
 
-  // Scoped Data
-  const siteScopedRecords = useMemo(() => {
-    return transportFeedbackRecords.filter(r => {
-      if (!canAccessAllSites()) {
-        const allowed = new Set(allowedSites.map(s => s.toLowerCase().trim()));
-        if (assignedSite) allowed.add(assignedSite.toLowerCase().trim());
-        return allowed.has((r.siteName || '').toLowerCase().trim());
-      }
-      return true;
-    });
-  }, [transportFeedbackRecords, canAccessAllSites, allowedSites, assignedSite]);
-
   // Filtered & Searched Data
   const filteredRecords = useMemo(() => {
-    return siteScopedRecords.filter(r => {
-      // Site filter
-      if (selectedSite !== 'all' && (r.siteName || '').toLowerCase().trim() !== selectedSite.toLowerCase().trim()) {
+    return transportFeedbackRecords.filter(r => {
+      // Site filter & permissions
+      if (!isSitePermitted(r.siteName, selectedSite)) {
         return false;
       }
       // Impact filter
@@ -222,7 +212,7 @@ export const TransportFeedbackSection: React.FC = () => {
       }
       return true;
     });
-  }, [siteScopedRecords, selectedSite, impactFilter, typeFilter, resolutionFilter, categoryFilter, searchQuery]);
+  }, [transportFeedbackRecords, selectedSite, impactFilter, typeFilter, resolutionFilter, categoryFilter, searchQuery, isSitePermitted]);
 
   // Sorted Data
   const sortedRecords = useMemo(() => {
@@ -251,10 +241,20 @@ export const TransportFeedbackSection: React.FC = () => {
       return;
     }
 
+    let effectiveSite = formData.siteName || defaultSite;
+    if (!canAccessAllSites()) {
+      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+        effectiveSite = allowedSites[0] || defaultSite;
+      } else if (!allowedSites.includes(effectiveSite)) {
+        alert('You can only report issues for your assigned sites.');
+        return;
+      }
+    }
+
     const payload: Partial<TransportFeedbackRecord> = {
       ...formData,
-      siteName: formData.siteName || defaultSite,
-      siteManager: resolveSiteManager(formData.siteName || defaultSite),
+      siteName: effectiveSite,
+      siteManager: resolveSiteManager(effectiveSite),
       staffPlace: userStaffPlace,
       reportingPerson: loggedInUserName,
       reportingPersonId: authProfile?.id
@@ -344,9 +344,13 @@ export const TransportFeedbackSection: React.FC = () => {
 
             <button
               onClick={() => {
+                const effectiveSite = !canAccessAllSites()
+                  ? (selectedSite !== 'all' && allowedSites.includes(selectedSite) ? selectedSite : (allowedSites[0] || ''))
+                  : (selectedSite !== 'all' ? selectedSite : (allowedSites[0] || ''));
                 setFormData({
                   ...initialFormData,
-                  siteName: !canAccessAllSites() ? (assignedSite || allowedSites[0] || 'Brit Hotel') : (selectedSite !== 'all' ? selectedSite : (allowedSites[0] || 'Brit Hotel')),
+                  siteName: effectiveSite,
+                  siteManager: resolveSiteManager(effectiveSite),
                   reportingPerson: currentUserName || ''
                 });
                 setEditingItem(null);
@@ -624,27 +628,44 @@ export const TransportFeedbackSection: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Site Selection */}
                 <div>
-                  <label className="font-semibold text-[#605e5c] block mb-1">
-                    Site / Hotel *
+                  <label className="font-semibold text-[#605e5c] flex items-center justify-between mb-1">
+                    <span>Site / Hotel *</span>
+                    {(currentUserRole === 'Staff' || (!canAccessAllSites() && (allowedSites || []).length <= 1)) && (
+                      <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium flex items-center gap-0.5">
+                        <Lock className="w-2.5 h-2.5 text-teal-600" /> Locked
+                      </span>
+                    )}
                   </label>
-                  <select
-                    value={formData.siteName}
-                    disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
-                    onChange={(e) => {
-                      const newSite = e.target.value;
-                      setFormData(prev => ({
-                        ...prev,
-                        siteName: newSite,
-                        siteManager: resolveSiteManager(newSite)
-                      }));
-                    }}
-                    className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] disabled:opacity-60 text-xs"
-                    required
-                  >
-                    {allowedSites.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  {(currentUserRole === 'Staff' || (!canAccessAllSites() && (allowedSites || []).length <= 1)) ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={formData.siteName || defaultSite}
+                        readOnly
+                        disabled
+                        className="w-full p-2 pr-7 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed text-xs"
+                      />
+                      <Lock className="w-3.5 h-3.5 text-teal-600 absolute right-2 top-1/2 -translate-y-1/2" />
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.siteName}
+                      onChange={(e) => {
+                        const newSite = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          siteName: newSite,
+                          siteManager: resolveSiteManager(newSite)
+                        }));
+                      }}
+                      className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs"
+                      required
+                    >
+                      {allowedSites.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Reporting Staff Member (Locked) */}

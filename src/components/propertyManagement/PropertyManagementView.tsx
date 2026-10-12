@@ -30,7 +30,7 @@ const propertyExportColumns: ExportColumnOption[] = [
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 
 export const PropertyManagementView: React.FC = () => {
-  const { sites, canAccessAllSites, assignedSite, allowedSites, canManageProperties, requestConfirmation } = useApp();
+  const { sites, canAccessAllSites, isSitePermitted, assignedSite, allowedSites, canManageProperties, requestConfirmation } = useApp();
   const canCRUD = canManageProperties();
 
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
@@ -132,20 +132,12 @@ export const PropertyManagementView: React.FC = () => {
     return map;
   }, [properties, rooms, placements]);
 
-  const dashboardStats = useMemo(() => {
-    const totalProps = properties.length;
-    const activeProps = properties.filter(p => p.status === 'Active').length;
-    const totalCapacity = properties.reduce((acc, p) => acc + (p.maximumOccupancy || 0), 0);
-    const totalActivePlacements = placements.length;
-    const totalRooms = rooms.length;
-    const availableRooms = rooms.filter(r => r.occupancyStatus === 'Available').length;
-    const occupancyRate = totalCapacity > 0 ? Math.round((totalActivePlacements / totalCapacity) * 100) : 0;
-    return { totalProps, activeProps, totalCapacity, totalActivePlacements, totalRooms, availableRooms, occupancyRate };
-  }, [properties, placements, rooms]);
-
   const filteredProperties = useMemo(() => {
     return properties.filter(p => {
       const siteName = siteMap.get(p.siteId || '') || '';
+      const activeFilterName = siteFilter === 'all' ? 'all' : (siteMap.get(siteFilter) || siteFilter);
+      if (!isSitePermitted(siteName, activeFilterName)) return false;
+
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
         const matchesRef = p.propertyReference.toLowerCase().includes(q);
@@ -159,7 +151,21 @@ export const PropertyManagementView: React.FC = () => {
       if (typeFilter !== 'all' && p.propertyType !== typeFilter) return false;
       return true;
     });
-  }, [properties, searchTerm, statusFilter, typeFilter, siteMap]);
+  }, [properties, isSitePermitted, siteFilter, searchTerm, statusFilter, typeFilter, siteMap]);
+
+  const dashboardStats = useMemo(() => {
+    const totalProps = filteredProperties.length;
+    const activeProps = filteredProperties.filter(p => p.status === 'Active').length;
+    const totalCapacity = filteredProperties.reduce((acc, p) => acc + (p.maximumOccupancy || 0), 0);
+    const visiblePropIds = new Set(filteredProperties.map(p => p.id));
+    const visiblePlacements = placements.filter(pl => visiblePropIds.has(pl.propertyId));
+    const visibleRooms = rooms.filter(r => visiblePropIds.has(r.propertyId));
+    const totalActivePlacements = visiblePlacements.length;
+    const totalRooms = visibleRooms.length;
+    const availableRooms = visibleRooms.filter(r => r.occupancyStatus === 'Available').length;
+    const occupancyRate = totalCapacity > 0 ? Math.round((totalActivePlacements / totalCapacity) * 100) : 0;
+    return { totalProps, activeProps, totalCapacity, totalActivePlacements, totalRooms, availableRooms, occupancyRate };
+  }, [filteredProperties, placements, rooms]);
 
   const paginatedProperties = useMemo(() => {
     const start = (currentPage - 1) * pageSize;

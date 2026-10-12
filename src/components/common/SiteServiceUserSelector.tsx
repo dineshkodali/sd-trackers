@@ -47,7 +47,15 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
   required = false,
   className = ''
 }) => {
-  const { sites, assignedSite, canAccessAllSites } = useApp();
+  const { sites, assignedSite, allowedSites, canAccessAllSites, currentUserRole } = useApp();
+
+  const permittedSites = useMemo(() => {
+    if (canAccessAllSites()) return sites;
+    const allowed = (allowedSites || []).map(a => a.toLowerCase().trim());
+    const matched = sites.filter(s => allowed.some(a => a === s.name.toLowerCase().trim() || a === s.id.toLowerCase().trim()));
+    if (currentUserRole === 'Staff') return matched.slice(0, 1);
+    return matched.length > 0 ? matched : sites.slice(0, 1);
+  }, [sites, allowedSites, canAccessAllSites, currentUserRole]);
 
   const [currentSiteId, setCurrentSiteId] = useState<string>(selectedSiteId || '');
   const [currentPropertyId, setCurrentPropertyId] = useState<string>(selectedPropertyId || '');
@@ -62,14 +70,15 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
   useEffect(() => {
     if (selectedSiteId) {
       setCurrentSiteId(selectedSiteId);
-    } else if (!canAccessAllSites() && assignedSite) {
-      const match = sites.find(s => s.name === assignedSite || s.id === assignedSite);
-      if (match) setCurrentSiteId(match.id);
-    } else if (sites.length > 0 && !currentSiteId) {
-      setCurrentSiteId(sites[0].id);
-      if (onSiteChange) onSiteChange(sites[0].id, sites[0].name);
+    } else if (permittedSites.length > 0) {
+      const match = permittedSites.find(s => s.name === assignedSite || s.id === assignedSite);
+      const chosen = match || permittedSites[0];
+      if (chosen && (!currentSiteId || !permittedSites.some(p => p.id === currentSiteId))) {
+        setCurrentSiteId(chosen.id);
+        if (onSiteChange) onSiteChange(chosen.id, chosen.name);
+      }
     }
-  }, [selectedSiteId, sites, assignedSite, canAccessAllSites]);
+  }, [selectedSiteId, permittedSites, assignedSite]);
 
   // Synchronize propertyId from props
   useEffect(() => {
@@ -241,11 +250,11 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
           <select
             value={currentSiteId}
             onChange={e => handleSiteSelect(e.target.value)}
-            disabled={disabled}
+            disabled={disabled || (!canAccessAllSites() && permittedSites.length <= 1)}
             className="w-full px-2.5 py-1.5 bg-white border border-neutral-300 rounded-md text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:bg-neutral-100 disabled:text-neutral-500"
           >
             <option value="">-- Select Site --</option>
-            {sites.map(s => (
+            {permittedSites.map(s => (
               <option key={s.id} value={s.id}>
                 {s.name} {s.city ? `(${s.city})` : ''}
               </option>

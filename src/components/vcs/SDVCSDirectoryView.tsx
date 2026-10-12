@@ -52,6 +52,7 @@ export const SDVCSDirectoryView: React.FC = () => {
     assignedSite,
     allowedSites,
     canAccessAllSites,
+    isSitePermitted,
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
@@ -149,7 +150,7 @@ export const SDVCSDirectoryView: React.FC = () => {
 
   const filteredAgencies = useMemo(() => {
     return vcsAgencies.filter(a => {
-      const matchesProperty = matchesPropertyName(a.hotelName, selectedProperty);
+      const matchesProperty = isSitePermitted(a.hotelName, selectedProperty);
       const matchesCategory = selectedCategory === 'all' || selectedCategory === 'All Categories' || a.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchesQuery = !q || 
@@ -163,7 +164,7 @@ export const SDVCSDirectoryView: React.FC = () => {
 
       return matchesProperty && matchesCategory && matchesQuery;
     });
-  }, [vcsAgencies, selectedProperty, selectedCategory, searchQuery]);
+  }, [vcsAgencies, isSitePermitted, selectedProperty, selectedCategory, searchQuery]);
 
   const sortedAgencies = useMemo(() => {
     return [...filteredAgencies].sort((a: any, b: any) => {
@@ -190,10 +191,18 @@ export const SDVCSDirectoryView: React.FC = () => {
   };
 
   const handleCreateSubmit = (data: Partial<SDVCSAgency>) => {
+    let effectiveHotel = data.hotelName || (selectedProperty !== 'all' ? selectedProperty : allowedSites[0]);
+    if (!canAccessAllSites()) {
+      if (currentUserRole === 'Staff' || (allowedSites || []).length <= 1) {
+        effectiveHotel = allowedSites[0] || assignedSite;
+      } else if (!allowedSites.some(s => s.toLowerCase() === (effectiveHotel || '').toLowerCase())) {
+        alert('You can only add agencies for your assigned sites.');
+        return;
+      }
+    }
+
     addVCSAgency({
-      hotelName: (!canAccessAllSites() && (allowedSites || []).length <= 1)
-        ? assignedSite 
-        : (data.hotelName || (selectedProperty !== 'all' ? selectedProperty : (assignedSite || allowedSites[0]))),
+      hotelName: effectiveHotel || '',
       agencyName: data.agencyName || '',
       category: (data.category as any) || 'Charity & Welfare',
       servicesProvided: data.servicesProvided || '',
@@ -202,9 +211,8 @@ export const SDVCSDirectoryView: React.FC = () => {
       email: data.email || '',
       address: data.address || '',
       notes: data.notes || '',
-      ...data,
-      attachments: Array.isArray((data as any).attachments) ? (data as any).attachments : []
-    } as any);
+      attachments: data.attachments || []
+    });
     setIsAddModalOpen(false);
   };
 
@@ -474,7 +482,9 @@ export const SDVCSDirectoryView: React.FC = () => {
             className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
-              <option value="all">All Properties ({hotelFilterOptions.length} Clusters)</option>
+              <option value="all">
+                {canAccessAllSites() ? `All Properties (${hotelFilterOptions.length} Clusters)` : `All Assigned Sites (${allowedSites.length})`}
+              </option>
             )}
             {(canAccessAllSites() ? hotelFilterOptions : (allowedSites || [])).map(h => (
               <option key={h} value={h}>{h}</option>

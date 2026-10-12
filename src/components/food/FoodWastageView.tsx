@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Trash2, 
   Plus, 
@@ -69,6 +69,7 @@ export const FoodWastageView: React.FC = () => {
     assignedSite,
     allowedSites,
     canAccessAllSites,
+    isSitePermitted,
     sites,
     requestConfirmation
   } = useApp();
@@ -165,9 +166,8 @@ export const FoodWastageView: React.FC = () => {
   // Site isolation filter
   const accessibleRecords = useMemo(() => {
     if (canAccessAllSites()) return foodWastageRecords;
-    if (!assignedSite || assignedSite === 'All Sites') return foodWastageRecords;
-    return foodWastageRecords.filter(r => r.site?.toLowerCase() === assignedSite.toLowerCase());
-  }, [foodWastageRecords, canAccessAllSites, assignedSite]);
+    return foodWastageRecords.filter(r => isSitePermitted(r.site, 'all'));
+  }, [foodWastageRecords, canAccessAllSites, isSitePermitted]);
 
   // Main filtering
   const filteredRecords = useMemo(() => {
@@ -181,7 +181,7 @@ export const FoodWastageView: React.FC = () => {
         (r.comments && r.comments.toLowerCase().includes(q)) ||
         (Array.isArray(r.items) && r.items.some(i => i.foodItem.toLowerCase().includes(q) || (i.remarks && i.remarks.toLowerCase().includes(q))));
 
-      const matchesSite = siteFilter === 'all' || r.site === siteFilter;
+      const matchesSite = isSitePermitted(r.site, siteFilter);
       const matchesMealType = mealTypeFilter === 'all' || (r.mealType || 'Lunch') === mealTypeFilter;
       
       const matchesFoodItem = foodItemFilter === 'all' || (
@@ -258,13 +258,20 @@ export const FoodWastageView: React.FC = () => {
   };
 
   const availableSites = useMemo(() => {
+    if (!canAccessAllSites()) {
+      const fromAllowed = (allowedSites || []).filter(s => Boolean(s && s !== 'All Sites' && s !== 'all'));
+      return fromAllowed.length > 0 ? fromAllowed : [assignedSite || 'Brit Hotel'];
+    }
     return (sites || []).map(s => typeof s === 'string' ? s : s?.name).filter(Boolean);
-  }, [sites]);
+  }, [sites, allowedSites, canAccessAllSites, assignedSite]);
 
   // Form Open / Close Handlers
   const handleOpenCreateModal = () => {
     setEditingRecord(null);
-    setFormSite(assignedSite && assignedSite !== 'All Sites' ? assignedSite : (availableSites[0] || 'Brit Hotel'));
+    const defaultSite = (!canAccessAllSites() && (allowedSites || []).length <= 1)
+      ? (assignedSite || (allowedSites && allowedSites[0]) || 'Brit Hotel')
+      : (siteFilter !== 'all' ? siteFilter : (availableSites[0] || 'Brit Hotel'));
+    setFormSite(defaultSite);
     setFormDate(new Date().toISOString().slice(0, 10));
     setFormMealType('Lunch');
     setFormComments('');

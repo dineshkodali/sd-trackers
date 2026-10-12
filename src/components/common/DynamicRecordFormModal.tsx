@@ -116,12 +116,15 @@ export function DynamicRecordFormModal<T = any>({
 
   const allSiteNames = useMemo(() => {
     const fromAllowed = (allowedSites || []).filter(s => Boolean(s && s !== 'All Sites' && s !== 'all'));
+    if (!canAccessAllSites()) {
+      return fromAllowed.length > 0 ? fromAllowed : (userAssignedHotel ? [userAssignedHotel] : []);
+    }
     const fromSites = (sites || [])
       .map(s => (typeof s === 'string' ? s : s?.name))
       .filter((n): n is string => Boolean(n && typeof n === 'string' && n.trim() !== '' && n !== 'All Sites' && n !== 'all'));
     const combined = Array.from(new Set([...fromAllowed, ...fromSites, ...(userAssignedHotel ? [userAssignedHotel] : [])]));
     return combined.length > 0 ? combined : (userAssignedHotel ? [userAssignedHotel] : []);
-  }, [allowedSites, sites, userAssignedHotel]);
+  }, [allowedSites, sites, userAssignedHotel, canAccessAllSites]);
 
   const effectiveContext = useMemo(() => ({
     assignedSite: userAssignedHotel,
@@ -406,21 +409,24 @@ export function DynamicRecordFormModal<T = any>({
       const isStaffPlc = isStaffPlaceColumn(col);
 
       if (isSite) {
-        if (!canAccessAllSites()) {
-          initial[key] = userAssignedHotel;
-        } else {
-          const provided = initialValues ? (initialValues as any)[key] : undefined;
-          if (provided && typeof provided === 'string' && provided.trim() !== '') {
-            initial[key] = provided;
-          } else if (selectedSite && selectedSite !== 'all') {
-            initial[key] = selectedSite;
-          } else if (assignedSite) {
-            initial[key] = assignedSite;
-          } else if (col.defaultValue !== undefined) {
-            initial[key] = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
+        const provided = initialValues ? (initialValues as any)[key] : undefined;
+        if (provided && typeof provided === 'string' && provided.trim() !== '') {
+          if (!canAccessAllSites() && !allSiteNames.includes(provided)) {
+            initial[key] = (selectedSite && selectedSite !== 'all' && allSiteNames.includes(selectedSite)) ? selectedSite : (allSiteNames[0] || userAssignedHotel);
           } else {
-            initial[key] = allSiteNames[0] || userAssignedHotel;
+            initial[key] = provided;
           }
+        } else if (!canAccessAllSites() && allSiteNames.length <= 1) {
+          initial[key] = userAssignedHotel || allSiteNames[0];
+        } else if (selectedSite && selectedSite !== 'all' && (canAccessAllSites() || allSiteNames.includes(selectedSite))) {
+          initial[key] = selectedSite;
+        } else if (assignedSite && assignedSite !== 'All Sites' && (canAccessAllSites() || allSiteNames.includes(assignedSite))) {
+          initial[key] = assignedSite;
+        } else if (col.defaultValue !== undefined) {
+          const resolved = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
+          initial[key] = (canAccessAllSites() || allSiteNames.includes(resolved)) ? resolved : (allSiteNames[0] || userAssignedHotel);
+        } else {
+          initial[key] = allSiteNames[0] || userAssignedHotel;
         }
       } else if (isLoggedBy) {
         initial[key] = (initialValues && (initialValues as any)[key]) || loggedInUserName;
@@ -535,7 +541,9 @@ export function DynamicRecordFormModal<T = any>({
       if (!canAccessAllSites()) {
         formColumns.forEach(col => {
           if (isSiteColumn(col)) {
-            initial[String(col.key)] = userAssignedHotel;
+            const isLocked = currentUserRole === 'Staff' || allSiteNames.length <= 1;
+            const existing = (initialValues as any)?.[String(col.key)];
+            initial[String(col.key)] = isLocked ? (userAssignedHotel || allSiteNames[0]) : (existing && allSiteNames.includes(existing) ? existing : (allSiteNames[0] || userAssignedHotel));
           }
         });
       }
@@ -557,9 +565,12 @@ export function DynamicRecordFormModal<T = any>({
       formColumns.forEach(col => {
         const key = String(col.key);
         if (isSiteColumn(col)) {
-          blank[key] = !canAccessAllSites()
-            ? userAssignedHotel
-            : (selectedSite && selectedSite !== 'all' ? selectedSite : (assignedSite || allSiteNames[0] || userAssignedHotel));
+          const isLocked = currentUserRole === 'Staff' || (!canAccessAllSites() && allSiteNames.length <= 1);
+          blank[key] = isLocked
+            ? (userAssignedHotel || allSiteNames[0])
+            : (selectedSite && selectedSite !== 'all' && (canAccessAllSites() || allSiteNames.includes(selectedSite))
+                ? selectedSite
+                : (allSiteNames[0] || userAssignedHotel));
         } else if (isLoggedByColumn(col)) {
           blank[key] = loggedInUserName;
         } else if (isSiteManagerColumn(col)) {
@@ -677,9 +688,6 @@ export function DynamicRecordFormModal<T = any>({
 
   const resolveOptions = (col: TableColumnConfig<T>): SelectOption[] => {
     if (isSiteColumn(col)) {
-      if (!canAccessAllSites()) {
-        return [{ label: userAssignedHotel, value: userAssignedHotel }];
-      }
       return allSiteNames.map(name => ({ label: name, value: name }));
     }
 
@@ -737,9 +745,17 @@ export function DynamicRecordFormModal<T = any>({
     formColumns.forEach(col => {
       const key = String(col.key);
       const isSite = isSiteColumn(col);
-      const val = isSite && !canAccessAllSites() 
-        ? userAssignedHotel 
-        : (formData[key] ?? (isSite ? userAssignedHotel : ''));
+      const isLocked = isSite && (currentUserRole === 'Staff' || (!canAccessAllSites() && allSiteNames.length <= 1));
+      const val = isLocked
+        ? (userAssignedHotel || allSiteNames[0])
+        : (formData[key] ?? (isSite ? (selectedSite && selectedSite !== 'all' && (canAccessAllSites() || allSiteNames.includes(selectedSite)) ? selectedSite : allSiteNames[0]) : ''));
+
+      if (isSite && !canAccessAllSites() && !isLocked && val) {
+        if (!allSiteNames.includes(val)) {
+          newErrors[key] = `Please select an assigned site (${allSiteNames.join(', ')})`;
+          return;
+        }
+      }
 
       if (col.required) {
         if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
@@ -800,8 +816,18 @@ export function DynamicRecordFormModal<T = any>({
       formColumns.forEach(col => {
         const key = String(col.key);
         if (isSiteColumn(col)) {
-          if (!canAccessAllSites()) {
-            processed[key] = userAssignedHotel;
+          const isLocked = currentUserRole === 'Staff' || (!canAccessAllSites() && allSiteNames.length <= 1);
+          if (isLocked) {
+            processed[key] = userAssignedHotel || allSiteNames[0];
+          } else if (!canAccessAllSites()) {
+            const chosen = processed[key];
+            if (chosen && allSiteNames.includes(chosen)) {
+              processed[key] = chosen;
+            } else {
+              processed[key] = (selectedSite && selectedSite !== 'all' && allSiteNames.includes(selectedSite))
+                ? selectedSite
+                : (allSiteNames[0] || userAssignedHotel);
+            }
           } else if (!processed[key]) {
             processed[key] = selectedSite && selectedSite !== 'all' ? selectedSite : (assignedSite || allSiteNames[0] || userAssignedHotel);
           }
@@ -890,10 +916,10 @@ export function DynamicRecordFormModal<T = any>({
                   const isSiteManager = isSiteManagerColumn(col);
                   const isStaffPlace = isStaffPlaceColumn(col);
                   const displayLabel = isLoggedBy ? 'Reporting Staff Member' : isSiteManager ? 'Site Manager' : isStaffPlace ? 'Staff Place' : col.label;
-                  const isLockedForStaff = isSite && !canAccessAllSites();
+                  const isLockedForStaff = isSite && (currentUserRole === 'Staff' || (!canAccessAllSites() && allSiteNames.length <= 1));
                   const isReadOnly = col.editable === false || isLockedForStaff || isLoggedBy || isSiteManager || isStaffPlace;
                   const value = isLockedForStaff
-                    ? userAssignedHotel
+                    ? (userAssignedHotel || allSiteNames[0])
                     : isLoggedBy
                       ? (formData[key] || loggedInUserName)
                       : isSiteManager
@@ -1008,7 +1034,7 @@ export function DynamicRecordFormModal<T = any>({
                         <div className="relative">
                           <input
                             type="text"
-                            value={userAssignedHotel}
+                            value={userAssignedHotel || allSiteNames[0]}
                             readOnly
                             disabled
                             className="w-full p-2 pr-8 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 font-medium cursor-not-allowed"
