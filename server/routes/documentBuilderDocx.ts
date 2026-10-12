@@ -264,14 +264,25 @@ function buildIncidentDocxContent(data: DocData): (Paragraph | Table)[] {
   function make2ColRow(
     label: string,
     value: string | string[],
-    options: { isBullet?: boolean; isPerson?: boolean; portRef?: string } = {}
+    options: { isBullet?: boolean; isPerson?: boolean; portRef?: string; lead?: string } = {}
   ): TableRow {
     const isBullet = options.isBullet ?? false;
     const rightParas: Paragraph[] = [];
 
+    // Optional centred bold summary line above the bullets
+    if (options.lead) {
+      rightParas.push(
+        new Paragraph({
+          children: [new TextRun({ text: options.lead, bold: true, font: 'Arial', size: 17 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
+        })
+      );
+    }
+
     if (Array.isArray(value)) {
       if (value.length === 0) {
-        rightParas.push(
+        if (!options.lead) rightParas.push(
           new Paragraph({
             children: [new TextRun({ text: '•', bold: true, font: 'Arial', size: 17 })],
           })
@@ -370,7 +381,7 @@ function buildIncidentDocxContent(data: DocData): (Paragraph | Table)[] {
   }
 
   // Incident Description & Action Taken
-  tableRows.push(make2ColRow('Incident Description', descLines, { isBullet: true }));
+  tableRows.push(make2ColRow('Incident Description', descLines, { isBullet: true, lead: cleanVal(v.incidentLead) }));
   tableRows.push(make2ColRow('Action Taken', actionLines, { isBullet: true }));
 
   // 4-Column Row Helper for Authorities

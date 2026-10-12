@@ -170,7 +170,7 @@ export const DocumentPreviewPage: React.FC<DocumentPreviewPageProps> = ({
       }
 
       case 'incident_description': {
-        const { lines } = block.data;
+        const { lines, lead } = block.data;
         const label = block.isContinued ? 'Incident Description (cont.)' : (block.title || 'Incident Description');
         return (
           <tr key={blockIdx} className="border-b border-black">
@@ -178,7 +178,8 @@ export const DocumentPreviewPage: React.FC<DocumentPreviewPageProps> = ({
               {label}
             </td>
             <td colSpan={3} className="py-2 px-2.5 align-top text-left" style={{ minHeight: '60px' }}>
-              {renderBulletList(lines)}
+              {lead ? <div className="font-bold text-center leading-tight mb-1.5 px-3">{lead}</div> : null}
+              {lines.length > 0 || !lead ? renderBulletList(lines) : null}
             </td>
           </tr>
         );

@@ -30,6 +30,34 @@ import { DocumentPreview } from './DocumentPreview';
 import { CreateOwnUploadModal } from './CreateOwnUploadModal';
 import { DocumentImportModal } from './DocumentImportModal';
 import { DocumentsListView } from './DocumentsListView';
+import { IncidentBuilderForm } from './incident/IncidentBuilderForm';
+import { IncidentBuilderPreview, type DownloadGuard } from './incident/IncidentBuilderPreview';
+import {
+  BUILDER_KEY,
+  buildIncidentDocx,
+  countPlaceholders,
+  normalizeState,
+  reportFileName,
+  reportPlainText,
+  resolveReport,
+  sanitizeState,
+  suggestTitle,
+  toFieldValues,
+  type BuilderState,
+} from './incident/incidentEngine';
+import { SITES, siteText } from './incident/incidentData';
+import {
+  DEFAULT_SETTINGS,
+  forgetDraft,
+  loadSettings,
+  readDraft,
+  rememberMe,
+  saveSettings,
+  startState,
+  wipeAll,
+  writeDraft,
+  type BuilderSettings,
+} from './incident/incidentStorage';
 import type {
   TemplateWithVersion,
   DocumentBuilderRecord,
@@ -54,6 +82,26 @@ interface Toast {
 }
 
 type MainTab = 'generator' | 'documents';
+type IncidentMode = 'guided' | 'classic';
+
+const INCIDENT_TEMPLATE_URL = '/templates/incident/Incident_Report_Master.docx';
+
+/** The official Incident Report template (guided scenario builder applies to it only). */
+const isIncidentTemplate = (t?: { id: string; name: string; currentVersion?: { fieldDefinitions?: { name: string }[] } } | null): boolean =>
+  !!t && (
+    t.id === 'tmpl-incident-report' ||
+    (t.name === 'Incident Report' && !!t.currentVersion?.fieldDefinitions?.some(f => f.name === 'propertyId'))
+  );
+
+/** Pre-select the Property ID when the page's current site is one of the known sites. */
+const matchSiteChoice = (site?: string): string => {
+  const s = (site || '').trim().toLowerCase();
+  if (!s || s === 'all sites') return '';
+  const hit = SITES.find(([num, name]) => s === name.toLowerCase() || s.startsWith(`${num}`) || s.includes(name.toLowerCase()));
+  return hit ? hit[0] : '';
+};
+
+const cloneBuilderState = (s: BuilderState): BuilderState => JSON.parse(JSON.stringify(s));
 
 export const DocumentBuilderView: React.FC = () => {
   const {
@@ -89,6 +137,27 @@ export const DocumentBuilderView: React.FC = () => {
   const [selectedSUKey, setSelectedSUKey] = useState<string>('');
   const [currentRecord, setCurrentRecord] = useState<DocumentBuilderRecord | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Guided Incident Report builder state (state itself lives in fieldValues[BUILDER_KEY])
+  const [incidentMode, setIncidentMode] = useState<IncidentMode>('guided');
+  const [irSettings, setIrSettings] = useState<BuilderSettings>(() => loadSettings());
+  const irSettingsRef = useRef<BuilderSettings>(irSettings);
+  const [dlArmed, setDlArmed] = useState<string | null>(null);
+  const dlTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const classicEdited = useRef(false);
+  const irStateRef = useRef<BuilderState | null>(null);
+  const autoTitle = useRef('');
+  const incidentTemplateBytes = useRef<ArrayBuffer | null>(null);
+
+  const isIncident = isIncidentTemplate(selectedTemplate);
+  const guided = isIncident && !isCustomizing && incidentMode === 'guided';
+  const irState = useMemo<BuilderState | null>(
+    () => (guided ? sanitizeState(fieldValues[BUILDER_KEY]) : null),
+    [guided, fieldValues]
+  );
+  const irReport = useMemo(() => (irState ? resolveReport(cloneBuilderState(irState)) : null), [irState]);
+  irStateRef.current = irState;
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -159,6 +228,74 @@ export const DocumentBuilderView: React.FC = () => {
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   }, []);
 
+  // ---- Guided Incident Report builder ------------------------------------------------------
+
+  /** Load (or create) the builder state and merge it, with the mapped standard fields, into the report. */
+  const initGuided = useCallback((base?: BuilderState | null, setTitle = true) => {
+    const st = cloneBuilderState(base ?? readDraft() ?? startState(irSettingsRef.current));
+    if (!st.core.propertyChoice && !st.core.propertyId) {
+      const choice = matchSiteChoice(selectedSite);
+      const hit = SITES.find(x => x[0] === choice);
+      if (hit) {
+        st.core.propertyChoice = hit[0];
+        st.core.propertyId = siteText(hit);
+      }
+    }
+    const normalized = normalizeState(st);
+    setFieldValues(prev => ({ ...prev, ...toFieldValues(normalized) }));
+    if (setTitle) {
+      const t = suggestTitle(normalized);
+      autoTitle.current = t;
+      setDocumentTitle(t);
+    }
+  }, [selectedSite]);
+
+  const handleIrChange = useCallback((next: BuilderState) => {
+    setFieldValues(prev => ({ ...prev, ...toFieldValues(next) }));
+    setIsDirty(true);
+    const remembered = rememberMe(next, irSettingsRef.current);
+    if (remembered !== irSettingsRef.current) {
+      irSettingsRef.current = remembered;
+      setIrSettings(remembered);
+    }
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => writeDraft(next, irSettingsRef.current.keep), 350);
+  }, []);
+
+  const handleIrSettings = useCallback((s: BuilderSettings) => {
+    irSettingsRef.current = s;
+    setIrSettings(s);
+    saveSettings(s);
+    if (irStateRef.current) writeDraft(irStateRef.current, s.keep);
+  }, []);
+
+  const startNewReport = useCallback(() => {
+    if (isDirty && !window.confirm('Start a new report? Unsaved changes to this report will be lost.')) return;
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    forgetDraft();
+    setCurrentRecord(null);
+    setSelectedSUKey('');
+    setFieldValues({});
+    classicEdited.current = false;
+    initGuided(startState(irSettingsRef.current));
+    setIsDirty(false);
+    showToast('Started a new report', 'info');
+  }, [isDirty, initGuided, showToast]);
+
+  const wipeBuilderData = useCallback(() => {
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    wipeAll();
+    const reset = { ...DEFAULT_SETTINGS };
+    irSettingsRef.current = reset;
+    setIrSettings(reset);
+    setCurrentRecord(null);
+    setFieldValues({});
+    classicEdited.current = false;
+    initGuided(startState(reset));
+    setIsDirty(false);
+    showToast('Everything saved on this computer has been cleared', 'info');
+  }, [initGuided, showToast]);
+
   const loadTemplates = async () => {
     setLoadingTemplates(true);
     const res = await fetchTemplates();
@@ -174,6 +311,19 @@ export const DocumentBuilderView: React.FC = () => {
       setIsCustomizing(false);
     }
   }, [isAdmin, isCustomizing]);
+
+  // Guided builder: make sure a valid builder state exists whenever the guided form is showing
+  useEffect(() => {
+    if (guided && !irState) initGuided(null, false);
+  }, [guided, irState, initGuided]);
+
+  // Guided builder: keep the document title in step with the chosen incident (until the user edits it)
+  useEffect(() => {
+    if (!irState) return;
+    const t = suggestTitle(irState);
+    setDocumentTitle(prev => (!prev || prev === autoTitle.current ? t : prev));
+    autoTitle.current = t;
+  }, [irState]);
 
   // Aggregate Service Users (SUs) across site records to enable 1-click report auto-fill
   const siteSUs = useMemo<{
@@ -275,6 +425,11 @@ export const DocumentBuilderView: React.FC = () => {
     setIsDirty(false);
     setIsCustomizing(false);
     setDocumentTitle(`${template.name} — ${new Date().toLocaleDateString('en-GB')}`);
+    classicEdited.current = false;
+    if (isIncidentTemplate(template)) {
+      setIncidentMode('guided');
+      initGuided();
+    }
 
     if (!template.currentVersion?.fieldDefinitions?.length) {
       const res = await fetchTemplateFields(template.id);
@@ -282,7 +437,7 @@ export const DocumentBuilderView: React.FC = () => {
         setSelectedTemplate({ ...template, currentVersion: res.data as any });
       }
     }
-  }, [isDirty]);
+  }, [isDirty, initGuided]);
 
   const handleCustomizeTemplate = useCallback(async (template: TemplateWithVersion) => {
     if (!isAdmin) {
@@ -318,9 +473,12 @@ export const DocumentBuilderView: React.FC = () => {
     setIsCustomizing(false);
     setDocumentTitle('');
     setActiveTab('generator');
+    setIncidentMode('guided');
+    classicEdited.current = false;
   };
 
   const handleFieldChange = useCallback((name: string, value: any) => {
+    classicEdited.current = true;
     setFieldValues(prev => ({ ...prev, [name]: value }));
     setIsDirty(true);
   }, []);
@@ -430,7 +588,79 @@ export const DocumentBuilderView: React.FC = () => {
     }
   };
 
+  /** Guided builder: fill the real Clearsprings Word template and download it. */
+  const runIncidentDocx = async () => {
+    if (!irReport || generating) return;
+    setGenerating('docx');
+    try {
+      // Same as the other exports: keep a saved copy of the report. A failed save never blocks the download.
+      if (!currentRecord || isDirty) await handleSaveDraft('draft');
+      let bytes = incidentTemplateBytes.current;
+      if (!bytes) {
+        const res = await fetch(INCIDENT_TEMPLATE_URL);
+        if (!res.ok) throw new Error(`Word template not found (HTTP ${res.status})`);
+        bytes = await res.arrayBuffer();
+        incidentTemplateBytes.current = bytes;
+      }
+      const blob = (await buildIncidentDocx(irReport, bytes, 'blob')) as Blob;
+      const name = reportFileName(irReport);
+      downloadBlob(blob, name);
+      showToast(`Saved ${name}`);
+    } catch (err: any) {
+      console.error(err);
+      showToast(`Couldn't create the Word file – ${err?.message || 'try "Copy text" instead'}`, 'error');
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  /** Download buttons warn once when red placeholders remain; a second click downloads anyway. */
+  const downloadGuard: DownloadGuard = {
+    armed: dlArmed,
+    busy: generating === 'docx',
+    click: (id: string) => {
+      const n = irReport ? countPlaceholders(irReport) : 0;
+      if (dlTimer.current) clearTimeout(dlTimer.current);
+      if (n && dlArmed !== id) {
+        setDlArmed(id);
+        dlTimer.current = setTimeout(() => setDlArmed(null), 5000);
+        if (id === 'top') showToast(`${n} still in red – click DOCX again to download anyway`, 'info');
+        return;
+      }
+      setDlArmed(null);
+      void runIncidentDocx();
+    },
+  };
+
+  const copyIncidentText = () => {
+    if (!irReport) return;
+    const text = reportPlainText(irReport);
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast('Report text copied'); } catch { showToast('Copy failed – select the text and copy manually', 'error'); }
+      ta.remove();
+    };
+    try { navigator.clipboard.writeText(text).then(() => showToast('Report text copied'), fallback); } catch { fallback(); }
+  };
+
+  const switchIncidentMode = (mode: IncidentMode) => {
+    if (mode === incidentMode) return;
+    if (mode === 'guided') {
+      if (classicEdited.current && !window.confirm('Switching back to the guided builder replaces any changes made in the classic form. Continue?')) return;
+      classicEdited.current = false;
+      initGuided(sanitizeState(fieldValues[BUILDER_KEY]), false);
+    }
+    setIncidentMode(mode);
+  };
+
   const handleClear = () => {
+    if (guided) {
+      startNewReport();
+      return;
+    }
     if (isDirty && !window.confirm('Clear all fields?')) return;
     setFieldValues({});
     setIsDirty(false);
@@ -477,6 +707,11 @@ export const DocumentBuilderView: React.FC = () => {
     setDocumentTitle(record.title);
     setSelectedSite(record.site);
     setCurrentRecord(record);
+    classicEdited.current = false;
+    // Reports made with the guided builder re-open in it; older/classic reports open in the classic form.
+    if (isIncidentTemplate({ id: record.templateId, name: tmpl.name, currentVersion: { fieldDefinitions: effectiveFieldDefs } })) {
+      setIncidentMode(sanitizeState(record.fieldValues?.[BUILDER_KEY]) ? 'guided' : 'classic');
+    }
     setIsDirty(false);
     setIsCustomizing(false);
     setActiveTab('generator');
@@ -872,7 +1107,7 @@ export const DocumentBuilderView: React.FC = () => {
                   <div className="flex items-center border border-[#cbd5e1] rounded-xs overflow-hidden">
                     <button
                       type="button"
-                      onClick={() => handleGenerate('docx')}
+                      onClick={() => (guided ? downloadGuard.click('top') : handleGenerate('docx'))}
                       disabled={!!generating || !documentTitle}
                       className="px-2 py-1 text-[11px] font-bold bg-[#0078d4] hover:bg-[#106ebe] text-white transition-colors cursor-pointer disabled:opacity-50"
                       title="Download DOCX"
@@ -1015,7 +1250,33 @@ export const DocumentBuilderView: React.FC = () => {
                     </div>
                   ) : (
                     <div className="px-3 py-2 border-b border-[#e2e8f0] bg-[#fafafa] space-y-2">
-                      {/* Service User (SU) Quick Selector for Staff / Users */}
+                      {/* Guided / classic switch for the Incident Report */}
+                      {isIncident && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-bold text-[#475569] uppercase">Form</span>
+                          <div className="flex items-center gap-1 bg-[#f1f5f9] p-0.5 rounded-xs text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() => switchIncidentMode('guided')}
+                              className={`px-2 py-0.5 rounded-xs font-bold transition-all cursor-pointer ${guided ? 'bg-white text-[#0d9488] shadow-xs' : 'text-[#64748b] hover:text-[#1e293b]'}`}
+                              title="Pick the incident type and fill in the standard wording"
+                            >
+                              Guided builder
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => switchIncidentMode('classic')}
+                              className={`px-2 py-0.5 rounded-xs font-bold transition-all cursor-pointer ${!guided ? 'bg-white text-[#0d9488] shadow-xs' : 'text-[#64748b] hover:text-[#1e293b]'}`}
+                              title="Fill in every field by hand, including evidence photos"
+                            >
+                              Classic form
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Service User (SU) Quick Selector for Staff / Users (classic form) */}
+                      {!guided && (
                       <div className="bg-[#f0fdfa] border border-[#99f6e4] rounded-xs p-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shadow-2xs">
                         <div className="flex items-center gap-1.5 shrink-0">
                           <UserCheck className="w-3.5 h-3.5 text-[#0d9488]" />
@@ -1047,6 +1308,7 @@ export const DocumentBuilderView: React.FC = () => {
                           </button>
                         )}
                       </div>
+                      )}
 
                       <div className="grid grid-cols-3 gap-2">
                         <div className="col-span-2">
@@ -1086,20 +1348,37 @@ export const DocumentBuilderView: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Compact Form Fields with In-Place Additions and Removals */}
-                  <DocumentInputForm
-                    fieldDefinitions={fieldDefs}
-                    layoutConfig={layoutConfig}
-                    fieldValues={fieldValues}
-                    onFieldChange={handleFieldChange}
-                    isCustomizing={isAdmin && isCustomizing}
-                    onAddField={isAdmin ? handleAddField : undefined}
-                    onRemoveField={isAdmin ? handleRemoveField : undefined}
-                    onUpdateField={isAdmin ? handleUpdateField : undefined}
-                    onAddSection={isAdmin ? handleAddSection : undefined}
-                    onRemoveSection={isAdmin ? handleRemoveSection : undefined}
-                    onUpdateSection={isAdmin ? handleUpdateSection : undefined}
-                  />
+                  {guided && irState ? (
+                    /* Guided Incident Report builder (7 steps) */
+                    <div className="p-3">
+                      <IncidentBuilderForm
+                        state={irState}
+                        onChange={handleIrChange}
+                        siteSUs={siteSUs}
+                        settings={irSettings}
+                        onSettingsChange={handleIrSettings}
+                        onWipe={wipeBuilderData}
+                        onNewReport={startNewReport}
+                        guard={downloadGuard}
+                        onToast={showToast}
+                      />
+                    </div>
+                  ) : (
+                    /* Compact Form Fields with In-Place Additions and Removals */
+                    <DocumentInputForm
+                      fieldDefinitions={fieldDefs}
+                      layoutConfig={layoutConfig}
+                      fieldValues={fieldValues}
+                      onFieldChange={handleFieldChange}
+                      isCustomizing={isAdmin && isCustomizing}
+                      onAddField={isAdmin ? handleAddField : undefined}
+                      onRemoveField={isAdmin ? handleRemoveField : undefined}
+                      onUpdateField={isAdmin ? handleUpdateField : undefined}
+                      onAddSection={isAdmin ? handleAddSection : undefined}
+                      onRemoveSection={isAdmin ? handleRemoveSection : undefined}
+                      onUpdateSection={isAdmin ? handleUpdateSection : undefined}
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1117,17 +1396,26 @@ export const DocumentBuilderView: React.FC = () => {
                 className="w-full flex flex-col min-w-0 lg:sticky lg:top-3 self-start lg:h-[calc(100vh-130px)] z-10"
                 style={isDesktop ? { flex: `1 1 ${100 - leftPanelWidth}%`, maxWidth: `${100 - leftPanelWidth}%` } : undefined}
               >
-                <DocumentPreview
-                  title={isCustomizing ? selectedTemplate.name : documentTitle}
-                  documentNumber={isCustomizing ? 'MASTER-TEMPLATE' : (currentRecord?.documentNumber || 'DOC-2026-DRAFT')}
-                  site={isCustomizing ? 'All Sites (Master Template)' : selectedSite}
-                  templateName={selectedTemplate.name}
-                  fieldDefinitions={fieldDefs}
-                  layoutConfig={layoutConfig}
-                  headerConfig={headerConfig}
-                  footerConfig={footerConfig}
-                  fieldValues={fieldValues}
-                />
+                {guided && irReport ? (
+                  <IncidentBuilderPreview
+                    report={irReport}
+                    fileName={reportFileName(irReport)}
+                    guard={downloadGuard}
+                    onCopyText={copyIncidentText}
+                  />
+                ) : (
+                  <DocumentPreview
+                    title={isCustomizing ? selectedTemplate.name : documentTitle}
+                    documentNumber={isCustomizing ? 'MASTER-TEMPLATE' : (currentRecord?.documentNumber || 'DOC-2026-DRAFT')}
+                    site={isCustomizing ? 'All Sites (Master Template)' : selectedSite}
+                    templateName={selectedTemplate.name}
+                    fieldDefinitions={fieldDefs}
+                    layoutConfig={layoutConfig}
+                    headerConfig={headerConfig}
+                    footerConfig={footerConfig}
+                    fieldValues={fieldValues}
+                  />
+                )}
               </div>
             </div>
           )}

@@ -30,6 +30,8 @@ export interface IncidentDocData {
   offenders: FlowPerson[];
   victims: FlowPerson[];
   witnesses: FlowPerson[];
+  /** Optional centred summary line shown above the description bullets (guided Incident Report builder) */
+  incidentLead?: string;
   incidentDescription: string[];
   actionTaken: string[];
   warningLetterIssued: string;
@@ -187,6 +189,7 @@ export function normalizeIncidentData(
     'offenders',
     'victims',
     'witnesses',
+    'incidentLead',
     'incidentDescription',
     'description',
     'actionTaken',
@@ -283,6 +286,7 @@ export function normalizeIncidentData(
     offenders: parsePeople(fieldValues.offenders),
     victims: parsePeople(fieldValues.victims),
     witnesses: parsePeople(fieldValues.witnesses),
+    incidentLead: String(fieldValues.incidentLead || '').trim() || undefined,
     incidentDescription: parseLines(fieldValues.incidentDescription || fieldValues.description),
     actionTaken: parseLines(fieldValues.actionTaken || fieldValues.immediateAction),
     warningLetterIssued: String(fieldValues.warningLetterIssued || ''),
@@ -396,17 +400,23 @@ export function computeIncidentPages(data: IncidentDocData): ComputedPage[] {
     type: 'incident_description' | 'action_taken',
     title: string,
     lines: string[],
-    defaultMinHeight: number
+    defaultMinHeight: number,
+    lead?: string
   ) => {
+    // The lead (summary) line sits above the bullets of the first block only
+    let pendingLead = lead || '';
+    const leadHeight = (text: string) => (text ? Math.max(1, Math.ceil(text.length / 58)) * 16 + 8 : 0);
+
     if (lines.length === 0) {
-      if (currentRemainingHeight < defaultMinHeight) pushCurrentPage();
+      const minH = defaultMinHeight + leadHeight(pendingLead);
+      if (currentRemainingHeight < minH) pushCurrentPage();
       currentPageBlocks.push({
         type,
         title,
-        data: { lines: [] },
-        estimatedHeight: defaultMinHeight,
+        data: pendingLead ? { lines: [], lead: pendingLead } : { lines: [] },
+        estimatedHeight: minH,
       });
-      currentRemainingHeight -= defaultMinHeight;
+      currentRemainingHeight -= minH;
       return;
     }
 
@@ -414,7 +424,7 @@ export function computeIncidentPages(data: IncidentDocData): ComputedPage[] {
     while (lineIndex < lines.length) {
       // Find how many lines can fit in currentRemainingHeight
       let batch: string[] = [];
-      let batchHeight = 0;
+      let batchHeight = leadHeight(pendingLead);
 
       while (lineIndex < lines.length) {
         const nextLine = lines[lineIndex];
@@ -436,9 +446,10 @@ export function computeIncidentPages(data: IncidentDocData): ComputedPage[] {
           type,
           title,
           isContinued: lineIndex > batch.length,
-          data: { lines: batch },
+          data: pendingLead ? { lines: batch, lead: pendingLead } : { lines: batch },
           estimatedHeight: batchHeight,
         });
+        pendingLead = '';
         currentRemainingHeight -= batchHeight;
 
         if (lineIndex < lines.length) {
@@ -450,7 +461,7 @@ export function computeIncidentPages(data: IncidentDocData): ComputedPage[] {
     }
   };
 
-  addTextBlock('incident_description', 'Incident Description', data.incidentDescription, 58);
+  addTextBlock('incident_description', 'Incident Description', data.incidentDescription, 58, data.incidentLead);
   addTextBlock('action_taken', 'Action Taken', data.actionTaken, 48);
 
   // 4. Authorities Table & Divider Bar

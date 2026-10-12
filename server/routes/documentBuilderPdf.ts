@@ -252,17 +252,26 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
       function draw2CellRow(
         label: string,
         content: string | string[],
-        options: { isBullet?: boolean; minH?: number; isPerson?: boolean; portRef?: string } = {}
+        options: { isBullet?: boolean; minH?: number; isPerson?: boolean; portRef?: string; lead?: string } = {}
       ) {
         const isBullet = options.isBullet ?? false;
         const minH = options.minH ?? 20;
+        const lead = options.lead || '';
 
         let calculatedContentH = 0;
         doc.font('Helvetica').fontSize(8.5);
 
+        // Optional centred bold summary line above the bullets
+        let leadH = 0;
+        if (lead) {
+          doc.font('Helvetica-Bold').fontSize(8.5);
+          leadH = doc.heightOfString(lead, { width: colRestW - 32, lineGap: 1.5 }) + 5;
+          doc.font('Helvetica').fontSize(8.5);
+        }
+
         if (Array.isArray(content)) {
           if (content.length === 0) {
-            calculatedContentH = 16;
+            calculatedContentH = lead ? 0 : 16;
           } else {
             content.forEach(line => {
               const h = doc.heightOfString(`• ${line}`, { width: colRestW - 16, lineGap: 1.5 });
@@ -274,6 +283,7 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
           calculatedContentH = Math.max(12, textH);
         }
 
+        calculatedContentH += leadH;
         const rowH = Math.max(minH, calculatedContentH + 8);
         ensureSpace(rowH);
 
@@ -291,11 +301,21 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
 
         // 3. ColRest Value (Left aligned)
         doc.font('Helvetica').fontSize(8.5).fillColor(FLUENT_BLACK);
+        let leadOffset = 0;
+        if (lead) {
+          doc.font('Helvetica-Bold').fontSize(8.5).text(lead, pageLeft + col0W + 16, curY + 5, {
+            width: colRestW - 32,
+            lineGap: 1.5,
+            align: 'center',
+          });
+          doc.font('Helvetica').fontSize(8.5);
+          leadOffset = leadH;
+        }
         if (Array.isArray(content)) {
           if (content.length === 0) {
-            doc.font('Helvetica-Bold').text('•', pageLeft + col0W + 8, curY + 5);
+            if (!lead) doc.font('Helvetica-Bold').text('•', pageLeft + col0W + 8, curY + 5);
           } else {
-            let bulletY = curY + 5;
+            let bulletY = curY + 5 + leadOffset;
             content.forEach(line => {
               const textH = doc.heightOfString(line, { width: colRestW - 22, lineGap: 1.5 });
               doc.font('Helvetica-Bold').fontSize(8.5).text('•', pageLeft + col0W + 7, bulletY);
@@ -403,7 +423,7 @@ export async function generatePdf(data: DocData): Promise<Buffer> {
       }
 
       // 5. Incident Description & Action Taken (Full bullet multi-line fidelity)
-      draw2CellRow('Incident Description', descLines, { isBullet: true, minH: 48 });
+      draw2CellRow('Incident Description', descLines, { isBullet: true, minH: 48, lead: cleanVal(v.incidentLead) });
       draw2CellRow('Action Taken', actionLines, { isBullet: true, minH: 38 });
 
       // 6. Authorities Table
