@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   ShieldCheck, 
@@ -84,7 +84,20 @@ export const SDComplianceTrackerView: React.FC = () => {
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+  const [siteFilter, setSiteFilter] = useState(() => {
+    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') return assignedSite;
+    return 'all';
+  });
+
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
+        setSiteFilter('all');
+      }
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<string>('expiryDate');
@@ -155,7 +168,7 @@ export const SDComplianceTrackerView: React.FC = () => {
       status: (data.status as any) || 'Compliant',
       actionTaken: data.actionTaken || '',
       previousContractor: data.previousContractor || '',
-      siteName: !canAccessAllSites() 
+      siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1)
         ? assignedSite 
         : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
       ...data,
@@ -364,9 +377,13 @@ export const SDComplianceTrackerView: React.FC = () => {
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
+              title={!canAccessAllSites() && (allowedSites || []).length <= 1 ? "Locked to your assigned site" : "Filter by site"}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <option value="all">All Sites</option>
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">All Assigned Sites</option>
+              )}
               {allowedSites.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -513,7 +530,7 @@ export const SDComplianceTrackerView: React.FC = () => {
           status: 'Compliant',
           actionTaken: '',
           previousContractor: '',
-          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           attachments: []
         }}
         onSubmit={handleCreateSubmit}

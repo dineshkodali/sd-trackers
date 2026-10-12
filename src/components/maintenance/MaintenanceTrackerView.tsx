@@ -99,6 +99,15 @@ export const MaintenanceTrackerView: React.FC = () => {
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites()) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites]);
+
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
@@ -917,10 +926,12 @@ export const MaintenanceTrackerView: React.FC = () => {
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites()}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              {canAccessAllSites() && <option value="all">All Properties ({allowedSites.length})</option>}
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">All Properties ({allowedSites.length})</option>
+              )}
               {allowedSites.map((s, idx) => (
                 <option key={`${s}-${idx}`} value={s}>{s}</option>
               ))}

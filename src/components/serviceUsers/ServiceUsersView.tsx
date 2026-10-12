@@ -27,7 +27,7 @@ const suExportColumns: ExportColumnOption[] = [
 ];
 
 export const ServiceUsersView: React.FC = () => {
-  const { sites, canAccessAllSites, assignedSite, canManageUsers , requestConfirmation } = useApp();
+  const { sites, canAccessAllSites, assignedSite, allowedSites, canManageUsers , requestConfirmation } = useApp();
   const canCRUD = canManageUsers();
 
   const [serviceUsers, setServiceUsers] = useState<ServiceUserMaster[]>([]);
@@ -39,7 +39,7 @@ export const ServiceUsersView: React.FC = () => {
   // Initial site filter based on permissions (maps assigned site name to site id if needed)
   const initialSiteFilter = useMemo(() => {
     if (canAccessAllSites()) return 'all';
-    if (!assignedSite || assignedSite === 'All Sites') return 'all';
+    if (!assignedSite || assignedSite === 'All Sites' || assignedSite === 'all') return 'all';
     const found = sites.find(s => s.name === assignedSite || s.id === assignedSite);
     return found ? found.id : assignedSite;
   }, [sites, assignedSite, canAccessAllSites]);
@@ -47,6 +47,18 @@ export const ServiceUsersView: React.FC = () => {
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
   const [siteFilter, setSiteFilter] = useState(initialSiteFilter);
+
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
+        setSiteFilter('all');
+      }
+    } else if (assignedSite) {
+      const found = sites.find(s => s.name === assignedSite || s.id === assignedSite);
+      setSiteFilter(found ? found.id : assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites, sites]);
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [placementFilter, setPlacementFilter] = useState<'all' | 'placed' | 'unplaced'>('all');
 
@@ -379,13 +391,20 @@ export const ServiceUsersView: React.FC = () => {
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites() && assignedSite !== 'All Sites'}
-              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
+              title={!canAccessAllSites() && (allowedSites || []).length <= 1 ? "Locked to your assigned site" : "Filter by site"}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <option value="all">All Sites ({sites.length})</option>
-              {sites.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? `All Sites (${sites.length})` : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
+              {sites
+                .filter(s => canAccessAllSites() || (allowedSites || []).includes(s.name) || (allowedSites || []).includes(s.id))
+                .map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
             </select>
           </div>
 

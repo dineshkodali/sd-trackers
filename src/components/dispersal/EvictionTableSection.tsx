@@ -74,6 +74,15 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -129,7 +138,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
 
   const handleCreateSubmit = (data: Partial<EvictionRecord>) => {
     const recordStatus = data.status || 'Notice Issued';
-    const effectiveSite = !canAccessAllSites()
+    const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1)
       ? assignedSite
       : (data.hotel || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Brit Hotel')));
 
@@ -351,9 +360,14 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
           <select
             value={siteFilter}
             onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
           >
-            <option value="all">All Sites</option>
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">
+                {canAccessAllSites() ? 'All Sites' : `All Assigned Sites (${allowedSites.length})`}
+              </option>
+            )}
             {allowedSites.map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -495,7 +509,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
         title="Record Eviction Notice"
         columns={columns}
         initialValues={{
-          hotel: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Brit Hotel')),
+          hotel: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0] || 'Brit Hotel')),
           noticeDate: new Date().toISOString().slice(0, 10),
           evictionDate: new Date().toISOString().slice(0, 10),
           status: 'Notice Issued'

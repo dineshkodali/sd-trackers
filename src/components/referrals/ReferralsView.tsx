@@ -96,6 +96,15 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
     }
   }, [globalSearchFilter, setGlobalSearchFilter]);
 
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
+
   // Dynamic Table Schema & Columns (Local persistence with fallback to trackerTableConfigs)
   const {
     columns: referralsColumns,
@@ -568,10 +577,14 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites()}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              {canAccessAllSites() && <option value="all">All Properties / Sites ({allowedSites.length})</option>}
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? `All Properties / Sites (${allowedSites.length})` : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
               {allowedSites.map((s, idx) => (
                 <option key={`${s}-${idx}`} value={s}>{s}</option>
               ))}
@@ -797,7 +810,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         title="New SG Referral Submission"
         columns={referralsColumns}
         initialValues={{
-          site: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          site: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           dateReferred: new Date().toISOString().slice(0, 10),
           status: 'Open',
           methodOfReferral: 'Encrypted Email',
@@ -807,7 +820,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
         }}
         onSave={(data) => {
           const currentOfficer = (data as any).raisedBy || (data as any).officerLeadingHotel || loggedInUserName;
-          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
           addReferral({
             site: effectiveSite,
             referralCouncil: data.referralCouncil || '',

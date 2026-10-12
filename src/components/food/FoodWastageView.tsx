@@ -67,6 +67,7 @@ export const FoodWastageView: React.FC = () => {
     canDeleteRecord,
     currentUserRole,
     assignedSite,
+    allowedSites,
     canAccessAllSites,
     sites,
     requestConfirmation
@@ -81,6 +82,15 @@ export const FoodWastageView: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [siteFilter, setSiteFilter] = useState('all');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [mealTypeFilter, setMealTypeFilter] = useState<string>('all');
   const [foodItemFilter, setFoodItemFilter] = useState<string>('all');
   const [startDateFilter, setStartDateFilter] = useState<string>('');
@@ -691,13 +701,15 @@ export const FoodWastageView: React.FC = () => {
           </select>
 
           {/* Site Filter */}
-          {canAccessAllSites() ? (
+          {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) ? (
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
               className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             >
-              <option value="all">All Sites</option>
+              <option value="all">
+                {canAccessAllSites() ? 'All Sites' : `All Assigned Sites (${allowedSites.length})`}
+              </option>
               {availableSites.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           ) : (
@@ -980,7 +992,7 @@ export const FoodWastageView: React.FC = () => {
                   <select
                     value={formSite}
                     onChange={e => setFormSite(e.target.value)}
-                    disabled={!canAccessAllSites()}
+                    disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
                     className="w-full p-2 border border-[#8a8886] rounded-xs text-xs bg-white text-[#323130] disabled:bg-neutral-100"
                     required
                   >

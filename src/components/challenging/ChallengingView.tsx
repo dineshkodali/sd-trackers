@@ -112,6 +112,15 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
     }
   }, [globalSearchFilter, setGlobalSearchFilter]);
 
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
+
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(settings.pageSize || 10);
 
@@ -605,10 +614,14 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites()}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              {canAccessAllSites() && <option value="all">All Properties / Sites ({allowedSites.length})</option>}
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? `All Properties / Sites (${allowedSites.length})` : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
               {allowedSites.map((s, idx) => (
                 <option key={`${s}-${idx}`} value={s}>{s}</option>
               ))}
@@ -827,7 +840,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
           followUpNotes: ''
         }}
         onSave={(data) => {
-          const effectiveSite = !canAccessAllSites() ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
+          const effectiveSite = (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (data.site || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])));
           addChallengingSU({
             ...data,
             date: data.date || new Date().toISOString().slice(0, 10),

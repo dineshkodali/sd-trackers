@@ -43,7 +43,31 @@ DECLARE
     'table_schemas',
     'audit_logs',
     'food_records',
-    'laundry_records'
+    'laundry_records',
+    'properties',
+    'property_rooms',
+    'property_facilities',
+    'property_assets',
+    'property_compliance',
+    'property_documents',
+    'property_contacts',
+    'service_users',
+    'service_user_contacts',
+    'service_user_household',
+    'service_user_support',
+    'service_user_documents',
+    'placements',
+    'welfare_checks',
+    'food_surveys',
+    'food_meal_ratings',
+    'room_checks',
+    'room_check_items',
+    'ir_records',
+    'food_wastage_records',
+    'daily_register_rooms',
+    'daily_register_records',
+    'new_arrivals_records',
+    'eviction_records'
   ];
   t TEXT;
 BEGIN
@@ -53,14 +77,15 @@ BEGIN
       -- Ensure RLS is active
       EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
 
-      -- Grant standard table privileges
+      -- Grant standard table privileges to all runtime roles
       EXECUTE format('GRANT ALL ON public.%I TO authenticated', t);
       EXECUTE format('GRANT ALL ON public.%I TO service_role', t);
-      EXECUTE format('GRANT SELECT, INSERT ON public.%I TO anon', t);
+      EXECUTE format('GRANT ALL ON public.%I TO anon', t);
 
       -- Clean up previous versions of direct policies
       EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'direct_auth_all_' || t, t);
       EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'direct_anon_read_' || t, t);
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'direct_anon_all_' || t, t);
 
       -- Policy 1: Authenticated users have full CRUD access
       EXECUTE format(
@@ -68,10 +93,10 @@ BEGIN
         'direct_auth_all_' || t, t
       );
 
-      -- Policy 2: Anonymous clients can read reference data & insert logs/referrals
+      -- Policy 2: Anonymous / direct client connections have full CRUD access
       EXECUTE format(
-        'CREATE POLICY %I ON public.%I FOR SELECT TO anon USING (true)',
-        'direct_anon_read_' || t, t
+        'CREATE POLICY %I ON public.%I FOR ALL TO anon USING (true) WITH CHECK (true)',
+        'direct_anon_all_' || t, t
       );
     END IF;
   END LOOP;
@@ -91,7 +116,13 @@ BEGIN
     DROP POLICY IF EXISTS "direct_anon_update_profiles" ON public.profiles;
     CREATE POLICY "direct_anon_update_profiles" ON public.profiles FOR UPDATE TO anon USING (true) WITH CHECK (true);
   END IF;
+
+  IF to_regclass('public.sites') IS NOT NULL THEN
+    DROP POLICY IF EXISTS "direct_anon_update_sites" ON public.sites;
+    CREATE POLICY "direct_anon_update_sites" ON public.sites FOR ALL TO anon USING (true) WITH CHECK (true);
+  END IF;
 END $$;
+
 
 -- Refresh PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

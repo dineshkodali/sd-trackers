@@ -80,6 +80,15 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [travelledFilter, setTravelledFilter] = useState('all');
   const [secondDispersalFilter, setSecondDispersalFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -140,7 +149,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
   const handleCreateSubmit = (data: Partial<DispersalRecord>) => {
     addDispersalRecord({
       sno: dispersalRecords.length + 1,
-      siteName: !canAccessAllSites() 
+      siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1)
         ? assignedSite 
         : (data.siteName || (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0]))),
       dateReceived: data.dateReceived || new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
@@ -375,9 +384,14 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
           <select
             value={siteFilter}
             onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
           >
-            <option value="all">All Sites</option>
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">
+                {canAccessAllSites() ? 'All Sites' : `All Assigned Sites (${allowedSites.length})`}
+              </option>
+            )}
             {allowedSites.map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -505,7 +519,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
         columns={columns}
         initialValues={{
           sno: dispersalRecords.length + 1,
-          siteName: !canAccessAllSites() ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           dateReceived: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
           suPortNassRef: '',
           reasonForDeparture: 'Dispersal to Long-Term NASS accommodation',

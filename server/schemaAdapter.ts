@@ -1617,7 +1617,9 @@ export function toDatabaseRow(
 
     case 'sites': {
       dbRow.name = record.name || '';
+      dbRow.site_name = record.name || '';
       dbRow.pid = record.pid || record.code || `SITE-${record.id || Math.floor(Math.random() * 1000)}`;
+      dbRow.site_code = record.pid || record.code || `SITE-${record.id || Math.floor(Math.random() * 1000)}`;
       dbRow.city = record.city || 'London';
       dbRow.total_rooms = Math.trunc(toNum(record.totalRooms ?? record.capacity, 20));
       dbRow.active_residents = Math.trunc(toNum(record.activeResidents ?? record.occupiedRooms, 0));
@@ -1625,6 +1627,7 @@ export function toDatabaseRow(
       dbRow.manager_name = record.leadOfficer || record.managerName || '';
       dbRow.manager_email = record.contactEmail || record.managerEmail || '';
       dbRow.manager_phone = record.contactNumber || record.managerPhone || '';
+      dbRow.address_line_1 = record.addressLine1 || record.address || '';
 
       const knownSiteKeys = new Set([
         'id', 'name', 'pid', 'code', 'address', 'addressLine1', 'city', 'totalRooms',
@@ -2306,25 +2309,29 @@ export function fromDatabaseRow(tableName: string, row: any): any {
 
     case 'sites': {
       const extra = parseJsonObject(row.address);
+      const dataObj = row.data && typeof row.data === 'object' ? row.data : parseJsonObject(row.data);
+      const siteName = row.name || row.site_name || dataObj.name || '';
+      const sitePid = row.pid || row.site_code || dataObj.pid || dataObj.code || '';
       return {
         ...extra,
+        ...dataObj,
         id: row.id,
-        name: row.name,
-        pid: row.pid,
-        code: row.pid,
-        address: extra._text !== undefined ? extra._text : row.address,
-        addressLine1: extra._text !== undefined ? extra._text : row.address,
-        city: row.city,
-        totalRooms: Number(row.total_rooms ?? 20),
-        capacity: Number(row.total_rooms ?? 20),
-        occupiedRooms: Number(row.active_residents || 0),
-        activeResidents: Number(row.active_residents || 0),
-        status: row.status,
-        leadOfficer: row.manager_name,
-        contactEmail: row.manager_email,
-        contactNumber: row.manager_phone,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        name: siteName,
+        pid: sitePid,
+        code: sitePid,
+        address: extra._text !== undefined ? extra._text : (row.address || row.address_line_1 || dataObj.address || ''),
+        addressLine1: extra._text !== undefined ? extra._text : (row.address || row.address_line_1 || dataObj.addressLine1 || ''),
+        city: row.city || dataObj.city || 'London',
+        totalRooms: Number(row.total_rooms ?? dataObj.totalRooms ?? dataObj.capacity ?? 20),
+        capacity: Number(row.total_rooms ?? dataObj.capacity ?? dataObj.totalRooms ?? 20),
+        occupiedRooms: Number(row.active_residents ?? dataObj.occupiedRooms ?? dataObj.activeResidents ?? 0),
+        activeResidents: Number(row.active_residents ?? dataObj.activeResidents ?? dataObj.occupiedRooms ?? 0),
+        status: row.status || dataObj.status || 'Active',
+        leadOfficer: row.manager_name || row.lead_officer || dataObj.leadOfficer || dataObj.manager_name || '',
+        contactEmail: row.manager_email || dataObj.contactEmail || dataObj.manager_email || '',
+        contactNumber: row.manager_phone || dataObj.contactNumber || dataObj.manager_phone || '',
+        createdAt: row.created_at || dataObj.createdAt,
+        updatedAt: row.updated_at || dataObj.updatedAt
       };
     }
 

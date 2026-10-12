@@ -109,11 +109,12 @@ export const TransportFundingSection: React.FC = () => {
   }, [sites, properties]);
 
   const defaultSite = useMemo(() => {
-    if (!canAccessAllSites() && assignedSite) return assignedSite;
+    if (!canAccessAllSites() && (allowedSites || []).length <= 1 && assignedSite) return assignedSite;
+    if (selectedSite !== 'all' && selectedSite) return selectedSite;
     if (allowedSites.length > 0) return allowedSites[0];
     if (sites.length > 0) return sites[0].name;
     return '';
-  }, [canAccessAllSites, assignedSite, allowedSites, sites]);
+  }, [canAccessAllSites, assignedSite, allowedSites, sites, selectedSite]);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,6 +122,15 @@ export const TransportFundingSection: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [exceptionalFilter, setExceptionalFilter] = useState<string>('all');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSelectedSite('all');
+    } else if (assignedSite) {
+      setSelectedSite(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
 
   // Pagination & Sorting
   const [currentPage, setCurrentPage] = useState(1);
@@ -454,10 +464,14 @@ export const TransportFundingSection: React.FC = () => {
           <select
             value={selectedSite}
             onChange={(e) => { setSelectedSite(e.target.value); setCurrentPage(1); }}
-            disabled={!canAccessAllSites()}
+            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
             className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden transition-all disabled:opacity-60"
           >
-            {canAccessAllSites() && <option value="all">All Sites / Hotels</option>}
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">
+                {canAccessAllSites() ? 'All Sites / Hotels' : `All Assigned Sites (${allowedSites.length})`}
+              </option>
+            )}
             {allowedSites.map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -732,7 +746,7 @@ export const TransportFundingSection: React.FC = () => {
                             accommodationName: val
                           }));
                         }}
-                        disabled={!canAccessAllSites() && !!assignedSite}
+                        disabled={!canAccessAllSites() && (allowedSites || []).length <= 1 && !!assignedSite}
                         className="w-full p-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs font-semibold focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden disabled:bg-neutral-100 disabled:cursor-not-allowed"
                       >
                         {allowedSites.map(site => (

@@ -1074,7 +1074,7 @@ export const DocumentBuilderView: React.FC = () => {
                               setSelectedSite(e.target.value);
                               setIsDirty(true);
                             }}
-                            disabled={!canAccessAllSites()}
+                            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
                             className="w-full px-2 py-1 text-xs border border-[#cbd5e1] rounded-xs bg-white text-[#1e293b]"
                           >
                             {allowedSites.map(s => (

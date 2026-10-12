@@ -203,6 +203,15 @@ export const PropertyLaundryLogSection: React.FC = () => {
   const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : userAssignedHotel);
   const [periodTypeFilter, setPeriodTypeFilter] = useState<'all' | 'Weekly' | 'Monthly'>('all');
   const [discrepancyFilter, setDiscrepancyFilter] = useState<'all' | 'flagged' | 'reconciled'>('all');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [activeWeekCursor, setActiveWeekCursor] = useState<string>(() => todayBounds.start);
@@ -869,10 +878,14 @@ export const PropertyLaundryLogSection: React.FC = () => {
           <select
             value={siteFilter}
             onChange={e => setSiteFilter(e.target.value)}
-            disabled={!canAccessAllSites()}
+            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
             className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
           >
-            {canAccessAllSites() && <option value="all">All Properties</option>}
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">
+                {canAccessAllSites() ? 'All Properties' : `All Assigned Properties (${allowedSites.length})`}
+              </option>
+            )}
             {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
           </select>
 

@@ -55,6 +55,7 @@ export const LiveDailyRegistersView: React.FC = () => {
   const {
     sites,
     assignedSite,
+    allowedSites,
     canAccessAllSites,
     dailyRegisterRooms,
     dailyRegisterRecords,
@@ -85,8 +86,19 @@ export const LiveDailyRegistersView: React.FC = () => {
   }, [activeTab]);
 
   const [selectedSite, setSelectedSite] = useState<string>(() => {
-    return assignedSite && assignedSite !== 'All Sites' ? assignedSite : 'all';
+    return assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all' ? assignedSite : 'all';
   });
+
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
+        setSelectedSite('all');
+      }
+    } else if (assignedSite) {
+      setSelectedSite(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
+
   const [registerDate, setRegisterDate] = useState<string>(() => {
     return new Date().toISOString().slice(0, 10);
   });
@@ -97,8 +109,9 @@ export const LiveDailyRegistersView: React.FC = () => {
   const [createTrigger, setCreateTrigger] = useState(0);
   const [customizeTrigger, setCustomizeTrigger] = useState(0);
 
-  // Strict Site Isolation
-  const effectiveSite = !canAccessAllSites() && assignedSite && assignedSite !== 'All Sites'
+  // Strict Site Isolation - only single-site staff are locked
+  const isLockedToSingleSite = !canAccessAllSites() && (allowedSites || []).length <= 1;
+  const effectiveSite = isLockedToSingleSite && assignedSite && assignedSite !== 'All Sites'
     ? assignedSite
     : selectedSite;
 
@@ -346,17 +359,21 @@ export const LiveDailyRegistersView: React.FC = () => {
             )}
           </div>
 
-          {canAccessAllSites() ? (
+          {!isLockedToSingleSite ? (
             <select
               value={selectedSite}
               onChange={e => setSelectedSite(e.target.value)}
               className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
             >
-              <option value="all">All Hotels &amp; Sites</option>
-              {availableSites.map(s => <option key={s} value={s}>{s}</option>)}
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? 'All Hotels & Sites' : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
+              {(canAccessAllSites() ? availableSites : (allowedSites || [])).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs" title="Locked to your assigned site">
               <Lock className="w-3 h-3 text-[#0f766e]" />
               <span className="font-semibold text-neutral-600">Site:</span>
               <span className="font-bold text-[#0f766e] truncate">{assignedSite || 'Assigned Hotel'}</span>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   HeartHandshake, 
@@ -67,7 +67,20 @@ export const SDVCSDirectoryView: React.FC = () => {
     resetToDefault
   } = useTableSchema<SDVCSAgency>('vcsDirectory', VCS_AGENCIES_TABLE_COLUMNS);
 
-  const [selectedProperty, setSelectedProperty] = useState<string>('all');
+  const [selectedProperty, setSelectedProperty] = useState<string>(() => {
+    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') return assignedSite;
+    return 'all';
+  });
+
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
+        setSelectedProperty('all');
+      }
+    } else if (assignedSite) {
+      setSelectedProperty(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -178,7 +191,7 @@ export const SDVCSDirectoryView: React.FC = () => {
 
   const handleCreateSubmit = (data: Partial<SDVCSAgency>) => {
     addVCSAgency({
-      hotelName: !canAccessAllSites() 
+      hotelName: (!canAccessAllSites() && (allowedSites || []).length <= 1)
         ? assignedSite 
         : (data.hotelName || (selectedProperty !== 'all' ? selectedProperty : (assignedSite || allowedSites[0]))),
       agencyName: data.agencyName || '',
@@ -456,10 +469,14 @@ export const SDVCSDirectoryView: React.FC = () => {
           <select
             value={selectedProperty}
             onChange={e => { setSelectedProperty(e.target.value); setCurrentPage(1); }}
-            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
+            title={!canAccessAllSites() && (allowedSites || []).length <= 1 ? "Locked to your assigned site" : "Filter by site"}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <option value="all">All Properties ({hotelFilterOptions.length} Clusters)</option>
-            {hotelFilterOptions.map(h => (
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">All Properties ({hotelFilterOptions.length} Clusters)</option>
+            )}
+            {(canAccessAllSites() ? hotelFilterOptions : (allowedSites || [])).map(h => (
               <option key={h} value={h}>{h}</option>
             ))}
           </select>
@@ -624,7 +641,7 @@ export const SDVCSDirectoryView: React.FC = () => {
         title="Add Partner Agency"
         columns={columns}
         initialValues={{
-          hotelName: !canAccessAllSites() ? assignedSite : (selectedProperty !== 'all' ? selectedProperty : (assignedSite || allowedSites[0])),
+          hotelName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (selectedProperty !== 'all' ? selectedProperty : (assignedSite || allowedSites[0])),
           agencyName: '',
           category: 'Charity & Welfare',
           servicesProvided: '',

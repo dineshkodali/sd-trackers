@@ -58,6 +58,7 @@ export const FoodSurveysView: React.FC = () => {
     deleteFoodSurvey,
     canAccessAllSites,
     assignedSite,
+    allowedSites,
     sites,
     canCreateRecord,
     canEditRecord,
@@ -86,6 +87,15 @@ export const FoodSurveysView: React.FC = () => {
   };
 
   const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
   const [ratingFilter, setRatingFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -429,12 +439,16 @@ export const FoodSurveysView: React.FC = () => {
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites()}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              <option value="all">All Properties / Sites</option>
-              {sites.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? 'All Properties / Sites' : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
+              {allowedSites.map((s, idx) => (
+                <option key={`${s}-${idx}`} value={s}>{s}</option>
               ))}
             </select>
           </div>

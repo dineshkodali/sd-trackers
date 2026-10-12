@@ -359,8 +359,12 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppLayout />
-    </AppProvider>
+    <ErrorBoundary fallbackTitle="Application Error">
+      <AppProvider>
+        <ErrorBoundary fallbackTitle="Application Layout Error">
+          <AppLayout />
+        </ErrorBoundary>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

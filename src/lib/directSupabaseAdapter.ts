@@ -315,11 +315,24 @@ export async function directUpdateEntityRecord<T = any>(
 
   try {
     // Read existing record to safely merge all fields
-    const { data: existing } = await supabase.from(mapping.table).select('*').eq('id', id).maybeSingle();
+    let targetId = id;
+    let { data: existing } = await supabase.from(mapping.table).select('*').eq('id', id).maybeSingle();
+
+    if (!existing && mapping.table === 'sites') {
+      const siteName = (record as any)?.name || (record as any)?.siteName;
+      if (siteName) {
+        const { data: byName } = await supabase.from('sites').select('*').ilike('name', siteName).maybeSingle();
+        if (byName) {
+          existing = byName;
+          targetId = byName.id;
+        }
+      }
+    }
+
     const existingMapped = existing ? fromDatabaseRow(mapping.table, existing) : {};
 
     // Full merge: existing fields + incoming changes — ensures data JSONB has the complete record
-    const fullRecord = { ...existingMapped, ...record, id };
+    const fullRecord = { ...existingMapped, ...record, id: targetId };
 
     const dbRow = toDatabaseRow(mapping.table, fullRecord, activeUser?.userId);
     delete dbRow.id;
@@ -329,7 +342,7 @@ export async function directUpdateEntityRecord<T = any>(
     const { data, error, status } = await supabase
       .from(mapping.table)
       .update(dbRow)
-      .eq('id', id)
+      .eq('id', targetId)
       .select()
       .maybeSingle();
 

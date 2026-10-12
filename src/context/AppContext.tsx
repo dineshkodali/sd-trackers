@@ -240,6 +240,7 @@ interface AppContextType {
   canManageSettings: () => boolean;
   canManageRoles: () => boolean;
   canAccessAllSites: () => boolean;
+  canSwitchSites: () => boolean;
   canManageFiles: () => boolean;
   canManageProperties: () => boolean;
   canManageUsers: () => boolean;
@@ -2031,15 +2032,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Derive allowed sites based on role and settings
   const canAccessAllSites = useCallback(() => {
-    return ['Regional Manager', 'Super Admin', 'Admin'].includes(currentUserRole);
-  }, [currentUserRole]);
+    if (currentUserRole === 'Super Admin' || currentUserRole === 'Admin') return true;
+    if (hasAllSitesAccess(authProfile?.assignedSites)) return true;
+    if (currentUserRole === 'Regional Manager' && (!authProfile?.assignedSites || authProfile.assignedSites.length === 0 || authProfile.assignedSites.includes('All Sites') || authProfile.assignedSites.includes('All'))) {
+      return true;
+    }
+    return false;
+  }, [currentUserRole, authProfile?.assignedSites]);
 
   const allowedSites = useMemo(() => {
-    if (canAccessAllSites()) {
-      const names = (sites || [])
-        .map(s => (typeof s === 'string' ? s : s?.name))
-        .filter((name): name is string => Boolean(name && typeof name === 'string' && name.trim() !== ''));
-      return Array.from(new Set(names));
+    const allSiteNames = (sites || [])
+      .map(s => (typeof s === 'string' ? s : s?.name))
+      .filter((name): name is string => Boolean(name && typeof name === 'string' && name.trim() !== ''));
+    const uniqueAllSites = Array.from(new Set(allSiteNames));
+
+    // Super Admin & Admin have access to all sites
+    if (currentUserRole === 'Super Admin' || currentUserRole === 'Admin') {
+      return uniqueAllSites;
+    }
+
+    // Explicit All Sites access on account profile
+    if (hasAllSitesAccess(authProfile?.assignedSites)) {
+      return uniqueAllSites;
     }
 
     const siteSet = new Set<string>();
@@ -2050,6 +2064,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
     }
+
+    // Match user account from users list if authProfile had empty list
+    if (siteSet.size === 0 && authProfile?.id) {
+      const matchedUser = users.find(u => u.id === authProfile.id || (u.email && u.email.toLowerCase() === authProfile.email?.toLowerCase()));
+      if (matchedUser && Array.isArray(matchedUser.assignedSites)) {
+        matchedUser.assignedSites.forEach(s => {
+          if (s && typeof s === 'string' && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'all' && s.trim() !== '') {
+            siteSet.add(s.trim());
+          }
+        });
+      }
+    }
+
     if (assignedSite && typeof assignedSite === 'string' && assignedSite !== 'Pending Assignment' && assignedSite !== 'All Sites' && assignedSite !== 'all') {
       assignedSite.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
         if (s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'all') {
@@ -2059,21 +2086,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const list = Array.from(siteSet);
+
+    // Frontline staff restriction: strictly limited to ONE site
+    if (currentUserRole === 'Staff') {
+      if (list.length > 0) return [list[0]];
+      if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'Pending Assignment') return [assignedSite.split(',')[0].trim()];
+      return uniqueAllSites.length > 0 ? [uniqueAllSites[0]] : ['Brit Hotel'];
+    }
+
+    // Regional Manager fallback to all sites if no specific sites assigned
+    if (currentUserRole === 'Regional Manager' && list.length === 0) {
+      return uniqueAllSites;
+    }
+
     if (list.length > 0) return list;
     if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'Pending Assignment') return [assignedSite];
-    return [];
-  }, [canAccessAllSites, sites, authProfile?.assignedSites, assignedSite]);
+    return uniqueAllSites;
+  }, [currentUserRole, authProfile?.assignedSites, authProfile?.id, authProfile?.email, users, assignedSite, sites]);
 
-  // When role changes or allowed sites change, if restricted, force selectedSite to assigned property
+  const canSwitchSites = useCallback(() => {
+    if (currentUserRole === 'Staff') return false;
+    if (canAccessAllSites()) return true;
+    return (allowedSites || []).length > 1;
+  }, [currentUserRole, canAccessAllSites, allowedSites]);
+
+  // When role changes or allowed sites change, keep assignedSite and selectedSite valid
   useEffect(() => {
-    if (!canAccessAllSites()) {
-      if (allowedSites.length > 0 && (!selectedSite || selectedSite === 'all' || !allowedSites.includes(selectedSite))) {
+    if (currentUserRole === 'Staff') {
+      const staffSite = (allowedSites && allowedSites.length > 0 ? allowedSites[0] : 'Brit Hotel');
+      if (assignedSite !== staffSite) {
+        setAssignedSiteState(staffSite);
+      }
+      if (selectedSite !== staffSite) {
+        setSelectedSite(staffSite);
+      }
+    } else if (allowedSites.length > 0) {
+      if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all' && !allowedSites.includes(assignedSite)) {
+        setAssignedSiteState(allowedSites[0]);
         setSelectedSite(allowedSites[0]);
-      } else if (allowedSites.length === 0 && assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'Pending Assignment') {
-        setSelectedSite(assignedSite);
       }
     }
-  }, [canAccessAllSites, allowedSites, selectedSite, assignedSite]);
+  }, [currentUserRole, allowedSites, assignedSite, selectedSite]);
 
   // Dynamic RBAC Permission Checks — the matrix lives in role_permissions (one row per role)
   const rolePermissionsRef = useRef(rolePermissions);
@@ -2210,12 +2263,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUserRole, authProfile, requestConfirmation, addAuditEntry, assignedSite, closeConfirmation]);
 
   const setAssignedSite = useCallback((newSite: string) => {
-    if (!canAccessAllSites()) {
-      console.warn('[RBAC] Property switching is restricted to Administrators and multi-site managers.');
+    if (currentUserRole === 'Staff') {
+      console.warn('[RBAC] Frontline staff accounts are restricted to a single assigned property.');
       return;
     }
     setAssignedSiteState(newSite);
-  }, [canAccessAllSites]);
+    setSelectedSite(newSite === 'All Sites' || newSite === 'All' ? 'all' : newSite);
+    saveStorage('assigned_site', newSite);
+  }, [currentUserRole]);
 
   // Settings updater — system preferences are one row (id 'global') in app_settings
   const settingsRef = useRef(settings);
@@ -4704,11 +4759,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const removedSites = currentSites.filter(s => s !== 'All Sites' && s !== 'All' && !newSites.includes(s));
       const officerLabel = officerLabelFor(users, { ...current, ...updates } as UserAccount);
 
+      const initialMockOfficers = new Set(INITIAL_SITES.map(s => (s.leadOfficer || '').toLowerCase()));
       const officerChanges: Array<{ site: SiteInfo; leadOfficer: string }> = [];
       for (const site of sites) {
-        const hasOfficer = Boolean(site.leadOfficer) && site.leadOfficer !== 'Unassigned';
-        if (addedSites.includes(site.name) && !hasOfficer && LEAD_OFFICER_ROLES.includes(effectiveRole)) {
-          officerChanges.push({ site, leadOfficer: officerLabel });
+        const curOfficer = (site.leadOfficer || '').trim();
+        const hasOfficer = Boolean(curOfficer) && curOfficer !== 'Unassigned';
+        const isMockOrUnassigned = !hasOfficer || initialMockOfficers.has(curOfficer.toLowerCase());
+
+        if (addedSites.includes(site.name) && LEAD_OFFICER_ROLES.includes(effectiveRole)) {
+          if (isMockOrUnassigned || !findUserForOfficer(users, curOfficer).user) {
+            officerChanges.push({ site, leadOfficer: officerLabel });
+          }
         } else if (removedSites.includes(site.name) && hasOfficer && findUserForOfficer(users, site.leadOfficer).user?.id === id) {
           officerChanges.push({ site, leadOfficer: '' });
         }
@@ -5566,6 +5627,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canManageSettings,
       canManageRoles,
       canAccessAllSites,
+      canSwitchSites,
       canManageFiles,
       canManageProperties,
       canManageUsers,

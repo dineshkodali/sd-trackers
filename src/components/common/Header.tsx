@@ -44,6 +44,7 @@ export const Header: React.FC = () => {
     logout,
     setDiagnosticModalOpen,
     canAccessAllSites,
+    canSwitchSites,
     canManageRoles,
     canManageSettings,
     isMobileSidebarOpen,
@@ -90,6 +91,7 @@ export const Header: React.FC = () => {
   };
 
   const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [showPropertyMenu, setShowPropertyMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const isStaff = isStaffLevel(currentUserRole);
@@ -167,6 +169,7 @@ export const Header: React.FC = () => {
   }, [notifications, notifTab, assignedSite, isStaff]);
 
   const roleMenuRef = useRef<HTMLDivElement>(null);
+  const propertyMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +178,9 @@ export const Header: React.FC = () => {
     const handleClickOutside = (e: MouseEvent) => {
       if (roleMenuRef.current && !roleMenuRef.current.contains(e.target as Node)) {
         setShowRoleMenu(false);
+      }
+      if (propertyMenuRef.current && !propertyMenuRef.current.contains(e.target as Node)) {
+        setShowPropertyMenu(false);
       }
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setShowNotifications(false);
@@ -228,38 +234,141 @@ export const Header: React.FC = () => {
 
       {/* Right controls */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Assigned Property for Managers & Employees OR Direct Link to All Properties for Admins */}
-        {currentUserRole === 'Super Admin' || currentUserRole === 'Admin' ? (
-          <button
-            id="btn-header-all-properties"
-            onClick={() => setActivePage('properties')}
-            className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-[#0f766e] bg-[#f0fdfa] hover:bg-[#ccfbf1] border border-[#99f6e4] px-2.5 py-1.5 rounded-xs transition-colors cursor-pointer"
-            title="Click to view full Properties Directory (Admin access)"
-          >
-            <Building2 className="w-3.5 h-3.5 text-[#0d9488]" />
-            <span>All Properties ({sites.length} Hotels)</span>
-          </button>
-        ) : isPropertyBound ? (
+        {/* Assigned Property Selector: Switchable for Admins, GMs & RMs; Strictly Locked for Staff */}
+        {currentUserRole === 'Staff' ? (
           <div 
             id="assigned-property-topbar-tag"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4] rounded-xs shadow-xs"
-            title={`Assigned Property: ${assignedSite} (Locked)`}
+            title={`Assigned Property: ${assignedSite} (Frontline Access Locked)`}
           >
             <Building2 className="w-3.5 h-3.5 text-[#0d9488]" />
             <span className="hidden sm:inline text-[#605e5c]">Property:</span>
-            <span className="font-bold">{assignedSite}</span>
+            <span className="font-bold">{assignedSite || ((allowedSites && allowedSites[0]) || 'Brit Hotel')}</span>
             <span className="flex items-center gap-0.5 text-[9px] text-amber-700 font-semibold bg-amber-50 px-1 py-0.2 rounded border border-amber-200 ml-1">
               <Lock className="w-2.5 h-2.5 text-amber-700" /> Locked
             </span>
           </div>
+        ) : (currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || canSwitchSites() || (allowedSites && allowedSites.length > 1)) ? (
+          <div className="relative" ref={propertyMenuRef}>
+            <button
+              id="btn-header-property-selector"
+              onClick={() => setShowPropertyMenu(!showPropertyMenu)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold bg-[#f0fdfa] hover:bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4] rounded-xs transition-colors cursor-pointer shadow-xs"
+              title="Click to switch property view"
+            >
+              <Building2 className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
+              <span className="truncate max-w-[130px] sm:max-w-[220px]">
+                {assignedSite === 'All Sites' || assignedSite === 'all' || !assignedSite
+                  ? (currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || canAccessAllSites()
+                      ? `All Properties (${sites.length} Hotels)`
+                      : `All Assigned (${allowedSites?.length || 0} Sites)`)
+                  : assignedSite}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-[#0d9488] shrink-0 transition-transform ${showPropertyMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showPropertyMenu && (
+              <div
+                id="property-dropdown-menu"
+                className="absolute right-0 mt-1 w-72 sm:w-80 bg-white border border-[#e1dfdd] shadow-2xl rounded-xs p-1.5 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 max-h-[75vh] flex flex-col"
+              >
+                <div className="px-2.5 py-1.5 text-[11px] font-bold text-[#797775] uppercase tracking-wider border-b border-[#edebe9] mb-1 flex items-center justify-between">
+                  <span>Switch Active Property</span>
+                  <span className="text-[10px] text-[#0d9488] font-semibold">
+                    {currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || canAccessAllSites()
+                      ? `${sites.length} Hotels`
+                      : `${allowedSites?.length || 0} Assigned`}
+                  </span>
+                </div>
+
+                <div className="overflow-y-auto max-h-[50vh] space-y-0.5">
+                  {/* Option for All Properties / All Assigned Sites */}
+                  <button
+                    id="select-property-all"
+                    onClick={() => {
+                      setShowPropertyMenu(false);
+                      setAssignedSite('All Sites');
+                    }}
+                    className={`w-full text-left p-2 rounded-xs flex items-center justify-between hover:bg-[#f3f8fd] transition-colors ${
+                      assignedSite === 'All Sites' || assignedSite === 'all' || !assignedSite
+                        ? 'bg-[#f0fdfa] text-[#0f766e] font-semibold'
+                        : 'text-[#323130]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-3.5 h-3.5 text-[#0d9488]" />
+                      <span>
+                        {currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || canAccessAllSites()
+                          ? `All Properties (${sites.length} Hotels)`
+                          : `All My Assigned Sites (${allowedSites?.length || 0})`}
+                      </span>
+                    </div>
+                    {(assignedSite === 'All Sites' || assignedSite === 'all' || !assignedSite) && (
+                      <Check className="w-3.5 h-3.5 text-[#0d9488]" />
+                    )}
+                  </button>
+
+                  <div className="h-[1px] bg-[#edebe9] my-1" />
+
+                  {/* List of individual properties */}
+                  {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || canAccessAllSites()
+                    ? (sites || []).map(s => (typeof s === 'string' ? s : s?.name)).filter(Boolean)
+                    : (allowedSites || []).filter(Boolean)
+                  ).map((siteName, sIdx) => {
+                    const isSelected = assignedSite === siteName;
+                    const siteObj = sites.find(s => s.name === siteName);
+                    return (
+                      <button
+                        key={`${siteName}-${sIdx}`}
+                        id={`select-property-${siteName.toLowerCase().replace(/\s+/g, '-')}`}
+                        onClick={() => {
+                          setShowPropertyMenu(false);
+                          setAssignedSite(siteName);
+                        }}
+                        className={`w-full text-left p-2 rounded-xs flex items-center justify-between hover:bg-[#f3f8fd] transition-colors ${
+                          isSelected ? 'bg-[#f0fdfa] text-[#0f766e] font-semibold' : 'text-[#323130]'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5 font-medium truncate">
+                            <span>{siteName}</span>
+                          </div>
+                          {siteObj?.city && (
+                            <span className="text-[10px] text-[#605e5c] block truncate">{siteObj.city}</span>
+                          )}
+                        </div>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && (
+                  <div className="border-t border-[#edebe9] pt-1.5 mt-1">
+                    <button
+                      onClick={() => {
+                        setShowPropertyMenu(false);
+                        setActivePage('properties');
+                      }}
+                      className="w-full text-center py-1.5 px-2 text-[11px] text-[#0f766e] hover:bg-[#f0fdfa] font-semibold rounded-xs transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span>Manage Properties Directory</span>
+                      <ArrowRight className="w-3 h-3 text-[#0d9488]" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         ) : (
           <div 
-            id="regional-oversight-topbar-tag"
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-[#f3f8fd] text-[#0f766e] border border-[#99f6e4] rounded-xs shadow-xs"
-            title="Regional Operational Oversight"
+            id="assigned-property-topbar-tag"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#f0fdfa] text-[#0f766e] border border-[#99f6e4] rounded-xs shadow-xs"
+            title={`Assigned Property: ${(allowedSites && allowedSites[0]) || assignedSite || 'Brit Hotel'}`}
           >
             <Building2 className="w-3.5 h-3.5 text-[#0d9488]" />
-            <span>Regional Oversight</span>
+            <span className="hidden sm:inline text-[#605e5c]">Property:</span>
+            <span className="font-bold">{(allowedSites && allowedSites[0]) || assignedSite || 'Brit Hotel'}</span>
           </div>
         )}
 
@@ -587,8 +696,8 @@ export const Header: React.FC = () => {
                 </div>
               </div>
 
-              {/* Property information / selector: Admins can filter; Staff is strictly locked */}
-              {canAccessAllSites() ? (
+              {/* Property information / selector: Admins & Managers can switch; Staff is strictly locked */}
+              {(currentUserRole !== 'Staff' && (canAccessAllSites() || canSwitchSites() || (allowedSites && allowedSites.length > 1))) ? (
                 <div className="mb-2.5 bg-[#f8f9fa] p-2 rounded-xs border border-[#edebe9]">
                   <label className="text-[10px] font-bold text-[#605e5c] uppercase block mb-1">
                     Filter Active Property:
@@ -598,8 +707,19 @@ export const Header: React.FC = () => {
                     onChange={e => setAssignedSite(e.target.value)}
                     className="w-full text-xs p-1 bg-white border border-[#8a8886] rounded-xs"
                   >
-                    {(sites || []).map((s, sIdx) => (
-                      <option key={`${s.id || s.name}-${sIdx}`} value={s.name}>{s.name} ({s.city})</option>
+                    {(canAccessAllSites() || currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && (
+                      <option value="All Sites">All Properties ({sites.length} Hotels)</option>
+                    )}
+                    {(!canAccessAllSites() && (allowedSites && allowedSites.length > 1)) && (
+                      <option value="All Sites">All My Assigned Sites ({allowedSites?.length || 0})</option>
+                    )}
+                    {(canAccessAllSites() || currentUserRole === 'Super Admin' || currentUserRole === 'Admin'
+                      ? sites
+                      : (allowedSites || []).map(name => ({ id: name, name, city: '' }))
+                    ).map((s, sIdx) => (
+                      <option key={`${s.id || s.name}-${sIdx}`} value={s.name}>
+                        {s.name}{s.city ? ` (${s.city})` : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -613,10 +733,10 @@ export const Header: React.FC = () => {
                   </div>
                   <div className="text-xs font-semibold text-[#1e293b] flex items-center gap-1.5 bg-white p-1.5 rounded border border-[#e2e8f0]">
                     <Building2 className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
-                    <span className="truncate">{assignedSite || 'Assigned Hotel'}</span>
+                    <span className="truncate">{assignedSite || ((allowedSites && allowedSites[0]) || 'Assigned Hotel')}</span>
                   </div>
                   <p className="text-[10px] text-[#64748b] leading-tight pt-0.5">
-                    Property assignment is locked to your account by system administrators.
+                    Property assignment is locked to your frontline staff account.
                   </p>
                 </div>
               )}

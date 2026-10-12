@@ -118,10 +118,13 @@ export const PublicTransportTrackerView: React.FC = () => {
 
   const filteredRecords = useMemo(() => {
     return publicTransportRecords.filter(r => {
-      // Site Isolation
-      if (!canAccessAllSites()) {
-        const allowed = new Set(allowedSites.map(s => s.toLowerCase().trim()));
-        if (assignedSite) allowed.add(assignedSite.toLowerCase().trim());
+      // Site Isolation / Filtering
+      if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+        const target = assignedSite.toLowerCase().trim();
+        const site = ((r as any).siteName || r.accommodationAddress || '').toLowerCase().trim();
+        if (site && !site.includes(target) && !target.includes(site)) return false;
+      } else if (!canAccessAllSites()) {
+        const allowed = new Set((allowedSites || []).map(s => s.toLowerCase().trim()));
         const site = ((r as any).siteName || r.accommodationAddress || '').toLowerCase().trim();
         const matchesAllowed = Array.from(allowed).some(s => site.includes(s) || s.includes(site));
         if (!matchesAllowed && allowed.size > 0) return false;

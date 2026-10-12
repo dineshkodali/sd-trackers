@@ -119,9 +119,18 @@ export const TransportFeedbackSection: React.FC = () => {
   const [resolutionFilter, setResolutionFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSelectedSite('all');
+    } else if (assignedSite) {
+      setSelectedSite(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
+
   const defaultSite = useMemo(() => {
     const list = (allowedSites || []).filter(s => s && s !== 'All Sites' && s !== 'all');
-    return !canAccessAllSites()
+    return (!canAccessAllSites() && (allowedSites || []).length <= 1)
       ? (assignedSite || list[0] || (sites[0]?.name ?? ''))
       : (selectedSite !== 'all' ? selectedSite : (list[0] || (sites[0]?.name ?? '')));
   }, [canAccessAllSites, assignedSite, allowedSites, sites, selectedSite]);
@@ -367,10 +376,14 @@ export const TransportFeedbackSection: React.FC = () => {
           <select
             value={selectedSite}
             onChange={(e) => { setSelectedSite(e.target.value); setCurrentPage(1); }}
-            disabled={!canAccessAllSites()}
+            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
             className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden transition-all disabled:opacity-60"
           >
-            {canAccessAllSites() && <option value="all">All Sites / Hotels</option>}
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">
+                {canAccessAllSites() ? 'All Sites / Hotels' : `All Assigned Sites (${allowedSites.length})`}
+              </option>
+            )}
             {allowedSites.map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -616,7 +629,7 @@ export const TransportFeedbackSection: React.FC = () => {
                   </label>
                   <select
                     value={formData.siteName}
-                    disabled={!canAccessAllSites()}
+                    disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
                     onChange={(e) => {
                       const newSite = e.target.value;
                       setFormData(prev => ({

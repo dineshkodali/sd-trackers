@@ -108,6 +108,15 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
     }
   }, [globalSearchFilter, setGlobalSearchFilter]);
 
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites()) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites]);
+
   // Dynamic Table Schema & Columns (Local persistence with fallback to trackerTableConfigs)
   const {
     columns: vulnerableColumns,
@@ -532,10 +541,12 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites()}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              {canAccessAllSites() && <option value="all">All Properties / Sites ({allowedSites.length})</option>}
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">All Properties / Sites ({allowedSites.length})</option>
+              )}
               {allowedSites.map((s, idx) => (
                 <option key={`${s}-${idx}`} value={s}>{s}</option>
               ))}

@@ -67,6 +67,15 @@ export const DocumentsView: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
+
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
@@ -355,10 +364,14 @@ export const DocumentsView: React.FC = () => {
           <select
             value={siteFilter}
             onChange={e => setSiteFilter(e.target.value)}
-            disabled={!canAccessAllSites()}
+            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
             className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
           >
-            {canAccessAllSites() && <option value="all">All Sites ({allowedSites.length})</option>}
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">
+                {canAccessAllSites() ? `All Sites (${allowedSites.length})` : `All Assigned Sites (${allowedSites.length})`}
+              </option>
+            )}
             {allowedSites.map((s, idx) => <option key={`${s}-${idx}`} value={s}>{s}</option>)}
           </select>
 

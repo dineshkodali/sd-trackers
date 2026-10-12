@@ -88,6 +88,15 @@ export const WelfareChecksView: React.FC = () => {
 
   const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites()) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<keyof WelfareCheckRecord>('checkDatetime');
@@ -404,12 +413,14 @@ export const WelfareChecksView: React.FC = () => {
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites()}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              <option value="all">All Properties / Sites</option>
-              {sites.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">All Properties / Sites ({canAccessAllSites() ? sites.length : allowedSites.length})</option>
+              )}
+              {(canAccessAllSites() ? sites.map(s => s.name) : (allowedSites || [])).map(sName => (
+                <option key={sName} value={sName}>{sName}</option>
               ))}
             </select>
           </div>

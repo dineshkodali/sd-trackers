@@ -47,6 +47,12 @@ export const CommercialTrackersGrid: React.FC<CommercialTrackersGridProps> = ({
   } = useApp();
 
   const siteFilterPredicate = (item: any) => {
+    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
+      const target = assignedSite.toLowerCase().trim();
+      const itemSite = (item?.site || item?.siteName || item?.hotel || item?.hotelName || item?.site_name || '').toLowerCase().trim();
+      if (!itemSite) return true;
+      return itemSite === target || itemSite.includes(target) || target.includes(itemSite);
+    }
     if (canAccessAllSites()) return true;
     const permitted = (allowedSites && allowedSites.length > 0 ? allowedSites : [assignedSite])
       .map(s => (s || '').toLowerCase().trim())

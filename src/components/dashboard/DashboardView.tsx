@@ -76,13 +76,16 @@ export const DashboardView: React.FC = () => {
   const widgetMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!canAccessAllSites()) {
-      const defaultSite = (allowedSites && allowedSites.length > 0 ? allowedSites[0] : assignedSite) || '';
-      if (defaultSite && (siteFilter === 'all' || !allowedSites.includes(siteFilter))) {
-        setSiteFilter(defaultSite);
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites()) {
+        setSiteFilter('all');
+      } else if (allowedSites && allowedSites.length > 0) {
+        setSiteFilter(allowedSites[0]);
       }
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
     }
-  }, [canAccessAllSites, allowedSites, assignedSite, siteFilter]);
+  }, [assignedSite, canAccessAllSites, allowedSites]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

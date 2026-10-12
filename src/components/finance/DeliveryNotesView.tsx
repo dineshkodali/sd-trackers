@@ -60,11 +60,19 @@ export const DeliveryNotesView: React.FC = () => {
   const [vendors, setVendors] = useState<FinanceVendor[]>(() => financeService.getCachedVendors());
   const [isLoading, setIsLoading] = useState(() => financeService.getCachedBills('delivery_note').length === 0);
 
-  // Filters
   const [siteFilter, setSiteFilter] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
   const [vendorFilter, setVendorFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
@@ -585,10 +593,14 @@ export const DeliveryNotesView: React.FC = () => {
               setSiteFilter(e.target.value);
               setCurrentPage(1);
             }}
-            disabled={!canAccessAllSites()}
+            disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
             className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60"
           >
-            {canAccessAllSites() && <option value="all">All Properties</option>}
+            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+              <option value="all">
+                {canAccessAllSites() ? 'All Properties' : `All Assigned Properties (${allowedSites.length})`}
+              </option>
+            )}
             {allowedSites.map((s, idx) => (
               <option key={`${s}-${idx}`} value={s}>{s}</option>
             ))}

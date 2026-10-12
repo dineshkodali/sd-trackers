@@ -131,6 +131,7 @@ export const RoomChecksView: React.FC = () => {
     deleteRoomCheck,
     canAccessAllSites,
     assignedSite,
+    allowedSites,
     sites,
     canCreateRecord,
     canEditRecord,
@@ -143,6 +144,15 @@ export const RoomChecksView: React.FC = () => {
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Sync with active property switcher in Header
+  useEffect(() => {
+    if (assignedSite === 'All Sites' || assignedSite === 'all') {
+      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
+    } else if (assignedSite) {
+      setSiteFilter(assignedSite);
+    }
+  }, [assignedSite, canAccessAllSites, allowedSites]);
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
@@ -493,12 +503,16 @@ export const RoomChecksView: React.FC = () => {
             <select
               value={siteFilter}
               onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites()}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              <option value="all">All Properties / Sites</option>
-              {sites.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? `All Properties / Sites (${allowedSites.length})` : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
+              {allowedSites.map((s, idx) => (
+                <option key={`${s}-${idx}`} value={s}>{s}</option>
               ))}
             </select>
           </div>
