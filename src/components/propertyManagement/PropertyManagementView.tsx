@@ -6,6 +6,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';
+import { propertyOccupancy, formatOccupancy, formatOccupancyPct, type PropertyOccupancy } from '../../utils/roomManagementLogic';
 import { PropertyFormModal } from './PropertyFormModal';
 import { PropertyProfileView } from './PropertyProfileView';
 import { Pagination } from '../common/Pagination';
@@ -122,12 +123,11 @@ export const PropertyManagementView: React.FC = () => {
   const siteMap = useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites]);
 
   const propertyMetrics = useMemo(() => {
-    const map = new Map<string, { totalRooms: number; occupiedRooms: number; capacity: number }>();
+    // Bed spaces = the capacity of the property's real rooms that are in use; residents = active placements in them.
+    // The typed "maximum occupancy" of a property is never used for these figures.
+    const map = new Map<string, PropertyOccupancy>();
     properties.forEach(p => {
-      const pRooms = rooms.filter(r => r.propertyId === p.id);
-      const pPlacements = placements.filter(pl => pl.propertyId === p.id);
-      const cap = p.maximumOccupancy || pRooms.reduce((acc, r) => acc + (r.capacity || 1), 0);
-      map.set(p.id, { totalRooms: pRooms.length, occupiedRooms: pPlacements.length, capacity: cap });
+      map.set(p.id, propertyOccupancy(rooms.filter(r => r.propertyId === p.id), placements.filter(pl => pl.propertyId === p.id)));
     });
     return map;
   }, [properties, rooms, placements]);
@@ -156,15 +156,16 @@ export const PropertyManagementView: React.FC = () => {
   const dashboardStats = useMemo(() => {
     const totalProps = filteredProperties.length;
     const activeProps = filteredProperties.filter(p => p.status === 'Active').length;
-    const totalCapacity = filteredProperties.reduce((acc, p) => acc + (p.maximumOccupancy || 0), 0);
     const visiblePropIds = new Set(filteredProperties.map(p => p.id));
-    const visiblePlacements = placements.filter(pl => visiblePropIds.has(pl.propertyId));
-    const visibleRooms = rooms.filter(r => visiblePropIds.has(r.propertyId));
-    const totalActivePlacements = visiblePlacements.length;
-    const totalRooms = visibleRooms.length;
-    const availableRooms = visibleRooms.filter(r => r.occupancyStatus === 'Available').length;
-    const occupancyRate = totalCapacity > 0 ? Math.round((totalActivePlacements / totalCapacity) * 100) : 0;
-    return { totalProps, activeProps, totalCapacity, totalActivePlacements, totalRooms, availableRooms, occupancyRate };
+    const o = propertyOccupancy(
+      rooms.filter(r => visiblePropIds.has(r.propertyId)),
+      placements.filter(pl => visiblePropIds.has(pl.propertyId))
+    );
+    return {
+      totalProps, activeProps,
+      totalCapacity: o.beds, totalActivePlacements: o.residents, totalRooms: o.rooms, availableRooms: o.roomsAvailable,
+      occupancyRate: formatOccupancyPct(o), outOfUse: o.outOfUse, hasRooms: o.rooms > 0,
+    };
   }, [filteredProperties, placements, rooms]);
 
   const paginatedProperties = useMemo(() => {
@@ -179,16 +180,16 @@ export const PropertyManagementView: React.FC = () => {
     const headers = cols.map(c => c.label);
     const rows = filteredProperties.map(p => {
       const siteName = siteMap.get(p.siteId || '') || '—';
-      const metrics = propertyMetrics.get(p.id) || { totalRooms: 0, occupiedRooms: 0, capacity: p.maximumOccupancy || 0 };
+      const metrics = propertyMetrics.get(p.id) || propertyOccupancy([], []);
       const fullAddr = [p.addressLine1, p.city, p.postcode].filter(Boolean).join(', ') || '—';
-      const rate = metrics.capacity > 0 ? `${Math.round((metrics.occupiedRooms / metrics.capacity) * 100)}%` : '0%';
+      const rate = formatOccupancyPct(metrics);
 
       return cols.map(c => {
         if (c.id === 'siteName') return siteName;
         if (c.id === 'address') return fullAddr;
-        if (c.id === 'roomsCount') return String(metrics.totalRooms);
-        if (c.id === 'maximumOccupancy') return String(metrics.capacity);
-        if (c.id === 'occupiedRooms') return String(metrics.occupiedRooms);
+        if (c.id === 'roomsCount') return String(metrics.rooms);
+        if (c.id === 'maximumOccupancy') return String(metrics.beds);
+        if (c.id === 'occupiedRooms') return String(metrics.residents);
         if (c.id === 'occupancyRate') return rate;
         return String((p as any)[c.id] ?? '—');
       });
@@ -401,17 +402,17 @@ export const PropertyManagementView: React.FC = () => {
         <div className="bg-white border border-[#e5e5e5] rounded-xs p-3 shadow-2xs">
           <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Registered Rooms</span>
           <p className="text-xl font-bold text-[#0d9488] mt-0.5">{dashboardStats.totalRooms}</p>
-          <span className="text-[11px] text-neutral-500 mt-0.5 block">{dashboardStats.availableRooms} currently available</span>
+          <span className="text-[11px] text-neutral-500 mt-0.5 block">{dashboardStats.availableRooms} empty{dashboardStats.outOfUse ? `, ${dashboardStats.outOfUse} out of use` : ''}</span>
         </div>
         <div className="bg-white border border-[#e5e5e5] rounded-xs p-3 shadow-2xs">
           <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Bed Capacity</span>
           <p className="text-xl font-bold text-[#242424] mt-0.5">{dashboardStats.totalCapacity}</p>
-          <span className="text-[11px] text-neutral-500 mt-0.5 block">{dashboardStats.totalActivePlacements} occupied spaces</span>
+          <span className="text-[11px] text-neutral-500 mt-0.5 block">{dashboardStats.hasRooms ? `${dashboardStats.totalActivePlacements} occupied of the rooms' bed spaces` : 'Add rooms to count bed spaces'}</span>
         </div>
         <div className="bg-white border border-[#e5e5e5] rounded-xs p-3 shadow-2xs">
           <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Occupancy Rate</span>
-          <p className="text-xl font-bold text-[#0f766e] mt-0.5">{dashboardStats.occupancyRate}%</p>
-          <span className="text-[11px] text-neutral-500 mt-0.5 block">Portfolio utilization</span>
+          <p className="text-xl font-bold text-[#0f766e] mt-0.5">{dashboardStats.occupancyRate}</p>
+          <span className="text-[11px] text-neutral-500 mt-0.5 block">Residents ÷ bed spaces in rooms</span>
         </div>
       </div>
 
@@ -459,9 +460,9 @@ export const PropertyManagementView: React.FC = () => {
               ) : (
                 paginatedProperties.map(prop => {
                   const siteName = siteMap.get(prop.siteId || '') || '—';
-                  const metrics = propertyMetrics.get(prop.id) || { totalRooms: 0, occupiedRooms: 0, capacity: prop.maximumOccupancy || 0 };
-                  const availableBeds = Math.max(0, metrics.capacity - metrics.occupiedRooms);
-                  const isFull = metrics.capacity > 0 && availableBeds === 0;
+                  const metrics = propertyMetrics.get(prop.id) || propertyOccupancy([], []);
+                  const availableBeds = metrics.freeBeds;
+                  const isFull = metrics.beds > 0 && availableBeds === 0;
 
                   return (
                     <tr 
@@ -507,16 +508,18 @@ export const PropertyManagementView: React.FC = () => {
                       <td className="py-2.5 px-3 text-center">
                         <span className="inline-flex items-center gap-1 font-semibold text-neutral-700">
                           <DoorClosed className="w-3.5 h-3.5 text-neutral-400" />
-                          {metrics.totalRooms}
+                          {metrics.rooms}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <span className="inline-flex items-center gap-1 font-semibold text-[#0f766e]">
                           <Users className="w-3.5 h-3.5 text-[#0d9488]" />
-                          {metrics.occupiedRooms} / {metrics.capacity}
+                          {formatOccupancy(metrics)}
                         </span>
                         <div className="text-[10px] text-neutral-400">
-                          {isFull ? <span className="text-amber-600 font-medium">Full</span> : <span>{availableBeds} free</span>}
+                          {metrics.beds === 0 ? <span>No rooms added</span>
+                            : metrics.overCapacityResidents > 0 ? <span className="text-red-600 font-medium">{metrics.overCapacityResidents} over capacity</span>
+                            : isFull ? <span className="text-amber-600 font-medium">Full</span> : <span>{availableBeds} free</span>}
                         </div>
                       </td>
                       <td className="py-2.5 px-3">

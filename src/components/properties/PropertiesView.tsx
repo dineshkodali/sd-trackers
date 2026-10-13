@@ -1,3 +1,5 @@
+import { useRoomOccupancy } from '../../hooks/useRoomOccupancy';
+import { formatOccupancy } from '../../utils/roomManagementLogic';
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import {
@@ -100,13 +102,15 @@ export const PropertiesView: React.FC = () => {
   const visibleProperties = properties;
 
   // KPI Statistics
+  // Bed capacity comes from the real rooms of each property, not from a typed figure
+  const { bySite: occupancyBySite } = useRoomOccupancy();
   const stats = useMemo(() => {
     const total = visibleProperties.length;
     const active = visibleProperties.filter(p => p.status === 'Active').length;
     const maintenance = visibleProperties.filter(p => p.status === 'Under Maintenance').length;
-    const totalCapacity = visibleProperties.reduce((acc, p) => acc + (Number(p.capacity) || 0), 0);
+    const totalCapacity = visibleProperties.reduce((acc, p) => acc + (occupancyBySite.get(p.id)?.beds || 0), 0);
     return { total, active, maintenance, totalCapacity };
-  }, [visibleProperties]);
+  }, [visibleProperties, occupancyBySite]);
 
   const availableCities = useMemo(() => {
     return Array.from(new Set(visibleProperties.map(p => p.city).filter(Boolean))).sort();
@@ -348,7 +352,7 @@ export const PropertiesView: React.FC = () => {
       pid: data.pid?.trim() || '',
       name: data.name.trim(),
       city: data.city.trim(),
-      capacity: Number(data.capacity) || 100,
+      capacity: Number(data.capacity) || 0,
       status: (data.status as any) || 'Active',
       leadOfficer: data.leadOfficer?.trim() || '',
       contactNumber: data.contactNumber?.trim() || ''
@@ -363,7 +367,7 @@ export const PropertiesView: React.FC = () => {
       ...editingProperty,
       ...data,
       name: newName,
-      capacity: Number(data.capacity) || 100,
+      capacity: Number(data.capacity) || 0,
       status: (data.status as any) || 'Active'
     });
 
@@ -420,7 +424,7 @@ export const PropertiesView: React.FC = () => {
       return (
         <div className="flex items-center gap-1.5 text-neutral-800 text-xs whitespace-nowrap">
           <Users className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-          <span className="font-medium">{prop.capacity ? `${prop.capacity} residents` : '—'}</span>
+          <span className="font-medium">{occupancyBySite.get(prop.id)?.beds ? `${formatOccupancy(occupancyBySite.get(prop.id)!)} beds` : '—'}</span>
         </div>
       );
     }
@@ -739,7 +743,7 @@ export const PropertiesView: React.FC = () => {
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Total Bed Capacity</div>
+            <div className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider">Total Bed Spaces (from rooms)</div>
             <div className="text-lg font-bold text-[#242424] leading-tight">
               {stats.totalCapacity.toLocaleString()} <span className="text-xs font-normal text-neutral-500">residents</span>
             </div>
@@ -996,8 +1000,7 @@ export const PropertiesView: React.FC = () => {
         title="Add New Property / Site"
         columns={sitesColumns as any}
         initialValues={{
-          status: 'Active',
-          capacity: 100
+          status: 'Active'
         }}
         onClose={() => setIsAddModalOpen(false)}
         onSave={handleSaveAdd}

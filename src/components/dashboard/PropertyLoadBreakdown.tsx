@@ -6,6 +6,8 @@ import {
   Filter
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useRoomOccupancy } from '../../hooks/useRoomOccupancy';
+import { formatOccupancy } from '../../utils/roomManagementLogic';
 
 interface PropertyLoadBreakdownProps {
   onSelectSiteFilter?: (site: string) => void;
@@ -28,6 +30,8 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
     assignedSite,
     isSitePermitted
   } = useApp();
+
+  const { bySite } = useRoomOccupancy();
 
   const scopedProperties = properties.filter(prop => {
     return isSitePermitted(prop.name, 'all');
@@ -62,7 +66,8 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
       id: prop.id,
       name: prop.name,
       address: prop.city || 'London',
-      capacity: prop.capacity || 45,
+      // real bed spaces and residents from the rooms (never a typed or default capacity)
+      bedsLabel: bySite.get(prop.id) && bySite.get(prop.id)!.beds > 0 ? `${formatOccupancy(bySite.get(prop.id)!)} beds occupied` : 'No rooms added yet',
       manager: prop.leadOfficer || 'Assigned Lead',
       siteReferrals,
       siteVulnerableCount: siteVulnerable.length,
@@ -121,7 +126,7 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
                     {item.name}
                   </h4>
                   <p className="text-[10px] text-[#605e5c] line-clamp-1">
-                    {item.address} &bull; Capacity: {item.capacity}
+                    {item.address} &bull; {item.bedsLabel}
                   </p>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border shrink-0 ${item.statusClass}`}>

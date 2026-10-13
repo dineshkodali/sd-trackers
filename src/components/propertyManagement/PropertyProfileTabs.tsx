@@ -1,3 +1,4 @@
+import { isOutOfUse } from '../../utils/roomManagementLogic';
 import React, { useState } from 'react';
 import { Plus, Users, Edit3, Trash2, DoorOpen, Building2 } from 'lucide-react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
@@ -35,9 +36,9 @@ export const PropertyOverviewTab: React.FC<PropertyOverviewTabProps> = ({
       <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Occupancy Rate</span>
         <p className="text-sm font-bold text-teal-700">
-          {totalCapacity > 0 ? `${Math.round((activeOccupantsCount / totalCapacity) * 100)}%` : '0%'}
+          {totalCapacity > 0 ? `${Math.round((activeOccupantsCount / totalCapacity) * 100)}%` : '—'}
         </p>
-        <p className="text-[10px] text-neutral-500">{activeOccupantsCount} / {totalCapacity} bed spaces</p>
+        <p className="text-[10px] text-neutral-500">{totalCapacity > 0 ? `${activeOccupantsCount} / ${totalCapacity} bed spaces (from the rooms)` : 'Add rooms to count bed spaces'}</p>
       </div>
       <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Total Rooms</span>
@@ -74,7 +75,7 @@ export const PropertyOverviewTab: React.FC<PropertyOverviewTabProps> = ({
           const cap = r.capacity || 1;
           const isFull = occs.length >= cap;
           const isOccupied = occs.length > 0;
-          const isMaintenance = r.status === 'Maintenance' || r.status === 'Under Maintenance';
+          const isMaintenance = isOutOfUse(r.status);
           const statusColor = isFull 
             ? 'bg-purple-50 border-purple-200 text-purple-900'
             : isOccupied
@@ -173,8 +174,8 @@ export const PropertyDetailsTab: React.FC<PropertyDetailsTabProps> = ({ property
       <h3 className="font-bold text-xs text-neutral-800 border-b pb-2 pt-2">Specification &amp; Capacity</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
         <div>
-          <span className="text-neutral-400 block text-[10px]">Max Occupancy</span>
-          <strong className="text-neutral-800">{property.maximumOccupancy} residents</strong>
+          <span className="text-neutral-400 block text-[10px]">Declared max occupancy (info only)</span>
+          <strong className="text-neutral-800">{property.maximumOccupancy ? `${property.maximumOccupancy} residents` : '—'}</strong>
         </div>
         <div>
           <span className="text-neutral-400 block text-[10px]">Bedrooms / Bathrooms</span>

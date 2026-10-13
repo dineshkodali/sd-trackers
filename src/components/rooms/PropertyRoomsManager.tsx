@@ -15,7 +15,7 @@ import { suPropertyService } from '../../services/suPropertyService';
 import { roomManagementService } from '../../services/roomManagementService';
 import type { Placement, PropertyMaster, PropertyRoom } from '../../types/masterData';
 import { ROOM_STATUSES, type InventoryItem, type InventoryMovement, type PropertyStock, type RoomBed, type RoomIssue, type RoomItem, type RoomKitTemplate } from '../../types/roomManagement';
-import { isOutOfUse, roomFlags, rollupRooms } from '../../utils/roomManagementLogic';
+import { isOutOfUse, isPlaceholderRoom, propertyOccupancy, roomFlags } from '../../utils/roomManagementLogic';
 import { Pagination } from '../common/Pagination';
 import { AddRoomsModal } from './AddRoomsModal';
 import { CatalogueKitsPanel } from './CatalogueKitsPanel';
@@ -147,7 +147,27 @@ export const PropertyRoomsManager: React.FC<Props> = ({ property, addSignal = 0,
   useEffect(() => { setPage(1); }, [search, statusFilter, floorFilter, typeFilter, attentionOnly, pageSize]);
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const roll = useMemo(() => rollupRooms(rooms, placements), [rooms, placements]);
+  // every figure comes from the real rooms and active placements (see propertyOccupancy)
+  const occ = useMemo(() => propertyOccupancy(rooms, placements), [rooms, placements]);
+  const roll = { rooms: occ.rooms, beds: occ.beds, residents: occ.residents, occupancyPct: occ.occupancyPct, available: occ.roomsAvailable, partially: occ.roomsPartial, outOfUse: occ.outOfUse };
+
+  // placeholder rooms left over from the old demo-data generator: they are not real accommodation but would count as bed spaces
+  const placeholderRooms = useMemo(() => rooms.filter(isPlaceholderRoom), [rooms]);
+  const removablePlaceholders = useMemo(() => placeholderRooms.filter(r => {
+    const d = perRoom.get(r.id);
+    return !d || (d.residents.length === 0 && d.beds.length === 0 && d.items.length === 0 && d.issues.length === 0);
+  }), [placeholderRooms, perRoom]);
+  const removePlaceholders = () => requestConfirmation({
+    title: `Remove ${removablePlaceholders.length} placeholder room${removablePlaceholders.length > 1 ? 's' : ''}?`,
+    message: `These rooms were generated automatically as demo data (${removablePlaceholders.map(r => r.roomNumber).join(', ')}). They have no residents, beds, items or issues. Removing them stops them counting as bed spaces. This cannot be undone.`,
+    isDanger: true,
+    onConfirm: async () => {
+      let failed = 0;
+      for (const r of removablePlaceholders) { const res = await suPropertyService.deleteRoom(r.id); if (!res.success) failed++; }
+      show(failed ? `${failed} room(s) could not be removed.` : 'Placeholder rooms removed', failed ? 'error' : 'success');
+      await refreshAll();
+    },
+  });
   const attention = rows.filter(r => r.flags.some(f => f.level !== 'info')).length;
   const openIssueTotal = rows.reduce((n, r) => n + r.openIssues, 0);
   const openRoom = openRoomId ? rooms.find(r => r.id === openRoomId) : undefined;
@@ -202,12 +222,22 @@ export const PropertyRoomsManager: React.FC<Props> = ({ property, addSignal = 0,
             <Stat label="Rooms" value={roll.rooms} />
             <Stat label="Beds in use" value={roll.beds} />
             <Stat label="Residents" value={roll.residents} />
-            <Stat label="Occupancy" value={`${roll.occupancyPct}%`} tone={roll.occupancyPct >= 95 ? 'amber' : 'neutral'} />
+            <Stat label="Occupancy" value={roll.occupancyPct === null ? '—' : `${roll.occupancyPct}%`} sub={roll.beds > 0 ? `${roll.residents} of ${roll.beds} bed spaces` : 'no rooms in use'} tone={(roll.occupancyPct ?? 0) >= 95 ? 'amber' : 'neutral'} />
             <Stat label="Available" value={roll.available} tone="green" />
             <Stat label="Part-occupied" value={roll.partially} tone="teal" />
             <Stat label="Out of use" value={roll.outOfUse} tone={roll.outOfUse ? 'amber' : 'neutral'} />
             <Stat label="Open issues" value={openIssueTotal} tone={openIssueTotal ? 'red' : 'neutral'} />
           </div>
+
+          {placeholderRooms.length > 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-xs text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2">
+              <span>
+                <b>{placeholderRooms.length} room{placeholderRooms.length > 1 ? 's look' : ' looks'} like auto-generated demo data</b> ("Standard Twin Bedroom with en-suite shower…") and count as bed spaces.
+                {removablePlaceholders.length < placeholderRooms.length ? ` ${placeholderRooms.length - removablePlaceholders.length} of them have residents, beds, items or issues, so they are kept.` : ''} Edit them to match real rooms, or remove them.
+              </span>
+              {canManage && removablePlaceholders.length > 0 && <button type="button" className={dangerBtnCls} onClick={removePlaceholders}><Trash2 className="w-3.5 h-3.5" /> Remove {removablePlaceholders.length} unused placeholder{removablePlaceholders.length > 1 ? 's' : ''}</button>}
+            </div>
+          )}
 
           <Card>
             <div className="flex flex-wrap items-center gap-2 mb-3">
