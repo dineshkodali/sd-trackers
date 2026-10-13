@@ -262,12 +262,6 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     title: 'Property Management',
     category: 'Facilities & Welfare',
     description: 'Central master database for sites, properties, rooms, facilities, assets, and compliance.'
-  },
-  {
-    id: 'roomManagement',
-    title: 'Room Management',
-    category: 'Facilities & Welfare',
-    description: 'Individual room management: beds and residents, room assets, common and per-room inventory, issues, cleaning, and stock ledger.'
   }
 ];
 

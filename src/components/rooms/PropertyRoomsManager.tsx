@@ -1,15 +1,15 @@
 /**
- * RoomManagementView — accommodation room management for asylum / dispersal accommodation providers.
+ * PropertyRoomsManager — the "Rooms" tab of a property: full room management for that property.
  *
- *   Rooms              every room of a property: occupancy, beds, status, cleaning, issues, items. Open one to
- *                      manage it on its own (beds & residents, assets, inventory, issues, checks, timeline).
- *   Common Inventory   what each property holds in store, deliveries, stock counts, low-stock warnings.
- *   Catalogue & Kits   the shared item catalogue and the standard room kits.
- *   Stock Ledger       every stock movement.
+ *   Rooms              every room with occupancy, beds, status, cleaning, issues, items. Open one to manage it on
+ *                      its own (beds & residents, assets, inventory, issues, checks, timeline).
+ *   Common Inventory   what this property holds in store, deliveries, stock counts, low-stock warnings.
+ *   Catalogue & Kits   the item catalogue and standard room kits (shared by all properties).
+ *   Stock Ledger       every stock movement at this property.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, BedDouble, Building2, DoorOpen, Package, Plus, RefreshCw, ScrollText, Search, Boxes } from 'lucide-react';
+import { AlertTriangle, BedDouble, Boxes, DoorOpen, Package, Plus, RefreshCw, ScrollText, Search, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { roomManagementService } from '../../services/roomManagementService';
@@ -22,22 +22,29 @@ import { CatalogueKitsPanel } from './CatalogueKitsPanel';
 import { PropertyInventoryPanel } from './PropertyInventoryPanel';
 import { RoomWorkspace } from './RoomWorkspace';
 import { StockLedgerPanel } from './StockLedgerPanel';
-import { Card, Chip, EmptyState, Stat, btnCls, cleaningTone, inputCls, primaryBtnCls, roomStatusTone, useToast } from './roomUi';
+import { Card, Chip, EmptyState, Stat, btnCls, cleaningTone, dangerBtnCls, inputCls, primaryBtnCls, roomStatusTone, useToast } from './roomUi';
 
 type TabId = 'rooms' | 'inventory' | 'catalogue' | 'ledger';
 const naturalCompare = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 
-export const RoomManagementView: React.FC = () => {
-  const { sites, isSitePermitted, canManageProperties, authProfile, currentUserName } = useApp();
+interface Props {
+  property: PropertyMaster;
+  /** bump this number to open the "Add rooms" dialog (used by shortcuts elsewhere on the property page) */
+  addSignal?: number;
+  /** called after anything changed so the property page can refresh its counts */
+  onChanged?: () => void;
+}
+
+export const PropertyRoomsManager: React.FC<Props> = ({ property, addSignal = 0, onChanged }) => {
+  const { canManageProperties, authProfile, currentUserName, requestConfirmation } = useApp();
   const canManage = canManageProperties();
   const actor = authProfile?.name || currentUserName || 'Staff Member';
   const { show, node } = useToast();
+  const propertyId = property.id;
 
   const [tab, setTab] = useState<TabId>('rooms');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [properties, setProperties] = useState<PropertyMaster[]>([]);
-  const [propertyId, setPropertyId] = useState<string>('all');
   const [rooms, setRooms] = useState<PropertyRoom[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [beds, setBeds] = useState<RoomBed[]>([]);
@@ -49,7 +56,6 @@ export const RoomManagementView: React.FC = () => {
   const [stock, setStock] = useState<PropertyStock[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
 
-  // filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [floorFilter, setFloorFilter] = useState('all');
@@ -57,68 +63,58 @@ export const RoomManagementView: React.FC = () => {
   const [attentionOnly, setAttentionOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [openRoomId, setOpenRoomId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
-  const siteName = useCallback((id?: string) => sites.find(s => s.id === id)?.name || '', [sites]);
-
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      const propsRes = await suPropertyService.getProperties();
-      const permitted = (propsRes.data || []).filter(p => isSitePermitted(siteName(p.siteId), 'all'));
-      setProperties(permitted);
-      const ids = new Set(permitted.map(p => p.id));
-      const scope = propertyId !== 'all' && ids.has(propertyId) ? propertyId : undefined;
-      const [roomsRes, plcRes, bedsRes, itemsRes, issuesRes, catRes, kitRes] = await Promise.all([
-        suPropertyService.getRooms(scope),
-        suPropertyService.getPlacements({ status: 'Active', propertyId: scope }),
-        roomManagementService.getBeds({ propertyId: scope }),
-        roomManagementService.getRoomItems({ propertyId: scope }),
-        roomManagementService.getIssues({ propertyId: scope }),
+      const [roomsRes, plcRes, bedsRes, itemsRes, issuesRes, catRes, kitRes, stockRes, movRes] = await Promise.all([
+        suPropertyService.getRooms(propertyId),
+        suPropertyService.getPlacements({ status: 'Active', propertyId }),
+        roomManagementService.getBeds({ propertyId }),
+        roomManagementService.getRoomItems({ propertyId }),
+        roomManagementService.getIssues({ propertyId }),
         roomManagementService.getCatalogue(),
         roomManagementService.getKits(),
+        roomManagementService.getStock(propertyId),
+        roomManagementService.getMovements({ propertyId }),
       ]);
-      const err = [propsRes, roomsRes, plcRes].find(r => !r.success)?.error;
+      const err = [roomsRes, plcRes].find(r => !r.success)?.error;
       if (err) setLoadError(err);
-      const inScope = <T extends { propertyId: string }>(rows: T[]) => rows.filter(r => ids.has(r.propertyId));
-      setRooms(inScope(roomsRes.data || []));
-      setPlacements(inScope(plcRes.data || []));
-      setBeds(inScope(bedsRes.data));
-      setItems(inScope(itemsRes.data));
-      setIssues(inScope(issuesRes.data));
+      setRooms(roomsRes.data || []);
+      setPlacements(plcRes.data || []);
+      setBeds(bedsRes.data);
+      setItems(itemsRes.data);
+      setIssues(issuesRes.data);
       setCatalogue(catRes.data);
       setCatalogueIsStarter(catRes.isStarter);
       setKits(kitRes.data);
-      if (scope) {
-        const [stockRes, movRes] = await Promise.all([roomManagementService.getStock(scope), roomManagementService.getMovements({ propertyId: scope })]);
-        setStock(stockRes.data);
-        setMovements(movRes.data);
-      } else {
-        setStock([]);
-        setMovements([]);
-      }
+      setStock(stockRes.data);
+      setMovements(movRes.data);
     } catch (e: any) {
       setLoadError(e?.message || 'Could not load rooms.');
     } finally {
       setLoading(false);
     }
-  }, [propertyId, isSitePermitted, siteName]);
+  }, [propertyId]);
 
-  useEffect(() => { setLoading(true); void load(); }, [load]);
+  useEffect(() => { setLoading(true); setSelectedIds([]); setOpenRoomId(null); void load(); }, [load]);
 
-  // Placements / rooms edited elsewhere (Service Users, Properties) refresh this page too
+  // placements / rooms edited elsewhere (Service Users) refresh this tab too
   useEffect(() => {
     const h = () => { void load(); };
     window.addEventListener('sdtracker:masterDataUpdated', h);
     return () => window.removeEventListener('sdtracker:masterDataUpdated', h);
   }, [load]);
 
-  // a single property is selected automatically when there is only one
-  useEffect(() => { if (properties.length === 1 && propertyId === 'all') setPropertyId(properties[0].id); }, [properties, propertyId]);
+  // shortcut elsewhere on the property page ("Add Room")
+  useEffect(() => { if (addSignal > 0 && canManage) { setTab('rooms'); setShowAdd(true); } }, [addSignal]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const propertyById = useMemo(() => new Map(properties.map(p => [p.id, p])), [properties]);
+  /** reload this tab and tell the property page its numbers changed */
+  const refreshAll = useCallback(async () => { await load(); onChanged?.(); }, [load, onChanged]);
 
   const perRoom = useMemo(() => {
     const map = new Map<string, { residents: Placement[]; beds: RoomBed[]; items: RoomItem[]; issues: RoomIssue[] }>();
@@ -144,62 +140,62 @@ export const RoomManagementView: React.FC = () => {
     .filter(r => floorFilter === 'all' || (r.room.floor || 'Ground') === floorFilter)
     .filter(r => typeFilter === 'all' || r.room.roomType === typeFilter)
     .filter(r => !attentionOnly || r.flags.some(f => f.level !== 'info'))
-    .filter(r => !search || `${r.room.roomNumber} ${r.room.roomName || ''} ${r.room.roomType} ${propertyById.get(r.room.propertyId)?.propertyName || ''}`.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => naturalCompare(propertyById.get(a.room.propertyId)?.propertyName || '', propertyById.get(b.room.propertyId)?.propertyName || '') || naturalCompare(String(a.room.roomNumber), String(b.room.roomNumber))),
-  [rows, statusFilter, floorFilter, typeFilter, attentionOnly, search, propertyById]);
+    .filter(r => !search || `${r.room.roomNumber} ${r.room.roomName || ''} ${r.room.roomType} ${r.room.roomReference || ''}`.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => naturalCompare(String(a.room.roomNumber), String(b.room.roomNumber))),
+  [rows, statusFilter, floorFilter, typeFilter, attentionOnly, search]);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter, floorFilter, typeFilter, attentionOnly, propertyId, pageSize]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, floorFilter, typeFilter, attentionOnly, pageSize]);
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const roll = useMemo(() => rollupRooms(rooms, placements), [rooms, placements]);
   const attention = rows.filter(r => r.flags.some(f => f.level !== 'info')).length;
   const openIssueTotal = rows.reduce((n, r) => n + r.openIssues, 0);
   const openRoom = openRoomId ? rooms.find(r => r.id === openRoomId) : undefined;
-  const selectedProperty = propertyId !== 'all' ? propertyById.get(propertyId) : undefined;
-  const needsProperty = tab !== 'rooms' && tab !== 'catalogue' && !selectedProperty;
+
+  const allSelected = paged.length > 0 && paged.every(r => selectedIds.includes(r.room.id));
+  const toggleAll = () => setSelectedIds(allSelected ? selectedIds.filter(id => !paged.some(r => r.room.id === id)) : Array.from(new Set([...selectedIds, ...paged.map(r => r.room.id)])));
+
+  const deleteSelected = () => {
+    const withResidents = rows.filter(r => selectedIds.includes(r.room.id) && r.residents.length > 0);
+    if (withResidents.length > 0) { show(`Room${withResidents.length > 1 ? 's' : ''} ${withResidents.map(r => r.room.roomNumber).join(', ')} still ha${withResidents.length > 1 ? 've' : 's'} residents. Move them out first.`, 'error'); return; }
+    requestConfirmation({
+      title: `Delete ${selectedIds.length} room${selectedIds.length > 1 ? 's' : ''}?`,
+      message: 'This permanently deletes the selected rooms with their beds, item records, issues and timeline. Stock movements keep their history. This cannot be undone.',
+      isDanger: true,
+      onConfirm: async () => {
+        let failed = 0;
+        for (const id of selectedIds) { const r = await suPropertyService.deleteRoom(id); if (!r.success) failed++; }
+        setSelectedIds([]);
+        show(failed ? `${failed} room(s) could not be deleted.` : 'Rooms deleted', failed ? 'error' : 'success');
+        await refreshAll();
+      },
+    });
+  };
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'rooms', label: 'Rooms', icon: <DoorOpen className="w-3.5 h-3.5" /> },
+    { id: 'rooms', label: `Rooms (${rooms.length})`, icon: <DoorOpen className="w-3.5 h-3.5" /> },
     { id: 'inventory', label: 'Common Inventory', icon: <Package className="w-3.5 h-3.5" /> },
     { id: 'catalogue', label: 'Catalogue & Kits', icon: <Boxes className="w-3.5 h-3.5" /> },
     { id: 'ledger', label: 'Stock Ledger', icon: <ScrollText className="w-3.5 h-3.5" /> },
   ];
 
   return (
-    <div className="space-y-3 animate-fade-in">
-      {/* Header */}
-      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#f0fdfa] border border-[#99f6e4] rounded-xs"><BedDouble className="w-5 h-5 text-[#0d9488]" /></div>
-            <div>
-              <h1 className="text-base font-bold text-[#242424] tracking-tight">Room Management</h1>
-              <p className="text-xs text-neutral-500">Every room, bed, asset and item in your accommodation &mdash; open a room to manage it on its own.</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-neutral-500" />
-              <select aria-label="Property" className={`${inputCls} !w-60`} value={propertyId} onChange={e => setPropertyId(e.target.value)}>
-                <option value="all">All properties ({properties.length})</option>
-                {properties.map(p => <option key={p.id} value={p.id}>{p.propertyName}</option>)}
-              </select>
-            </div>
-            <button type="button" className={btnCls} onClick={() => { setLoading(true); void load(); }}><RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh</button>
-            {canManage && <button type="button" className={primaryBtnCls} disabled={!selectedProperty} title={selectedProperty ? undefined : 'Choose a property first'} onClick={() => setShowAdd(true)}><Plus className="w-3.5 h-3.5" /> Add rooms</button>}
-          </div>
-        </div>
-        <div role="tablist" className="flex items-center gap-1 mt-3 -mb-px overflow-x-auto">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e2e8f0]">
+        <div role="tablist" className="flex items-center gap-1 -mb-px overflow-x-auto">
           {tabs.map(t => (
             <button key={t.id} role="tab" aria-selected={tab === t.id} type="button" onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border-b-2 whitespace-nowrap cursor-pointer ${tab === t.id ? 'border-[#0d9488] text-[#0d9488]' : 'border-transparent text-[#64748b] hover:text-[#1e293b]'}`}>{t.icon}<span>{t.label}</span></button>
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 whitespace-nowrap cursor-pointer ${tab === t.id ? 'border-[#0d9488] text-[#0d9488]' : 'border-transparent text-[#64748b] hover:text-[#1e293b]'}`}>{t.icon}<span>{t.label}</span></button>
           ))}
+        </div>
+        <div className="flex items-center gap-2 pb-1.5">
+          <button type="button" className={btnCls} onClick={() => { setLoading(true); void load(); }}><RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh</button>
+          {canManage && <button type="button" className={primaryBtnCls} onClick={() => setShowAdd(true)}><Plus className="w-3.5 h-3.5" /> Add rooms</button>}
         </div>
       </div>
 
       {loadError && <div className="p-2.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-xs text-xs">{loadError}</div>}
 
-      {/* ROOMS */}
       {tab === 'rooms' && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
@@ -217,7 +213,7 @@ export const RoomManagementView: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2 top-2" />
-                <input aria-label="Search rooms" className={`${inputCls} !w-56 !pl-7`} placeholder="Search room, type, property…" value={search} onChange={e => setSearch(e.target.value)} />
+                <input aria-label="Search rooms" className={`${inputCls} !w-52 !pl-7`} placeholder="Search room, type…" value={search} onChange={e => setSearch(e.target.value)} />
               </div>
               <select aria-label="Status" className={`${inputCls} !w-40`} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                 <option value="all">All statuses</option>
@@ -227,19 +223,21 @@ export const RoomManagementView: React.FC = () => {
               <select aria-label="Floor" className={`${inputCls} !w-32`} value={floorFilter} onChange={e => setFloorFilter(e.target.value)}><option value="all">All floors</option>{floors.map(f => <option key={f} value={f}>{f}</option>)}</select>
               <select aria-label="Room type" className={`${inputCls} !w-36`} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}><option value="all">All types</option>{types.map(t => <option key={t} value={t}>{t}</option>)}</select>
               <label className="flex items-center gap-1.5 cursor-pointer text-xs"><input type="checkbox" className="accent-[#0d9488]" checked={attentionOnly} onChange={e => setAttentionOnly(e.target.checked)} /> Needs attention ({attention})</label>
+              {canManage && selectedIds.length > 0 && <button type="button" className={dangerBtnCls} onClick={deleteSelected}><Trash2 className="w-3.5 h-3.5" /> Delete selected ({selectedIds.length})</button>}
               <span className="ml-auto text-[11px] text-[#64748b]">{filtered.length} of {rooms.length} rooms</span>
             </div>
 
             {loading && rooms.length === 0 ? <div className="text-center py-10 text-xs text-neutral-500">Loading rooms…</div> : rooms.length === 0 ? (
-              <EmptyState icon={<DoorOpen className="w-10 h-10" />} title={properties.length === 0 ? 'No properties available' : 'No rooms yet'} hint={properties.length === 0 ? 'Add a property under Property Management first.' : 'Choose a property and add its rooms: one by one, or a whole range like 101-120 at once.'}>
-                {canManage && selectedProperty && <button type="button" className={primaryBtnCls} onClick={() => setShowAdd(true)}><Plus className="w-3.5 h-3.5" /> Add rooms</button>}
+              <EmptyState icon={<DoorOpen className="w-10 h-10" />} title="No rooms yet" hint="Add this property's rooms: one by one, or a whole range like 101-120 at once.">
+                {canManage && <button type="button" className={primaryBtnCls} onClick={() => setShowAdd(true)}><Plus className="w-3.5 h-3.5" /> Add rooms</button>}
               </EmptyState>
             ) : (
               <div className="overflow-x-auto -mx-3">
-                <table className="w-full text-xs min-w-[900px]">
+                <table className="w-full text-xs min-w-[820px]">
                   <thead>
                     <tr className="text-left text-[10px] uppercase text-[#64748b] border-y border-[#e2e8f0] bg-[#fafafa]">
-                      <th className="py-1.5 px-3">Room</th>{propertyId === 'all' && <th className="py-1.5 pr-2">Property</th>}<th className="py-1.5 pr-2">Type</th><th className="py-1.5 pr-2">Floor</th>
+                      {canManage && <th className="py-1.5 pl-3 w-6"><input type="checkbox" aria-label="Select all rooms on this page" className="accent-[#0d9488]" checked={allSelected} onChange={toggleAll} /></th>}
+                      <th className="py-1.5 px-3">Room</th><th className="py-1.5 pr-2">Type</th><th className="py-1.5 pr-2">Floor</th>
                       <th className="py-1.5 pr-2">Occupancy</th><th className="py-1.5 pr-2">Status</th><th className="py-1.5 pr-2">Cleaning</th><th className="py-1.5 pr-2 text-right">Items</th><th className="py-1.5 pr-2 text-right">Issues</th><th className="py-1.5 pr-3" />
                     </tr>
                   </thead>
@@ -250,11 +248,11 @@ export const RoomManagementView: React.FC = () => {
                       const worst = r.flags[0];
                       return (
                         <tr key={r.room.id} className="border-b border-[#f1f5f9] hover:bg-[#f0fdfa]/60 cursor-pointer" onClick={() => setOpenRoomId(r.room.id)}>
+                          {canManage && <td className="py-2 pl-3" onClick={e => e.stopPropagation()}><input type="checkbox" aria-label={`Select room ${r.room.roomNumber}`} className="accent-[#0d9488]" checked={selectedIds.includes(r.room.id)} onChange={() => setSelectedIds(prev => prev.includes(r.room.id) ? prev.filter(i => i !== r.room.id) : [...prev, r.room.id])} /></td>}
                           <td className="py-2 px-3">
                             <div className="font-bold text-[#1e293b]">{r.room.roomNumber}</div>
                             <div className="text-[10px] text-[#64748b]">{r.room.roomName && r.room.roomName !== `Room ${r.room.roomNumber}` ? r.room.roomName : r.room.roomReference}</div>
                           </td>
-                          {propertyId === 'all' && <td className="py-2 pr-2">{propertyById.get(r.room.propertyId)?.propertyName || '—'}</td>}
                           <td className="py-2 pr-2">{r.room.roomType}{r.room.isAccessible ? <span title="Accessible room"> ♿</span> : null}{r.room.isFamilyRoom ? <span title="Family room"> 👪</span> : null}</td>
                           <td className="py-2 pr-2">{r.room.floor || 'Ground'}</td>
                           <td className="py-2 pr-2">
@@ -269,7 +267,7 @@ export const RoomManagementView: React.FC = () => {
                           <td className="py-2 pr-2 text-right">{r.openIssues ? <span className="font-bold text-red-700">{r.openIssues}</span> : '—'}</td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">
                             {worst && worst.level !== 'info' && <span title={r.flags.map(f => f.text).join('\n')} className={`inline-flex items-center mr-2 ${worst.level === 'critical' ? 'text-red-600' : 'text-amber-600'}`}><AlertTriangle className="w-3.5 h-3.5" /></span>}
-                            <button type="button" className={btnCls} onClick={e => { e.stopPropagation(); setOpenRoomId(r.room.id); }}>Open</button>
+                            <button type="button" className={btnCls} onClick={e => { e.stopPropagation(); setOpenRoomId(r.room.id); }}><BedDouble className="w-3.5 h-3.5" /> Open</button>
                           </td>
                         </tr>
                       );
@@ -284,44 +282,36 @@ export const RoomManagementView: React.FC = () => {
         </>
       )}
 
-      {needsProperty && (
-        <Card><EmptyState icon={<Building2 className="w-10 h-10" />} title="Choose a property" hint="Stock is held per property. Pick one in the box at the top." /></Card>
+      {tab === 'inventory' && (
+        <PropertyInventoryPanel propertyId={propertyId} propertyName={property.propertyName} catalogue={catalogue} catalogueIsStarter={catalogueIsStarter}
+          stock={stock} roomItems={items} actor={actor} onChanged={refreshAll} toast={show} />
       )}
 
-      {/* COMMON INVENTORY */}
-      {tab === 'inventory' && selectedProperty && (
-        <PropertyInventoryPanel propertyId={selectedProperty.id} propertyName={selectedProperty.propertyName} catalogue={catalogue} catalogueIsStarter={catalogueIsStarter}
-          stock={stock} roomItems={items} actor={actor} onChanged={load} toast={show} />
-      )}
-
-      {/* CATALOGUE & KITS */}
       {tab === 'catalogue' && (
-        <CatalogueKitsPanel catalogue={catalogue} catalogueIsStarter={catalogueIsStarter} kits={kits} canManage={canManage} onChanged={load} toast={show} />
+        <CatalogueKitsPanel catalogue={catalogue} catalogueIsStarter={catalogueIsStarter} kits={kits} canManage={canManage} onChanged={refreshAll} toast={show} />
       )}
 
-      {/* LEDGER */}
-      {tab === 'ledger' && selectedProperty && <StockLedgerPanel propertyName={selectedProperty.propertyName} movements={movements} rooms={rooms} />}
+      {tab === 'ledger' && <StockLedgerPanel propertyName={property.propertyName} movements={movements} rooms={rooms} />}
 
-      {/* Room workspace */}
       {openRoom && (
         <RoomWorkspace
           room={openRoom}
-          property={propertyById.get(openRoom.propertyId)}
+          property={property}
           allRooms={rooms}
           actor={actor}
           canManage={canManage}
           neighbours={filtered.map(r => r.room)}
           onOpenRoom={r => setOpenRoomId(r.id)}
-          onChanged={load}
+          onChanged={refreshAll}
           onClose={() => setOpenRoomId(null)}
         />
       )}
 
-      {showAdd && selectedProperty && (
+      {showAdd && (
         <AddRoomsModal
-          propertyId={selectedProperty.id} propertyName={selectedProperty.propertyName} existingRooms={rooms} kits={kits} actor={actor}
+          propertyId={propertyId} propertyName={property.propertyName} existingRooms={rooms} kits={kits} actor={actor}
           onClose={() => setShowAdd(false)}
-          onCreated={async (message, created) => { show(message); setShowAdd(false); await load(); if (created.length === 1) setOpenRoomId(created[0].id); }}
+          onCreated={async (message, created) => { show(message); setShowAdd(false); await refreshAll(); if (created.length === 1) setOpenRoomId(created[0].id); }}
         />
       )}
       {node}

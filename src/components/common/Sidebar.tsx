@@ -39,8 +39,7 @@ import {
   Trash2,
   X,
   FilePlus,
-  Wrench,
-  BedDouble
+  Wrench
 } from 'lucide-react';
 
 import { useApp } from '../../context/AppContext';
@@ -298,15 +297,6 @@ export const Sidebar: React.FC = () => {
               icon={Building2} 
               iconColor="text-indigo-600" 
               active={isNavActive('propertyManagement')} 
-              onClick={handleNavClick} 
-            />
-            <NavItem 
-              id="nav-room-management" 
-              page="roomManagement" 
-              label="Room Management" 
-              icon={BedDouble} 
-              iconColor="text-indigo-600" 
-              active={isNavActive('roomManagement')} 
               onClick={handleNavClick} 
             />
           </div>

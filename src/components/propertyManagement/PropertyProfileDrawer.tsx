@@ -21,14 +21,13 @@ import {
   PropertyDocument, 
   PropertyContact 
 } from '../../types/masterData';
-import { RoomFormModal } from './RoomFormModal';
+import { PropertyRoomsManager } from '../rooms/PropertyRoomsManager';
 import { AssetFormModal } from './AssetFormModal';
 import { ComplianceFormModal } from './ComplianceFormModal';
 import { PropertyDocumentsSection } from './PropertyDocumentsSection';
 import { 
   PropertyOverviewTab, 
   PropertyDetailsTab, 
-  PropertyRoomsTab, 
   PropertyServiceUsersTab,
   PropertyComplianceTab,
   PropertyAssetsTab
@@ -63,8 +62,7 @@ export const PropertyProfileDrawer: React.FC<PropertyProfileDrawerProps> = ({
   const [loading, setLoading] = useState(false);
 
   // Sub-record modals
-  const [selectedRoomToEdit, setSelectedRoomToEdit] = useState<PropertyRoom | null>(null);
-  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [addRoomSignal, setAddRoomSignal] = useState(0); // opens "Add rooms" inside the Rooms tab
   const [selectedAssetToEdit, setSelectedAssetToEdit] = useState<PropertyAsset | null>(null);
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   const [selectedComplianceToEdit, setSelectedComplianceToEdit] = useState<PropertyCompliance | null>(null);
@@ -272,7 +270,7 @@ export const PropertyProfileDrawer: React.FC<PropertyProfileDrawerProps> = ({
               propertyMaintenanceCount={propertyMaintenance.filter(m => m.defectStatus !== 'Completed').length}
               assetsCount={assets.length}
               roomOccupantMap={roomOccupantMap}
-              onAddRoom={() => { setSelectedRoomToEdit(null); setIsRoomModalOpen(true); }}
+              onAddRoom={() => { setActiveTab('rooms'); setAddRoomSignal(n => n + 1); }}
             />
           )}
 
@@ -281,31 +279,10 @@ export const PropertyProfileDrawer: React.FC<PropertyProfileDrawerProps> = ({
           )}
 
           {activeTab === 'rooms' && (
-            <PropertyRoomsTab
-              rooms={rooms}
-              roomOccupantMap={roomOccupantMap}
-              onAddRoom={() => { setSelectedRoomToEdit(null); setIsRoomModalOpen(true); }}
-              onEditRoom={(r) => { setSelectedRoomToEdit(r); setIsRoomModalOpen(true); }}
-              onDeleteRooms={(ids) => {
-                if (typeof requestConfirmation !== 'undefined') {
-                  requestConfirmation({
-                    title: 'Delete Rooms',
-                    message: `Are you sure you want to delete ${ids.length} selected room(s)? This action cannot be undone.`,
-                    isDanger: true,
-                    onConfirm: async () => {
-                      try {
-                        for (const id of ids) {
-                          await suPropertyService.deleteRoom(id);
-                        }
-                        loadPropertyData(property.id);
-                        if (onRefreshData) onRefreshData();
-                      } catch (err) {
-                        console.error('Failed to delete rooms:', err);
-                      }
-                    }
-                  });
-                }
-              }}
+            <PropertyRoomsManager
+              property={property}
+              addSignal={addRoomSignal}
+              onChanged={() => { loadPropertyData(property.id); if (onRefreshData) onRefreshData(); }}
             />
           )}
 
@@ -445,16 +422,6 @@ export const PropertyProfileDrawer: React.FC<PropertyProfileDrawerProps> = ({
       </div>
 
       {/* Sub-record Modals */}
-      {isRoomModalOpen && (
-        <RoomFormModal
-          isOpen={isRoomModalOpen}
-          onClose={() => setIsRoomModalOpen(false)}
-          propertyId={property.id}
-          roomToEdit={selectedRoomToEdit}
-          onSuccess={() => { loadPropertyData(property.id); onRefreshData(); }}
-        />
-      )}
-
       {isAssetModalOpen && (
         <AssetFormModal
           isOpen={isAssetModalOpen}
