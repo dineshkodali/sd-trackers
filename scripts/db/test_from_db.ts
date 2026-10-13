@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { getSupabaseAdmin } from '../server/supabase.js';
-import { fromDatabaseRow } from '../server/schemaAdapter.js';
+import { getSupabaseAdmin } from '../../server/supabase.js';
+import { fromDatabaseRow } from '../../server/schemaAdapter.js';
 
 async function testFromDb() {
   const admin = getSupabaseAdmin();

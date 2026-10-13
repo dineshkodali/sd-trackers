@@ -346,8 +346,8 @@ export const SupabaseBackendCard: React.FC = () => {
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">
                   <span>Default From:</span>
-                  <span className="font-mono text-neutral-800 truncate max-w-[180px]" title={config?.services?.smtp?.from || 'SD Trackers <dineshkodali16@gmail.com>'}>
-                    {config?.services?.smtp?.from || 'SD Trackers <dineshkodali16@gmail.com>'}
+                  <span className="font-mono text-neutral-800 truncate max-w-[180px]" title={config?.services?.smtp?.from || 'SD Trackers <not-configured>'}>
+                    {config?.services?.smtp?.from || 'SD Trackers <not-configured>'}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#edebe9]">

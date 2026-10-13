@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { getSupabaseAdmin } from '../server/supabase.js';
-import { INITIAL_SITES } from '../src/data/initialData.js';
+import { getSupabaseAdmin } from '../../server/supabase.js';
+import { INITIAL_SITES } from '../../src/data/initialData.js';
 
 async function updatePidsAndAddresses() {
   const admin = getSupabaseAdmin();

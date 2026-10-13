@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { signAdminToken } from '../server/tokenSigner.js';
+import { signAdminToken } from '../../server/tokenSigner.js';
 
 async function testPut() {
   const token = signAdminToken({

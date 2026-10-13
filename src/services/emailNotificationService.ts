@@ -160,7 +160,7 @@ export const emailNotificationService = {
    */
   async getStatus(): Promise<{ configured: boolean; host: string | null; port: string | number; from: string | null; user: string | null }> {
     if ((shouldPreferDirectSupabase() || isDirectSupabaseActive()) && !getApiBaseUrl()) {
-      return { configured: true, host: 'smtp.gmail.com', port: 587, from: 'SD Trackers <dineshkodali16@gmail.com>', user: 'dineshkodali16@gmail.com' };
+      return { configured: true, host: 'smtp.gmail.com', port: 587, from: 'SD Trackers <not-configured>', user: 'not-configured' };
     }
     try {
       const res = await fetchWithTimeout(getApiUrl('/api/smtp/status'), {
@@ -170,7 +170,7 @@ export const emailNotificationService = {
         return await res.json();
       }
     } catch {}
-    return { configured: true, host: 'smtp.gmail.com', port: 587, from: 'SD Trackers <dineshkodali16@gmail.com>', user: 'dineshkodali16@gmail.com' };
+    return { configured: true, host: 'smtp.gmail.com', port: 587, from: 'SD Trackers <not-configured>', user: 'not-configured' };
   },
 
   /**

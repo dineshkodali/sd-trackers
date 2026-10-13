@@ -274,7 +274,7 @@ ${events.slice(0, 5).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] ${
             <div className="border-t border-[#edebe9] pt-4 flex items-center justify-between text-[11px] text-[#605e5c]">
               <span>SD Compliance Portal &bull; ISO 27001 Security</span>
               <a
-                href="mailto:dineshkodali16@gmail.com?subject=SD%20Operations%20Access%20Request%20/%20Session%20Issue"
+                href="mailto:sdtracker-support@sdcommercial.com?subject=SD%20Operations%20Access%20Request%20/%20Session%20Issue"
                 className="text-[#0078d4] hover:underline flex items-center gap-1 font-medium"
               >
                 <Mail className="w-3 h-3" />

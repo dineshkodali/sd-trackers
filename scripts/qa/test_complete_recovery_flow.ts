@@ -1,3 +1,6 @@
+// Set TEST_RECOVERY_EMAIL in your local .env (never commit a real address).
+const TEST_RECOVERY_EMAIL = process.env.TEST_RECOVERY_EMAIL || '';
+if (!TEST_RECOVERY_EMAIL) { console.error('Set TEST_RECOVERY_EMAIL first.'); process.exit(1); }
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -12,7 +15,7 @@ async function testRecoveryFlow() {
   const res1 = await fetch(`${baseUrl}/api/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'dineshkodali16@gmail.com' })
+    body: JSON.stringify({ email: TEST_RECOVERY_EMAIL })
   });
   const data1 = await res1.json();
   console.log('Status 1:', res1.status, 'Response:', data1);
@@ -27,7 +30,7 @@ async function testRecoveryFlow() {
   const res2 = await fetch(`${baseUrl}/api/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'dineshkodali16@gmail.com' })
+    body: JSON.stringify({ email: TEST_RECOVERY_EMAIL })
   });
   const data2 = await res2.json();
   console.log('Status 2:', res2.status, 'Response:', data2);
@@ -47,7 +50,7 @@ async function testRecoveryFlow() {
   });
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: 'recovery',
-    email: 'dineshkodali16@gmail.com'
+    email: TEST_RECOVERY_EMAIL
   });
   if (linkErr) {
     throw new Error(`Failed to generate link: ${linkErr.message}`);
@@ -60,7 +63,7 @@ async function testRecoveryFlow() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email: 'dineshkodali16@gmail.com',
+      email: TEST_RECOVERY_EMAIL,
       otpCode,
       newPassword: (process.env.TEST_ADMIN_PASSWORD || '')
     })

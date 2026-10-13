@@ -718,12 +718,12 @@ export const NotificationsManagementView: React.FC = () => {
 
               <div className="flex justify-between py-1.5 border-b border-[#f3f2f1]">
                 <span className="text-[#605e5c] font-medium">Sender Email Address (From):</span>
-                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.from || 'SD Trackers <dineshkodali16@gmail.com>'}</span>
+                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.from || 'SD Trackers <not-configured>'}</span>
               </div>
 
               <div className="flex justify-between py-1.5 border-b border-[#f3f2f1]">
                 <span className="text-[#605e5c] font-medium">Authenticated Account:</span>
-                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.user || 'dineshkodali16@gmail.com'}</span>
+                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.user || 'not-configured'}</span>
               </div>
             </div>
 

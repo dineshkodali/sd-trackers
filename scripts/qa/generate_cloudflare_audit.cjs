@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const SKILL_DIR = path.resolve(__dirname, '..', '.agents', 'skills', 'cloudflare-security-audit', 'skills', 'security-audit');
-const OUTPUT_DIR = path.resolve(__dirname, '..', '.cloudflare-tests');
+const SKILL_DIR = path.resolve(__dirname, '..', '..', '.agents', 'skills', 'cloudflare-security-audit', 'skills', 'security-audit');
+const OUTPUT_DIR = path.resolve(__dirname, '..', '..', '.cloudflare-tests');
 
 const { canonicalCoverageId } = require(path.join(SKILL_DIR, 'validate-coverage-ledger.cjs'));
 
@@ -15,7 +15,7 @@ if (!fs.existsSync(OUTPUT_DIR)) {
 const runMetadata = {
   run_id: "cloudflare-audit-run-001",
   repo: "sd-trackers",
-  target: path.resolve(__dirname, '..').replace(/\\/g, '/'),
+  target: path.resolve(__dirname, '..', '..').replace(/\\/g, '/'),
   source_ref: "main@c5cf7e2-dirty",
   profile: "standard",
   scope_paths: [

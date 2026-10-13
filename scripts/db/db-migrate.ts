@@ -12,9 +12,9 @@ import dotenv from 'dotenv';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const { runDatabaseMigrations } = await import('../server/migrate.ts');
-const { seedReferenceData } = await import('../server/seed.ts');
-const { invalidateLiveSchema } = await import('../server/liveSchema.ts');
+const { runDatabaseMigrations } = await import('../../server/migrate.ts');
+const { seedReferenceData } = await import('../../server/seed.ts');
+const { invalidateLiveSchema } = await import('../../server/liveSchema.ts');
 
 const migration = await runDatabaseMigrations();
 console.log(`${migration.success ? 'OK  ' : 'FAIL'} migration: ${migration.message}`);

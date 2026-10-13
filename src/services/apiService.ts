@@ -425,8 +425,8 @@ export const apiService = {
               configured: true,
               host: 'smtp.gmail.com',
               port: '587',
-              user: 'dineshkodali16@...',
-              from: 'SD Trackers <dineshkodali16@gmail.com>'
+              user: 'not-configured',
+              from: 'SD Trackers <not-configured>'
             }
           }
         };
@@ -450,8 +450,8 @@ export const apiService = {
             configured: true,
             host: 'smtp.gmail.com',
             port: '587',
-            user: 'dineshkodali16@...',
-            from: 'SD Trackers <dineshkodali16@gmail.com>'
+            user: 'not-configured',
+            from: 'SD Trackers <not-configured>'
           }
         }
       };

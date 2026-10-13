@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-import { getSupabaseAdmin } from '../server/supabase.ts';
+import { getSupabaseAdmin } from '../../server/supabase.ts';
 
 async function main() {
   const supabase = getSupabaseAdmin();

@@ -9,11 +9,11 @@ console.log('================================================================');
 // Test 1: Short content -> One-page document
 const test1Data = normalizeIncidentData({
   propertyId: '741- Clacton Pier Avenue',
-  personReporting: 'Rishi Begari',
+  personReporting: 'Alex Morgan',
   dateOfIncident: '2026-07-07',
   offenders: [{ name: 'N/A' }],
-  victims: [{ name: 'Mohammed Kaw Rasul', portRef: 'MST/9157022' }],
-  witnesses: [{ name: 'Welfare officer (Emeka Opara)' }],
+  victims: [{ name: 'Jordan Example', portRef: 'MST/1000001' }],
+  witnesses: [{ name: 'Welfare officer (Sam Carter)' }],
   incidentDescription: 'Short incident description note.',
   actionTaken: 'Staff resolved the matter.',
   warningLetterIssued: 'No',
@@ -61,7 +61,7 @@ console.log(`Test 5 (Long Action Taken): Result = ${pages5.length} page(s) (Expe
 // Test 6: Combined large document (10 offenders, 10 victims, 10 witnesses, long description, long actions, photos)
 const test6Data = normalizeIncidentData({
   propertyId: '741- Clacton Pier Avenue',
-  personReporting: 'Rishi Begari',
+  personReporting: 'Alex Morgan',
   dateOfIncident: '2026-07-07',
   offenders: Array.from({ length: 10 }, (_, i) => ({ name: `Offender ${i + 1}`, portRef: `O-${i}` })),
   victims: Array.from({ length: 10 }, (_, i) => ({ name: `Victim ${i + 1}`, portRef: `V-${i}` })),
@@ -88,7 +88,7 @@ console.log(`Test 6 (Combined Large Document): Result = ${pages6.length} page(s)
 const test7Data = normalizeIncidentData({
   ...test6Data,
   offenders: [],
-  victims: [{ name: 'Mohammed Kaw Rasul' }],
+  victims: [{ name: 'Jordan Example' }],
   witnesses: [],
   incidentDescription: 'Shrunk down description.',
   actionTaken: 'Standard single action note.',
@@ -106,7 +106,7 @@ async function testExports() {
       site: '741- Clacton Pier Avenue',
       templateName: 'Incident Report',
       createdAt: '2026-07-07T10:00:00.000Z',
-      createdByName: 'Rishi Begari',
+      createdByName: 'Alex Morgan',
       fieldValues: test6Data,
       fieldDefinitions: [],
       layoutConfig: { sections: [] },

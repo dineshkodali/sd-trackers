@@ -2,8 +2,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-import { toDatabaseRow, fromDatabaseRow, TABLE_COLUMNS } from '../server/schemaAdapter.js';
-import { getSupabaseAdmin, isSupabaseConfigured } from '../server/supabase.js';
+import { toDatabaseRow, fromDatabaseRow, TABLE_COLUMNS } from '../../server/schemaAdapter.js';
+import { getSupabaseAdmin, isSupabaseConfigured } from '../../server/supabase.js';
 
 interface TestCase {
   entity: string;
