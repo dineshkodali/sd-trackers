@@ -58,6 +58,7 @@ export const NEW_ARRIVALS_EXPORT_COLUMNS: ExportColumnOption[] = [
   { id: 'country', label: 'Country of Origin', defaultSelected: true },
   { id: 'language', label: 'Primary Language', defaultSelected: true },
   { id: 'contactNumber', label: 'Contact Number', defaultSelected: true },
+  { id: 'checkInDate', label: 'Check-in Date', defaultSelected: true },
   { id: 'hotel', label: 'Allocated Hotel', defaultSelected: true },
   { id: 'room', label: 'Room Number', defaultSelected: true },
   { id: 'aspenCard', label: 'Aspen Card', defaultSelected: false },

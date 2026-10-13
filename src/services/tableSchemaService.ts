@@ -111,6 +111,28 @@ function merge<T>(saved: SerializedColumn[], defaultColumns: TableColumnConfig<T
   return merged;
 }
 
+/**
+ * Columns added to a module after administrators already saved a layout: a saved layout has no entry
+ * for them, so they would never show in the forms. They are slotted in after the named column.
+ */
+const REQUIRED_COLUMNS: Record<string, { key: string; after: string }[]> = {
+  newArrivals: [{ key: 'checkInDate', after: 'contactNumber' }],
+};
+
+function withRequiredColumns<T>(moduleKey: string, cols: TableColumnConfig<T>[], defaults: TableColumnConfig<T>[]): TableColumnConfig<T>[] {
+  const required = REQUIRED_COLUMNS[moduleKey];
+  if (!required) return cols;
+  const out = [...cols];
+  for (const { key, after } of required) {
+    if (out.some(c => String(c.key) === key)) continue;
+    const def = defaults.find(c => String(c.key) === key);
+    if (!def) continue;
+    const at = out.findIndex(c => String(c.key) === after);
+    out.splice(at >= 0 ? at + 1 : out.length, 0, def);
+  }
+  return out;
+}
+
 const SCHEMA_ALIASES: Record<string, string[]> = {
   vendor_invoices: ['finance_invoices'],
   credit_card_bills: ['finance_credit_cards', 'finance_cc_bills'],
@@ -177,7 +199,7 @@ export const tableSchemaService = {
       if (moduleKey === 'credit_card_bills' || (SCHEMA_ALIASES['credit_card_bills'] && SCHEMA_ALIASES['credit_card_bills'].includes(moduleKey))) {
         filteredSaved = saved.filter(col => col.key !== 'billNumber' && col.key !== 'purchaseReference');
       }
-      return merge(filteredSaved, defaultColumns);
+      return withRequiredColumns(moduleKey, merge(filteredSaved, defaultColumns), defaultColumns);
     } catch (e) {
       console.warn(`[TableSchemaService] Failed to apply schema for ${moduleKey}:`, e);
       return defaultColumns;
