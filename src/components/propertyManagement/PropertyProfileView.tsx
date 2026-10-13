@@ -16,6 +16,7 @@ import {
 } from '../../types/masterData';
 import { PropertyRoomsManager } from '../rooms/PropertyRoomsManager';
 import { AssetFormModal } from './AssetFormModal';
+import { propertyOccupancy, formatOccupancy } from '../../utils/roomManagementLogic';
 import { ComplianceFormModal } from './ComplianceFormModal';
 import { PropertyDocumentsSection } from './PropertyDocumentsSection';
 import { 
@@ -142,10 +143,12 @@ export const PropertyProfileView: React.FC<PropertyProfileViewProps> = ({
 
   const currentSite = sites.find(s => s.id === property.siteId);
   const activePlacements = placements.filter(p => p.status === 'Active');
-  const activeOccupantsCount = activePlacements.length;
-  const totalCapacity = property.maximumOccupancy || rooms.reduce((acc, r) => acc + (r.capacity || 1), 0);
-  const occupiedRoomsCount = rooms.filter(r => r.occupancyStatus === 'Occupied' || activePlacements.some(p => p.roomId === r.id)).length;
-  const availableRoomsCount = Math.max(0, rooms.length - occupiedRoomsCount);
+  // Occupancy is calculated only from this property's real rooms and the active placements in them
+  const occ = propertyOccupancy(rooms, placements);
+  const activeOccupantsCount = occ.residents;
+  const totalCapacity = occ.beds;
+  const occupiedRoomsCount = occ.roomsOccupied;
+  const availableRoomsCount = occ.roomsAvailable;
 
   const roomOccupantMap = new Map<string, Array<{ placement: Placement; su?: ServiceUserMaster }>>();
   activePlacements.forEach(plc => {
@@ -240,7 +243,7 @@ export const PropertyProfileView: React.FC<PropertyProfileViewProps> = ({
               </span>
               <span className="flex items-center gap-1 text-[#0f766e] font-semibold">
                 <Users className="w-3.5 h-3.5 text-[#0d9488]" />
-                {activeOccupantsCount} / {totalCapacity} Occupied ({occupiedRoomsCount} Rooms)
+                {totalCapacity > 0 ? `${formatOccupancy(occ)} bed spaces occupied (${occupiedRoomsCount} of ${occ.roomsInUse} rooms)` : 'No rooms added yet'}
               </span>
             </div>
           </div>

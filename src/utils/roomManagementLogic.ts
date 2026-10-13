@@ -256,7 +256,83 @@ export function canChangeRoomStatus(
   return null;
 }
 
-/** Roll the room list up for the dashboard cards. */
+/**
+ * Occupancy of a property, calculated ONLY from its real rooms and the active placements in them.
+ * Nothing is assumed: a declared "maximum occupancy", a site capacity or a default never enters the maths.
+ *
+ *  - bed spaces      = the Capacity (beds) of every room that is in use (not Blocked / Void / Under Maintenance ...)
+ *  - residents       = active placements in those rooms
+ *  - occupancyPct    = residents / bed spaces, or null when there are no bed spaces to measure against
+ *  - placements whose room is not in the list (deleted / other property) are counted in orphanPlacements, never in the totals
+ */
+export interface PropertyOccupancy {
+  rooms: number;
+  roomsInUse: number;
+  outOfUse: number;
+  /** bed spaces in rooms that are in use */
+  beds: number;
+  /** residents in rooms that are in use */
+  residents: number;
+  /** residents placed in rooms that are marked out of use (needs sorting out) */
+  residentsInOutOfUseRooms: number;
+  /** rooms in use with at least one resident */
+  roomsOccupied: number;
+  /** rooms in use with no residents */
+  roomsAvailable: number;
+  /** rooms in use with some, but not all, spaces taken */
+  roomsPartial: number;
+  /** rooms in use with every space taken (or more) */
+  roomsFull: number;
+  /** bed spaces still free (never negative) */
+  freeBeds: number;
+  /** residents above the bed spaces of their room (over capacity) */
+  overCapacityResidents: number;
+  occupancyPct: number | null;
+  orphanPlacements: number;
+}
+
+export function propertyOccupancy(rooms: PropertyRoom[], placements: Placement[]): PropertyOccupancy {
+  const byRoom = new Map<string, number>();
+  let orphans = 0;
+  const known = new Set(rooms.map(r => r.id));
+  for (const p of placements) {
+    if (!isActivePlacement(p)) continue;
+    if (!known.has(p.roomId)) { orphans++; continue; }
+    byRoom.set(p.roomId, (byRoom.get(p.roomId) || 0) + 1);
+  }
+  const out: PropertyOccupancy = {
+    rooms: rooms.length, roomsInUse: 0, outOfUse: 0, beds: 0, residents: 0, residentsInOutOfUseRooms: 0,
+    roomsOccupied: 0, roomsAvailable: 0, roomsPartial: 0, roomsFull: 0, freeBeds: 0, overCapacityResidents: 0,
+    occupancyPct: null, orphanPlacements: orphans,
+  };
+  for (const r of rooms) {
+    const res = byRoom.get(r.id) || 0;
+    if (isOutOfUse(r.status)) { out.outOfUse++; out.residentsInOutOfUseRooms += res; continue; }
+    const cap = Math.max(1, num(r.capacity) || 1);
+    out.roomsInUse++;
+    out.beds += cap;
+    out.residents += res;
+    if (res === 0) out.roomsAvailable++;
+    else { out.roomsOccupied++; if (res >= cap) out.roomsFull++; else out.roomsPartial++; }
+    out.freeBeds += Math.max(0, cap - res);
+    out.overCapacityResidents += Math.max(0, res - cap);
+  }
+  out.occupancyPct = out.beds > 0 ? Math.round((out.residents / out.beds) * 100) : null;
+  return out;
+}
+
+/** "12 / 20" or "—" when the property has no rooms to measure against. */
+export const formatOccupancy = (o: Pick<PropertyOccupancy, 'beds' | 'residents'>): string => (o.beds > 0 ? `${o.residents} / ${o.beds}` : '—');
+export const formatOccupancyPct = (o: Pick<PropertyOccupancy, 'occupancyPct'>): string => (o.occupancyPct === null ? '—' : `${o.occupancyPct}%`);
+
+/**
+ * Seeded placeholder rooms: the demo data generator used to give every property four identical rooms
+ * ("Standard Twin Bedroom with en-suite shower. Floor N."). They are not real accommodation.
+ */
+export const isPlaceholderRoom = (r: Pick<PropertyRoom, 'id' | 'description' | 'roomReference'>): boolean =>
+  /^room-prop-/i.test(String(r.id)) && /^Standard Twin Bedroom with en-suite shower\. Floor \d\.?$/i.test(String(r.description || '').trim());
+
+/** Roll the room list up for the summary cards (same numbers as propertyOccupancy). */
 export interface RoomRollup {
   rooms: number;
   beds: number;
@@ -268,22 +344,6 @@ export interface RoomRollup {
   occupancyPct: number;
 }
 export function rollupRooms(rooms: PropertyRoom[], placements: Placement[]): RoomRollup {
-  const active = placements.filter(isActivePlacement);
-  const perRoom = new Map<string, number>();
-  for (const p of active) perRoom.set(p.roomId, (perRoom.get(p.roomId) || 0) + 1);
-  let beds = 0, available = 0, occupied = 0, partially = 0, outOfUse = 0;
-  for (const r of rooms) {
-    const cap = Math.max(1, num(r.capacity) || 1);
-    const res = perRoom.get(r.id) || 0;
-    if (isOutOfUse(r.status)) { outOfUse++; continue; }
-    beds += cap;
-    if (res === 0) available++;
-    else if (res >= cap) occupied++;
-    else partially++;
-  }
-  const residents = rooms.reduce((n, r) => n + (isOutOfUse(r.status) ? 0 : (perRoom.get(r.id) || 0)), 0);
-  return {
-    rooms: rooms.length, beds, residents, available, occupied, partially, outOfUse,
-    occupancyPct: beds > 0 ? Math.round((residents / beds) * 100) : 0,
-  };
+  const o = propertyOccupancy(rooms, placements);
+  return { rooms: o.rooms, beds: o.beds, residents: o.residents, available: o.roomsAvailable, occupied: o.roomsFull, partially: o.roomsPartial, outOfUse: o.outOfUse, occupancyPct: o.occupancyPct ?? 0 };
 }

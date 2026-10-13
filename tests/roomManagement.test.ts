@@ -10,6 +10,10 @@ import {
   expandRoomNumbers,
   freeBeds,
   planKitApplication,
+  propertyOccupancy,
+  formatOccupancy,
+  formatOccupancyPct,
+  isPlaceholderRoom,
   residentsWithoutBed,
   roomFlags,
   rollupRooms,
@@ -271,5 +275,82 @@ describe('Room management — database wiring', () => {
     assert.equal(asset.purchase_cost, 12.5);
     const bedRow = toDatabaseRow('placements', { id: 'p', suId: 's', roomId: 'r', propertyId: 'x', bedId: 'bed-1' });
     assert.equal(bedRow.bed_id, 'bed-1');
+  });
+});
+
+describe('Occupancy — only real rooms and real placements', () => {
+  const r = (id: string, capacity: number, status = 'Available') => room({ id, capacity, status });
+  const p = (roomId: string, n = 1, status = 'Active') => Array.from({ length: n }, (_, i) => plc({ id: `${roomId}-${status}-${i}`, roomId, status }));
+
+  test('a property with no rooms has nothing to measure against (no invented capacity)', () => {
+    const o = propertyOccupancy([], []);
+    assert.equal(o.beds, 0);
+    assert.equal(o.occupancyPct, null);
+    assert.equal(formatOccupancy(o), '—');
+    assert.equal(formatOccupancyPct(o), '—');
+  });
+
+  test('bed spaces are the sum of the room capacities and residents are the active placements in them', () => {
+    const o = propertyOccupancy([r('a', 2), r('b', 1), r('c', 4)], [...p('a', 2), ...p('b', 1), ...p('c', 1)]);
+    assert.deepEqual(
+      { beds: o.beds, residents: o.residents, occupied: o.roomsOccupied, full: o.roomsFull, partial: o.roomsPartial, available: o.roomsAvailable, free: o.freeBeds, pct: o.occupancyPct },
+      { beds: 7, residents: 4, occupied: 3, full: 2, partial: 1, available: 0, free: 3, pct: 57 }
+    );
+    assert.equal(formatOccupancy(o), '4 / 7');
+  });
+
+  test('completed / cancelled placements and placements in unknown rooms never count', () => {
+    const o = propertyOccupancy([r('a', 2)], [...p('a', 1), ...p('a', 3, 'Completed'), ...p('a', 1, 'Cancelled'), ...p('ghost', 5)]);
+    assert.equal(o.residents, 1);
+    assert.equal(o.orphanPlacements, 5);
+    assert.equal(o.beds, 2);
+  });
+
+  test('rooms that are out of use add no bed spaces; residents placed in them are reported separately', () => {
+    const o = propertyOccupancy([r('a', 2), r('b', 3, 'Blocked'), r('c', 2, 'Void'), r('d', 2, 'Under Maintenance')], [...p('a', 1), ...p('b', 1)]);
+    assert.equal(o.beds, 2);
+    assert.equal(o.residents, 1);
+    assert.equal(o.outOfUse, 3);
+    assert.equal(o.residentsInOutOfUseRooms, 1);
+    assert.equal(o.roomsInUse, 1);
+  });
+
+  test('over-capacity is shown honestly, free beds never go negative', () => {
+    const o = propertyOccupancy([r('a', 2), r('b', 2)], [...p('a', 3), ...p('b', 1)]);
+    assert.equal(o.overCapacityResidents, 1);
+    assert.equal(o.freeBeds, 1);
+    assert.equal(o.residents, 4);
+    assert.equal(o.occupancyPct, 100);
+  });
+
+  test('a typed "maximum occupancy" on the property has no effect: the figures follow the rooms', () => {
+    const rooms = [r('a', 2)];
+    const withLie = propertyOccupancy(rooms.map(x => ({ ...x, maximumOccupancy: 999 }) as any), p('a', 1));
+    assert.equal(withLie.beds, 2);
+    assert.equal(withLie.occupancyPct, 50);
+  });
+
+  test('rollupRooms and propertyOccupancy agree', () => {
+    const rooms = [r('a', 2), r('b', 2), r('c', 4), r('d', 3, 'Blocked')];
+    const places = [...p('a', 2), ...p('b', 1), ...p('d', 1)];
+    const o = propertyOccupancy(rooms, places);
+    const roll = rollupRooms(rooms, places);
+    assert.equal(roll.beds, o.beds);
+    assert.equal(roll.residents, o.residents);
+    assert.equal(roll.available, o.roomsAvailable);
+    assert.equal(roll.occupied, o.roomsFull);
+    assert.equal(roll.partially, o.roomsPartial);
+  });
+
+  test('demo-data placeholder rooms are recognised, real rooms are not', () => {
+    assert.equal(isPlaceholderRoom({ id: 'room-prop-519-1', roomReference: 'ROOM-prop-519-1', description: 'Standard Twin Bedroom with en-suite shower. Floor 1.' } as any), true);
+    assert.equal(isPlaceholderRoom({ id: 'room-prop-519-1', roomReference: 'x', description: 'Real room with a view' } as any), false);
+    assert.equal(isPlaceholderRoom({ id: 'abc', roomReference: 'x', description: 'Standard Twin Bedroom with en-suite shower. Floor 1.' } as any), false);
+  });
+
+  test('new installs are no longer seeded with invented rooms or capacities', () => {
+    const initial = buildInitialMasterData() as any;
+    assert.equal(initial.property_rooms.length, 0);
+    assert.ok(initial.properties.every((x: any) => x.maximumOccupancy === 0 && x.bedrooms === 0));
   });
 });

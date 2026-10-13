@@ -92,33 +92,16 @@ export function buildInitialMasterData(): MasterStoreState {
       provider: 'SD Commercial Operations',
       landlord: 'SD Commercial Properties Ltd',
       propertyManager: site.leadOfficer || 'Michael Thorne',
-      maximumOccupancy: site.capacity || 20,
-      bedrooms: Math.max(5, Math.floor((site.capacity || 20) / 2)),
-      bathrooms: Math.max(2, Math.floor((site.capacity || 20) / 6)),
-      numberOfFloors: 3,
+      // No assumed figures: bed spaces come from the rooms that are added for the property
+      maximumOccupancy: 0,
+      bedrooms: 0,
+      bathrooms: 0,
+      numberOfFloors: 0,
       accessibilityInformation: 'Wheelchair access ramp at ground entrance; accessible ground-floor bedroom.',
       status: 'Active',
       startDate: '2024-01-01T00:00:00.000Z',
       notes: `Operational property for site ${site.name} (PID: ${site.pid || '—'}). Address: ${site.address || '—'}. Key safe: 4921.`
     });
-
-    // Create 4 standard rooms per property
-    for (let r = 1; r <= 4; r++) {
-      const roomNum = `${r}01`;
-      rooms.push({
-        id: `room-${propId}-${r}`,
-        roomReference: `ROOM-${propId}-${r}`,
-        propertyId: propId,
-        roomNumber: roomNum,
-        roomName: `Room ${roomNum}`,
-        roomType: 'Bedroom',
-        floor: r === 1 ? 'Ground' : r === 2 ? 'First' : 'Second',
-        capacity: 2,
-        status: 'Available',
-        occupancyStatus: 'Available',
-        description: `Standard Twin Bedroom with en-suite shower. Floor ${r}.`
-      });
-    }
   });
 
   return {
