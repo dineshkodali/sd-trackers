@@ -104,4 +104,12 @@ describe('Notifications — strict visibility', () => {
     const nobody = { ...sam, assignedSite: '', allowedSites: [] as string[] };
     assert.deepEqual(visible(nobody, [n({ id: 'a', site: BRIT })]), []);
   });
+
+  test('a site written as its id or as its name is the same site', () => {
+    const sites = [{ id: 'site-519', name: 'Brit Hotel' }, { id: 'site-712', name: 'Leigham Court Hotel' }];
+    const list = [n({ id: 'by-id', site: 'site-519' }), n({ id: 'by-name', site: 'Brit Hotel' }), n({ id: 'other-id', site: 'site-712' })];
+    const got = filterNotificationsForRole({ notifications: list, ...sam, sites }).map(x => x.id);
+    assert.deepEqual(got, ['by-id', 'by-name']);
+    assert.deepEqual(filterNotificationsForRole({ notifications: list, ...lee, sites }).map(x => x.id), ['other-id']);
+  });
 });

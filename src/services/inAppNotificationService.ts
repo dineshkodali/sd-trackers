@@ -406,9 +406,20 @@ const norm = (v?: string | null) => String(v ?? '').trim().toLowerCase();
 const alnum = (v?: string | null) => norm(v).replace(/[^a-z0-9]/g, '');
 
 /** Same site, compared exactly (ignoring case / punctuation). No wildcards and no partial matches. */
-export function isSameSite(a?: string | null, b?: string | null): boolean {
-  const x = alnum(a), y = alnum(b);
+export function isSameSite(a?: string | null, b?: string | null, aliases?: Map<string, string>): boolean {
+  const canon = (v?: string | null) => { const k = alnum(v); return aliases?.get(k) ?? k; };
+  const x = canon(a), y = canon(b);
   return x !== '' && x === y;
+}
+
+/** Lets a site be written as its id ("site-519") or its name ("Brit Hotel"): both mean the same site. */
+export function buildSiteAliases(sites: Array<{ id?: string; name?: string } | string> = []): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const s of sites) {
+    if (!s || typeof s === 'string') continue;
+    if (s.id && s.name) map.set(alnum(s.id), alnum(s.name));
+  }
+  return map;
 }
 
 /** Same person: exact name, e-mail or profile id. No fuzzy / "contains" matching. */
@@ -444,6 +455,8 @@ export function filterNotificationsForRole(
     currentUserName: string;
     userEmail?: string;
     authProfileId?: string;
+    /** site id <-> name pairs so "site-519" and "Brit Hotel" are the same site */
+    sites?: Array<{ id?: string; name?: string }>;
   } | NotificationItem[],
   secondArg?: {
     role?: string;
@@ -466,6 +479,7 @@ export function filterNotificationsForRole(
   let currentUserName = '';
   let userEmail = '';
   let authProfileId = '';
+  let siteAliases = new Map<string, string>();
 
   if (Array.isArray(firstArg)) {
     notifications = firstArg;
@@ -484,6 +498,7 @@ export function filterNotificationsForRole(
     currentUserName = firstArg.currentUserName || '';
     userEmail = firstArg.userEmail || '';
     authProfileId = firstArg.authProfileId || '';
+    siteAliases = buildSiteAliases(firstArg.sites);
   }
 
   const isAdmin = userRole === 'Super Admin' || userRole === 'Admin';
@@ -493,7 +508,7 @@ export function filterNotificationsForRole(
   const mySites = [...allowedSites, assignedSite].map(x => String(x || '').trim()).filter(Boolean);
   const allSites = isAdmin || mySites.some(x => ALL_SITES_TOKENS.has(norm(x)));
   const mySiteList = mySites.filter(x => !ALL_SITES_TOKENS.has(norm(x)));
-  const inMySites = (site?: string) => !!site && (allSites || mySiteList.some(x => isSameSite(x, site)));
+  const inMySites = (site?: string) => !!site && (allSites || mySiteList.some(x => isSameSite(x, site, siteAliases)));
 
   const mine = (v?: string) => isSameUser(v, currentUserName, userEmail, authProfileId);
 

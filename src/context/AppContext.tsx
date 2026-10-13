@@ -2372,9 +2372,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       allowedSites,
       currentUserName,
       userEmail: authProfile?.email,
-      authProfileId: authProfile?.id
+      authProfileId: authProfile?.id,
+      sites: (sites || []).map((x: any) => ({ id: x?.id, name: x?.name }))
     });
-  }, [allDerivedNotifications, currentUserRole, assignedSite, allowedSites, currentUserName, authProfile]);
+  }, [allDerivedNotifications, currentUserRole, assignedSite, allowedSites, currentUserName, authProfile, sites]);
 
   const markNotificationAsRead = useCallback((id: string) => {
     setReadNotificationIds(prev => {
