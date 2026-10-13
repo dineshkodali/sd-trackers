@@ -95,7 +95,7 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   foodWastage: { page: 'Food Wastage Tracker', table: 'food_wastage_records' },
   dailyRegisterRooms: { page: 'Live Daily Registers - Room List', table: 'daily_register_rooms' },
   dailyRegisterRecords: { page: 'Live Daily Registers - Daily Register', table: 'daily_register_records' },
-  newArrivals: { page: 'Live Daily Registers - New Arrivals', table: 'new_arrivals_records' },
+  newArrivals: { page: 'Live Daily Registers - New Arrivals', table: 'new_arrivals_records', remove: 'none' },
   evictions: { page: 'Live Daily Registers - Evictions', table: 'eviction_records' },
 
   // HO Report Generator module (dedicated tables)
@@ -119,7 +119,7 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   food_wastage_records: { page: 'Food Wastage Tracker', table: 'food_wastage_records', alias: true },
   daily_register_rooms: { page: 'Live Daily Registers - Room List', table: 'daily_register_rooms', alias: true },
   daily_register_records: { page: 'Live Daily Registers - Daily Register', table: 'daily_register_records', alias: true },
-  new_arrivals_records: { page: 'Live Daily Registers - New Arrivals', table: 'new_arrivals_records', alias: true },
+  new_arrivals_records: { page: 'Live Daily Registers - New Arrivals', table: 'new_arrivals_records', remove: 'none', alias: true },
   eviction_records: { page: 'Live Daily Registers - Evictions', table: 'eviction_records', alias: true },
   finance_bills: { page: 'Finance Bills & Invoices', table: 'finance_bills', alias: true },
   vendor_invoices: { page: 'Vendor Invoices', table: 'vendor_invoices', alias: true },

@@ -374,6 +374,7 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['room', 'room', 'text'],
     ['email', 'email', 'text'],
     ['aspenCard', 'aspen_card', 'text'],
+    ['checkInDate', 'check_in_date', 'text'],
     ['status', 'status', 'text'],
     ['attachments', 'attachments', 'json'],
   ],

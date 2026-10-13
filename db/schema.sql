@@ -702,6 +702,8 @@ CREATE TABLE IF NOT EXISTS public.new_arrivals_records (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.new_arrivals_records ADD COLUMN IF NOT EXISTS check_in_date TEXT;
+
 -- 35. Eviction Records
 CREATE TABLE IF NOT EXISTS public.eviction_records (
   id TEXT PRIMARY KEY,

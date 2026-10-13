@@ -702,6 +702,7 @@ export const NEW_ARRIVALS_TABLE_COLUMNS: TableColumnConfig<NewArrivalRecord>[] =
   { key: 'country', label: 'Country', type: 'text', section: 'Arrival Information' },
   { key: 'language', label: 'Language', type: 'text', section: 'Arrival Information' },
   { key: 'contactNumber', label: 'Contact Number', type: 'text', section: 'Arrival Information' },
+  { key: 'checkInDate', label: 'Check-in Date', type: 'date', required: true, defaultValue: () => new Date().toISOString().slice(0, 10), section: 'Arrival Information' },
   { key: 'hotel', label: 'Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Allocation' },
   { key: 'room', label: 'Room', type: 'text', section: 'Allocation' },
   { key: 'email', label: 'Email', type: 'text', section: 'Allocation' },

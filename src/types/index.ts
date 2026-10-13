@@ -809,6 +809,7 @@ export interface NewArrivalRecord {
   room?: string; // Room
   email?: string; // Email
   aspenCard?: string; // Aspen Card
+  checkInDate?: string; // Check-in date (YYYY-MM-DD)
   status?: string; // Status (e.g. Arrived, Checked In)
   attachments?: RecordAttachment[];
   attachmentUrl?: string;

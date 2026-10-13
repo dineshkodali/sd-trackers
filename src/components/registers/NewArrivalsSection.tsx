@@ -4,7 +4,6 @@ import {
   Plus, 
   Search, 
   Edit3, 
-  Trash2, 
   Eye, 
   SlidersHorizontal, 
   ArrowUpDown, 
@@ -46,11 +45,9 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     newArrivalsRecords,
     addNewArrivalRecord,
     updateNewArrivalRecord,
-    deleteNewArrivalRecord,
     addDailyRegisterRecord,
     canCreateRecord,
     canEditRecord,
-    canDeleteRecord,
     currentUserRole,
     assignedSite,
     syncFromDatabase,
@@ -168,11 +165,16 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       room: data.room || '',
       email: data.email || '',
       aspenCard: data.aspenCard || '',
+      checkInDate: data.checkInDate || new Date().toISOString().slice(0, 10),
       status: data.status || 'Arrived',
       attachments: []
     } as any);
     setIsCreateModalOpen(false);
   };
+
+  // Anyone who can see an arrival's property may edit it (arrival details are corrected by frontline staff).
+  // Records are never deleted from here.
+  const canEditArrival = (a: NewArrivalRecord) => isSitePermitted(a.hotel, 'all') || canEditRecord(a.hotel);
 
   const handleEditSubmit = (data: Partial<NewArrivalRecord>) => {
     if (!editingRecord) return;
@@ -193,7 +195,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       roomNo: arrival.room,
       portRef: arrival.portReference,
       name: arrival.name,
-      checkInDate: new Date().toISOString().slice(0, 10),
+      checkInDate: arrival.checkInDate || new Date().toISOString().slice(0, 10),
       contactNo: arrival.contactNumber,
       email: arrival.email,
       dob: arrival.dob,
@@ -213,19 +215,19 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
   };
 
   const handleExportCsv = () => {
-    const headers = ['Port Ref', 'Name', 'D.O.B.', 'Country', 'Language', 'Contact No.', 'Hotel', 'Room', 'Email', 'Aspen Card', 'Status'];
+    const headers = ['Port Ref', 'Name', 'D.O.B.', 'Country', 'Language', 'Contact No.', 'Check-in Date', 'Hotel', 'Room', 'Email', 'Aspen Card', 'Status'];
     const rows = sortedArrivals.map(r => [
       r.portReference, r.name, r.dob || '', r.country || '', r.language || '',
-      r.contactNumber || '', r.hotel, r.room || '', r.email || '', r.aspenCard || '', r.status || 'Arrived'
+      r.contactNumber || '', r.checkInDate || '', r.hotel, r.room || '', r.email || '', r.aspenCard || '', r.status || 'Arrived'
     ]);
     exportTableToCsv({ filename: 'New_Arrivals_Queue.csv', headers, rows });
   };
 
   const handleExportPdf = () => {
-    const headers = ['Port Ref', 'Name', 'D.O.B.', 'Country', 'Language', 'Contact No.', 'Hotel', 'Room', 'Status'];
+    const headers = ['Port Ref', 'Name', 'D.O.B.', 'Country', 'Language', 'Contact No.', 'Check-in Date', 'Hotel', 'Room', 'Status'];
     const rows = sortedArrivals.map(r => [
       r.portReference, r.name, r.dob || '', r.country || '', r.language || '',
-      r.contactNumber || '', r.hotel, r.room || '', r.status || 'Arrived'
+      r.contactNumber || '', r.checkInDate || '', r.hotel, r.room || '', r.status || 'Arrived'
     ]);
     exportTableToPdf({
       filename: `New_Arrivals_${new Date().toISOString().slice(0, 10)}.pdf`,
@@ -299,6 +301,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
                 <th className="p-2.5">Country</th>
                 <th className="p-2.5">Language</th>
                 <th className="p-2.5">Contact No.</th>
+                <th className="p-2.5 cursor-pointer hover:bg-[#edebe9]" onClick={() => handleSort('checkInDate')}>Check-in Date</th>
                 <th className="p-2.5">Hotel</th>
                 <th className="p-2.5">Room</th>
                 <th className="p-2.5">Aspen Card</th>
@@ -333,6 +336,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
                     <td className="p-2.5">{arrival.country || '—'}</td>
                     <td className="p-2.5">{arrival.language || '—'}</td>
                     <td className="p-2.5 text-[#605e5c]">{arrival.contactNumber || '—'}</td>
+                    <td className="p-2.5 whitespace-nowrap">{arrival.checkInDate || '—'}</td>
                     <td className="p-2.5 font-medium">{arrival.hotel}</td>
                     <td className="p-2.5 font-mono text-[#0f766e]">{arrival.room || 'Unassigned'}</td>
                     <td className="p-2.5 font-mono">{arrival.aspenCard || '—'}</td>
@@ -347,7 +351,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
                     </td>
                     <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
                       <div className="flex items-center justify-end gap-1.5">
-                        {arrival.status !== 'Checked In' && canEditRecord() && (
+                        {arrival.status !== 'Checked In' && canEditArrival(arrival) && (
                           <button
                             onClick={() => handleAssignToDailyRegister(arrival)}
                             className="p-1 hover:bg-emerald-50 text-emerald-700 rounded-xs flex items-center gap-0.5 text-[11px] font-semibold"
@@ -364,22 +368,13 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        {canEditRecord() && (
+                        {canEditArrival(arrival) && (
                           <button
                             onClick={() => setEditingRecord(arrival)}
                             className="p-1 hover:bg-teal-50 text-[#0d9488] rounded-xs"
                             title="Edit Arrival"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {canDeleteRecord() && (
-                          <button
-                            onClick={() => deleteNewArrivalRecord(arrival.id)}
-                            className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs"
-                            title="Delete Arrival"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -442,7 +437,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
             setViewingRecord(null);
             setEditingRecord(rec);
           }}
-          canEdit={canEditRecord()}
+          canEdit={canEditArrival(viewingRecord)}
         />
       )}
 
