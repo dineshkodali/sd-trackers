@@ -1,3 +1,4 @@
+import { taskForUser } from '../../../server/financeWorkflow';
 import React, { useState } from 'react';
 import { 
   Compass, 
@@ -138,6 +139,7 @@ export const Sidebar: React.FC = () => {
     rolePermissions,
     isFinanceUser,
     financeBills,
+    authProfile,
     assignedSite,
     allowedSites,
     canAccessAllSites,
@@ -215,7 +217,10 @@ export const Sidebar: React.FC = () => {
   const vendorInvoicesCount = scopedBills.filter(b => b.billType === 'vendor_invoice').length;
   const creditCardBillsCount = scopedBills.filter(b => b.billType === 'credit_card_expense' || b.billType === 'other_expense').length;
   const deliveryNotesCount = scopedBills.filter(b => b.billType === 'delivery_note').length;
-  const financeApprovalsCount = scopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted').length;
+  const myFinanceTasks = (financeBills || []).filter(b => taskForUser({ id: authProfile?.id, role: currentUserRole }, b) !== null).length;
+  const financeApprovalsCount = isFinanceUser()
+    ? scopedBills.filter(b => b.status === 'awaiting_approval' || b.status === 'submitted' || b.status === 'under_review').length
+    : myFinanceTasks;
 
   const isAdminOrSuperAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
   const isNavActive = (page: string) => activePage === page;

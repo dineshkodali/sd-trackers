@@ -21,6 +21,8 @@ export interface NotificationItem {
   category?: NotificationCategory;
   recordId?: string;
   targetItem?: string;
+  /** When set, only this user (profile id) is shown the notification */
+  targetUserId?: string;
 }
 
 /**
@@ -153,6 +155,86 @@ function isGlobalAdminEvent(audit: AuditLog): boolean {
 /**
  * Synthesize raw events from audit logs, critical escalations, and change requests into standard NotificationItems
  */
+/**
+ * "You have something to do" notifications for the signed-in user, derived from the finance bills.
+ * They appear when a bill is sent to the user to confirm, when a question needs their answer, when a
+ * bill reaches final checks, and when a bill they uploaded is approved or rejected. They disappear
+ * by themselves once the task is done.
+ */
+export function deriveFinanceTaskNotifications(
+  bills: Array<{
+    id: string; billNumber: string; status: string; totalAmount?: number; siteName?: string; vendorName?: string;
+    submittedBy?: string; submitterName?: string; assignedApproverId?: string; assignedApproverName?: string;
+    updatedAt?: string; rejectionReason?: string; finalApprovedByName?: string;
+  }>,
+  user: { id?: string; role?: string },
+  now: number = Date.now()
+): NotificationItem[] {
+  if (!user.id) return [];
+  const out: NotificationItem[] = [];
+  const money = (n?: number) => (typeof n === 'number' ? `£${n.toFixed(2)}` : '');
+  const RECENT_MS = 7 * 24 * 60 * 60 * 1000;
+
+  for (const b of bills || []) {
+    const ts = b.updatedAt || new Date(now).toISOString();
+    const what = [b.vendorName || 'Expense', money(b.totalAmount), b.siteName ? `at ${b.siteName}` : ''].filter(Boolean).join(' ');
+    const base = {
+      time: formatNotificationTime(ts),
+      timestamp: ts,
+      read: false,
+      linkPage: 'financeApprovals',
+      site: b.siteName,
+      module: 'Finance',
+      category: 'approval_workflow' as NotificationCategory,
+      recordId: b.id,
+      targetItem: b.billNumber,
+      targetUserId: user.id,
+    };
+
+    if (b.status === 'awaiting_approval' && b.assignedApproverId === user.id) {
+      out.push({
+        ...base,
+        id: `notif-fin-confirm-${b.id}-${ts}`,
+        title: `Action needed: confirm bill ${b.billNumber}`,
+        description: `You have been asked to check ${what}. Confirm it, send it back with a question, or reject it.`,
+        type: 'urgent',
+        action: 'REQUEST',
+      });
+    } else if (b.status === 'query_raised' && b.submittedBy === user.id) {
+      out.push({
+        ...base,
+        id: `notif-fin-query-${b.id}-${ts}`,
+        title: `Information needed on bill ${b.billNumber}`,
+        description: `Finance sent ${what} back with a question. Open the bill, read the Queries tab and reply.`,
+        type: 'urgent',
+        action: 'REQUEST',
+      });
+    } else if (b.status === 'under_review' && ['Admin', 'Super Admin'].includes(String(user.role)) && (b.submittedBy !== user.id || user.role === 'Super Admin')) {
+      out.push({
+        ...base,
+        id: `notif-fin-final-${b.id}-${ts}`,
+        title: `Ready for final checks: bill ${b.billNumber}`,
+        description: `${what} has been confirmed${b.assignedApproverName ? ` by ${b.assignedApproverName}` : ''}. Give final approval or send it back.`,
+        type: 'info',
+        action: 'REQUEST',
+      });
+    } else if ((b.status === 'approved' || b.status === 'rejected') && b.submittedBy === user.id && now - new Date(ts).getTime() < RECENT_MS) {
+      const approved = b.status === 'approved';
+      out.push({
+        ...base,
+        id: `notif-fin-done-${b.id}-${b.status}`,
+        title: `Bill ${b.billNumber} ${approved ? 'approved' : 'rejected'}`,
+        description: approved
+          ? `${what} received final approval${b.finalApprovedByName ? ` from ${b.finalApprovedByName}` : ''}.`
+          : `${what} was rejected${b.rejectionReason ? `: ${b.rejectionReason}` : '.'}`,
+        type: approved ? 'success' : 'urgent',
+        action: 'INFO',
+      });
+    }
+  }
+  return out;
+}
+
 export function deriveInAppNotifications(params: {
   auditLogs: AuditLog[];
   escalations: EscalationRecord[];
@@ -385,6 +467,9 @@ export function filterNotificationsForRole(
     if (userRole === 'Admin') {
       return true;
     }
+
+    // Notifications addressed to one person (e.g. "confirm this bill") are only ever shown to that person
+    if (n.targetUserId) return !!authProfileId && n.targetUserId === authProfileId;
 
     // -------------------------------------------------------------------------
     // Strict User-Level RBAC Isolation:

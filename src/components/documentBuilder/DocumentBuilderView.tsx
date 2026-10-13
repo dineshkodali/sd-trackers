@@ -113,7 +113,11 @@ export const DocumentBuilderView: React.FC = () => {
     challengingSUs,
     referrals,
     dailyRegisterRecords,
+    authProfile,
+    currentUserName,
   } = useApp();
+  // Housing Officer name on incident reports is always the logged-in user (locked in the form)
+  const loginName = (authProfile?.name || currentUserName || '').trim();
   const isAdmin = ['Super Admin', 'Admin', 'Regional Manager', 'Operations Manager'].includes(currentUserRole);
   const isSuperAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
 
@@ -241,6 +245,7 @@ export const DocumentBuilderView: React.FC = () => {
         st.core.propertyId = siteText(hit);
       }
     }
+    if (loginName) st.values.ho = loginName;
     const normalized = normalizeState(st);
     setFieldValues(prev => ({ ...prev, ...toFieldValues(normalized) }));
     if (setTitle) {
@@ -248,7 +253,7 @@ export const DocumentBuilderView: React.FC = () => {
       autoTitle.current = t;
       setDocumentTitle(t);
     }
-  }, [selectedSite]);
+  }, [selectedSite, loginName]);
 
   const handleIrChange = useCallback((next: BuilderState) => {
     setFieldValues(prev => ({ ...prev, ...toFieldValues(next) }));
@@ -316,6 +321,15 @@ export const DocumentBuilderView: React.FC = () => {
   useEffect(() => {
     if (guided && !irState) initGuided(null, false);
   }, [guided, irState, initGuided]);
+
+  // Guided builder: fill the Housing Officer name from the login if it is still empty (e.g. login loaded late)
+  useEffect(() => {
+    if (irState && loginName && !(irState.values.ho || '').trim()) {
+      const next = cloneBuilderState(irState);
+      next.values.ho = loginName;
+      setFieldValues(prev => ({ ...prev, ...toFieldValues(normalizeState(next)) }));
+    }
+  }, [irState, loginName]);
 
   // Guided builder: keep the document title in step with the chosen incident (until the user edits it)
   useEffect(() => {
@@ -1355,6 +1369,7 @@ export const DocumentBuilderView: React.FC = () => {
                         state={irState}
                         onChange={handleIrChange}
                         siteSUs={siteSUs}
+                        lockedHo={loginName}
                         settings={irSettings}
                         onSettingsChange={handleIrSettings}
                         onWipe={wipeBuilderData}

@@ -55,6 +55,8 @@ interface FormProps {
   state: BuilderState;
   onChange: (next: BuilderState) => void;
   siteSUs: SiteSU[];
+  /** Logged-in user's name; when set, the Housing Officer name is filled with it and cannot be edited */
+  lockedHo?: string;
   settings: BuilderSettings;
   onSettingsChange: (s: BuilderSettings) => void;
   onWipe: () => void;
@@ -118,7 +120,7 @@ const isoDay = (back: number): string => {
 const residentLabel = (su: SiteSU) => `${su.name}${su.portRef ? ` (${su.portRef})` : ''}`;
 
 export const IncidentBuilderForm: React.FC<FormProps> = ({
-  state, onChange, siteSUs, settings, onSettingsChange, onWipe, onNewReport, guard, onToast,
+  state, onChange, siteSUs, lockedHo, settings, onSettingsChange, onWipe, onNewReport, guard, onToast,
 }) => {
   const scn = getScenario(state.scenarioId);
   const draft: Draft = state.drafts[scn.id] || newDraft(scn);
@@ -527,8 +529,10 @@ export const IncidentBuilderForm: React.FC<FormProps> = ({
                       <input
                         id={id}
                         type={d.type}
-                        className={INPUT}
                         placeholder={k === 'ho' ? 'Uses the Person Reporting name if left blank' : (d.hint || '')}
+                        readOnly={k === 'ho' && !!lockedHo}
+                        title={k === 'ho' && lockedHo ? 'Filled in from your login – cannot be changed' : undefined}
+                        className={`${INPUT} ${k === 'ho' && lockedHo ? 'bg-[#f1f5f9] cursor-not-allowed' : ''}`}
                         value={state.values[k] || ''}
                         onChange={e => set(e.target.value)}
                       />

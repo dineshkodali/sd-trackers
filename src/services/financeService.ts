@@ -900,10 +900,10 @@ class FinanceService {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ comments })
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) return { success: true };
-      }
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success) return { success: true };
+      // The server's answer is final when it refuses (never fall through to a direct database write)
+      if (res.status >= 400 && res.status < 500 && json?.error) return { success: false, error: json.error };
     } catch {}
 
     // 2. Direct Supabase RPC
@@ -930,10 +930,10 @@ class FinanceService {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ reason })
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) return { success: true };
-      }
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success) return { success: true };
+      // The server's answer is final when it refuses (never fall through to a direct database write)
+      if (res.status >= 400 && res.status < 500 && json?.error) return { success: false, error: json.error };
     } catch {}
 
     // 2. Direct Supabase RPC
@@ -1053,12 +1053,12 @@ class FinanceService {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ queryType, question, assignedTo, priority })
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          return { success: true, queryId: json.data.id };
-        }
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success && json.data) {
+        return { success: true, queryId: json.data.id };
       }
+      // The server's answer is final when it refuses (never fall through to a direct database write)
+      if (res.status >= 400 && res.status < 500 && json?.error) return { success: false, error: json.error };
     } catch {}
 
     // 2. Direct Supabase RPC
@@ -1086,10 +1086,10 @@ class FinanceService {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ responseText })
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) return { success: true };
-      }
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success) return { success: true };
+      // The server's answer is final when it refuses (never fall through to a direct database write)
+      if (res.status >= 400 && res.status < 500 && json?.error) return { success: false, error: json.error };
     } catch {}
 
     // 2. Direct Supabase RPC
@@ -1561,7 +1561,7 @@ class FinanceService {
         const { data, error } = await client
           .from('profiles')
           .select('id, name, email, role')
-          .in('role', ['Regional Manager', 'General Manager', 'Admin', 'Super Admin'])
+          .in('role', ['Regional Manager', 'General Manager', 'Admin', 'Super Admin', 'Finance Staff'])
           .order('name', { ascending: true });
         if (!error && data) {
           this.cachedApprovers = data;
@@ -1585,25 +1585,13 @@ class FinanceService {
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ approverId, approverName, notes })
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) return { success: true };
-      }
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success) return { success: true };
+      // The server's answer is final when it refuses (never fall through to a direct database write)
+      if (res.status >= 400 && res.status < 500 && json?.error) return { success: false, error: json.error };
     } catch {}
 
-    const client = this.supabase;
-    if (client) {
-      try {
-        const { error } = await client
-          .from('finance_bills')
-          .update({ status: 'awaiting_approval', updated_at: new Date().toISOString() })
-          .eq('id', billId);
-        if (!error) return { success: true };
-      } catch (e: any) {
-        return { success: false, error: e.message };
-      }
-    }
-    return { success: true };
+    return { success: false, error: 'Could not reach the server to send this bill for confirmation. Please try again.' };
   }
 
   // ==========================================

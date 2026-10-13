@@ -5,6 +5,15 @@ import crypto from 'crypto';
 import { getSupabaseAdmin } from '../supabase.js';
 import { requireAuth, requireRole } from '../middleware/requireAuth.js';
 import { resolveSiteId } from '../schemaAdapter.js';
+import {
+  APPROVER_ROLES,
+  canRaiseQuery,
+  canReplyToQuery,
+  canRouteForApproval,
+  checkApprover,
+  decideApproval,
+  statusAfterQueryReply,
+} from '../financeWorkflow.js';
 
 const router = Router();
 
@@ -32,6 +41,15 @@ router.use('/bills/:id', async (req, res, next) => {
   const { id } = req.params;
   let billSite: string | null | undefined;
   const supabase = getSupabaseAdmin();
+
+  // Someone who was asked to confirm / answer a query on this bill may open it even if it is at another site.
+  try {
+    const mine = (await getUnifiedStore(supabase)).bills.find(b => b.id === id);
+    const myId = String(user.id || '');
+    if (mine && myId && [mine.assigned_approver_id, mine.assignedApproverId, mine.submitted_by, mine.submittedBy].some(v => v && String(v) === myId)) {
+      return next();
+    }
+  } catch { /* fall through to the site check */ }
   if (supabase && isValidUuid(id)) {
     const { data, error } = await supabase.from('finance_bills').select('site_id').eq('id', id).maybeSingle();
     if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
@@ -646,9 +664,6 @@ router.get('/bills', requireAuth, async (req, res) => {
         ? user.assignedSites
         : (user.assignedSite ? [user.assignedSite] : []);
       const cleanUserSites = userSites.map((s: string) => String(s).trim()).filter((s: string) => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'All');
-      if (cleanUserSites.length === 0) {
-        return res.json({ success: true, count: 0, bills: [] });
-      }
       allowedSiteNames = cleanUserSites;
       allowedSiteIds = cleanUserSites.map(s => resolveSiteId(s) || s).filter(Boolean);
     }
@@ -693,15 +708,19 @@ router.get('/bills', requireAuth, async (req, res) => {
       combinedMap.set(b.id, b);
     }
     for (const b of dbBills) {
-      combinedMap.set(b.id, b);
+      // The native table has no assigned-approver columns: keep those from the unified store.
+      combinedMap.set(b.id, { ...(combinedMap.get(b.id) || {}), ...b });
     }
 
     let rawList = Array.from(combinedMap.values());
 
-    if (isRestricted && (allowedSiteIds.length > 0 || allowedSiteNames.length > 0)) {
+    if (isRestricted) {
       const allowedIdSet = new Set(allowedSiteIds.map(id => id.toLowerCase().trim()));
       const allowedNameSet = new Set(allowedSiteNames.map(name => name.toLowerCase().trim()));
+      const myId = String(user?.id || '');
       rawList = rawList.filter(b => {
+        // Bills I was asked to confirm, or uploaded, are always visible to me
+        if (myId && [b.assigned_approver_id, b.assignedApproverId, b.submitted_by, b.submittedBy].some((v: any) => v && String(v) === myId)) return true;
         const bId = String(b.site_id || b.siteId || '').toLowerCase().trim();
         const bName = String(b.siteName || (b.site && b.site.name) || '').toLowerCase().trim();
         return allowedIdSet.has(bId) || allowedNameSet.has(bName) || (bName && allowedSiteNames.some(s => bName.includes(s.toLowerCase().trim())));
@@ -1240,6 +1259,8 @@ router.post('/bills/:id/submit', requireAuth, async (req, res) => {
 });
 
 // POST /api/finance/bills/:id/approve
+//   awaiting_approval -> the chosen person CONFIRMS  -> under_review ("final checks")
+//   under_review      -> Finance gives FINAL APPROVAL -> approved
 router.post('/bills/:id/approve', requireAuth, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
@@ -1248,113 +1269,65 @@ router.post('/bills/:id/approve', requireAuth, async (req, res) => {
     const { comments } = req.body || {};
 
     const bill = store.bills.find(b => b.id === id);
-    if (!bill) return res.status(404).json({ error: 'Bill not found' });
+    if (!bill) return res.status(404).json({ success: false, error: 'Bill not found' });
 
     const callerId = req.user?.id;
-    const callerRole = req.user?.role;
-    const assignedId = bill.assigned_approver_id || bill.assignedApproverId;
-    const assignedName = bill.assigned_approver_name || bill.assignedApproverName;
-
-    // Strict rule: if assigned to a specific approver, only they (or Super Admin) can approve!
-    if (assignedId && callerId && assignedId !== callerId && callerRole !== 'Super Admin') {
-      return res.status(403).json({
-        success: false,
-        error: `This bill is assigned to ${assignedName || 'another approver'}. Only the assigned approver may approve this record.`
-      });
+    const callerName = req.user?.name || req.user?.email || 'Staff';
+    const decision = decideApproval({ id: callerId, role: req.user?.role }, bill);
+    if (decision.ok === false) {
+      return res.status(decision.httpStatus).json({ success: false, error: decision.error });
     }
 
-    // Regional Managers complete the intermediate review. Finance performs the
-    // final approval in a separate action after this transition.
-    if (callerRole === 'Regional Manager') {
-      if (bill.status !== 'awaiting_approval') {
-        return res.status(409).json({ success: false, error: 'This bill is not awaiting Regional Manager review.' });
-      }
-      const oldStatus = bill.status;
-      if (supabase) {
-        const { error } = await supabase.from('finance_bills').update({ status: 'under_review', updated_at: new Date().toISOString() }).eq('id', id);
-        if (!error) {
-          return res.json({ success: true, status: 'under_review' });
-        }
-      }
-      bill.status = 'under_review';
-      bill.updated_at = new Date().toISOString();
-      store.history.unshift({
-        id: `hist-${Date.now()}`,
-        bill_id: id,
-        old_status: oldStatus,
-        new_status: 'under_review',
-        changed_by: callerId || '00000000-0000-0000-0000-000000000000',
-        changed_by_name: req.user?.name || 'Regional Manager',
-        reason: comments || 'Regional Manager review completed; awaiting Finance final approval',
-        created_at: new Date().toISOString()
-      });
-      writeLocalStore(store);
-      return res.json({ success: true, status: 'under_review' });
+    const oldStatus = bill.status;
+    const nowIso = new Date().toISOString();
+    bill.status = decision.next;
+    bill.updated_at = nowIso;
+    if (decision.stage === 'confirm') {
+      bill.confirmed_by = callerId || null;
+      bill.confirmed_by_name = callerName;
+      bill.confirmed_at = nowIso;
+    } else {
+      bill.final_approved_by = callerId || null;
+      bill.finalApprovedByName = callerName;
+      bill.final_approved_at = nowIso;
     }
 
-    // Final approval is a Finance (Admin / Super Admin) decision only. Previously
-    // any other role fell through to the approval RPC below.
-    if (!['Admin', 'Super Admin'].includes(callerRole || '')) {
-      return res.status(403).json({ success: false, error: 'Only Finance (Admin / Super Admin) can grant final approval.' });
-    }
+    store.history.unshift({
+      id: `hist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      bill_id: id,
+      old_status: oldStatus,
+      new_status: decision.next,
+      changed_by: callerId || '00000000-0000-0000-0000-000000000000',
+      changed_by_name: callerName,
+      reason: comments || (decision.stage === 'confirm'
+        ? `Confirmed by ${callerName}; moved to final checks`
+        : 'Final Finance Approval granted'),
+      created_at: nowIso
+    });
+    await persistStore(store, supabase, callerId);
 
-    if (bill.status !== 'under_review') {
-      return res.status(409).json({ success: false, error: 'Finance final approval is available after Regional Manager review.' });
-    }
-
-    // Segregation of duties: the submitter cannot approve their own bill.
-    const submittedBy = bill.submitted_by || bill.submittedBy;
-    if (submittedBy && callerId && submittedBy === callerId && callerRole !== 'Super Admin') {
-      return res.status(403).json({ success: false, error: 'Segregation of duties: Submitter cannot grant final approval' });
-    }
-
-    // The approval RPC authorizes via auth.uid(), which is NULL for this
-    // service-role client, so the transition is performed here after the checks above.
+    // Mirror into the native tables when present (the unified store above is the source of truth)
     if (supabase) {
-      const nowIso = new Date().toISOString();
-      const { data: updatedRows, error } = await supabase.from('finance_bills').update({
-        status: 'approved',
-        final_approved_by: isValidUuid(callerId) ? callerId : null,
-        final_approved_at: nowIso,
-        updated_at: nowIso
-      }).eq('id', id).eq('status', 'under_review').select('id');
-      if (!error && updatedRows && updatedRows.length > 0) {
+      try {
+        const patch: any = { status: decision.next, updated_at: nowIso };
+        if (decision.stage === 'final') {
+          patch.final_approved_by = isValidUuid(callerId) ? callerId : null;
+          patch.final_approved_at = nowIso;
+        }
+        await supabase.from('finance_bills').update(patch).eq('id', id);
         await supabase.from('finance_bill_status_history').insert({
           bill_id: id,
-          old_status: 'under_review',
-          new_status: 'approved',
+          old_status: oldStatus,
+          new_status: decision.next,
           changed_by: isValidUuid(callerId) ? callerId : null,
-          reason: comments || 'Final Finance Approval granted'
-        }).then(() => {}, () => {});
-        return res.json({ success: true, status: 'approved' });
-      }
+          reason: comments || (decision.stage === 'confirm' ? 'Confirmed; moved to final checks' : 'Final Finance Approval granted')
+        });
+      } catch { /* native tables optional */ }
     }
 
-    if (bill) {
-      const oldStatus = bill.status;
-      bill.status = 'approved';
-      bill.final_approved_by = req.user?.id || '00000000-0000-0000-0000-000000000000';
-      bill.finalApprovedByName = req.user?.name || 'Admin';
-      bill.final_approved_at = new Date().toISOString();
-      bill.updated_at = new Date().toISOString();
-
-      store.history.unshift({
-        id: `hist-${Date.now()}`,
-        bill_id: id,
-        old_status: oldStatus,
-        new_status: 'approved',
-        changed_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
-        changed_by_name: req.user?.name || 'Admin',
-        reason: comments || 'Finance final approval signed off',
-        created_at: new Date().toISOString()
-      });
-      writeLocalStore(store);
-      return res.json({ success: true, status: 'approved' });
-    }
-
-    return res.status(404).json({ error: 'Bill not found' });
+    return res.json({ success: true, status: decision.next, stage: decision.stage });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -1365,18 +1338,19 @@ router.post('/bills/:id/reject', requireAuth, async (req, res) => {
     const store = await getUnifiedStore(supabase);
     const { id } = req.params;
     const { reason } = req.body || {};
-    if (!reason) return res.status(400).json({ error: 'Rejection reason is required' });
+    if (!reason || !String(reason).trim()) return res.status(400).json({ success: false, error: 'Rejection reason is required' });
 
     const bill = store.bills.find(b => b.id === id);
-    if (!bill) return res.status(404).json({ error: 'Bill not found' });
+    if (!bill) return res.status(404).json({ success: false, error: 'Bill not found' });
 
     const callerId = req.user?.id;
     const callerRole = req.user?.role;
+    const callerName = req.user?.name || req.user?.email || 'Staff';
     const assignedId = bill.assigned_approver_id || bill.assignedApproverId;
     const assignedName = bill.assigned_approver_name || bill.assignedApproverName;
 
-    // Strict rule: if assigned to a specific approver, only they (or Super Admin) can reject!
-    if (assignedId && callerId && assignedId !== callerId && callerRole !== 'Super Admin') {
+    // While a bill is with a chosen person, only they (or Super Admin) decide on it
+    if (bill.status === 'awaiting_approval' && assignedId && callerId && assignedId !== callerId && callerRole !== 'Super Admin') {
       return res.status(403).json({
         success: false,
         error: `This bill is assigned to ${assignedName || 'another approver'}. Only the assigned approver may reject this record.`
@@ -1388,42 +1362,52 @@ router.post('/bills/:id/reject', requireAuth, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Only approvers can reject a bill.' });
     }
 
+    if (!['draft', 'submitted', 'verification_pending', 'query_raised', 'awaiting_approval', 'under_review'].includes(String(bill.status))) {
+      return res.status(409).json({ success: false, error: `A bill that is "${String(bill.status).replace(/_/g, ' ')}" can no longer be rejected.` });
+    }
+
+    const oldStatus = bill.status;
+    const nowIso = new Date().toISOString();
+    bill.status = 'rejected';
+    bill.rejected_by = callerId || null;
+    bill.rejectedByName = callerName;
+    bill.rejected_at = nowIso;
+    bill.rejection_reason = String(reason).trim();
+    bill.updated_at = nowIso;
+    store.history.unshift({
+      id: `hist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      bill_id: id,
+      old_status: oldStatus,
+      new_status: 'rejected',
+      changed_by: callerId || '00000000-0000-0000-0000-000000000000',
+      changed_by_name: callerName,
+      reason: String(reason).trim(),
+      created_at: nowIso
+    });
+    await persistStore(store, supabase, callerId);
+
     if (supabase) {
       try {
-        const { data, error } = await supabase.rpc('fn_finance_reject_bill', {
-          p_bill_id: id,
-          p_reason: reason
+        await supabase.from('finance_bills').update({
+          status: 'rejected',
+          rejected_by: isValidUuid(callerId) ? callerId : null,
+          rejected_at: nowIso,
+          rejection_reason: String(reason).trim(),
+          updated_at: nowIso
+        }).eq('id', id);
+        await supabase.from('finance_bill_status_history').insert({
+          bill_id: id,
+          old_status: oldStatus,
+          new_status: 'rejected',
+          changed_by: isValidUuid(callerId) ? callerId : null,
+          reason: String(reason).trim()
         });
-        if (!error && data) return res.json(data);
-      } catch (e) {}
+      } catch { /* native tables optional */ }
     }
 
-    if (bill) {
-      const oldStatus = bill.status;
-      bill.status = 'rejected';
-      bill.rejected_by = req.user?.id || '00000000-0000-0000-0000-000000000000';
-      bill.rejectedByName = req.user?.name || 'Admin';
-      bill.rejected_at = new Date().toISOString();
-      bill.rejection_reason = reason;
-      bill.updated_at = new Date().toISOString();
-
-      store.history.unshift({
-        id: `hist-${Date.now()}`,
-        bill_id: id,
-        old_status: oldStatus,
-        new_status: 'rejected',
-        changed_by: req.user?.id || '00000000-0000-0000-0000-000000000000',
-        changed_by_name: req.user?.name || 'Admin',
-        reason: reason,
-        created_at: new Date().toISOString()
-      });
-      writeLocalStore(store);
-      return res.json({ success: true, status: 'rejected' });
-    }
-
-    return res.status(404).json({ error: 'Bill not found' });
+    return res.json({ success: true, status: 'rejected' });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -1472,11 +1456,18 @@ router.post('/bills/:id/queries', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const supabase = getSupabaseAdmin();
-    const store = readLocalStore();
+    const store = await getUnifiedStore(supabase);
     const { queryType, question, priority = 'normal', assignedTo } = req.body || {};
 
     if (!question || !question.trim()) {
       return res.status(400).json({ success: false, error: 'Question text is required' });
+    }
+
+    const targetBill = store.bills.find(b => b.id === id);
+    if (!targetBill) return res.status(404).json({ success: false, error: 'Bill not found' });
+    const allowedToAsk = canRaiseQuery({ id: req.user?.id, role: req.user?.role }, targetBill);
+    if (allowedToAsk.ok === false) {
+      return res.status(allowedToAsk.httpStatus).json({ success: false, error: allowedToAsk.error });
     }
 
     const callerId = req.user?.id || '00000000-0000-0000-0000-000000000000';
@@ -1487,7 +1478,8 @@ router.post('/bills/:id/queries', requireAuth, async (req, res) => {
       bill_id: id,
       raised_by: callerId,
       raisedByName: callerName,
-      assigned_to: assignedTo || null,
+      // Sent to the uploader unless Finance / the approver chose someone else
+      assigned_to: assignedTo || targetBill.submitted_by || targetBill.submittedBy || null,
       query_type: queryType || 'amount_discrepancy',
       question: question.trim(),
       priority: priority || 'normal',
@@ -1498,10 +1490,11 @@ router.post('/bills/:id/queries', requireAuth, async (req, res) => {
 
     store.queries.unshift(queryRecord);
 
-    // Update bill status to query_raised
-    const bill = store.bills.find(b => b.id === id);
+    // Update bill status to query_raised (remembering where it was so it can go back after the reply)
+    const bill = targetBill;
     if (bill && bill.status !== 'approved' && bill.status !== 'paid') {
       const oldStatus = bill.status;
+      if (oldStatus !== 'query_raised') bill.status_before_query = oldStatus;
       bill.status = 'query_raised';
       bill.updated_at = new Date().toISOString();
       store.history.unshift({
@@ -1516,11 +1509,12 @@ router.post('/bills/:id/queries', requireAuth, async (req, res) => {
       });
     }
 
-    writeLocalStore(store);
+    await persistStore(store, supabase, callerId);
 
     if (supabase) {
       try {
         await supabase.from('finance_bill_queries').insert([queryRecord]);
+        if (bill) await supabase.from('finance_bills').update({ status: bill.status, updated_at: bill.updated_at }).eq('id', id);
       } catch (e) {}
     }
 
@@ -1535,42 +1529,74 @@ router.post('/queries/:queryId/reply', requireAuth, async (req, res) => {
   try {
     const { queryId } = req.params;
     const supabase = getSupabaseAdmin();
-    const store = readLocalStore();
+    const store = await getUnifiedStore(supabase);
     const { responseText } = req.body || {};
 
     if (!responseText || !responseText.trim()) {
       return res.status(400).json({ success: false, error: 'Response text is required' });
     }
 
+    const query = store.queries.find(q => q.id === queryId);
+    if (!query) return res.status(404).json({ success: false, error: 'Query not found' });
+    const bill = store.bills.find(b => b.id === query.bill_id);
+    if (!bill) return res.status(404).json({ success: false, error: 'Bill not found' });
+
     const callerId = req.user?.id || '00000000-0000-0000-0000-000000000000';
     const callerName = req.user?.name || req.user?.email || 'Staff';
+    const allowed = canReplyToQuery({ id: req.user?.id, role: req.user?.role }, query, bill);
+    if (allowed.ok === false) {
+      return res.status(allowed.httpStatus).json({ success: false, error: allowed.error });
+    }
 
+    const nowIso = new Date().toISOString();
     const responseRecord = {
       id: `qresp-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
       query_id: queryId,
       response_text: responseText.trim(),
       responded_by: callerId,
       responderName: callerName,
-      created_at: new Date().toISOString()
+      created_at: nowIso
     };
-
     store.query_responses.push(responseRecord);
 
-    const query = store.queries.find(q => q.id === queryId);
-    if (query) {
-      query.status = 'in_review';
-      query.updated_at = new Date().toISOString();
+    query.status = 'responded';
+    query.updated_at = nowIso;
+
+    // Once every open query on the bill is answered it returns to the person who sent it back
+    let returnedTo: string | null = null;
+    if (bill.status === 'query_raised') {
+      const stillOpen = store.queries.filter(q => q.bill_id === bill.id && q.status === 'open').length;
+      const next = statusAfterQueryReply(bill, stillOpen);
+      if (next !== bill.status) {
+        const oldStatus = bill.status;
+        bill.status = next;
+        bill.status_before_query = null;
+        bill.updated_at = nowIso;
+        returnedTo = next;
+        store.history.unshift({
+          id: `hist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+          bill_id: bill.id,
+          old_status: oldStatus,
+          new_status: next,
+          changed_by: callerId,
+          changed_by_name: callerName,
+          reason: `Query answered by ${callerName}; back to ${next.replace(/_/g, ' ')}`,
+          created_at: nowIso
+        });
+      }
     }
 
-    writeLocalStore(store);
+    await persistStore(store, supabase, callerId);
 
     if (supabase) {
       try {
         await supabase.from('finance_query_responses').insert([responseRecord]);
+        await supabase.from('finance_bill_queries').update({ status: 'responded', updated_at: nowIso }).eq('id', queryId);
+        if (returnedTo) await supabase.from('finance_bills').update({ status: returnedTo, updated_at: nowIso }).eq('id', bill.id);
       } catch (e) {}
     }
 
-    return res.status(201).json({ success: true, data: responseRecord });
+    return res.status(201).json({ success: true, data: responseRecord, billStatus: bill.status });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -2173,7 +2199,7 @@ router.get('/approvers', requireAuth, async (_req, res) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, name, email, role')
-      .in('role', ['Regional Manager', 'General Manager', 'Admin', 'Super Admin'])
+      .in('role', APPROVER_ROLES)
       .order('name', { ascending: true });
 
     if (error) {
@@ -2193,28 +2219,46 @@ router.post('/bills/:id/request-approval', requireAuth, async (req, res) => {
     const supabase = getSupabaseAdmin();
     const store = await getUnifiedStore(supabase);
     const { id } = req.params;
-    const { approverId, approverName, notes } = req.body || {};
+    const { approverId, notes } = req.body || {};
     const callerId = req.user?.id || '00000000-0000-0000-0000-000000000000';
     const callerName = req.user?.name || req.user?.email || 'Authenticated User';
 
-    const billIdx = store.bills.findIndex(b => b.id === id);
-    const existing = billIdx !== -1 ? store.bills[billIdx] : null;
+    const bill = store.bills.find(b => b.id === id);
+    if (!bill) return res.status(404).json({ success: false, error: 'Bill not found' });
 
-    const oldStatus = existing?.status || 'submitted';
-    const newStatus = 'awaiting_approval';
+    const allowed = canRouteForApproval({ id: req.user?.id, role: req.user?.role }, bill);
+    if (allowed.ok === false) return res.status(allowed.httpStatus).json({ success: false, error: allowed.error });
 
-    if (billIdx !== -1) {
-      store.bills[billIdx].status = newStatus;
-      store.bills[billIdx].updated_at = new Date().toISOString();
-      if (approverId) store.bills[billIdx].assigned_approver_id = approverId;
-      if (approverName) store.bills[billIdx].assigned_approver_name = approverName;
+    // The chosen person must be a real user (looked up here, never trusted from the browser)
+    let approver: { id: string; name: string; role: string } | null = null;
+    const submitterId = String(bill.submitted_by || bill.submittedBy || '');
+    if (supabase && approverId) {
+      const { data } = await supabase.from('profiles').select('id, name, email, role').eq('id', approverId).maybeSingle();
+      if (data) approver = { id: data.id, name: data.name || data.email, role: data.role };
     }
+    if (!approver && approverId && approverId === submitterId) {
+      approver = { id: approverId, name: bill.submitterName || 'Uploader', role: 'Staff' };
+    }
+    const check = checkApprover(approver, bill);
+    if (check.ok === false) return res.status(check.httpStatus).json({ success: false, error: check.error });
+    if (!approver) return res.status(400).json({ success: false, error: 'Choose the person who should confirm this bill.' });
 
-    const noteText = notes 
-      ? `Moved to approval: ${notes}` 
-      : `Moved to approval for review by ${approverName || 'Regional Manager'}`;
+    const oldStatus = bill.status || 'submitted';
+    const newStatus = 'awaiting_approval';
+    const nowIso = new Date().toISOString();
+    bill.status = newStatus;
+    bill.updated_at = nowIso;
+    bill.assigned_approver_id = approver.id;
+    bill.assigned_approver_name = approver.name;
+    bill.assigned_at = nowIso;
+    bill.assigned_by_name = callerName;
+    bill.status_before_query = null;
 
-    const historyEntry = {
+    const noteText = notes
+      ? `Sent to ${approver.name} for confirmation: ${notes}`
+      : `Sent to ${approver.name} for confirmation`;
+
+    store.history.unshift({
       id: `hist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
       bill_id: id,
       old_status: oldStatus,
@@ -2222,18 +2266,13 @@ router.post('/bills/:id/request-approval', requireAuth, async (req, res) => {
       changed_by: callerId,
       changed_by_name: callerName,
       reason: noteText,
-      created_at: new Date().toISOString()
-    };
-    store.history.unshift(historyEntry);
+      created_at: nowIso
+    });
     await persistStore(store, supabase, callerId);
 
     if (supabase) {
       try {
-        await supabase.from('finance_bills').update({
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        }).eq('id', id);
-
+        await supabase.from('finance_bills').update({ status: newStatus, updated_at: nowIso }).eq('id', id);
         await supabase.from('finance_bill_status_history').insert([{
           bill_id: id,
           old_status: oldStatus,
@@ -2246,7 +2285,7 @@ router.post('/bills/:id/request-approval', requireAuth, async (req, res) => {
       }
     }
 
-    return res.json({ success: true, message: 'Bill moved to approval successfully' });
+    return res.json({ success: true, message: `Sent to ${approver.name} for confirmation`, assignedApproverId: approver.id, assignedApproverName: approver.name });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

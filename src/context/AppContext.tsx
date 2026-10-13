@@ -119,7 +119,7 @@ export interface ConfirmationRequest {
 export type { NotificationItem, NotificationType, NotificationActionType, NotificationCategory } from '../services/inAppNotificationService';
 import { 
   NotificationItem, 
-  deriveInAppNotifications, 
+  deriveInAppNotifications, deriveFinanceTaskNotifications, 
   filterNotificationsForRole 
 } from '../services/inAppNotificationService';
 import { financeService } from '../services/financeService';
@@ -2347,16 +2347,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [updateSettings, addAuditEntry]);
 
   // Synthesize notifications from live audit logs, escalations, change requests, and system events
+  const financeTaskNotifications = useMemo(
+    () => deriveFinanceTaskNotifications(financeBills, { id: authProfile?.id, role: currentUserRole }),
+    [financeBills, authProfile?.id, currentUserRole]
+  );
+
   const allDerivedNotifications = useMemo(() => {
     return deriveInAppNotifications({
       auditLogs,
       escalations,
       dataChangeRequests,
-      extraNotifications,
+      extraNotifications: [...financeTaskNotifications, ...extraNotifications],
       readNotificationIds,
       clearedBeforeTimestamp
     });
-  }, [auditLogs, escalations, dataChangeRequests, extraNotifications, readNotificationIds, clearedBeforeTimestamp]);
+  }, [auditLogs, escalations, dataChangeRequests, extraNotifications, financeTaskNotifications, readNotificationIds, clearedBeforeTimestamp]);
 
   // RBAC filtered notifications according to current user's role and assigned site
   const notifications = useMemo(() => {

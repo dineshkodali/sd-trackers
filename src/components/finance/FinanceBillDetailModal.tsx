@@ -1,3 +1,4 @@
+import { canRaiseQuery, canRouteForApproval, decideApproval } from '../../../server/financeWorkflow';
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -173,8 +174,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
       financeService.getApprovers().then(list => {
         if (list && list.length > 0) {
           setApprovers(list);
-          const rm = list.find(a => a.role === 'Regional Manager') || list[0];
-          if (rm) setSelectedApproverId(rm.id);
+          setSelectedApproverId(prev => prev || list.find(a => a.role === 'Regional Manager')?.id || list[0].id);
         }
       });
     }
@@ -189,8 +189,8 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
     try {
       const res = await financeService.financeFinalApproval(billId, approvalComments);
       if (!res.success) throw new Error(res.error || 'Approval failed');
-      setActionSuccess(isRegionalReviewer
-        ? 'Regional Manager review completed. The bill is now awaiting Finance final approval.'
+      setActionSuccess(workflowStage === 'confirm'
+        ? 'Confirmed. The bill has moved to final checks for Finance.'
         : 'Bill has received final approval from Finance.');
       await loadBillDetails();
       onRefresh();
@@ -206,7 +206,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
     setIsSubmittingApproval(true);
     setActionError(null);
     try {
-      const targetApprover = approvers.find(a => a.id === selectedApproverId);
+      const targetApprover = routeChoices.find(a => a.id === selectedApproverId);
       const res = await financeService.requestApproval(
         billId,
         selectedApproverId || undefined,
@@ -214,7 +214,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
         approvalConcernNotes.trim() || undefined
       );
       if (!res.success) throw new Error(res.error || 'Failed to move to approval');
-      setActionSuccess(`Bill moved to approval with ${targetApprover?.name || 'Regional Manager'}.`);
+      setActionSuccess(`Sent to ${targetApprover?.name || 'the chosen person'} for confirmation. They have been notified.`);
       setShowMoveToApprovalModal(false);
       setApprovalConcernNotes('');
       await loadBillDetails();
@@ -515,7 +515,27 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
     currentUserRole !== 'Super Admin';
 
   const canApprove = (isFinanceUser() || canManageFinance() || currentUserRole === 'Super Admin' || (bill?.assignedApproverId === authProfile?.id)) && !isAssignedToOther;
-  const isRegionalReviewer = currentUserRole === 'Regional Manager' && bill?.status === 'awaiting_approval' && bill?.assignedApproverId === authProfile?.id;
+  const wfBill = bill ? { status: bill.status, submittedBy: bill.submittedBy, assignedApproverId: bill.assignedApproverId } : null;
+  const wfMe = { id: authProfile?.id, role: currentUserRole };
+  const approvalDecision = wfBill ? decideApproval(wfMe, wfBill) : null;
+  const workflowStage = approvalDecision && approvalDecision.ok ? approvalDecision.stage : null;
+  const canSendForConfirmation = !!wfBill && canRouteForApproval(wfMe, wfBill).ok;
+  const canSendBack = !!wfBill && canRaiseQuery(wfMe, wfBill).ok;
+  const isOpenStage = !!bill && ['draft', 'submitted', 'verification_pending', 'query_raised', 'awaiting_approval', 'under_review'].includes(bill.status);
+  const isMyAssignment = !!bill && bill.status === 'awaiting_approval' && !!authProfile?.id && bill.assignedApproverId === authProfile.id;
+  const canRejectBill = isOpenStage && (
+    (['Regional Manager', 'Admin', 'Super Admin'].includes(currentUserRole) || isMyAssignment) &&
+    !(bill?.status === 'awaiting_approval' && bill.assignedApproverId && bill.assignedApproverId !== authProfile?.id && currentUserRole !== 'Super Admin')
+  );
+  const showDecisionControls = isOpenStage && (!!workflowStage || canRejectBill);
+  // The person the bill can be sent to: the approver list plus the uploader
+  const routeChoices = (() => {
+    const list = [...approvers];
+    if (bill?.submittedBy && !list.some(a => a.id === bill.submittedBy)) {
+      list.push({ id: bill.submittedBy, name: bill.submitterName || 'Uploader', email: '', role: 'Uploader' });
+    }
+    return list;
+  })();
   const attachmentTypeOptions = getFieldOptions('financeAttachmentTypes');
 
   return (
@@ -538,15 +558,15 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {bill && bill.status !== 'approved' && bill.status !== 'paid' && (
+            {bill && canSendForConfirmation && (
               <button
                 type="button"
                 onClick={() => setShowMoveToApprovalModal(true)}
                 className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] hover:bg-[#ccfbf1] rounded-xs shadow-xs transition-colors cursor-pointer"
-                title="Move bill to approval stage and assign RM approver"
+                title="Choose who should check and confirm this bill. They are notified straight away."
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Move to Approval</span>
+                <span>{bill.status === 'awaiting_approval' ? 'Change Approver' : 'Send for Confirmation'}</span>
               </button>
             )}
 
@@ -1055,8 +1075,36 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                       </div>
                     )}
 
+                    {/* Who has the bill now */}
+                    {bill?.status === 'awaiting_approval' && (
+                      <div className={`p-3 border rounded-xs text-xs flex items-center gap-2 font-medium ${isMyAssignment ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-purple-50 border-purple-200 text-purple-900'}`}>
+                        <Clock className="w-4 h-4 shrink-0" />
+                        <span>
+                          {isMyAssignment
+                            ? 'This bill is waiting for YOUR confirmation. Check it, then confirm, send it back with a question, or reject it.'
+                            : `Waiting for confirmation from ${bill.assignedApproverName || 'the chosen person'}${bill.assignedApproverName ? '' : ' (not assigned yet)'}.`}
+                        </span>
+                      </div>
+                    )}
+                    {bill?.status === 'under_review' && (
+                      <div className="p-3 bg-purple-50 border border-purple-200 rounded-xs text-xs text-purple-900 flex items-center gap-2 font-medium">
+                        <ShieldCheck className="w-4 h-4 shrink-0" />
+                        <span>
+                          Final checks: confirmed{bill.assignedApproverName ? ` by ${bill.assignedApproverName}` : ''}. Waiting for Finance final approval.
+                        </span>
+                      </div>
+                    )}
+                    {bill?.status === 'query_raised' && (
+                      <div className="p-3 bg-amber-50 border border-amber-300 rounded-xs text-xs text-amber-900 flex items-center gap-2 font-medium">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>
+                          Sent back with a question. Open the Queries tab to read it and reply; the bill returns to the approver once every question is answered.
+                        </span>
+                      </div>
+                    )}
+
                     {/* Notice for non-finance users */}
-                    {!isFinanceUser() && bill?.status !== 'approved' && bill?.status !== 'rejected' && (
+                    {!isFinanceUser() && !isMyAssignment && bill?.status !== 'approved' && bill?.status !== 'rejected' && (
                       <div className="p-3 bg-blue-50 border border-blue-200 rounded-xs text-xs text-blue-800 flex items-center gap-2 font-medium">
                         <Clock className="w-4 h-4 text-blue-600 shrink-0" />
                         <span>
@@ -1066,7 +1114,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                     )}
 
                     {/* Finance Decision Controls */}
-                    {bill?.status !== 'approved' && bill?.status !== 'rejected' && (isFinanceUser() || isRegionalReviewer) && (
+                    {showDecisionControls && (
                       <div className="pt-3 border-t border-[#e1dfdd] space-y-4">
                         <div className="space-y-1">
                           <label className="font-semibold text-[#605e5c] block">
@@ -1082,24 +1130,39 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                         </div>
 
                         {!showRejectBox ? (
-                          <div className="flex items-center gap-2 pt-1">
-                            <button
-                              type="button"
-                              disabled={isProcessingDecision}
-                              onClick={handleApprove}
-                              className="flex items-center gap-1.5 px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs transition-colors cursor-pointer text-xs disabled:opacity-50"
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              <span>{isRegionalReviewer ? 'Complete Regional Review' : 'Grant Final Finance Approval'}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setShowRejectBox(true)}
-                              className="flex items-center gap-1.5 px-4 py-2 border border-red-300 text-red-700 hover:bg-red-50 rounded-xs font-semibold transition-colors cursor-pointer text-xs"
-                            >
-                              <XCircle className="w-3.5 h-3.5" />
-                              <span>Reject Bill</span>
-                            </button>
+                          <div className="flex items-center gap-2 pt-1 flex-wrap">
+                            {workflowStage && (
+                              <button
+                                type="button"
+                                disabled={isProcessingDecision}
+                                onClick={handleApprove}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs transition-colors cursor-pointer text-xs disabled:opacity-50"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>{workflowStage === 'confirm' ? 'Confirm & Move to Final Checks' : 'Grant Final Finance Approval'}</span>
+                              </button>
+                            )}
+                            {canSendBack && (
+                              <button
+                                type="button"
+                                onClick={() => { setActiveTab('queries'); setShowNewQueryBox(true); }}
+                                className="flex items-center gap-1.5 px-4 py-2 border border-amber-400 text-amber-800 hover:bg-amber-50 rounded-xs font-semibold transition-colors cursor-pointer text-xs"
+                                title="Ask the uploader for a document or an explanation"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                <span>Send Back with Question</span>
+                              </button>
+                            )}
+                            {canRejectBill && (
+                              <button
+                                type="button"
+                                onClick={() => setShowRejectBox(true)}
+                                className="flex items-center gap-1.5 px-4 py-2 border border-red-300 text-red-700 hover:bg-red-50 rounded-xs font-semibold transition-colors cursor-pointer text-xs"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>Reject Bill</span>
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div className="border border-red-200 rounded-xs bg-red-50/50 p-4 space-y-3">
@@ -1633,7 +1696,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
             >
               Close
             </button>
-            {activeTab === 'approval' && isFinanceUser() && bill?.status !== 'approved' && bill?.status !== 'rejected' && !showRejectBox ? (
+            {activeTab === 'approval' && !!workflowStage && !showRejectBox ? (
               <button
                 type="button"
                 disabled={isProcessingDecision}
@@ -1641,7 +1704,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                 className="flex items-center gap-1.5 px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs font-semibold shadow-xs transition-colors cursor-pointer text-xs disabled:opacity-50"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
-                <span>Grant Approval</span>
+                <span>{workflowStage === 'confirm' ? 'Confirm' : 'Grant Approval'}</span>
               </button>
             ) : (
               <button
@@ -1827,7 +1890,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-[#edebe9]">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-[#0d9488]" />
-                <h4 className="font-bold text-sm text-[#242424]">Move to Approval</h4>
+                <h4 className="font-bold text-sm text-[#242424]">Send for Confirmation</h4>
               </div>
               <button
                 type="button"
@@ -1839,25 +1902,25 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
             </div>
 
             <p className="text-xs text-[#605e5c]">
-              Route this record to a Regional Manager or Admin for sign-off.
+              Choose who should check this bill. They get a notification, and can confirm it, send it back with a question, or reject it. Once confirmed it moves to final checks for Finance.
             </p>
 
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-[#323130] mb-1">
-                  Select Approver (Regional Manager) <span className="text-red-500">*</span>
+                  Who should check and confirm it? <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedApproverId}
                   onChange={e => setSelectedApproverId(e.target.value)}
                   className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488]"
                 >
-                  {approvers.length === 0 ? (
-                    <option value="">Loading approvers...</option>
+                  {routeChoices.length === 0 ? (
+                    <option value="">Loading people...</option>
                   ) : (
-                    approvers.map(a => (
+                    routeChoices.map(a => (
                       <option key={a.id} value={a.id}>
-                        {a.name} ({a.role})
+                        {a.name} ({a.id === bill?.submittedBy ? 'Uploader' : a.role})
                       </option>
                     ))
                   )}
@@ -1866,7 +1929,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
 
               <div>
                 <label className="block font-semibold text-[#323130] mb-1">
-                  Approval Notes / Concerns (Optional)
+                  Message to them – what should they check? (Optional)
                 </label>
                 <textarea
                   rows={3}
@@ -1892,7 +1955,7 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                 disabled={isSubmittingApproval}
                 className="px-4 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs disabled:opacity-50"
               >
-                {isSubmittingApproval ? 'Submitting...' : 'Confirm & Move'}
+                {isSubmittingApproval ? 'Sending...' : 'Send & Notify'}
               </button>
             </div>
           </div>

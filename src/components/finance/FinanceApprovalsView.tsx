@@ -25,6 +25,7 @@ import { useTableSchema } from '../../hooks/useTableSchema';
 import { AccessDeniedView } from '../common/AccessDeniedView';
 import { FINANCE_APPROVALS_TABLE_COLUMNS, FINANCE_STATUS_BADGE_CLASSES } from '../../data/defaultTableSchemas';
 import type { FinanceBill } from '../../types/finance';
+import { taskForUser } from '../../../server/financeWorkflow';
 
 const approvalExportColumns: ExportColumnOption[] = [
   { id: 'billNumber', label: 'Bill Reference' },
@@ -103,13 +104,24 @@ export const FinanceApprovalsView: React.FC = () => {
     loadData();
   }, []);
 
+  // Bills this person has been asked to confirm / answer (or uploaded themselves). They can work on these
+  // even if they are not in the Finance team and the bill is at another site.
+  const myId = authProfile?.id || '';
+  const isMine = (b: FinanceBill) =>
+    !!myId && (b.assignedApproverId === myId || b.submittedBy === myId);
+  const myTaskCount = useMemo(
+    () => bills.filter(b => taskForUser({ id: myId, role: currentUserRole }, b) !== null).length,
+    [bills, myId, currentUserRole]
+  );
+
   const filteredBills = useMemo(() => {
     return bills.filter(b => {
-      if (!isSitePermitted(b.siteName, siteFilter)) return false;
+      if (!isFinanceUser() && !isMine(b)) return false;
+      if (!isMine(b) && !isSitePermitted(b.siteName, siteFilter)) return false;
 
       if (statusFilter !== 'all') {
         if (statusFilter === 'pending_any') {
-          if (b.status !== 'submitted' && b.status !== 'under_review' && b.status !== 'awaiting_approval' && b.status !== 'verification_pending') {
+          if (b.status !== 'submitted' && b.status !== 'under_review' && b.status !== 'awaiting_approval' && b.status !== 'verification_pending' && b.status !== 'query_raised') {
             return false;
           }
         } else if (b.status !== statusFilter) {
@@ -140,7 +152,7 @@ export const FinanceApprovalsView: React.FC = () => {
         ? String(valA).localeCompare(String(valB))
         : String(valB).localeCompare(String(valA));
     });
-  }, [bills, siteFilter, statusFilter, typeFilter, searchQuery, sortField, sortAsc]);
+  }, [bills, siteFilter, statusFilter, typeFilter, searchQuery, sortField, sortAsc, myId, currentUserRole]);
 
   const paginatedBills = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -290,7 +302,7 @@ export const FinanceApprovalsView: React.FC = () => {
 
 // Strict RBAC Guard: Only Central Finance or Super Admin can access the Finance Approvals Queue
   // NOTE: This MUST be placed after all hooks to comply with React's Rules of Hooks.
-  if (!isFinanceUser()) {
+  if (!isFinanceUser() && !bills.some(isMine)) {
     return (
       <AccessDeniedView
         pageName="Finance Approvals & Sign-off"
@@ -314,7 +326,7 @@ export const FinanceApprovalsView: React.FC = () => {
                 {pendingActionCount > 0 ? (
                   <span className="text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Clock className="w-3 h-3 text-amber-600" />
-                    {pendingActionCount} Pending Sign-off
+                    {isFinanceUser() ? `${pendingActionCount} Pending Sign-off` : `${myTaskCount} waiting for you`}
                   </span>
                 ) : (
                   <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
