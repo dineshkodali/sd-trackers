@@ -56,6 +56,7 @@ import { FoodSurveysView } from './components/food/FoodSurveysView';
 import { RoomChecksView } from './components/room/RoomChecksView';
 import { ServiceUsersView } from './components/serviceUsers/ServiceUsersView';
 import { PropertyManagementView } from './components/propertyManagement/PropertyManagementView';
+import { RoomManagementView } from './components/rooms/RoomManagementView';
 import { PageMaintenanceView } from './components/common/PageMaintenanceView';
 import { SuperAdminMaintenanceBanner } from './components/common/SuperAdminMaintenanceBanner';
 import { getPageTitle } from './config/pageRegistry';
@@ -227,6 +228,8 @@ function AppLayout() {
         return <ServiceUsersView />;
       case 'propertyManagement':
         return <PropertyManagementView />;
+      case 'roomManagement':
+        return <RoomManagementView />;
       case 'welfareChecks':
         return <WelfareChecksView />;
       case 'foodSurveys':

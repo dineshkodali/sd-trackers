@@ -1,3 +1,4 @@
+import { isOutOfUse } from '../utils/roomManagementLogic';
 import { apiService, WriteResult } from './apiService';
 import { INITIAL_SITES } from '../data/initialData';
 import {
@@ -139,7 +140,7 @@ export const suPropertyService = {
       if (!roomCheck.success || !roomCheck.data) {
         return { success: false, error: 'Selected accommodation room does not exist.' };
       }
-      if (roomCheck.data.status === 'Under Maintenance' || roomCheck.data.status === 'Blocked') {
+      if (isOutOfUse(roomCheck.data.status)) {
         return { success: false, error: `Selected Room ${roomCheck.data.roomNumber} is currently ${roomCheck.data.status} and cannot accept occupants.` };
       }
       const existingPlcs = await this.getPlacements({ propertyId: initialPlacement.propertyId, status: 'Active' });
@@ -504,6 +505,7 @@ export const suPropertyService = {
     const id = data.id || crypto.randomUUID();
     const ref = data.roomReference || this.generateReference('ROOM', Math.floor(Math.random() * 90000) + 1000);
     const record: PropertyRoom = {
+      ...data, // room-management details (bathroom, accessibility, cleaning, ...) pass straight through
       id,
       roomReference: ref,
       propertyId: data.propertyId!,
@@ -561,7 +563,7 @@ export const suPropertyService = {
     let newStatus = room.status;
     let newOccupancyStatus = 'Available';
 
-    if (room.status === 'Under Maintenance' || room.status === 'Blocked') {
+    if (isOutOfUse(room.status)) {
       newOccupancyStatus = activePlcs.length > 0 ? (activePlcs.length >= cap ? 'Occupied' : 'Partially Occupied') : 'Available';
     } else {
       if (activePlcs.length === 0) {
@@ -629,7 +631,7 @@ export const suPropertyService = {
       return { success: false, error: 'Target room does not exist.' };
     }
     const room = roomRes.data;
-    if (room.status === 'Under Maintenance' || room.status === 'Blocked') {
+    if (isOutOfUse(room.status)) {
       return { success: false, error: `Room ${room.roomNumber} is currently ${room.status} and cannot accept occupants.` };
     }
 
@@ -710,7 +712,7 @@ export const suPropertyService = {
       return { success: false, error: 'Target room does not exist.' };
     }
     const targetRoom = targetRoomRes.data;
-    if (targetRoom.status === 'Under Maintenance' || targetRoom.status === 'Blocked') {
+    if (isOutOfUse(targetRoom.status)) {
       return { success: false, error: `Target Room ${targetRoom.roomNumber} is currently ${targetRoom.status} and cannot accept occupants.` };
     }
 

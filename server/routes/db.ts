@@ -1,3 +1,4 @@
+import { isOutOfUse } from '../../src/utils/roomManagementLogic.js';
 import fs from 'fs';
 import path from 'path';
 import { Router, Request, Response } from 'express';
@@ -166,6 +167,25 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   property_documents: { page: 'Property Documents', table: 'property_documents', alias: true },
   propertyContacts: { page: 'Property Contacts', table: 'property_contacts' },
   property_contacts: { page: 'Property Contacts', table: 'property_contacts', alias: true },
+
+  // Room Management: beds, items in rooms, common stock, ledger, kits, issues, timeline
+  roomBeds: { page: 'Room Beds', table: 'room_beds' },
+  room_beds: { page: 'Room Beds', table: 'room_beds', alias: true },
+  // The item catalogue and kit templates are shared reference data: anyone can add, only admins delete
+  inventoryItems: { page: 'Inventory Catalogue', table: 'inventory_items', remove: 'admin' },
+  inventory_items: { page: 'Inventory Catalogue', table: 'inventory_items', remove: 'admin', alias: true },
+  propertyInventoryStock: { page: 'Property Inventory', table: 'property_inventory_stock' },
+  property_inventory_stock: { page: 'Property Inventory', table: 'property_inventory_stock', alias: true },
+  roomInventory: { page: 'Room Inventory', table: 'room_inventory' },
+  room_inventory: { page: 'Room Inventory', table: 'room_inventory', alias: true },
+  inventoryMovements: { page: 'Inventory Movements', table: 'inventory_movements' },
+  inventory_movements: { page: 'Inventory Movements', table: 'inventory_movements', alias: true },
+  roomKitTemplates: { page: 'Room Kit Templates', table: 'room_kit_templates', remove: 'admin' },
+  room_kit_templates: { page: 'Room Kit Templates', table: 'room_kit_templates', remove: 'admin', alias: true },
+  roomIssues: { page: 'Room Issues', table: 'room_issues' },
+  room_issues: { page: 'Room Issues', table: 'room_issues', alias: true },
+  roomActivityLog: { page: 'Room Activity', table: 'room_activity_log' },
+  room_activity_log: { page: 'Room Activity', table: 'room_activity_log', alias: true },
 
   // Placements & Audit Logs
   placements: { page: 'Placements Master', table: 'placements' },
@@ -589,6 +609,12 @@ export const TABLE_PARENT_SCOPE: Record<string, { linkColumn: string; linkField:
   property_compliance: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
   property_documents: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
   property_contacts: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  room_beds: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  property_inventory_stock: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  room_inventory: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  inventory_movements: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  room_issues: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
+  room_activity_log: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
   food_meal_ratings: { linkColumn: 'food_survey_id', linkField: 'foodSurveyId', parentTable: 'food_surveys' },
   room_check_items: { linkColumn: 'room_check_id', linkField: 'roomCheckId', parentTable: 'room_checks' },
   finance_bill_items: { linkColumn: 'bill_id', linkField: 'billId', parentTable: 'finance_bills' },
@@ -1160,7 +1186,13 @@ async function cascadeDeleteProperty(client: SupabaseClient, propertyIds: string
     'property_assets',
     'property_compliance',
     'property_documents',
-    'property_contacts'
+    'property_contacts',
+    'room_beds',
+    'property_inventory_stock',
+    'room_inventory',
+    'inventory_movements',
+    'room_issues',
+    'room_activity_log'
   ];
   for (const childTable of childTables) {
     try {
@@ -1231,7 +1263,7 @@ async function cascadeDeleteServiceUser(client: SupabaseClient, suIds: string[])
 
       const count = remaining?.length || 0;
       const cap = Number(roomData?.capacity) || 1;
-      const baseStatus = roomData?.status === 'Under Maintenance' || roomData?.status === 'Blocked' ? roomData.status : (count >= cap ? 'Occupied' : 'Available');
+      const baseStatus = isOutOfUse(roomData?.status) ? roomData.status : (count >= cap ? 'Occupied' : 'Available');
       const occStatus = count >= cap ? 'Occupied' : (count > 0 ? 'Partially Occupied' : 'Available');
 
       await client.from('property_rooms').update({

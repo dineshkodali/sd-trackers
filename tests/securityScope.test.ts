@@ -13,6 +13,8 @@ const GLOBAL_TABLES = new Set([
   'app_settings', 'email_notification_rules', 'field_options', 'finance_vendors',
   'ho_report_templates', 'profiles', 'property_user_assignments', 'role_permissions',
   'table_schemas', 'user_groups',
+  // Room Management reference data: the shared item catalogue and standard room kits (deletes are admin-only)
+  'inventory_items', 'room_kit_templates',
 ]);
 
 test('every entity exposed by /api/db is site-scoped, parent-scoped, admin-only or declared global', () => {
@@ -35,6 +37,7 @@ test('service-user and property child tables are parent-scoped', () => {
   for (const table of [
     'service_user_contacts', 'service_user_household', 'service_user_support', 'service_user_documents',
     'property_rooms', 'property_facilities', 'property_assets', 'property_compliance', 'property_documents', 'property_contacts',
+    'room_beds', 'property_inventory_stock', 'room_inventory', 'inventory_movements', 'room_issues', 'room_activity_log',
   ]) {
     assert.ok(TABLE_PARENT_SCOPE[table], `${table} must be scoped through its parent`);
   }

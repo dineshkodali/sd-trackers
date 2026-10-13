@@ -1,8 +1,10 @@
+import { isOutOfUse } from '../src/utils/roomManagementLogic.js';
 import fs from 'fs';
 import path from 'path';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from './supabase.js';
 import { INITIAL_SITES } from '../src/data/initialData.js';
+import { INVENTORY_ITEM_SEED, KIT_TEMPLATE_SEED } from '../src/data/roomInventorySeed.js';
 
 /**
  * Cloud-Backed Master Data Store for Service Users, Properties, Rooms & Placements.
@@ -29,7 +31,15 @@ export const MASTER_TABLES = new Set([
   'service_user_household',
   'service_user_support',
   'service_user_documents',
-  'placements'
+  'placements',
+  'room_beds',
+  'inventory_items',
+  'property_inventory_stock',
+  'room_inventory',
+  'inventory_movements',
+  'room_kit_templates',
+  'room_issues',
+  'room_activity_log'
 ]);
 
 export interface MasterStoreState {
@@ -46,6 +56,14 @@ export interface MasterStoreState {
   service_user_support: any[];
   service_user_documents: any[];
   placements: any[];
+  room_beds: any[];
+  inventory_items: any[];
+  property_inventory_stock: any[];
+  room_inventory: any[];
+  inventory_movements: any[];
+  room_kit_templates: any[];
+  room_issues: any[];
+  room_activity_log: any[];
 }
 
 let inMemoryCache: MasterStoreState | null = null;
@@ -116,7 +134,15 @@ export function buildInitialMasterData(): MasterStoreState {
     service_user_household: [],
     service_user_support: [],
     service_user_documents: [],
-    placements: []
+    placements: [],
+    room_beds: [],
+    inventory_items: INVENTORY_ITEM_SEED.map(i => ({ ...i })),
+    property_inventory_stock: [],
+    room_inventory: [],
+    inventory_movements: [],
+    room_kit_templates: KIT_TEMPLATE_SEED.map(k => ({ ...k, items: k.items.map(l => ({ ...l })) })),
+    room_issues: [],
+    room_activity_log: []
   };
 }
 
@@ -146,6 +172,13 @@ export async function getMasterStore(): Promise<MasterStoreState> {
 
   const disk = readDiskBackup();
   let state = disk || buildInitialMasterData();
+  {
+    // Files / cloud rows saved before Room Management existed lack the new tables: add them.
+    const fresh = buildInitialMasterData() as any;
+    for (const table of Object.keys(fresh)) {
+      if (!Array.isArray((state as any)[table])) (state as any)[table] = fresh[table];
+    }
+  }
 
   const client = getSupabaseAdmin();
   if (client) {
@@ -281,7 +314,13 @@ export const masterDataStore = {
           'property_assets',
           'property_compliance',
           'property_documents',
-          'property_contacts'
+          'property_contacts',
+          'room_beds',
+          'property_inventory_stock',
+          'room_inventory',
+          'inventory_movements',
+          'room_issues',
+          'room_activity_log'
         ];
         for (const childTable of childTables) {
           const childRecords = store[childTable] || [];
@@ -299,6 +338,22 @@ export const masterDataStore = {
             await persistTable('sites' as any, filteredSites);
           }
         }
+      }
+
+      // Deleting a room removes its beds, items, issues and timeline (movements keep their history)
+      if (table === 'property_rooms') {
+        for (const childTable of ['room_beds', 'room_inventory', 'room_issues', 'room_activity_log'] as Array<keyof MasterStoreState>) {
+          const childRecords = store[childTable] || [];
+          const kept = childRecords.filter((c: any) => c.roomId !== id && c.room_id !== id);
+          if (kept.length !== childRecords.length) await persistTable(childTable, kept);
+        }
+        const movements = store.inventory_movements || [];
+        const cleaned = movements.map((m: any) => ({
+          ...m,
+          fromRoomId: (m.fromRoomId ?? m.from_room_id) === id ? undefined : m.fromRoomId,
+          toRoomId: (m.toRoomId ?? m.to_room_id) === id ? undefined : m.toRoomId,
+        }));
+        await persistTable('inventory_movements', cleaned);
       }
 
       // Cascade delete child entities and release room placements if deleting from service_users
@@ -335,10 +390,10 @@ export const masterDataStore = {
             const otherActive = remainingPlacements.filter((rp: any) => (rp.roomId === roomId || rp.room_id === roomId) && rp.status === 'Active');
             const cap = Number(room.capacity) || 1;
             if (otherActive.length === 0) {
-              room.status = room.status === 'Under Maintenance' || room.status === 'Blocked' ? room.status : 'Available';
+              room.status = isOutOfUse(room.status) ? room.status : 'Available';
               room.occupancyStatus = 'Available';
             } else {
-              room.status = otherActive.length >= cap ? 'Occupied' : (room.status === 'Under Maintenance' || room.status === 'Blocked' ? room.status : 'Partially Occupied');
+              room.status = otherActive.length >= cap ? 'Occupied' : (isOutOfUse(room.status) ? room.status : 'Partially Occupied');
               room.occupancyStatus = otherActive.length >= cap ? 'Occupied' : 'Partially Occupied';
             }
             roomsChanged = true;

@@ -128,6 +128,22 @@ export interface PropertyRoom {
   occupancyStatus: string;
   description?: string;
   notes?: string;
+  // Room management details
+  bathroomType?: string;
+  accessibilityFeatures?: string;
+  isAccessible?: boolean;
+  isFamilyRoom?: boolean;
+  genderRestriction?: string;
+  cleaningStatus?: string;
+  lastCleanedAt?: string;
+  lastInspectedAt?: string;
+  nextInspectionDue?: string;
+  keyReference?: string;
+  blockedReason?: string;
+  blockedUntil?: string;
+  voidSince?: string;
+  fireSafetyNotes?: string;
+  kitTemplateId?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -158,6 +174,16 @@ export interface PropertyAsset {
   warrantyExpiry?: string;
   status: 'Active' | 'In Repair' | 'Retired';
   notes?: string;
+  assetTag?: string;
+  manufacturer?: string;
+  model?: string;
+  supplier?: string;
+  purchaseCost?: number;
+  lastServiceDate?: string;
+  nextServiceDue?: string;
+  patTestDate?: string;
+  patNextDue?: string;
+  locationDetail?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -215,6 +241,8 @@ export interface Placement {
   siteId: string;
   propertyId: string;
   roomId: string;
+  /** Which bed in the room (see room_beds) */
+  bedId?: string;
   startDate: string;
   endDate?: string;
   status: 'Active' | 'Completed' | 'Cancelled' | 'Transferred';

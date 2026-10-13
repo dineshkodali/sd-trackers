@@ -662,6 +662,21 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['occupancyStatus', 'occupancy_status', 'text'],
     ['description', 'description', 'text'],
     ['notes', 'notes', 'text'],
+    ['bathroomType', 'bathroom_type', 'text'],
+    ['accessibilityFeatures', 'accessibility_features', 'text'],
+    ['isAccessible', 'is_accessible', 'bool'],
+    ['isFamilyRoom', 'is_family_room', 'bool'],
+    ['genderRestriction', 'gender_restriction', 'text'],
+    ['cleaningStatus', 'cleaning_status', 'text'],
+    ['lastCleanedAt', 'last_cleaned_at', 'text'],
+    ['lastInspectedAt', 'last_inspected_at', 'text'],
+    ['nextInspectionDue', 'next_inspection_due', 'text'],
+    ['keyReference', 'key_reference', 'text'],
+    ['blockedReason', 'blocked_reason', 'text'],
+    ['blockedUntil', 'blocked_until', 'text'],
+    ['voidSince', 'void_since', 'text'],
+    ['fireSafetyNotes', 'fire_safety_notes', 'text'],
+    ['kitTemplateId', 'kit_template_id', 'text'],
   ],
   placements: [
     ['placementReference', 'placement_reference', 'text'],
@@ -669,6 +684,7 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['siteId', 'site_id', 'text'],
     ['propertyId', 'property_id', 'text'],
     ['roomId', 'room_id', 'text'],
+    ['bedId', 'bed_id', 'text'],
     ['startDate', 'start_date', 'text'],
     ['endDate', 'end_date', 'text'],
     ['status', 'status', 'text'],
@@ -715,6 +731,114 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['warrantyExpiry', 'warranty_expiry', 'text'],
     ['status', 'status', 'text'],
     ['notes', 'notes', 'text'],
+    ['assetTag', 'asset_tag', 'text'],
+    ['manufacturer', 'manufacturer', 'text'],
+    ['model', 'model', 'text'],
+    ['supplier', 'supplier', 'text'],
+    ['purchaseCost', 'purchase_cost', 'num'],
+    ['lastServiceDate', 'last_service_date', 'text'],
+    ['nextServiceDue', 'next_service_due', 'text'],
+    ['patTestDate', 'pat_test_date', 'text'],
+    ['patNextDue', 'pat_next_due', 'text'],
+    ['locationDetail', 'location_detail', 'text'],
+  ],
+  room_beds: [
+    ['bedReference', 'bed_reference', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
+    ['bedLabel', 'bed_label', 'text'],
+    ['bedType', 'bed_type', 'text'],
+    ['status', 'status', 'text'],
+    ['mattressCondition', 'mattress_condition', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  inventory_items: [
+    ['itemCode', 'item_code', 'text'],
+    ['itemName', 'item_name', 'text'],
+    ['category', 'category', 'text'],
+    ['itemType', 'item_type', 'text'],
+    ['unit', 'unit', 'text'],
+    ['defaultRoomQuantity', 'default_room_quantity', 'int'],
+    ['reorderLevel', 'reorder_level', 'int'],
+    ['unitCost', 'unit_cost', 'num'],
+    ['supplier', 'supplier', 'text'],
+    ['requiresSerial', 'requires_serial', 'bool'],
+    ['requiresInspection', 'requires_inspection', 'bool'],
+    ['isActive', 'is_active', 'bool'],
+    ['description', 'description', 'text'],
+  ],
+  property_inventory_stock: [
+    ['propertyId', 'property_id', 'text'],
+    ['itemId', 'item_id', 'text'],
+    ['quantityOnHand', 'quantity_on_hand', 'int'],
+    ['minimumLevel', 'minimum_level', 'int'],
+    ['storageLocation', 'storage_location', 'text'],
+    ['lastCountedAt', 'last_counted_at', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  room_inventory: [
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
+    ['itemId', 'item_id', 'text'],
+    ['itemName', 'item_name', 'text'],
+    ['category', 'category', 'text'],
+    ['quantity', 'quantity', 'int'],
+    ['condition', 'condition', 'text'],
+    ['status', 'status', 'text'],
+    ['serialNumber', 'serial_number', 'text'],
+    ['assetId', 'asset_id', 'text'],
+    ['issuedDate', 'issued_date', 'text'],
+    ['lastCheckedAt', 'last_checked_at', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  inventory_movements: [
+    ['propertyId', 'property_id', 'text'],
+    ['movementType', 'movement_type', 'text'],
+    ['itemId', 'item_id', 'text'],
+    ['itemName', 'item_name', 'text'],
+    ['quantity', 'quantity', 'int'],
+    ['fromRoomId', 'from_room_id', 'text'],
+    ['toRoomId', 'to_room_id', 'text'],
+    ['reference', 'reference', 'text'],
+    ['reason', 'reason', 'text'],
+    ['performedByName', 'performed_by_name', 'text'],
+    ['performedAt', 'performed_at', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  room_kit_templates: [
+    ['templateName', 'template_name', 'text'],
+    ['roomType', 'room_type', 'text'],
+    ['description', 'description', 'text'],
+    ['items', 'items', 'json'],
+    ['isActive', 'is_active', 'bool'],
+  ],
+  room_issues: [
+    ['issueReference', 'issue_reference', 'text'],
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
+    ['title', 'title', 'text'],
+    ['category', 'category', 'text'],
+    ['priority', 'priority', 'text'],
+    ['status', 'status', 'text'],
+    ['description', 'description', 'text'],
+    ['reportedBy', 'reported_by', 'text'],
+    ['reportedAt', 'reported_at', 'text'],
+    ['assignedTo', 'assigned_to', 'text'],
+    ['dueDate', 'due_date', 'text'],
+    ['resolvedAt', 'resolved_at', 'text'],
+    ['resolutionNotes', 'resolution_notes', 'text'],
+    ['cost', 'cost', 'num'],
+    ['blocksRoom', 'blocks_room', 'bool'],
+    ['maintenanceRecordId', 'maintenance_record_id', 'text'],
+  ],
+  room_activity_log: [
+    ['propertyId', 'property_id', 'text'],
+    ['roomId', 'room_id', 'text'],
+    ['activityType', 'activity_type', 'text'],
+    ['title', 'title', 'text'],
+    ['details', 'details', 'text'],
+    ['performedByName', 'performed_by_name', 'text'],
+    ['performedAt', 'performed_at', 'text'],
   ],
   property_compliance: [
     ['complianceReference', 'compliance_reference', 'text'],
@@ -1062,7 +1186,48 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   property_rooms: new Set([
     'id', 'room_reference', 'property_id', 'room_number', 'room_name',
     'room_type', 'floor', 'capacity', 'size', 'status', 'occupancy_status',
-    'description', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
+    'description', 'notes', 'data', 'created_by', 'created_at', 'updated_at',
+    'bathroom_type', 'accessibility_features', 'is_accessible', 'is_family_room',
+    'gender_restriction', 'cleaning_status', 'last_cleaned_at', 'last_inspected_at',
+    'next_inspection_due', 'key_reference', 'blocked_reason', 'blocked_until',
+    'void_since', 'fire_safety_notes', 'kit_template_id'
+  ]),
+  room_beds: new Set([
+    'id', 'bed_reference', 'property_id', 'room_id', 'bed_label', 'bed_type', 'status',
+    'mattress_condition', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  inventory_items: new Set([
+    'id', 'item_code', 'item_name', 'category', 'item_type', 'unit', 'default_room_quantity',
+    'reorder_level', 'unit_cost', 'supplier', 'requires_serial', 'requires_inspection',
+    'is_active', 'description', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  property_inventory_stock: new Set([
+    'id', 'property_id', 'item_id', 'quantity_on_hand', 'minimum_level', 'storage_location',
+    'last_counted_at', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  room_inventory: new Set([
+    'id', 'property_id', 'room_id', 'item_id', 'item_name', 'category', 'quantity', 'condition',
+    'status', 'serial_number', 'asset_id', 'issued_date', 'last_checked_at', 'notes',
+    'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  inventory_movements: new Set([
+    'id', 'property_id', 'movement_type', 'item_id', 'item_name', 'quantity', 'from_room_id',
+    'to_room_id', 'reference', 'reason', 'performed_by_name', 'performed_at', 'notes',
+    'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  room_kit_templates: new Set([
+    'id', 'template_name', 'room_type', 'description', 'items', 'is_active',
+    'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  room_issues: new Set([
+    'id', 'issue_reference', 'property_id', 'room_id', 'title', 'category', 'priority', 'status',
+    'description', 'reported_by', 'reported_at', 'assigned_to', 'due_date', 'resolved_at',
+    'resolution_notes', 'cost', 'blocks_room', 'maintenance_record_id',
+    'data', 'created_by', 'created_at', 'updated_at'
+  ]),
+  room_activity_log: new Set([
+    'id', 'property_id', 'room_id', 'activity_type', 'title', 'details', 'performed_by_name',
+    'performed_at', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   property_facilities: new Set([
     'id', 'property_id', 'facility_name', 'facility_type', 'is_available',
@@ -1071,7 +1236,9 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   property_assets: new Set([
     'id', 'asset_reference', 'property_id', 'room_id', 'category',
     'asset_name', 'serial_number', 'quantity', 'condition', 'purchase_date',
-    'warranty_expiry', 'status', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
+    'warranty_expiry', 'status', 'notes', 'data', 'created_by', 'created_at', 'updated_at',
+    'asset_tag', 'manufacturer', 'model', 'supplier', 'purchase_cost', 'last_service_date',
+    'next_service_due', 'pat_test_date', 'pat_next_due', 'location_detail'
   ]),
   property_compliance: new Set([
     'id', 'compliance_reference', 'property_id', 'type', 'certificate_number',
@@ -1156,6 +1323,14 @@ export const ENTITY_MODULE_LABELS: Record<string, string> = {
   propertyDocuments: 'Property Management', property_documents: 'Property Management',
   propertyContacts: 'Property Management', property_contacts: 'Property Management',
   placements: 'Placements',
+  roomBeds: 'Room Management', room_beds: 'Room Management',
+  inventoryItems: 'Room Management', inventory_items: 'Room Management',
+  propertyInventoryStock: 'Room Management', property_inventory_stock: 'Room Management',
+  roomInventory: 'Room Management', room_inventory: 'Room Management',
+  inventoryMovements: 'Room Management', inventory_movements: 'Room Management',
+  roomKitTemplates: 'Room Management', room_kit_templates: 'Room Management',
+  roomIssues: 'Room Management', room_issues: 'Room Management',
+  roomActivityLog: 'Room Management', room_activity_log: 'Room Management',
   auditLogs: 'Audit Logs', audit_logs: 'Audit Logs'
 };
 export const moduleLabelFor = (entity?: string | null) => (entity && ENTITY_MODULE_LABELS[entity]) || entity || 'Settings';
@@ -1278,7 +1453,7 @@ export function toDatabaseRow(
   if (FIELD_SPECS[tableName]) {
     for (const [field, column, type] of FIELD_SPECS[tableName]) {
       let value = coerce(record[field], type);
-      if (value === '' && (column.endsWith('_date') || column === 'date_of_birth' || column.endsWith('_at'))) {
+      if (value === '' && (column.endsWith('_date') || column === 'date_of_birth' || /(_at|_due|_until|_since|_expiry)$/.test(column))) {
         value = null;
       }
       if (value !== undefined) dbRow[column] = value;
