@@ -23,6 +23,8 @@ export interface NotificationItem {
   targetItem?: string;
   /** When set, only this user (profile id) is shown the notification */
   targetUserId?: string;
+  /** Raised in this browser session for the signed-in user (e.g. "your change was not saved"); always theirs */
+  local?: boolean;
 }
 
 /**
@@ -262,6 +264,7 @@ export function deriveInAppNotifications(params: {
       const ts = n.timestamp || new Date().toISOString();
       items.push({
         ...n,
+        local: n.local ?? !n.targetUserId,
         timestamp: ts,
         read: n.read || readNotificationIds.has(n.id),
         time: n.time || formatNotificationTime(ts)
@@ -399,8 +402,38 @@ export function deriveInAppNotifications(params: {
   return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
+const norm = (v?: string | null) => String(v ?? '').trim().toLowerCase();
+const alnum = (v?: string | null) => norm(v).replace(/[^a-z0-9]/g, '');
+
+/** Same site, compared exactly (ignoring case / punctuation). No wildcards and no partial matches. */
+export function isSameSite(a?: string | null, b?: string | null): boolean {
+  const x = alnum(a), y = alnum(b);
+  return x !== '' && x === y;
+}
+
+/** Same person: exact name, e-mail or profile id. No fuzzy / "contains" matching. */
+export function isSameUser(target?: string | null, name?: string, email?: string, id?: string): boolean {
+  const t = norm(target);
+  if (!t) return false;
+  return t === norm(name) && norm(name) !== '' || t === norm(email) && norm(email) !== '' || t === norm(id) && norm(id) !== '';
+}
+
+const ALL_SITES_TOKENS = new Set(['all sites', 'all', '*']);
+const ADMIN_ONLY_MODULES = new Set(['roles', 'permissions', 'settings', 'appsettings', 'schemas']);
+
 /**
- * Filter notifications strictly according to RBAC rules and role permissions
+ * Who may see a notification (strict):
+ *
+ *  1. A notification addressed to one person (targetUserId) is seen by that person only.
+ *  2. Notifications raised in your own session ("your change was not saved") are yours.
+ *  3. Security / roles / settings notifications: Super Admin and Admin only.
+ *  4. Personal items (a profile or password change): only the person concerned. Nobody else, admins included.
+ *  5. Requests and approvals: the requester, plus managers / admins whose sites include the request's site.
+ *  6. Everything else belongs to a site: you see it only when that site is one of YOUR assigned sites
+ *     (Super Admin / Admin and users with all-sites access see every site). A notification with no site
+ *     is shown only to the person who caused it.
+ *
+ * Another user's actions are never shown to you unless they happened at one of your own sites.
  */
 export function filterNotificationsForRole(
   firstArg: {
@@ -453,81 +486,41 @@ export function filterNotificationsForRole(
     authProfileId = firstArg.authProfileId || '';
   }
 
-  const effectiveAssignedSite = assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all'
-    ? assignedSite
-    : '';
+  const isAdmin = userRole === 'Super Admin' || userRole === 'Admin';
+  const isManager = isAdmin || ['Regional Manager', 'Area Manager', 'General Manager', 'Site Manager', 'Manager'].includes(String(userRole));
+
+  // The sites this person works at: their assigned sites, never anyone else's
+  const mySites = [...allowedSites, assignedSite].map(x => String(x || '').trim()).filter(Boolean);
+  const allSites = isAdmin || mySites.some(x => ALL_SITES_TOKENS.has(norm(x)));
+  const mySiteList = mySites.filter(x => !ALL_SITES_TOKENS.has(norm(x)));
+  const inMySites = (site?: string) => !!site && (allSites || mySiteList.some(x => isSameSite(x, site)));
+
+  const mine = (v?: string) => isSameUser(v, currentUserName, userEmail, authProfileId);
 
   return notifications.filter(n => {
-    // 1. Super Admin: Unrestricted enterprise access to everything
-    if (userRole === 'Super Admin') {
-      return true;
-    }
-
-    // 2. Admin: Full operational visibility across all sites
-    if (userRole === 'Admin') {
-      return true;
-    }
-
-    // Notifications addressed to one person (e.g. "confirm this bill") are only ever shown to that person
+    // 1. addressed to one person
     if (n.targetUserId) return !!authProfileId && n.targetUserId === authProfileId;
 
-    // -------------------------------------------------------------------------
-    // Strict User-Level RBAC Isolation:
-    // Non-admin users must NEVER see cross-user logs (routine audit items by other users).
-    // They are strictly isolated to:
-    // 1. Actions performed by themselves
-    // 2. Actions/profile events directly targeting themselves
-    // 3. Workflow change requests submitted by or concerning themselves
-    // 4. Critical emergency safety escalations / alerts at their assigned site
-    // -------------------------------------------------------------------------
+    // 2. raised in this session for the signed-in user
+    if (n.local) return true;
 
-    // Never expose administrative security, roles, or internal system config logs to non-admins
-    if (n.action === 'SECURITY' || (n.module && ['roles', 'permissions', 'settings', 'appsettings', 'schemas'].includes(n.module.toLowerCase()))) {
-      return false;
+    // 3. security, roles and settings
+    if (n.action === 'SECURITY' || (n.module && ADMIN_ONLY_MODULES.has(norm(n.module)))) return isAdmin;
+
+    const myAction = mine(n.performedByUser);
+    const myTarget = mine(n.targetItem);
+
+    // 4. personal items: only the person concerned
+    if (n.category === 'profile_personal') return myTarget || myAction;
+
+    // 5. requests and approvals
+    if (n.category === 'approval_workflow') {
+      if (myAction || myTarget) return true;
+      return isManager && inMySites(n.site);
     }
 
-    const isSelfAction = isUserMatch(n.performedByUser, currentUserName, userEmail, authProfileId);
-    const isSelfTarget = isUserMatch(n.targetItem, currentUserName, userEmail, authProfileId);
-    const isSelfProfile = n.category === 'profile_personal' && (isSelfTarget || isSelfAction);
-    const isSelfRequest = n.category === 'approval_workflow' && (isSelfTarget || isSelfAction);
-
-    // Critical urgent site safety alert (must match assigned property)
-    const isSiteSafetyAlert = (n.type === 'urgent' || n.action === 'URGENT' || n.action === 'ALERT') &&
-      Boolean(effectiveAssignedSite && n.site && isSiteMatch(effectiveAssignedSite, n.site));
-
-    // 3. Regional Manager: Permitted across regional sites in allowedSites
-    if (userRole === 'Regional Manager') {
-      if (isSelfAction || isSelfTarget || isSelfProfile || isSelfRequest) return true;
-      if (allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site))) return true;
-      if (effectiveAssignedSite && isSiteMatch(effectiveAssignedSite, n.site)) return true;
-      return false;
-    }
-
-    // 4. Site Manager / Area Manager / General Manager: Permitted across their managed site operations
-    if (
-      userRole === 'Area Manager' ||
-      userRole === 'General Manager' ||
-      (userRole as string) === 'Site Manager' ||
-      (userRole as string) === 'Manager'
-    ) {
-      if (isSelfAction || isSelfTarget || isSelfProfile || isSelfRequest) return true;
-      if (effectiveAssignedSite && isSiteMatch(effectiveAssignedSite, n.site)) return true;
-      if (allowedSites.length > 0 && allowedSites.some(site => isSiteMatch(site, n.site))) return true;
-      return false;
-    }
-
-    // 5. Frontline Staff / All other non-admin users:
-    // Strictly user-level isolated: only own actions, own profile, own requests, and critical safety alerts.
-    // Zero cross-user audit logs!
-    if (isSelfAction || isSelfProfile || isSelfRequest) {
-      return true;
-    }
-
-    if (isSiteSafetyAlert) {
-      return true;
-    }
-
-    // Absolutely no cross-user logs or unpermitted items
-    return false;
+    // 6. site notifications
+    if (n.site) return inMySites(n.site);
+    return myAction;
   });
 }
