@@ -228,6 +228,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
   };
 
   const handleOpenCreateReport = () => {
+    setEditingReport(null);
     loadDefaultMenu();
     setFormMealFilter('ALL');
     setIsReportModalOpen(true);
@@ -711,15 +712,8 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
 
                       {canDelete && (
                         <button
-                          onClick={() => {
-                            requestConfirmation({
-                              title: 'Delete Food Report',
-                              message: `Permanently delete Food Consumption Report for ${report.site} on ${report.date}?`,
-                              confirmLabel: 'Delete Report',
-                              isDanger: true,
-                              onConfirm: async () => deleteFoodConsumptionReport(report.id)
-                            });
-                          }}
+                          type="button"
+                          onClick={() => deleteFoodConsumptionReport(report.id)}
                           className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xs border border-transparent hover:border-rose-200 transition-colors"
                           title="Delete Report"
                         >
@@ -883,16 +877,9 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
 
                             {canDelete && (
                               <button
-                                onClick={() => {
-                                  requestConfirmation({
-                                    title: 'Delete Food Box Request',
-                                    message: `Permanently delete special food box entry for ${box.roomNo}?`,
-                                    confirmLabel: 'Delete Entry',
-                                    isDanger: true,
-                                    onConfirm: async () => deleteFoodBoxRequest(box.id)
-                                  });
-                                }}
-                                className="p-1 text-[#64748b] hover:text-rose-600 hover:bg-rose-50 rounded"
+                                type="button"
+                                onClick={() => deleteFoodBoxRequest(box.id)}
+                                className="p-1 text-[#64748b] hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
                                 title="Delete box request"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1403,20 +1390,39 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
               </div>
 
               {/* Modal Actions */}
-              <div className="pt-3 border-t border-[#e2e8f0] flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setIsReportModalOpen(false); setEditingReport(null); }}
-                  className="px-4 py-2 border border-[#cbd5e1] rounded-xs text-xs font-semibold text-[#475569] hover:bg-[#f8fafc]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs"
-                >
-                  {editingReport ? 'Save Report Changes' : 'Save Daily Food Report'}
-                </button>
+              <div className="pt-3 border-t border-[#e2e8f0] flex items-center justify-between gap-2">
+                <div>
+                  {editingReport && canDeleteRecord() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const id = editingReport.id;
+                        setIsReportModalOpen(false);
+                        setEditingReport(null);
+                        deleteFoodConsumptionReport(id);
+                      }}
+                      className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xs text-xs font-semibold border border-rose-300 flex items-center gap-1.5 transition-colors"
+                      title="Delete this food report permanently"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete Report
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsReportModalOpen(false); setEditingReport(null); }}
+                    className="px-4 py-2 border border-[#cbd5e1] rounded-xs text-xs font-semibold text-[#475569] hover:bg-[#f8fafc]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs"
+                  >
+                    {editingReport ? 'Save Report Changes' : 'Save Daily Food Report'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1571,23 +1577,41 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
             </div>
 
             <div className="flex justify-between items-center pt-3 border-t">
-              {canEditRecord(viewingReport.site) && (
-                <button
-                  onClick={() => {
-                    const rep = viewingReport;
-                    setViewingReport(null);
-                    setEditingReport(rep);
-                    setCurrentItems(rep.items || []);
-                    setFeedbackComments(rep.feedbackComments || 'Menu Satisfactory.');
-                    setFormMealFilter('ALL');
-                    setIsReportModalOpen(true);
-                  }}
-                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold rounded border border-amber-300 flex items-center gap-1"
-                >
-                  <Edit3 className="w-3.5 h-3.5" /> Edit Report
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {canEditRecord(viewingReport.site) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const rep = viewingReport;
+                      setViewingReport(null);
+                      setEditingReport(rep);
+                      setCurrentItems(rep.items || []);
+                      setFeedbackComments(rep.feedbackComments || 'Menu Satisfactory.');
+                      setFormMealFilter('ALL');
+                      setIsReportModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold rounded border border-amber-300 flex items-center gap-1 transition-colors"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> Edit Report
+                  </button>
+                )}
+                {canDeleteRecord() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = viewingReport.id;
+                      setViewingReport(null);
+                      deleteFoodConsumptionReport(id);
+                    }}
+                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded border border-rose-300 flex items-center gap-1 transition-colors"
+                    title="Delete this food report permanently"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete Report
+                  </button>
+                )}
+              </div>
               <button
+                type="button"
                 onClick={() => setViewingReport(null)}
                 className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded"
               >
@@ -1730,20 +1754,39 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                 />
               </div>
 
-              <div className="pt-3 border-t border-[#e2e8f0] flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setIsBoxModalOpen(false); setEditingBox(null); }}
-                  className="px-4 py-2 border border-[#cbd5e1] rounded-xs text-xs font-semibold text-[#475569] hover:bg-[#f8fafc]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs"
-                >
-                  Save Entry
-                </button>
+              <div className="pt-3 border-t border-[#e2e8f0] flex items-center justify-between gap-2">
+                <div>
+                  {editingBox && canDeleteRecord() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const id = editingBox.id;
+                        setIsBoxModalOpen(false);
+                        setEditingBox(null);
+                        deleteFoodBoxRequest(id);
+                      }}
+                      className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xs text-xs font-semibold border border-rose-300 flex items-center gap-1.5 transition-colors"
+                      title="Delete this entry permanently"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete Entry
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsBoxModalOpen(false); setEditingBox(null); }}
+                    className="px-4 py-2 border border-[#cbd5e1] rounded-xs text-xs font-semibold text-[#475569] hover:bg-[#f8fafc]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold shadow-xs"
+                  >
+                    Save Entry
+                  </button>
+                </div>
               </div>
             </form>
           </div>

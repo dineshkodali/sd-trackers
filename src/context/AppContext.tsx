@@ -4692,10 +4692,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [persistCreate]);
 
   const updateFoodConsumptionReport = useCallback((id: string, updates: Partial<FoodConsumptionReport>) => {
-    const current = foodConsumptionReports.find(r => r.id === id);
+    const current = foodConsumptionReports.find(r => String(r.id) === String(id));
     if (!current) return;
     const changes: Partial<FoodConsumptionReport> = { ...updates, updatedAt: new Date().toISOString() };
-    setFoodConsumptionReports(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    setFoodConsumptionReports(prev => prev.map(rec => String(rec.id) === String(id) ? { ...rec, ...changes } : rec));
     persistUpdate('foodConsumption', 'Food consumption report update', setFoodConsumptionReports, current, changes, {
       action: 'UPDATE', module: 'Food Consumption', targetItem: `Food Consumption (${current.date})`, site: current.site,
       details: `Updated food consumption daily report for ${current.site}.`
@@ -4703,7 +4703,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [foodConsumptionReports, persistUpdate]);
 
   const deleteFoodConsumptionReport = useCallback((id: string) => {
-    const current = foodConsumptionReports.find(r => r.id === id);
+    const current = foodConsumptionReports.find(r => String(r.id) === String(id));
     if (!current) return;
     requestConfirmation({
       title: 'Delete Food Consumption Report',
@@ -4711,7 +4711,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       confirmLabel: 'Delete Report',
       isDanger: true,
       onConfirm: async () => {
-        setFoodConsumptionReports(prev => prev.filter(r => r.id !== id));
+        setFoodConsumptionReports(prev => prev.filter(r => String(r.id) !== String(id)));
         closeConfirmation();
         await persistDelete('foodConsumption', 'Food consumption report deletion', setFoodConsumptionReports, current, {
           action: 'DELETE', module: 'Food Consumption', targetItem: `Food Consumption (${current.date})`, site: current.site,
@@ -4737,10 +4737,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [persistCreate]);
 
   const updateFoodBoxRequest = useCallback((id: string, updates: Partial<FoodBoxRequest>) => {
-    const current = foodBoxRequests.find(r => r.id === id);
+    const current = foodBoxRequests.find(r => String(r.id) === String(id));
     if (!current) return;
     const changes: Partial<FoodBoxRequest> = { ...updates, updatedAt: new Date().toISOString() };
-    setFoodBoxRequests(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    setFoodBoxRequests(prev => prev.map(rec => String(rec.id) === String(id) ? { ...rec, ...changes } : rec));
     persistUpdate('foodBoxRequests', 'Food box request update', setFoodBoxRequests, current, changes, {
       action: 'UPDATE', module: 'Food Consumption', targetItem: `Food Box Room ${current.roomNo}`, site: current.site,
       details: `Updated food box entry for room ${current.roomNo}.`
@@ -4748,7 +4748,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [foodBoxRequests, persistUpdate]);
 
   const deleteFoodBoxRequest = useCallback((id: string) => {
-    const current = foodBoxRequests.find(r => r.id === id);
+    const current = foodBoxRequests.find(r => String(r.id) === String(id));
     if (!current) return;
     requestConfirmation({
       title: 'Delete Food Box Request / Complaint',
@@ -4756,7 +4756,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       confirmLabel: 'Delete Entry',
       isDanger: true,
       onConfirm: async () => {
-        setFoodBoxRequests(prev => prev.filter(r => r.id !== id));
+        setFoodBoxRequests(prev => prev.filter(r => String(r.id) !== String(id)));
         closeConfirmation();
         await persistDelete('foodBoxRequests', 'Food box entry deletion', setFoodBoxRequests, current, {
           action: 'DELETE', module: 'Food Consumption', targetItem: `Food Box Room ${current.roomNo}`, site: current.site,
