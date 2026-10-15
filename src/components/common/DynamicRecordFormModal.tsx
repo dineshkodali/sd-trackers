@@ -701,6 +701,18 @@ export function DynamicRecordFormModal<T = any>({
         description: d.description
       }));
 
+      // Also merge any static/default options defined directly on col.options
+      if (col.options) {
+        const rawStatic = typeof col.options === 'function' ? col.options({ ...effectiveContext, formData }) : col.options;
+        (rawStatic || []).forEach((opt: any) => {
+          const val = typeof opt === 'string' ? opt : opt?.value;
+          const lbl = typeof opt === 'string' ? opt : (opt?.label || opt?.value);
+          if (val && !list.some(o => String(o.value).toLowerCase() === String(val).toLowerCase())) {
+            list.push({ label: lbl, value: val, color: typeof opt === 'object' ? opt?.color : undefined });
+          }
+        });
+      }
+
       // In edit mode: if current record has an existing value that is not in the active options list, retain it
       const currentVal = formData[String(col.key)];
       if (currentVal && !list.some(o => String(o.value) === String(currentVal))) {

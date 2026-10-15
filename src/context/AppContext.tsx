@@ -1846,9 +1846,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apply<AuditLog>('audit', setAuditLogs);
       apply<CustomFieldOption>('fieldOptions', rows => {
         // Categories with no stored options (never seeded) fall back to the built-in vocabulary.
+        // Also ensure built-in system options (e.g. Care, OT, Housing Needs, Wheelchair, Dispersal Types) are always present even if DB has older partial options.
         const validRows = rows.filter(o => o.label !== '__EMPTY__' && o.value !== '__EMPTY__');
-        const stored = new Set(rows.map(o => o.category));
-        setFieldOptions([...validRows, ...DEFAULT_FIELD_OPTIONS.filter(o => !stored.has(o.category))]);
+        const existingKeys = new Set(validRows.map(o => `${o.category}:::${String(o.value).toLowerCase().trim()}`));
+        const missingSystemDefaults = DEFAULT_FIELD_OPTIONS.filter(o => !existingKeys.has(`${o.category}:::${String(o.value).toLowerCase().trim()}`));
+        setFieldOptions([...validRows, ...missingSystemDefaults]);
       });
       apply<any>('rolePermissions', rows => setRolePermissions(rolePermissionsFromRows(rows)));
       apply<any>('appSettings', rows => {

@@ -101,10 +101,23 @@ function merge<T>(saved: SerializedColumn[], defaultColumns: TableColumnConfig<T
     return { ...savedCol, isCustom: true } as TableColumnConfig<T>;
   });
 
-  // Ensure any missing system metadata columns are present
-  defaultColumns.forEach(defCol => {
-    if (defCol.isSystemMetadata && !merged.some(m => String(m.key) === String(defCol.key))) {
-      merged.push(defCol);
+  // Ensure any missing system metadata or newly introduced default columns are present
+  defaultColumns.forEach((defCol, idx) => {
+    if (!merged.some(m => String(m.key) === String(defCol.key))) {
+      let insertIndex = -1;
+      for (let i = idx - 1; i >= 0; i--) {
+        const prevKey = String(defaultColumns[i].key);
+        const found = merged.findIndex(m => String(m.key) === prevKey);
+        if (found >= 0) {
+          insertIndex = found + 1;
+          break;
+        }
+      }
+      if (insertIndex >= 0) {
+        merged.splice(insertIndex, 0, defCol);
+      } else {
+        merged.push(defCol);
+      }
     }
   });
 
@@ -117,6 +130,8 @@ function merge<T>(saved: SerializedColumn[], defaultColumns: TableColumnConfig<T
  */
 const REQUIRED_COLUMNS: Record<string, { key: string; after: string }[]> = {
   newArrivals: [{ key: 'checkInDate', after: 'contactNumber' }],
+  dispersal: [{ key: 'typeOfDispersal', after: 'suPortNassRef' }],
+  referrals: [{ key: 'furtherUpdates', after: 'notesActionTaken' }],
 };
 
 function withRequiredColumns<T>(moduleKey: string, cols: TableColumnConfig<T>[], defaults: TableColumnConfig<T>[]): TableColumnConfig<T>[] {

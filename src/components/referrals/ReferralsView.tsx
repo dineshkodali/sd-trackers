@@ -161,7 +161,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
       // Search query
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const fullString = `${r.suName || ''} ${r.portRef || ''} ${r.mosaicId || ''} ${r.referralCouncil || ''} ${r.notesActionTaken || ''} ${r.laOfficerLeading || ''}`.toLowerCase();
+        const fullString = `${r.suName || ''} ${r.portRef || ''} ${r.mosaicId || ''} ${r.referralCouncil || ''} ${r.referralType || ''} ${r.notesActionTaken || ''} ${r.laOfficerLeading || ''}`.toLowerCase();
         if (!fullString.includes(q)) return false;
       }
 

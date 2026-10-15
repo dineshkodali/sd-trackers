@@ -30,6 +30,7 @@ import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from
 const dispersalExportColumns: ExportColumnOption[] = [
   { id: 'sno', label: 'S.No' },
   { id: 'siteName', label: 'Hotel / Site' },
+  { id: 'typeOfDispersal', label: 'Type of Dispersal' },
   { id: 'suPortNassRef', label: 'Port / NASS Ref' },
   { id: 'flatRoomNumber', label: 'Room / Flat' },
   { id: 'dateReceived', label: 'Date Received' },
@@ -92,6 +93,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
   }, [assignedSite, canAccessAllSites, allowedSites]);
   const [travelledFilter, setTravelledFilter] = useState('all');
   const [secondDispersalFilter, setSecondDispersalFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<string>('dispersalDate');
@@ -110,17 +112,19 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
         r.flatRoomNumber.toLowerCase().includes(q) ||
         r.reasonForDeparture.toLowerCase().includes(q) ||
         r.siteName.toLowerCase().includes(q) ||
+        (r.typeOfDispersal && r.typeOfDispersal.toLowerCase().includes(q)) ||
         (r.reasonFailedToTravel && r.reasonFailedToTravel.toLowerCase().includes(q)) ||
         (r.reasonFailedToTravelSecond && r.reasonFailedToTravelSecond.toLowerCase().includes(q));
 
       const matchesSite = isSitePermitted(r.siteName, siteFilter);
+      const matchesType = typeFilter === 'all' || r.typeOfDispersal === typeFilter;
       const matchesTravelled = travelledFilter === 'all' || r.travelled === travelledFilter;
       const matchesSecond = secondDispersalFilter === 'all' || 
         (secondDispersalFilter === 'yes' ? Boolean(r.secondDispersalDate && r.secondDispersalDate.trim()) : !r.secondDispersalDate);
 
-      return matchesSearch && matchesSite && matchesTravelled && matchesSecond;
+      return matchesSearch && matchesSite && matchesType && matchesTravelled && matchesSecond;
     });
-  }, [dispersalRecords, isSitePermitted, searchQuery, siteFilter, travelledFilter, secondDispersalFilter]);
+  }, [dispersalRecords, isSitePermitted, searchQuery, siteFilter, typeFilter, travelledFilter, secondDispersalFilter]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -161,6 +165,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
     addDispersalRecord({
       sno: dispersalRecords.length + 1,
       siteName: effectiveSite || '',
+      typeOfDispersal: data.typeOfDispersal || 'Dispersal',
       dateReceived: data.dateReceived || new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
       suPortNassRef: data.suPortNassRef || '',
       reasonForDeparture: data.reasonForDeparture || 'Dispersal to Long-Term NASS accommodation',
@@ -378,7 +383,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
         </div>
 
         {/* Integrated Filter Row */}
-        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-5 gap-2.5">
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
@@ -404,6 +409,18 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
             {allowedSites.map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
+          </select>
+
+          <select
+            value={typeFilter}
+            onChange={e => { setTypeFilter(e.target.value); setCurrentPage(1); }}
+            className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+          >
+            <option value="all">All Dispersal Types</option>
+            <option value="NTV (Move on Completed)">NTV (Move on Completed)</option>
+            <option value="Eviction">Eviction</option>
+            <option value="Dispersal">Dispersal</option>
+            <option value="Self-Departure (Gone to Contact)">Self-Departure (Gone to Contact)</option>
           </select>
 
           <select
@@ -529,6 +546,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
         initialValues={{
           sno: dispersalRecords.length + 1,
           siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
+          typeOfDispersal: 'Dispersal',
           dateReceived: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
           suPortNassRef: '',
           reasonForDeparture: 'Dispersal to Long-Term NASS accommodation',

@@ -320,6 +320,20 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     allowQuickAdd: true,
     options: (ctx) => (ctx?.referralTypeOptions || ['Safeguarding Adult', 'Safeguarding Child', 'Mental Health Crisis', 'Modern Slavery / NRM', 'Domestic Abuse', 'Care', 'OT', 'Housing Needs', 'Wheelchair']),
     defaultValue: 'Safeguarding Adult',
+    badgeColors: {
+      'Safeguarding Adult': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Safeguarding Child': 'bg-purple-100 text-purple-800 border-purple-200',
+      'Mental Health Crisis': 'bg-amber-100 text-amber-800 border-amber-200',
+      'Mental Health': 'bg-amber-100 text-amber-800 border-amber-200',
+      'Domestic Abuse': 'bg-red-100 text-red-800 border-red-200',
+      'Social Care': 'bg-teal-100 text-teal-800 border-teal-200',
+      'Care': 'bg-teal-100 text-teal-800 border-teal-200',
+      'OT': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      'Housing Needs': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      'Wheelchair': 'bg-cyan-100 text-cyan-800 border-cyan-200',
+      'Modern Slavery / NRM': 'bg-rose-100 text-rose-800 border-rose-200',
+      'Modern Slavery': 'bg-rose-100 text-rose-800 border-rose-200'
+    },
     section: 'Referral Details'
   },
   {
