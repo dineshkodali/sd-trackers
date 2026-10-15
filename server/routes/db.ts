@@ -905,6 +905,16 @@ router.get('/transport-migration-sql', requireRole(...ADMIN_ROLES), (_req: Reque
   res.type('text/plain').send(sql);
 });
 
+// GET /api/db/crm-updates-migration-sql - returns Migration 018 (CRM updates & 5 new modules)
+router.get('/crm-updates-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
+  const migPath = path.join(process.cwd(), 'db', 'migrations', '018_crm_updates_and_new_modules.sql');
+  if (!fs.existsSync(migPath)) {
+    return res.status(404).json({ success: false, error: 'Migration script db/migrations/018_crm_updates_and_new_modules.sql not found' });
+  }
+  const sql = fs.readFileSync(migPath, 'utf8');
+  res.type('text/plain').send(sql);
+});
+
 router.get('/migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
   const sql = loadSchemaSql();
   if (!sql) return res.status(404).json({ success: false, error: 'db/schema.sql not found' });

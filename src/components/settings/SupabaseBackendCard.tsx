@@ -130,6 +130,24 @@ export const SupabaseBackendCard: React.FC = () => {
     }
   };
 
+  const handleCopyCrmUpdatesSql = async () => {
+    try {
+      const res = await fetch('/api/db/crm-updates-migration-sql', {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token') || ''}` }
+      });
+      const sqlText = res.ok ? await res.text() : '';
+      if (sqlText) {
+        await navigator.clipboard.writeText(sqlText);
+        setCopiedSql('crm_updates');
+        setTimeout(() => setCopiedSql(null), 4000);
+      } else {
+        alert('Could not retrieve CRM Updates migration script from server.');
+      }
+    } catch (err: any) {
+      alert('Failed to copy migration script: ' + err.message);
+    }
+  };
+
   const isSupabaseConfigured = Boolean(
     config?.services?.supabase?.configured || 
     dbStatus?.connected || 
@@ -427,6 +445,15 @@ export const SupabaseBackendCard: React.FC = () => {
                   >
                     <Copy className="w-3 h-3" />
                     <span>{copiedSql === 'transport' ? 'Copied Transport SQL!' : 'Copy Public Transport SQL'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyCrmUpdatesSql}
+                    className="px-2.5 py-1 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer ring-1 ring-teal-400"
+                    title="Copy 018_crm_updates_and_new_modules.sql (5 New Modules & Updates) to clipboard"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>{copiedSql === 'crm_updates' ? 'Copied CRM Updates SQL (018)!' : 'Copy CRM Updates SQL (018)'}</span>
                   </button>
                   <a
                     href="https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new"
