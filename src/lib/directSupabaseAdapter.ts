@@ -147,7 +147,21 @@ export const ENTITY_TABLE_MAP: Record<string, EntityMapping> = {
   service_user_support: { table: 'service_user_support' },
   suDocuments: { table: 'service_user_documents' },
   service_user_documents: { table: 'service_user_documents' },
-  placements: { table: 'placements' }
+  placements: { table: 'placements' },
+
+  // MH Complaint Welfare, Daily Laundry, Housekeeping, and Food Consumption
+  mhComplaintWelfare: { table: 'mh_complaint_welfare_checks' },
+  mh_complaint_welfare_checks: { table: 'mh_complaint_welfare_checks' },
+  dailyLaundry: { table: 'daily_laundry_logs' },
+  daily_laundry_logs: { table: 'daily_laundry_logs' },
+  housekeeping: { table: 'housekeeping_logs' },
+  housekeeping_logs: { table: 'housekeeping_logs' },
+  housekeepingRooms: { table: 'housekeeping_room_logs' },
+  housekeeping_room_logs: { table: 'housekeeping_room_logs' },
+  foodConsumption: { table: 'food_consumption_reports' },
+  food_consumption_reports: { table: 'food_consumption_reports' },
+  foodBoxRequests: { table: 'food_box_requests' },
+  food_box_requests: { table: 'food_box_requests' }
 };
 
 function ensureId(entity: string, record: any): any {

@@ -453,7 +453,13 @@ export const TABLE_SITE_COLUMN: Record<string, string> = {
   service_users: 'site_id',
   placements: 'site_id',
   properties: 'site_id',
-  sites: 'name'
+  sites: 'name',
+  mh_complaint_welfare_checks: 'site_name',
+  daily_laundry_logs: 'site',
+  housekeeping_logs: 'site',
+  housekeeping_room_logs: 'site',
+  food_consumption_reports: 'site',
+  food_box_requests: 'site'
 };
 
 /** Match a row against user assigned sites supporting both site names and site IDs */
