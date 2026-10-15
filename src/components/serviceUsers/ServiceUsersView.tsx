@@ -214,7 +214,17 @@ export const ServiceUsersView: React.FC = () => {
   const roomMap = useMemo(() => new Map(rooms.map(r => [r.id, r])), [rooms]);
   const activePlacementMap = useMemo(() => {
     const map = new Map<string, Placement>();
-    placements.filter(p => p.status === 'Active').forEach(p => map.set(p.suId, p));
+    // A resident can briefly have more than one Active placement (e.g. a move that did not close the
+    // old one). Always show the most recent one, the same placement the profile shows.
+    const stamp = (p: Placement) => Date.parse(p.startDate || '') || Date.parse(p.createdAt || '') || 0;
+    placements
+      .filter(p => p.status === 'Active')
+      .forEach(p => {
+        const prev = map.get(p.suId);
+        if (!prev || stamp(p) > stamp(prev) || (stamp(p) === stamp(prev) && (p.updatedAt || '') > (prev.updatedAt || ''))) {
+          map.set(p.suId, p);
+        }
+      });
     return map;
   }, [placements]);
 
