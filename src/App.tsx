@@ -261,9 +261,9 @@ function AppLayout() {
       case 'housekeeping':
         return <HousekeepingView />;
       case 'food':
-        return <FoodView />;
+        return <FoodView initialTab="vendor_buffet" />;
       case 'foodConsumption':
-        return <FoodConsumptionView />;
+        return <FoodView initialTab="consumption" />;
       case 'foodWastage':
         return <FoodWastageView />;
       case 'dailyRegisters':
