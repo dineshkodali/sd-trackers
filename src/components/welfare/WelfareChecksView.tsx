@@ -1,29 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  HeartHandshake, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  ShieldAlert, 
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Building2,
-  Calendar,
-  User,
-  Activity,
-  Stethoscope,
-  Home,
-  FileText,
-  SlidersHorizontal,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpDown,
-  Lock
-} from 'lucide-react';
+import { HeartHandshake, Plus, Search, Edit3, Trash2, Eye, ShieldAlert, CheckCircle2, XCircle, Building2, User, Activity, Stethoscope, Home, SlidersHorizontal, ArrowUp, ArrowDown, ArrowUpDown, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { WelfareCheckRecord } from '../../types';
 import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';

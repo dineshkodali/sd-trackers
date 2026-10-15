@@ -1,22 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Calendar,
-  Download,
-  CheckCircle2,
-  XCircle,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
+import { Users, Edit3, Trash2, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DailyRegisterRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

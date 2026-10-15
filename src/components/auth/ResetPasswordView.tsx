@@ -4,23 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Building2, 
-  ShieldCheck, 
-  Lock, 
-  KeyRound, 
-  Mail, 
-  ArrowLeft, 
-  ArrowRight, 
-  CheckCircle2, 
-  AlertCircle, 
-  RefreshCw, 
-  Eye, 
-  EyeOff, 
-  ShieldAlert,
-  Clock,
-  Sparkles
-} from 'lucide-react';
+import { ShieldCheck, Lock, KeyRound, Mail, ArrowLeft, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff, ShieldAlert, Clock } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import { getBrowserSupabaseClient } from '../../lib/supabaseClient';
 

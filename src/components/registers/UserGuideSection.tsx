@@ -1,15 +1,5 @@
 import React from 'react';
-import { 
-  BookOpen, 
-  CheckCircle2, 
-  AlertTriangle, 
-  HelpCircle, 
-  ShieldCheck, 
-  Calculator, 
-  Edit3, 
-  Layers, 
-  FileText
-} from 'lucide-react';
+import { BookOpen, CheckCircle2, AlertTriangle, Calculator, Layers } from 'lucide-react';
 
 export const UserGuideSection: React.FC = () => {
   return (

@@ -1,25 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import {
-  Wrench,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Plus,
-  Trash2,
-  Edit3,
-  Search,
-  X,
-  Building2,
-  BookOpen,
-  Flame,
-  Hammer,
-  Eye,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  SlidersHorizontal
-} from 'lucide-react';
+import { Wrench, AlertTriangle, CheckCircle2, Clock, Plus, Trash2, Edit3, Search, X, BookOpen, Flame, Hammer, Eye, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';
 import { MAINTENANCE_CRITERIA_LIST, MaintenanceCriteria } from '../../data/maintenanceCriteria';

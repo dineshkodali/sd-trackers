@@ -1,14 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Building2, 
-  Calendar, 
-  Hotel, 
-  Search, 
-  Plus, 
-  SlidersHorizontal, 
-  Lock,
-  RefreshCw 
-} from 'lucide-react';
+import { Building2, Search, Plus, SlidersHorizontal, Lock, RefreshCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';

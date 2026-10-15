@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wrench, EyeOff, Power, CheckCircle2 } from 'lucide-react';
+import { Wrench, Power } from 'lucide-react';
 
 interface SuperAdminMaintenanceBannerProps {
   pageId: string;

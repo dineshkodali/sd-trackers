@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { X, AlertCircle, Loader2, Lock, Building2, UserCheck, Calendar, Plus, Settings2 } from 'lucide-react';
+import { X, AlertCircle, Loader2, Lock, Building2, UserCheck, Plus, Settings2 } from 'lucide-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
 import { FieldOptionCategory } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -110,7 +110,6 @@ export function DynamicRecordFormModal<T = any>({
     return 'Site Manager';
   }, [sites, properties]);
 
-  const isSuperAdmin = currentUserRole === 'Super Admin';
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const isEditing = Boolean(isEdit || (initialValues as any)?.id);
 
@@ -436,27 +435,9 @@ export function DynamicRecordFormModal<T = any>({
       } else if (isStaffPlc) {
         initial[key] = userStaffPlace;
       } else if (initialValues && initialValues[col.key as keyof T] !== undefined) {
-        const val = initialValues[col.key as keyof T];
-        if (col.type === 'date' && !isEditing && !isDobColumn(col) && !isSuperAdmin) {
-          if (val && typeof val === 'string' && val.slice(0, 10) >= todayStr) {
-            initial[key] = val.slice(0, 10);
-          } else {
-            initial[key] = todayStr;
-          }
-        } else {
-          initial[key] = val;
-        }
+        initial[key] = initialValues[col.key as keyof T];
       } else if (col.defaultValue !== undefined) {
-        const resolved = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
-        if (col.type === 'date' && !isEditing && !isDobColumn(col) && !isSuperAdmin) {
-          if (resolved && typeof resolved === 'string' && resolved.slice(0, 10) >= todayStr) {
-            initial[key] = resolved.slice(0, 10);
-          } else {
-            initial[key] = todayStr;
-          }
-        } else {
-          initial[key] = resolved;
-        }
+        initial[key] = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
       } else {
         switch (col.type) {
           case 'number':
@@ -532,7 +513,7 @@ export function DynamicRecordFormModal<T = any>({
     setFormData(initial);
     setErrors({});
     setSubmitError(null);
-  }, [isOpen, initialValues, assignedSite, selectedSite, canAccessAllSites, userAssignedHotel, allSiteNames, effectiveContext, formColumns, loggedInUserName, isEditing, isSuperAdmin, todayStr]);
+  }, [isOpen, initialValues, assignedSite, selectedSite, canAccessAllSites, userAssignedHotel, allSiteNames, effectiveContext, formColumns, loggedInUserName, isEditing, todayStr]);
 
   const handleClearOrRevert = () => {
     if (isEditing && initialValues) {
@@ -579,12 +560,7 @@ export function DynamicRecordFormModal<T = any>({
         } else if (isStaffPlaceColumn(col)) {
           blank[key] = userStaffPlace;
         } else if (col.defaultValue !== undefined) {
-          const resolved = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
-          if (col.type === 'date' && !isDobColumn(col) && !isSuperAdmin) {
-            blank[key] = (resolved && typeof resolved === 'string' && resolved.slice(0, 10) >= todayStr) ? resolved.slice(0, 10) : todayStr;
-          } else {
-            blank[key] = resolved;
-          }
+          blank[key] = typeof col.defaultValue === 'function' ? col.defaultValue(effectiveContext) : col.defaultValue;
         } else {
           switch (col.type) {
             case 'number':
@@ -775,21 +751,6 @@ export function DynamicRecordFormModal<T = any>({
           return;
         }
       }
-
-      // Strict Date Rule: Non-Super Admin cannot choose past dates for operational logs/bookings
-      if (col.type === 'date' && !isSuperAdmin && !isDobColumn(col) && val) {
-        const dateVal = String(val).trim().slice(0, 10);
-        if (dateVal) {
-          if (!isEditing && dateVal < todayStr) {
-            newErrors[key] = `${col.label} cannot be in the past (must be today or later). Only Super Admin can select past dates.`;
-          } else if (isEditing && dateVal < todayStr) {
-            const initialDateVal = (initialValues as any)?.[key] ? String((initialValues as any)[key]).trim().slice(0, 10) : '';
-            if (dateVal !== initialDateVal) {
-              newErrors[key] = `${col.label} cannot be changed to a past date. Only Super Admin can select past dates.`;
-            }
-          }
-        }
-      }
     });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -970,16 +931,6 @@ export function DynamicRecordFormModal<T = any>({
                           <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
                             <Lock className="w-2.5 h-2.5 text-teal-600" /> Assigned Property (Locked)
                           </span>
-                        ) : col.type === 'date' && !isDobColumn(col) ? (
-                          !isSuperAdmin ? (
-                            <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                              <Calendar className="w-2.5 h-2.5 text-teal-600" /> Today or Later
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-                              <Calendar className="w-2.5 h-2.5 text-purple-600" /> Super Admin: All Dates
-                            </span>
-                          )
                         ) : isReadOnly ? (
                           <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5">
                             <Lock className="w-2.5 h-2.5 text-amber-600" /> Auto
@@ -1187,32 +1138,13 @@ export function DynamicRecordFormModal<T = any>({
                             value={value}
                             readOnly={isReadOnly}
                             disabled={isSubmitting}
-                            min={
-                              !isSuperAdmin && !isDobColumn(col)
-                                ? (isEditing && (initialValues as any)?.[key] && String((initialValues as any)[key]).slice(0, 10) < todayStr
-                                    ? String((initialValues as any)[key]).slice(0, 10)
-                                    : todayStr)
-                                : col.min
-                            }
+                            min={col.min}
                             max={isDobColumn(col) ? todayStr : col.max}
                             onChange={e => handleChange(key, e.target.value)}
                             className={`w-full p-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors ${
                               errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
                             } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}
                           />
-                          {!isDobColumn(col) && (
-                            <div className="flex items-center justify-between text-[11px] pt-0.5">
-                              {!isSuperAdmin ? (
-                                <span className="text-teal-700 font-medium flex items-center gap-1">
-                                  <span>&bull;</span> Date must be today or later
-                                </span>
-                              ) : (
-                                <span className="text-purple-700 font-medium flex items-center gap-1">
-                                  <span>&bull;</span> Super Admin: Past dates allowed
-                                </span>
-                              )}
-                            </div>
-                          )}
                         </div>
                       ) : col.type === 'checkbox' ? (
                         <div className="flex items-center gap-2 pt-2">

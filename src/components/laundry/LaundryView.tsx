@@ -1,19 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Building2, 
-  Calendar, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Search, 
-  SlidersHorizontal,
-  Eye,
-  Shirt,
-  Layers,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown
-} from 'lucide-react';
+import { Calendar, Plus, Trash2, Edit3, Search, SlidersHorizontal, Eye, Shirt, Layers, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DailyLaundryRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

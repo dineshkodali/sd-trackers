@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { UsersRound, Plus, Search, Building2, Home, DoorOpen, Eye, Edit3, ArrowRightLeft, RefreshCw, CheckCircle2, AlertCircle, Trash2, UserMinus, Lock } from 'lucide-react';
+import { UsersRound, Plus, Search, DoorOpen, Eye, Edit3, ArrowRightLeft, RefreshCw, CheckCircle2, AlertCircle, Trash2, UserMinus, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';

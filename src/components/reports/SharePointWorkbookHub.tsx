@@ -1,17 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  FileSpreadsheet, 
-  Cloud, 
-  Copy, 
-  Check, 
-  ExternalLink, 
-  Download, 
-  RefreshCw, 
-  Settings, 
-  CheckCircle2, 
-  Link2, 
-  Table
-} from 'lucide-react';
+import { FileSpreadsheet, Copy, Check, ExternalLink, Download, RefreshCw, Settings, CheckCircle2, Link2, Table } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { exportToSharePointExcelWorkbook, formatDataAsExcelClipboardTsv } from '../../utils/workbookExport';
 

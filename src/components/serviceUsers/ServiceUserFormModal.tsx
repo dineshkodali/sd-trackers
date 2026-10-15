@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, AlertCircle, PlaneTakeoff, UserPlus } from 'lucide-react';
+import { X, User, AlertCircle, PlaneTakeoff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';

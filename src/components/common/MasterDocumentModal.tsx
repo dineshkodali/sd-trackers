@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Eye, Download } from 'lucide-react';
+import { X, UploadCloud, FileText, AlertCircle } from 'lucide-react';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
 import { useApp } from '../../context/AppContext';
 

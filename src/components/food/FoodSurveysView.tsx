@@ -1,24 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  Soup, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  Star,
-  CheckCircle2,
-  Utensils,
-  Calendar,
-  Building2,
-  Info,
-  SlidersHorizontal,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpDown,
-  Lock
-} from 'lucide-react';
+import { Soup, Plus, Search, Edit3, Trash2, Eye, CheckCircle2, Utensils, SlidersHorizontal, ArrowUp, ArrowDown, ArrowUpDown, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FoodSurveyRecord, FoodMealRating, MealRatingValue } from '../../types';
 import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';

@@ -1,16 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Plus, 
-  ShieldCheck, 
-  FileText, 
-  Filter, 
-  Search, 
-  X,
-  MessageSquareQuote,
-  Building2,
-  User,
-  Lock
-} from 'lucide-react';
+import { Plus, ShieldCheck, FileText, Search, X, MessageSquareQuote, Building2, User, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DataChangeRequest } from '../../types';
 import { ExportDropdown } from '../common/ExportDropdown';

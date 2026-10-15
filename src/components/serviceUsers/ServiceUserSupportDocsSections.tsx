@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { HeartHandshake, FileText, UploadCloud, Trash2, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { HeartHandshake, FileText, UploadCloud, Trash2, CheckCircle2 } from 'lucide-react';
 import { ServiceUserDocument } from '../../types/masterData';
 import { useApp } from '../../context/AppContext';
 import { getUserDropdownOptions } from '../../utils/userSelectOptions';

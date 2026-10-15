@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BUFFET_ROWS } from '../src/components/food/FoodVendorBuffetLogSection';
 import { toDatabaseRow, fromDatabaseRow } from '../server/schemaAdapter';
-import { FoodBuffetItemBreakdown, PropertyFoodVendorBuffetLog, FoodWastageRecord } from '../src/types';
+import { PropertyFoodVendorBuffetLog, FoodWastageRecord } from '../src/types';
 
 test('Hot Meal Tracker - Meal grouping and exact display order', () => {
   const expectedOrder = [

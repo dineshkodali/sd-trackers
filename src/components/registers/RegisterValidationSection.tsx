@@ -1,14 +1,5 @@
 import React, { useMemo } from 'react';
-import { 
-  ShieldCheck, 
-  AlertTriangle, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
-  Bed, 
-  Building, 
-  Users 
-} from 'lucide-react';
+import { ShieldCheck, AlertTriangle, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { DailyRegisterRecord, DailyRegisterRoom } from '../../types';
 
 interface RegisterValidationSectionProps {

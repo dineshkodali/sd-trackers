@@ -1,26 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { 
-  BarChart3, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  ShieldAlert, 
-  Building2, 
-  User, 
-  Calendar, 
-  CheckCircle2, 
-  XCircle, 
-  X, 
-  AlertTriangle,
-  Car,
-  Bus,
-  TrendingUp,
-  FileSpreadsheet,
-  Lock
-} from 'lucide-react';
+import { BarChart3, Plus, Search, Edit3, Trash2, Eye, ShieldAlert, Building2, Calendar, CheckCircle2, XCircle, X, Lock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { TransportChallengeRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

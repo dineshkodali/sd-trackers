@@ -1,22 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Sparkles, 
-  Calendar, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Search, 
-  SlidersHorizontal,
-  Eye,
-  CheckSquare,
-  Building2,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown
-} from 'lucide-react';
+import { Sparkles, Plus, Trash2, Edit3, Search, SlidersHorizontal, Eye, CheckCircle2, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { HousekeepingRecord, HousekeepingRoomCheck } from '../../types';
 import { Pagination } from '../common/Pagination';

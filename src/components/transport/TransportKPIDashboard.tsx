@@ -1,17 +1,5 @@
 import React from 'react';
-import { 
-  Bus, 
-  CreditCard, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  ShieldAlert, 
-  Car, 
-  HelpCircle,
-  FileCheck2,
-  TrendingUp,
-  Activity
-} from 'lucide-react';
+import { Bus, CreditCard, AlertTriangle, Activity } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 interface TransportKPIDashboardProps {

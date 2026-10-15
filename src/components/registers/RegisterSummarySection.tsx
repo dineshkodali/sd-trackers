@@ -1,14 +1,5 @@
 import React, { useMemo } from 'react';
-import { 
-  Building, 
-  Bed, 
-  Users, 
-  Layers, 
-  CheckCircle2, 
-  AlertTriangle, 
-  PieChart, 
-  ShieldCheck 
-} from 'lucide-react';
+import { Building, Bed, Users, Layers, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { DailyRegisterRecord, DailyRegisterRoom } from '../../types';
 import { roomKey } from '../../utils/roomAllocation';
 

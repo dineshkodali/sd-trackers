@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Building2, User, Home, DoorOpen, AlertCircle, CheckCircle2, Search } from 'lucide-react';
+import { Building2, User, Home, DoorOpen } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';

@@ -1,24 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import {
-  FileText,
-  Plus,
-  Search,
-  Filter,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertCircle,
-  HelpCircle,
-  Building,
-  CreditCard,
-  Scale,
-  RefreshCw,
-  Download,
-  Eye,
-  SlidersHorizontal,
-  ChevronRight
-} from 'lucide-react';
+import { FileText, Plus, Search, CheckCircle, Clock, HelpCircle, CreditCard, RefreshCw, Download, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceBillModal } from './FinanceBillModal';

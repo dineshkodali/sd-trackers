@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, Inbox, Flame, Soup } from 'lucide-react';
+import { Utensils, Inbox, Flame } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FoodVendorBuffetLogSection } from './FoodVendorBuffetLogSection';
 import { FoodConsumptionView } from './FoodConsumptionView';

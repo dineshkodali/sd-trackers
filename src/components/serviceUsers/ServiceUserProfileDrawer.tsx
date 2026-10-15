@@ -1,22 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  User, 
-  MapPin, 
-  Building2, 
-  DoorOpen, 
-  Calendar, 
-  Edit3, 
-  ArrowRightLeft, 
-  Plus, 
-  HeartHandshake, 
-  Soup, 
-  Wrench, 
-  FileText, 
-  LifeBuoy, 
-  Users, 
-  History 
-} from 'lucide-react';
+import { X, MapPin, Building2, DoorOpen, Calendar, Edit3, ArrowRightLeft, HeartHandshake, Soup } from 'lucide-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
 import { useApp } from '../../context/AppContext';

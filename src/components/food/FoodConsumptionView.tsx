@@ -1,27 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Utensils, 
-  Calendar, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Search, 
-  Eye, 
-  CheckCircle2, 
-  AlertCircle, 
-  Inbox, 
-  Download,
-  Filter,
-  Sparkles,
-  ArrowRight,
-  Database,
-  Check,
-  RotateCcw,
-  Coffee,
-  Soup,
-  Flame,
-  BookmarkPlus
-} from 'lucide-react';
+import { Utensils, Calendar, Plus, Trash2, Edit3, Search, Eye, CheckCircle2, Inbox, Database, Check, RotateCcw, Coffee, Soup, BookmarkPlus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FoodConsumptionReport, FoodConsumptionItem, FoodBoxRequest, FieldOptionCategory } from '../../types';
 import { Pagination } from '../common/Pagination';

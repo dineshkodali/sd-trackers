@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Edit3, X, CheckSquare, Square } from 'lucide-react';
+import { Trash2, Edit3, X, CheckSquare } from 'lucide-react';
 
 interface BulkActionToolbarProps {
   selectedCount: number;

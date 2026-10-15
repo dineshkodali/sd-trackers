@@ -1,24 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  Bus, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  MessageSquareWarning,
-  BarChart3,
-  CreditCard,
-  ArrowRightLeft,
-  Building2,
-  ShieldCheck,
-  Activity
-} from 'lucide-react';
+import { Bus, Plus, Search, Edit3, Trash2, Eye, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, MessageSquareWarning, BarChart3, CreditCard, Building2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PublicTransportRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

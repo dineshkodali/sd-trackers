@@ -1,37 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { 
-  CreditCard, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  AlertCircle, 
-  Building2, 
-  User, 
-  Calendar, 
-  FileText, 
-  CheckSquare, 
-  ArrowRight, 
-  ArrowLeft, 
-  X, 
-  ShieldCheck, 
-  Lock, 
-  DollarSign, 
-  FileCheck2,
-  Paperclip,
-  ChevronRight
-} from 'lucide-react';
+import { CreditCard, Plus, Search, Trash2, Eye, Building2, Calendar, CheckSquare, ArrowRight, ArrowLeft, X, ShieldCheck, Lock, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { 
-  TransportFundingRequestRecord, 
-  FundingRequestStatus, 
-  RecordAttachment 
-} from '../../types';
+import { TransportFundingRequestRecord, FundingRequestStatus } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';

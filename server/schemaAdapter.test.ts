@@ -673,55 +673,6 @@ test('universal attachments with multiple formats and loggedBy persist and round
   assert.equal(back.loggedBy, 'Lead Officer John Doe');
 });
 
-test('strict date rule: non-super admin blocked from past dates, super admin allowed, DOB exempted', () => {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const pastDate = '2020-01-01';
-  const futureDate = '2030-01-01';
-
-  const isDob = (key: string, label: string) => {
-    const k = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const l = label.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return k === 'dob' || k === 'sudob' || k === 'dateofbirth' || k === 'birthdate' || l.includes('dob') || l.includes('birth');
-  };
-
-  const validateDate = (role: string, key: string, label: string, dateVal: string, isEditing: boolean, initialVal?: string): string | null => {
-    const isSuperAdmin = role === 'Super Admin';
-    if (isDob(key, label)) return null; // DOB is exempt from past date restriction
-    if (isSuperAdmin) return null; // Super Admin can select any past date
-
-    if (!isEditing && dateVal < todayStr) {
-      return `${label} cannot be in the past (must be today or later). Only Super Admin can select past dates.`;
-    }
-    if (isEditing && dateVal < todayStr && dateVal !== initialVal) {
-      return `${label} cannot be changed to a past date. Only Super Admin can select past dates.`;
-    }
-    return null;
-  };
-
-  // Regular users (e.g. Duty Officer / Staff) cannot pick past dates for appointments or logs
-  assert.ok(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', pastDate, false));
-  assert.ok(validateDate('Duty Officer', 'dateOfIncident', 'Incident Date', pastDate, false));
-  assert.ok(validateDate('Staff Member', 'date', 'Date Left', pastDate, false));
-
-  // Regular users CAN pick today or future dates
-  assert.equal(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', todayStr, false), null);
-  assert.equal(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', futureDate, false), null);
-
-  // DOB fields (dob, suDob, Date of Birth) are exempted from past date restrictions for ALL users
-  assert.equal(validateDate('Duty Worker', 'dob', 'Date of Birth', '1995-05-15', false), null);
-  assert.equal(validateDate('Duty Worker', 'suDob', 'SU DOB', '1988-12-01', false), null);
-  assert.equal(validateDate('Staff', 'dateOfBirth', 'Resident DOB', '2000-01-01', false), null);
-
-  // Super Admin can log ANY past date for operational forms, appointments, and incident logs
-  assert.equal(validateDate('Super Admin', 'appointmentDate', 'Appointment Date', pastDate, false), null);
-  assert.equal(validateDate('Super Admin', 'dateOfIncident', 'Incident Date', pastDate, false), null);
-  assert.equal(validateDate('Super Admin', 'date', 'Date Left', pastDate, false), null);
-
-  // Edit mode: preserving existing historical past date is permitted for regular users, but changing to older past date is blocked
-  assert.equal(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', pastDate, true, pastDate), null);
-  assert.ok(validateDate('Duty Worker', 'appointmentDate', 'Appointment Date', '2019-01-01', true, pastDate));
-});
-
 test('column classification guards: reviewBySGTeam is textarea, officer is not site, and assigned hotel reflects assigned property', () => {
   const isLoggedByColumn = (col: { key: string; label?: string; type?: string }): boolean => {
     if (col.type === 'textarea' || col.type === 'date' || col.type === 'number' || col.type === 'currency' || col.type === 'checkbox' || col.type === 'select') {

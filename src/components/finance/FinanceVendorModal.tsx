@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Building2, CheckCircle2, AlertCircle, Loader2, Upload, FileText } from 'lucide-react';
+import { X, Building2, CheckCircle2, AlertCircle, Loader2, Upload } from 'lucide-react';
 import { financeService } from '../../services/financeService';
 import type { FinanceVendor } from '../../types/finance';
 

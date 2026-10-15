@@ -1,19 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  UserMinus, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Download,
-  AlertTriangle,
-  CheckCircle2
-} from 'lucide-react';
+import { UserMinus, Edit3, Trash2, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { EvictionRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

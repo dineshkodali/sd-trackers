@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, FileText, Download, Eye, Trash2, Calendar, Edit3, Link2 } from 'lucide-react';
+import { Plus, FileText, Eye, Trash2, Calendar, Edit3, Link2 } from 'lucide-react';
 import { PropertyDocument } from '../../types/masterData';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
 import { MasterDocumentModal } from '../common/MasterDocumentModal';

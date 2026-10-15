@@ -1,23 +1,7 @@
 import { isOutOfUse } from '../utils/roomManagementLogic';
 import { apiService, WriteResult } from './apiService';
 import { INITIAL_SITES } from '../data/initialData';
-import {
-  ServiceUserMaster,
-  ServiceUserContact,
-  ServiceUserHouseholdMember,
-  ServiceUserSupportRecord,
-  ServiceUserDocument,
-  PropertyMaster,
-  PropertyRoom,
-  PropertyFacility,
-  PropertyAsset,
-  PropertyCompliance,
-  PropertyDocument,
-  PropertyContact,
-  Placement,
-  MasterAuditLog,
-  UnifiedActivityItem
-} from '../types/masterData';
+import { ServiceUserMaster, ServiceUserContact, ServiceUserHouseholdMember, PropertyMaster, PropertyRoom, Placement, MasterAuditLog } from '../types/masterData';
 
 export const suPropertyService = {
   // ---------------------------------------------------------------------------

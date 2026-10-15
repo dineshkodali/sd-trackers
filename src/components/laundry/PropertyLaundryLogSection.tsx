@@ -635,22 +635,6 @@ export const PropertyLaundryLogSection: React.FC = () => {
       return;
     }
 
-    const isSuperAdmin = currentUserRole === 'Super Admin';
-    const isAdmin = currentUserRole === 'Admin';
-    const isSiteManager = currentUserRole === 'Area Manager';
-    const isAuthorizedRole = isSuperAdmin || isAdmin || isSiteManager;
-
-    // Operational cycle allows logging for the current week bounds (todayBounds.start) or later
-    const earliestAllowedDate = isSuperAdmin ? '1970-01-01' : todayBounds.start;
-    if (!isAuthorizedRole && formData.startDate < earliestAllowedDate) {
-      alert(`Date From cannot precede the current operational week (${todayBounds.start}).`);
-      return;
-    }
-    if (!isSuperAdmin && !isAdmin && !isSiteManager && formData.startDate < todayBounds.start) {
-      alert(`Date From cannot precede the current operational week (${todayBounds.start}).`);
-      return;
-    }
-
     let effectiveSite = formData.site || userAssignedHotel || allowedSites[0] || '';
     if (!canAccessAllSites()) {
       if ((allowedSites || []).length <= 1) {
@@ -1119,33 +1103,14 @@ export const PropertyLaundryLogSection: React.FC = () => {
                         <Calendar className="w-3.5 h-3.5 text-[#0d9488]" />
                         <span>Date From *</span>
                       </span>
-                      {currentUserRole !== 'Super Admin' ? (
-                        <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium">
-                          Today or Later
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded font-medium">
-                          Current Week or Later
-                        </span>
-                      )}
                     </label>
                     <input
                       type="date"
                       value={formData.startDate}
-                      min={currentUserRole === 'Super Admin' || currentUserRole === 'Admin' ? undefined : todayBounds.start}
                       onChange={e => handleStartDateChange(e.target.value, formData.periodType)}
                       className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-medium"
                       required
                     />
-                    {currentUserRole !== 'Super Admin' && currentUserRole !== 'Admin' ? (
-                      <p className="text-[10px] text-neutral-500 mt-0.5">
-                        Current operational cycle ({todayBounds.start}) or later.
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-purple-700 mt-0.5">
-                        Administrator: All dates permitted.
-                      </p>
-                    )}
                   </div>
 
                   <div>

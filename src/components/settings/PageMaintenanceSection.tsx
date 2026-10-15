@@ -1,18 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Wrench, 
-  Search, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Power, 
-  ShieldAlert, 
-  Filter,
-  MessageSquare,
-  Sparkles,
-  ArrowRight
-} from 'lucide-react';
+import { Wrench, Search, CheckCircle2, AlertTriangle, Power, Filter, MessageSquare } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { APP_PAGES_REGISTRY, AppModulePage } from '../../config/pageRegistry';
+import { APP_PAGES_REGISTRY } from '../../config/pageRegistry';
 
 export const PageMaintenanceSection: React.FC = () => {
   const { 

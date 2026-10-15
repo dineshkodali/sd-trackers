@@ -1,26 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Trash2, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Eye, 
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  UtensilsCrossed,
-  Calendar,
-  Sun,
-  Moon,
-  Utensils,
-  X,
-  PlusCircle,
-  FileText,
-  AlertCircle,
-  Building2,
-  Check
-} from 'lucide-react';
+import { Trash2, Plus, Search, Edit3, Eye, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, UtensilsCrossed, Calendar, Sun, Moon, Utensils, X, PlusCircle, AlertCircle, Building2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FoodWastageRecord, FoodWastageItem } from '../../types';
 import { Pagination } from '../common/Pagination';

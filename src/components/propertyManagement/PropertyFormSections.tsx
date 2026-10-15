@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Home, MapPin, CheckCircle2 } from 'lucide-react';
+import { Building2, MapPin } from 'lucide-react';
 import { SiteInfo } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { getUserDropdownOptions } from '../../utils/userSelectOptions';

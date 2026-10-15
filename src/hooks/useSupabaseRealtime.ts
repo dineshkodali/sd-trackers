@@ -3,13 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import {
-  realtimeService,
-  RealtimeConnectionStatus,
-  RealtimeTableChangeEvent,
-  RealtimeStats,
-  TableChangeHandler
-} from '../services/realtimeService';
+import { realtimeService, RealtimeConnectionStatus, RealtimeStats, TableChangeHandler } from '../services/realtimeService';
 
 export interface UseRealtimeResult {
   status: RealtimeConnectionStatus;

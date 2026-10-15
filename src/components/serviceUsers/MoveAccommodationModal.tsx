@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowRight, Building2, Home, DoorOpen, Calendar, HelpCircle, AlertTriangle } from 'lucide-react';
+import { X, ArrowRight, Home, DoorOpen, AlertTriangle } from 'lucide-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { useApp } from '../../context/AppContext';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';

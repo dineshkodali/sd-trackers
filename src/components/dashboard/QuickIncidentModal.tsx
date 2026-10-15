@@ -298,11 +298,6 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
       return;
     }
 
-    if (currentUserRole !== 'Super Admin' && dateOfIncident < todayStr) {
-      setErrorMsg('Incident date cannot be in the past (must be today or later). Only Super Admin can log incidents for past dates.');
-      return;
-    }
-
     const fullNotes = roomNumber 
       ? `[Room: ${roomNumber}] [Time: ${timeOfIncident}] ${incidentNotes.trim()}`
       : `[Time: ${timeOfIncident}] ${incidentNotes.trim()}`;
@@ -622,22 +617,12 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
               <div>
                 <label className="font-semibold text-neutral-700 mb-1 flex items-center justify-between">
                   <span>Date & Time of Incident</span>
-                  {currentUserRole !== 'Super Admin' ? (
-                    <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium">
-                      Today or Later
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded font-medium">
-                      Super Admin: All Dates
-                    </span>
-                  )}
                 </label>
                 <div className="flex gap-1.5">
                   <input
                     id="incident-date"
                     type="date"
                     value={dateOfIncident}
-                    min={currentUserRole !== 'Super Admin' ? todayStr : undefined}
                     onChange={(e) => setDateOfIncident(e.target.value)}
                     className="w-2/3 p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
                   />
@@ -649,15 +634,6 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                     className="w-1/3 p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
                   />
                 </div>
-                {currentUserRole !== 'Super Admin' ? (
-                  <p className="text-[10px] text-neutral-500 mt-1">
-                    Date must be today or later. Only Super Admin can file incidents for past dates.
-                  </p>
-                ) : (
-                  <p className="text-[10px] text-purple-700 mt-1">
-                    Super Admin: Past dates permitted.
-                  </p>
-                )}
               </div>
 
               <div>

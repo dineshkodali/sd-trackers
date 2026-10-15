@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { getSupabaseAdmin, getSupabaseAnon, isSupabaseConfigured } from '../supabase.js';
 import { sendEmail, isSmtpConfigured } from '../mailer.js';
-import { getClientOrigin, getAppBaseUrl } from '../urlHelper.js';
+import { getAppBaseUrl } from '../urlHelper.js';
 import { signAdminToken } from '../tokenSigner.js';
 import { requireAuth, requireRole, resolveUser, invalidateTokenCache, ProfileLookupError } from '../middleware/requireAuth.js';
 

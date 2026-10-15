@@ -1,28 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  Receipt, 
-  Plus, 
-  Search, 
-  RotateCcw, 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown, 
-  SlidersHorizontal, 
-  Eye,
-  Edit3,
-  Trash2,
-  Copy,
-  Check, 
-  Building2,
-  Calendar,
-  AlertCircle,
-  CheckCircle2,
-  XCircle,
-  Send,
-  Clock,
-  Truck
-} from 'lucide-react';
+import { Receipt, Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, Eye, Edit3, Trash2, Copy, Check, Building2, CheckCircle2, XCircle, Send, Clock, Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceBillModal } from './FinanceBillModal';

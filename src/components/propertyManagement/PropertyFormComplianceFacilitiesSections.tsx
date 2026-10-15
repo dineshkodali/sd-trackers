@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Wifi, Phone, Wrench, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Wifi, Phone } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getUserDropdownOptions } from '../../utils/userSelectOptions';
 

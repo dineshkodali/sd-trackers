@@ -1,21 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  UserPlus, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Eye, 
-  SlidersHorizontal, 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown, 
-  Download, 
-  BedDouble, 
-  CheckCircle2,
-  RefreshCw 
-} from 'lucide-react';
+import { UserPlus, Plus, Edit3, Eye, BedDouble, RefreshCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { NewArrivalRecord, DailyRegisterRecord } from '../../types';
+import { NewArrivalRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { NEW_ARRIVALS_TABLE_COLUMNS } from '../../data/defaultTableSchemas';

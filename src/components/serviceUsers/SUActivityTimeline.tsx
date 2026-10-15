@@ -1,18 +1,5 @@
 import React from 'react';
-import { 
-  HeartHandshake, 
-  Soup, 
-  Building2, 
-  AlertTriangle, 
-  Wrench, 
-  MessageSquare, 
-  FileText, 
-  LifeBuoy, 
-  MapPin, 
-  Calendar,
-  CheckCircle2,
-  Clock
-} from 'lucide-react';
+import { HeartHandshake, Soup, Building2, AlertTriangle, Wrench, MessageSquare, FileText, LifeBuoy, MapPin, Calendar, Clock } from 'lucide-react';
 import { UnifiedActivityItem } from '../../types/masterData';
 
 interface SUActivityTimelineProps {

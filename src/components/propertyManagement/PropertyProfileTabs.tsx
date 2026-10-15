@@ -1,17 +1,8 @@
 import { isOutOfUse } from '../../utils/roomManagementLogic';
 import React, { useState } from 'react';
-import { Plus, Users, Edit3, Trash2, DoorOpen, Building2 } from 'lucide-react';
+import { Plus, Users, Edit3 } from 'lucide-react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  PropertyMaster, 
-  PropertyRoom, 
-  Placement, 
-  ServiceUserMaster, 
-  PropertyFacility, 
-  PropertyAsset, 
-  PropertyCompliance, 
-  PropertyContact 
-} from '../../types/masterData';
+import { PropertyMaster, PropertyRoom, Placement, ServiceUserMaster, PropertyAsset, PropertyCompliance } from '../../types/masterData';
 
 export interface PropertyOverviewTabProps {
   totalCapacity: number;
