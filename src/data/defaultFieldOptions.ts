@@ -169,6 +169,27 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'Utensils'
   },
   {
+    key: 'foodBreakfastItems',
+    name: 'Breakfast Dishes & Items',
+    department: 'Welfare',
+    description: 'Menu dishes and food items available for morning breakfast logs',
+    iconName: 'Coffee'
+  },
+  {
+    key: 'foodLunchItems',
+    name: 'Lunch Dishes & Items',
+    department: 'Welfare',
+    description: 'Menu dishes and food items available for afternoon lunch logs',
+    iconName: 'Utensils'
+  },
+  {
+    key: 'foodDinnerItems',
+    name: 'Dinner Dishes & Items',
+    department: 'Welfare',
+    description: 'Menu dishes and food items available for evening dinner logs',
+    iconName: 'Soup'
+  },
+  {
     key: 'wastageUnits',
     name: 'Food Wastage Units',
     department: 'Welfare',
@@ -751,5 +772,43 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-mhs-2', category: 'mhComplaintStatuses', label: 'Under Review', value: 'Under Review', color: 'amber', description: 'Investigation or remedy in progress by site team', isActive: true, isSystem: true, order: 2 },
   { id: 'opt-mhs-3', category: 'mhComplaintStatuses', label: 'Escalated to Home Office', value: 'Escalated', color: 'purple', description: 'Escalated to Home Office or contract provider', isActive: true, isSystem: true, order: 3 },
   { id: 'opt-mhs-4', category: 'mhComplaintStatuses', label: 'Resolved', value: 'Resolved', color: 'emerald', description: 'Issue remedied and confirmed with resident', isActive: true, isSystem: true, order: 4 },
-  { id: 'opt-mhs-5', category: 'mhComplaintStatuses', label: 'Closed', value: 'Closed', color: 'slate', description: 'Case officially closed with MH confirmation', isActive: true, isSystem: true, order: 5 }
+  { id: 'opt-mhs-5', category: 'mhComplaintStatuses', label: 'Closed', value: 'Closed', color: 'slate', description: 'Case officially closed with MH confirmation', isActive: true, isSystem: true, order: 5 },
+
+  // 51. Breakfast Dishes & Items
+  { id: 'opt-fbf-1', category: 'foodBreakfastItems', label: 'Eggs (Boiled / Fried / Scrambled)', value: 'Eggs', color: 'amber', description: 'Fresh eggs prepared daily', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fbf-2', category: 'foodBreakfastItems', label: 'Bread (White / Brown / Rolls)', value: 'Bread', color: 'amber', description: 'Sliced bread and fresh rolls', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-fbf-3', category: 'foodBreakfastItems', label: 'Milk (Whole / Semi-Skimmed)', value: 'Milk', color: 'blue', description: 'Fresh milk for drinks and cereal', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-fbf-4', category: 'foodBreakfastItems', label: 'Cereal (Cornflakes / Muesli)', value: 'Cereal', color: 'yellow', description: 'Assorted breakfast cereals', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-fbf-5', category: 'foodBreakfastItems', label: 'Cheese (Cheddar Slices)', value: 'Cheese', color: 'amber', description: 'Cheese slices and portions', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-fbf-6', category: 'foodBreakfastItems', label: 'Butter / Flora Spread', value: 'Butter', color: 'yellow', description: 'Individual butter and spread portions', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-fbf-7', category: 'foodBreakfastItems', label: 'Juice (Orange / Apple)', value: 'Juice', color: 'orange', description: 'Fruit juice cartons', isActive: true, isSystem: true, order: 7 },
+  { id: 'opt-fbf-8', category: 'foodBreakfastItems', label: 'Jam / Marmalade Portions', value: 'Jam', color: 'rose', description: 'Fruit preserves and jams', isActive: true, isSystem: true, order: 8 },
+  { id: 'opt-fbf-9', category: 'foodBreakfastItems', label: 'Baked Beans', value: 'Baked Beans', color: 'orange', description: 'Warm baked beans in tomato sauce', isActive: true, isSystem: true, order: 9 },
+  { id: 'opt-fbf-10', category: 'foodBreakfastItems', label: 'Halal Sausages', value: 'Halal Sausages', color: 'red', description: 'Halal breakfast sausages', isActive: true, isSystem: true, order: 10 },
+  { id: 'opt-fbf-11', category: 'foodBreakfastItems', label: 'Porridge / Oatmeal', value: 'Porridge', color: 'amber', description: 'Warm porridge oats', isActive: true, isSystem: true, order: 11 },
+  { id: 'opt-fbf-12', category: 'foodBreakfastItems', label: 'Fresh Fruit (Apples / Bananas)', value: 'Fresh Fruit', color: 'green', description: 'Fresh breakfast fruit', isActive: true, isSystem: true, order: 12 },
+
+  // 52. Lunch Dishes & Items
+  { id: 'opt-flu-1', category: 'foodLunchItems', label: 'Southern fried chicken', value: 'Southern fried chicken', color: 'amber', description: 'Crispy fried chicken portions', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-flu-2', category: 'foodLunchItems', label: 'Southern fried tofu', value: 'Southern fried tofu', color: 'emerald', description: 'Vegetarian / vegan tofu alternative', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-flu-3', category: 'foodLunchItems', label: 'Fresh Salad & Dressings', value: 'Salad', color: 'green', description: 'Mixed green salad with dressing', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-flu-4', category: 'foodLunchItems', label: 'Chips / Potato Wedges', value: 'Chips', color: 'yellow', description: 'Oven baked potato chips', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-flu-5', category: 'foodLunchItems', label: 'Pasta Bolognese (Halal)', value: 'Pasta Bolognese', color: 'rose', description: 'Minced beef pasta dish', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-flu-6', category: 'foodLunchItems', label: 'Jacket Potatoes with Beans/Cheese', value: 'Jacket Potatoes', color: 'amber', description: 'Baked jacket potatoes with filling', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-flu-7', category: 'foodLunchItems', label: 'Sandwiches & Filled Wraps', value: 'Sandwiches & Wraps', color: 'blue', description: 'Cold lunch sandwiches and wraps', isActive: true, isSystem: true, order: 7 },
+  { id: 'opt-flu-8', category: 'foodLunchItems', label: 'Beef Burger with Salad', value: 'Beef Burger', color: 'red', description: 'Grilled beef patty in bun', isActive: true, isSystem: true, order: 8 },
+  { id: 'opt-flu-9', category: 'foodLunchItems', label: 'Vegetable Curry with Rice', value: 'Vegetable Curry', color: 'teal', description: 'Mild vegetable curry with basmati rice', isActive: true, isSystem: true, order: 9 },
+  { id: 'opt-flu-10', category: 'foodLunchItems', label: 'Soup of the Day with Bread Roll', value: 'Soup & Roll', color: 'slate', description: 'Hot seasonal soup with roll', isActive: true, isSystem: true, order: 10 },
+
+  // 53. Dinner Dishes & Items
+  { id: 'opt-fdi-1', category: 'foodDinnerItems', label: 'Beef massaman curry', value: 'Beef massaman curry', color: 'amber', description: 'Tender beef in mild massaman curry', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-fdi-2', category: 'foodDinnerItems', label: 'Cauliflower massaman curry', value: 'Cauliflower massaman curry', color: 'emerald', description: 'Vegetarian cauliflower massaman curry', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-fdi-3', category: 'foodDinnerItems', label: 'Steamed Basmati Rice', value: 'Rice', color: 'slate', description: 'Long grain steamed rice', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-fdi-4', category: 'foodDinnerItems', label: 'Dinner Salad', value: 'Salad', color: 'green', description: 'Fresh mixed dinner salad', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-fdi-5', category: 'foodDinnerItems', label: 'Roast Chicken & Gravy', value: 'Roast Chicken', color: 'orange', description: 'Roast halal chicken with roast potatoes & gravy', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-fdi-6', category: 'foodDinnerItems', label: 'Vegetable Lasagne', value: 'Vegetable Lasagne', color: 'teal', description: 'Baked Mediterranean vegetable lasagne', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-fdi-7', category: 'foodDinnerItems', label: 'Shepherd\'s Pie', value: 'Shepherd\'s Pie', color: 'rose', description: 'Minced lamb with mashed potato topping', isActive: true, isSystem: true, order: 7 },
+  { id: 'opt-fdi-8', category: 'foodDinnerItems', label: 'Battered Fish & Chips', value: 'Fish & Chips', color: 'blue', description: 'Crispy battered fish fillet with chips and peas', isActive: true, isSystem: true, order: 8 },
+  { id: 'opt-fdi-9', category: 'foodDinnerItems', label: 'Halal Lamb Stew with Veg', value: 'Halal Lamb Stew', color: 'red', description: 'Slow cooked lamb stew with root vegetables', isActive: true, isSystem: true, order: 9 },
+  { id: 'opt-fdi-10', category: 'foodDinnerItems', label: 'Vegetable Biryani', value: 'Vegetable Biryani', color: 'amber', description: 'Aromatic spiced basmati rice with mixed vegetables', isActive: true, isSystem: true, order: 10 }
 ];
