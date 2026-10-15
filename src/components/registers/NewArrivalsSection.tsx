@@ -25,6 +25,7 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
+import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
 
 interface NewArrivalsSectionProps {
   selectedSite: string;
@@ -46,6 +47,8 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     addNewArrivalRecord,
     updateNewArrivalRecord,
     addDailyRegisterRecord,
+    dailyRegisterRooms,
+    dailyRegisterRecords,
     canCreateRecord,
     canEditRecord,
     currentUserRole,
@@ -190,12 +193,35 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       return;
     }
 
-    addDailyRegisterRecord({
+    if (!isSitePermitted(arrival.hotel)) {
+      alert('You are not permitted to check residents into this property.');
+      return;
+    }
+
+    const check = evaluateRegisterAllocation({
+      rooms: dailyRegisterRooms,
+      records: dailyRegisterRecords,
       hotel: arrival.hotel,
-      roomNo: arrival.room,
+      roomNo: arrival.room.trim(),
+      portRef: arrival.portReference
+    });
+    if (!check.ok) {
+      alert(`Cannot check in ${arrival.name}: ${check.error}`);
+      setEditingRecord(arrival);
+      return;
+    }
+    const allocatedRoom = check.room!;
+    const checkInDate = arrival.checkInDate || new Date().toISOString().slice(0, 10);
+
+    addDailyRegisterRecord({
+      hotel: allocatedRoom.hotel,
+      roomNo: allocatedRoom.roomNo,
+      floor: allocatedRoom.floor || undefined,
+      registerDate: checkInDate,
+      dailyOccupancy: { [checkInDate]: 'Occupied' },
       portRef: arrival.portReference,
       name: arrival.name,
-      checkInDate: arrival.checkInDate || new Date().toISOString().slice(0, 10),
+      checkInDate,
       contactNo: arrival.contactNumber,
       email: arrival.email,
       dob: arrival.dob,
@@ -211,7 +237,8 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       availableToBook: 'No'
     });
 
-    updateNewArrivalRecord(arrival.id, { status: 'Checked In' });
+    // Store the canonical room number so the arrival, register and room list always line up.
+    updateNewArrivalRecord(arrival.id, { status: 'Checked In', room: allocatedRoom.roomNo, hotel: allocatedRoom.hotel, checkInDate });
   };
 
   const handleExportCsv = () => {

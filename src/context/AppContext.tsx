@@ -86,6 +86,7 @@ import { DEFAULT_FIELD_OPTIONS } from '../data/defaultFieldOptions';
 import { DEFAULT_NOTIFICATION_RULES } from '../data/defaultNotificationRules';
 import { emailNotificationService } from '../services/emailNotificationService';
 import { smartCache, fastIndices, SmartCacheStats } from '../utils/smartCache';
+import { roomKey, findRegisterRoom, deriveRoomOccupancy } from '../utils/roomAllocation';
 import { apiService, AuditDescriptor } from '../services/apiService';
 import { tableSchemaService } from '../services/tableSchemaService';
 import { migrateLegacyLocalData, hasLegacyLocalData, purgeAllLegacyLocalStorage } from '../services/legacyLocalDataMigration';
@@ -4151,12 +4152,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [dailyRegisterRooms, persistDelete, requestConfirmation, closeConfirmation]);
 
+  // Keep each room's stored occupancy/bedspace figures in line with the register (single source of truth = register records).
+  const reconcileRegisterRooms = useCallback((nextRecords: DailyRegisterRecord[], touched: Array<{ hotel?: string; roomNo?: string }>) => {
+    const seen = new Set<string>();
+    touched.forEach(t => {
+      if (!t.hotel || !t.roomNo) return;
+      const key = roomKey(t.hotel, t.roomNo);
+      if (seen.has(key)) return;
+      seen.add(key);
+      const room = findRegisterRoom(dailyRegisterRooms, t.hotel, t.roomNo);
+      if (!room) return;
+      const derived = deriveRoomOccupancy(room, nextRecords);
+      if (derived.currentOccupancy !== (Number(room.currentOccupancy) || 0) || derived.bedspacesAvailable !== (Number(room.bedspacesAvailable) || 0)) {
+        updateDailyRegisterRoom(room.id, derived);
+      }
+    });
+  }, [dailyRegisterRooms, updateDailyRegisterRoom]);
+
   // --- CRUD: Daily Register Records (daily_register_records) ---
   const addDailyRegisterRecord = useCallback((data: Omit<DailyRegisterRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
     const newRecord: DailyRegisterRecord = {
       ...data,
-      id: 'dr-' + Date.now(),
+      id: 'dr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       createdAt: now,
       updatedAt: now
     };
@@ -4166,7 +4184,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'CREATE', module: 'Live Daily Registers', targetItem: `Register: ${newRecord.name} (Room ${newRecord.roomNo})`, site: hotel,
       details: `Logged register occupancy for ${newRecord.name} in Room ${newRecord.roomNo}.`
     });
-  }, [persistCreate]);
+    reconcileRegisterRooms([newRecord, ...dailyRegisterRecords], [newRecord]);
+  }, [persistCreate, reconcileRegisterRooms, dailyRegisterRecords]);
 
   const updateDailyRegisterRecord = useCallback((id: string, updates: Partial<DailyRegisterRecord>) => {
     const current = dailyRegisterRecords.find(r => r.id === id);
@@ -4177,7 +4196,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'UPDATE', module: 'Live Daily Registers', targetItem: `Register: ${current.name}`, site: current.hotel || 'Hotel',
       details: `Updated daily register record for ${current.name}.`
     });
-  }, [dailyRegisterRecords, persistUpdate]);
+    const next = dailyRegisterRecords.map(rec => rec.id === id ? { ...rec, ...changes } : rec);
+    reconcileRegisterRooms(next, [current, { ...current, ...changes }]);
+  }, [dailyRegisterRecords, persistUpdate, reconcileRegisterRooms]);
 
   const deleteDailyRegisterRecord = useCallback((id: string) => {
     const current = dailyRegisterRecords.find(r => r.id === id);
@@ -4194,9 +4215,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           action: 'DELETE', module: 'Live Daily Registers', targetItem: `Register: ${current.name}`, site: current.hotel || 'Hotel',
           details: `Deleted daily register entry ${id}.`
         });
+        reconcileRegisterRooms(dailyRegisterRecords.filter(r => r.id !== id), [current]);
       }
     });
-  }, [dailyRegisterRecords, persistDelete, requestConfirmation, closeConfirmation]);
+  }, [dailyRegisterRecords, persistDelete, requestConfirmation, closeConfirmation, reconcileRegisterRooms]);
 
   // --- CRUD: New Arrivals Records (new_arrivals_records) ---
   const addNewArrivalRecord = useCallback((data: Omit<NewArrivalRecord, 'id' | 'createdAt' | 'updatedAt'>) => {

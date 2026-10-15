@@ -28,6 +28,7 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
+import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
 
 interface DailyRegisterSectionProps {
   selectedSite: string;
@@ -52,6 +53,7 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
 }) => {
   const {
     dailyRegisterRecords,
+    dailyRegisterRooms,
     addDailyRegisterRecord,
     updateDailyRegisterRecord,
     deleteDailyRegisterRecord,
@@ -151,9 +153,20 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
       alert('You are not permitted to log records for this property.');
       return;
     }
+    let roomNo = (data.roomNo || '').trim();
+    if ((data.occupied || 'Yes') !== 'No') {
+      const check = evaluateRegisterAllocation({
+        rooms: dailyRegisterRooms, records: dailyRegisterRecords, hotel: targetSite, roomNo, portRef: data.portRef
+      });
+      if (!check.ok) {
+        alert(check.error);
+        return;
+      }
+      roomNo = check.room!.roomNo;
+    }
     addDailyRegisterRecord({
       hotel: targetSite,
-      roomNo: data.roomNo || '',
+      roomNo,
       floor: data.floor || 'Ground',
       roomMakeup: data.roomMakeup || '',
       singleBed: Number(data.singleBed) || 0,
@@ -189,6 +202,17 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
 
   const handleEditSubmit = (data: Partial<DailyRegisterRecord>) => {
     if (!editingRecord) return;
+    const merged = { ...editingRecord, ...data };
+    if (merged.occupied !== 'No') {
+      const check = evaluateRegisterAllocation({
+        rooms: dailyRegisterRooms, records: dailyRegisterRecords, hotel: merged.hotel,
+        roomNo: (merged.roomNo || '').trim(), portRef: merged.portRef, excludeRecordId: editingRecord.id
+      });
+      if (!check.ok) {
+        alert(check.error);
+        return;
+      }
+    }
     updateDailyRegisterRecord(editingRecord.id, {
       ...editingRecord,
       ...data,

@@ -9,6 +9,7 @@ import { HouseholdSection, AccommodationSection } from './ServiceUserPlacementHo
 import { ServiceUserFormHeader, SUTabType } from './ServiceUserFormHeader';
 import { ServiceUserArrivalSection } from './ServiceUserArrivalSection';
 import { ServiceUserFormFooter } from './ServiceUserFormFooter';
+import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
 import { 
   SUSupportNeedsSection, 
   SUDocumentsUploadSection, 
@@ -28,7 +29,10 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
   serviceUserToEdit,
   onSuccess
 }) => {
-  const { sites, canAccessAllSites, allowedSites, isSitePermitted } = useApp();
+  const {
+    sites, canAccessAllSites, allowedSites, isSitePermitted,
+    addNewArrivalRecord, addDailyRegisterRecord, dailyRegisterRooms, dailyRegisterRecords
+  } = useApp();
 
   const permittedSites = React.useMemo(() => {
     if (canAccessAllSites()) return sites;
@@ -307,6 +311,36 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
 
         if (!res.success || !res.record) throw new Error(res.error || 'Failed to create Service User.');
         targetSuId = res.record.id;
+
+        // Line the arrival up with the live registers: New Arrivals queue, and the Daily Register when the room exists there.
+        if (formMode === 'arrival') {
+          const siteName = sites.find(s => s.id === siteId)?.name || siteId;
+          const roomNumber = rooms.find(r => r.id === roomId)?.roomNumber || '';
+          const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
+          const checkInDate = arrivalDateTime.split('T')[0];
+          const check = evaluateRegisterAllocation({
+            rooms: dailyRegisterRooms, records: dailyRegisterRecords, hotel: siteName,
+            roomNo: roomNumber, portRef: externalReference.trim()
+          });
+          addNewArrivalRecord({
+            portReference: externalReference.trim(), name: fullName, dob: dateOfBirth, country: nationality,
+            language: preferredLanguage, contactNumber: mobile.trim(), email: email.trim(),
+            hotel: siteName, room: check.ok ? check.room!.roomNo : roomNumber, checkInDate,
+            status: check.ok ? 'Checked In' : 'Arrived', attachments: []
+          } as any);
+          if (check.ok) {
+            const room = check.room!;
+            addDailyRegisterRecord({
+              hotel: room.hotel, roomNo: room.roomNo, floor: room.floor || undefined,
+              singleBed: 1, doubleBed: 0, singleBunk: 0, doubleBunk: 0, cot: 0,
+              portRef: externalReference.trim(), name: fullName, checkInDate,
+              contactNo: mobile.trim(), email: email.trim(), dob: dateOfBirth,
+              nationality, language: preferredLanguage, gender,
+              occupied: 'Yes', isVoid: 'No', availableToBook: 'No',
+              registerDate: checkInDate, dailyOccupancy: { [checkInDate]: 'Occupied' }
+            });
+          }
+        }
       }
 
       if (targetSuId) {

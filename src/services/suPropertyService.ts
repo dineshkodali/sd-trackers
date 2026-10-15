@@ -224,7 +224,7 @@ export const suPropertyService = {
 
     // Optional initial placement
     if (initialPlacement && initialPlacement.propertyId && initialPlacement.roomId && initialPlacement.siteId) {
-      await this.createPlacement({
+      const plcRes = await this.createPlacement({
         suId,
         siteId: initialPlacement.siteId,
         propertyId: initialPlacement.propertyId,
@@ -233,6 +233,11 @@ export const suPropertyService = {
         notes: initialPlacement.notes || 'Initial accommodation placement',
         status: 'Active'
       });
+      if (!plcRes.success) {
+        // Room was taken between validation and placement: undo the SU so no orphan, room-less record is left behind.
+        await this.deleteServiceUser(suId);
+        return { success: false, error: plcRes.error || 'Room allocation failed; the Service User was not created.' };
+      }
     }
 
     await this.logAudit('Create', 'service_users', suId, {}, suRecord);
@@ -642,20 +647,15 @@ export const suPropertyService = {
       return { success: false, error: `Room ${room.roomNumber} has reached maximum capacity (${capacity} occupant(s)). Please select an available room.` };
     }
 
-    // 2. Safely close any existing active placement for this SU (prevents conflicting/duplicate active placements)
+    if (room.propertyId && room.propertyId !== data.propertyId) {
+      return { success: false, error: `Room ${room.roomNumber} does not belong to the selected property.` };
+    }
     const existingUserPlcs = (currentPlcs.data || []).filter(p => p.suId === data.suId && p.id !== data.id);
-    for (const oldPlc of existingUserPlcs) {
-      await apiService.updateEntityRecord<Placement>('placements', oldPlc.id, {
-        endDate: data.startDate || new Date().toISOString(),
-        status: 'Completed',
-        notes: `${oldPlc.notes || ''} [Closed: Reallocated to new room]`.trim()
-      });
-      if (oldPlc.roomId && oldPlc.roomId !== data.roomId) {
-        await this.syncRoomOccupancy(oldPlc.roomId);
-      }
+    if (existingUserPlcs.some(p => p.roomId === data.roomId)) {
+      return { success: false, error: `Service User is already allocated to Room ${room.roomNumber}.` };
     }
 
-    // 3. Create new placement
+    // 2. Create new placement (the old one is only closed once the new one is safely stored)
     const id = data.id || crypto.randomUUID();
     const ref = data.placementReference || this.generateReference('PLC', Math.floor(Math.random() * 90000) + 1000);
     const record: Placement = {
@@ -683,6 +683,16 @@ export const suPropertyService = {
     });
 
     if (res.success) {
+      // 3. Close any previous active placement for this SU and release those rooms
+      for (const oldPlc of existingUserPlcs) {
+        await apiService.updateEntityRecord<Placement>('placements', oldPlc.id, {
+          endDate: record.startDate,
+          status: 'Completed',
+          notes: `${oldPlc.notes || ''} [Closed: ${data.reason || 'Reallocated to new room'}]`.trim()
+        });
+        await this.logAudit('Placement Changes', 'placements', oldPlc.id, oldPlc, { status: 'Completed', endDate: record.startDate });
+        if (oldPlc.roomId) await this.syncRoomOccupancy(oldPlc.roomId);
+      }
       // Sync room occupancy based on new placement
       await this.syncRoomOccupancy(record.roomId);
       // Update SU site_id
@@ -723,26 +733,14 @@ export const suPropertyService = {
       return { success: false, error: `Target Room ${targetRoom.roomNumber} has reached maximum capacity (${capacity} occupant(s)).` };
     }
 
-    // 2. Find currently active placement for this SU
+    // 2. Reject no-op moves
     const oldPlacements = (currentPlcs.data || []).filter(p => p.suId === suId);
-    for (const oldPlacement of oldPlacements) {
-      if (oldPlacement.roomId === newRoomId && oldPlacement.propertyId === newPropertyId) {
-        return { success: false, error: 'Service User is already allocated to this room.' };
-      }
-      // Close old placement
-      await apiService.updateEntityRecord<Placement>('placements', oldPlacement.id, {
-        endDate: moveDate || new Date().toISOString(),
-        status: 'Completed',
-        notes: `${oldPlacement.notes || ''} [Closed on move: ${reason}]`.trim()
-      });
-      // Re-evaluate old room occupancy
-      if (oldPlacement.roomId) {
-        await this.syncRoomOccupancy(oldPlacement.roomId);
-      }
-      await this.logAudit('Placement Changes', 'placements', oldPlacement.id, oldPlacement, { status: 'Completed', endDate: moveDate });
+    if (oldPlacements.some(p => p.roomId === newRoomId && p.propertyId === newPropertyId)) {
+      return { success: false, error: 'Service User is already allocated to this room.' };
     }
 
-    // 3. Create new placement
+    // 3. Create new placement; createPlacement closes the old one only after the new one is stored,
+    //    so a failed move never leaves the Service User without a room.
     const createRes = await this.createPlacement({
       suId,
       siteId: newSiteId,

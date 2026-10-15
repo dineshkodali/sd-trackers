@@ -10,6 +10,7 @@ import {
   ShieldCheck 
 } from 'lucide-react';
 import { DailyRegisterRecord, DailyRegisterRoom } from '../../types';
+import { roomKey } from '../../utils/roomAllocation';
 
 interface RegisterSummarySectionProps {
   rooms: DailyRegisterRoom[];
@@ -53,7 +54,7 @@ export const RegisterSummarySection: React.FC<RegisterSummarySectionProps> = ({
   const occupantsByRoom = useMemo(() => {
     const map = new Map<string, number>();
     activeRecords.forEach(r => {
-      const k = (r.roomNo || '').toLowerCase().trim();
+      const k = roomKey(r.hotel, r.roomNo);
       map.set(k, (map.get(k) || 0) + 1);
     });
     return map;
@@ -62,7 +63,7 @@ export const RegisterSummarySection: React.FC<RegisterSummarySectionProps> = ({
   // Available Rooms (occupants === 0 and voidBedspaces === 0)
   const availableRoomsCount = useMemo(() => {
     return activeRooms.filter(r => {
-      const occ = occupantsByRoom.get(r.roomNo.toLowerCase().trim()) || 0;
+      const occ = occupantsByRoom.get(roomKey(r.hotel, r.roomNo)) || 0;
       return occ === 0 && (r.voidBedspaces || 0) === 0;
     }).length;
   }, [activeRooms, occupantsByRoom]);
@@ -70,7 +71,7 @@ export const RegisterSummarySection: React.FC<RegisterSummarySectionProps> = ({
   // Bedspaces in Available Rooms
   const bedspacesInAvailableRooms = useMemo(() => {
     return activeRooms.filter(r => {
-      const occ = occupantsByRoom.get(r.roomNo.toLowerCase().trim()) || 0;
+      const occ = occupantsByRoom.get(roomKey(r.hotel, r.roomNo)) || 0;
       return occ === 0 && (r.voidBedspaces || 0) === 0;
     }).reduce((sum, r) => sum + (Number(r.currentMaxOccupancy) || 0), 0);
   }, [activeRooms, occupantsByRoom]);
@@ -78,11 +79,11 @@ export const RegisterSummarySection: React.FC<RegisterSummarySectionProps> = ({
   // Bedspaces in Shared Rooms (rooms with capacity > 1 that are partially occupied)
   const bedspacesInSharedRooms = useMemo(() => {
     return activeRooms.filter(r => {
-      const occ = occupantsByRoom.get(r.roomNo.toLowerCase().trim()) || 0;
+      const occ = occupantsByRoom.get(roomKey(r.hotel, r.roomNo)) || 0;
       const max = Number(r.currentMaxOccupancy) || 0;
       return max > 1 && occ > 0 && occ < max;
     }).reduce((sum, r) => {
-      const occ = occupantsByRoom.get(r.roomNo.toLowerCase().trim()) || 0;
+      const occ = occupantsByRoom.get(roomKey(r.hotel, r.roomNo)) || 0;
       const max = Number(r.currentMaxOccupancy) || 0;
       return sum + (max - occ);
     }, 0);
@@ -101,7 +102,7 @@ export const RegisterSummarySection: React.FC<RegisterSummarySectionProps> = ({
       entry.totalRooms++;
       entry.maxCapacity += Number(r.currentMaxOccupancy) || 0;
 
-      const occ = occupantsByRoom.get(r.roomNo.toLowerCase().trim()) || 0;
+      const occ = occupantsByRoom.get(roomKey(r.hotel, r.roomNo)) || 0;
       if (occ === 0 && (r.voidBedspaces || 0) === 0) {
         entry.availableRooms++;
       }
