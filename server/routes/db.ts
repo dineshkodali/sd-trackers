@@ -191,6 +191,20 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   placements: { page: 'Placements Master', table: 'placements' },
   auditLogs: { page: 'Master Audit Logs', table: 'audit_logs', read: 'admin', write: 'append', remove: 'superadmin' },
   audit_logs: { page: 'Master Audit Logs', table: 'audit_logs', read: 'admin', write: 'append', remove: 'superadmin', alias: true },
+
+  // MH Complaint Welfare, Daily Laundry, Housekeeping, and Food Consumption
+  mhComplaintWelfare: { page: 'MH-Complaint Welfare Checks', table: 'mh_complaint_welfare_checks' },
+  mh_complaint_welfare_checks: { page: 'MH-Complaint Welfare Checks', table: 'mh_complaint_welfare_checks', alias: true },
+  dailyLaundry: { page: 'Daily Laundry Log', table: 'daily_laundry_logs' },
+  daily_laundry_logs: { page: 'Daily Laundry Log', table: 'daily_laundry_logs', alias: true },
+  housekeeping: { page: 'Housekeeping Log', table: 'housekeeping_logs' },
+  housekeeping_logs: { page: 'Housekeeping Log', table: 'housekeeping_logs', alias: true },
+  housekeepingRooms: { page: 'Housekeeping Room Checks', table: 'housekeeping_room_logs' },
+  housekeeping_room_logs: { page: 'Housekeeping Room Checks', table: 'housekeeping_room_logs', alias: true },
+  foodConsumption: { page: 'Food Consumption Report', table: 'food_consumption_reports' },
+  food_consumption_reports: { page: 'Food Consumption Report', table: 'food_consumption_reports', alias: true },
+  foodBoxRequests: { page: 'Food Box Requests & Complaints', table: 'food_box_requests' },
+  food_box_requests: { page: 'Food Box Requests & Complaints', table: 'food_box_requests', alias: true },
 };
 
 /** Retained for callers that imported the old name. */

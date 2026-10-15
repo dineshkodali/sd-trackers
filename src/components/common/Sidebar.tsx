@@ -39,7 +39,10 @@ import {
   Trash2,
   X,
   FilePlus,
-  Wrench
+  Wrench,
+  Sparkles,
+  ShieldAlert,
+  Utensils
 } from 'lucide-react';
 
 import { useApp } from '../../context/AppContext';
@@ -121,6 +124,7 @@ export const Sidebar: React.FC = () => {
     complianceRecords,
     gpAppointmentRecords,
     rfaWelfareRecords,
+    mhComplaintWelfareRecords,
     dispersalRecords,
     evictionRecords,
     bookletRecords,
@@ -131,6 +135,8 @@ export const Sidebar: React.FC = () => {
     welfareChecks,
     foodSurveys,
     roomChecks,
+    housekeepingRecords,
+    foodConsumptionReports,
     notificationRules,
     canManageSettings,
     canManageRoles,
@@ -178,6 +184,7 @@ export const Sidebar: React.FC = () => {
   const scopedDailyRegisters = dailyRegisterRecords.filter(siteFilterPredicate);
   const scopedWelfareChecks = (welfareChecks || []).filter(siteFilterPredicate);
   const scopedRfaWelfare = rfaWelfareRecords.filter(siteFilterPredicate);
+  const scopedMhComplaint = (mhComplaintWelfareRecords || []).filter(siteFilterPredicate);
   const scopedGpAppointments = gpAppointmentRecords.filter(siteFilterPredicate);
   const scopedIrRecords = irRecords.filter(siteFilterPredicate);
   const scopedTransport = publicTransportRecords.filter(siteFilterPredicate);
@@ -185,6 +192,8 @@ export const Sidebar: React.FC = () => {
   const scopedEvictions = (evictionRecords || []).filter(siteFilterPredicate);
   const scopedBooklets = bookletRecords.filter(siteFilterPredicate);
   const scopedVcsAgencies = vcsAgencies.filter(siteFilterPredicate);
+  const scopedHousekeeping = (housekeepingRecords || []).filter(siteFilterPredicate);
+  const scopedFoodConsumption = (foodConsumptionReports || []).filter(siteFilterPredicate);
   const scopedFoodSurveys = (foodSurveys || []).filter(siteFilterPredicate);
   const scopedFoodWastage = foodWastageRecords.filter(siteFilterPredicate);
   const scopedRoomChecks = (roomChecks || []).filter(siteFilterPredicate);
@@ -417,6 +426,7 @@ export const Sidebar: React.FC = () => {
 
             <NavItem id="nav-welfare-checks" page="welfareChecks" label="Welfare Checks" icon={HeartHandshake} iconColor="text-rose-600" badge={scopedWelfareChecks.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('welfareChecks')} onClick={handleNavClick} />
             <NavItem id="nav-rfa-welfare" page="rfaWelfare" label="RFA Welfare Checks" icon={UserCheck} iconColor="text-rose-600" badge={scopedRfaWelfare.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('rfaWelfare')} onClick={handleNavClick} />
+            <NavItem id="nav-mh-complaint" page="mhComplaintWelfare" label="MH-Complaint Welfare" icon={ShieldAlert} iconColor="text-rose-600" badge={scopedMhComplaint.length || null} badgeClass="bg-rose-50 text-rose-800 font-semibold" active={isNavActive('mhComplaintWelfare')} onClick={handleNavClick} />
             <NavItem id="nav-gp-appointments" page="gpAppointments" label="GP Appointments" icon={Stethoscope} iconColor="text-blue-600" badge={scopedGpAppointments.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('gpAppointments')} onClick={handleNavClick} />
             <NavItem id="nav-document-builder" page="documentBuilder" label="HO Report Generator" icon={FilePlus} iconColor="text-[#0d9488]" active={isNavActive('documentBuilder')} onClick={handleNavClick} />
           </div>
@@ -434,7 +444,9 @@ export const Sidebar: React.FC = () => {
             <NavItem id="nav-dispersal" page="dispersal" label="Dispersal Sheet" icon={PlaneTakeoff} iconColor="text-indigo-700" badge={(scopedDispersal.length + scopedEvictions.length) || null} badgeClass="bg-indigo-50 text-indigo-800" active={isNavActive('dispersal')} onClick={handleNavClick} />
             <NavItem id="nav-booklets" page="booklets" label="Booklet Inventory" icon={BookOpen} iconColor="text-amber-700" badge={scopedBooklets.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('booklets')} onClick={handleNavClick} />
             <NavItem id="nav-laundry" page="laundry" label="Laundry Support" icon={Waves} iconColor="text-cyan-700" active={isNavActive('laundry')} onClick={handleNavClick} />
+            <NavItem id="nav-housekeeping" page="housekeeping" label="Housekeeping Log" icon={Sparkles} iconColor="text-emerald-700" badge={scopedHousekeeping.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('housekeeping')} onClick={handleNavClick} />
             <NavItem id="nav-food" page="food" label="Hot Meals Tracker" icon={Soup} iconColor="text-emerald-600" active={isNavActive('food')} onClick={handleNavClick} />
+            <NavItem id="nav-food-consumption" page="foodConsumption" label="Food Consumption Log" icon={Utensils} iconColor="text-amber-700" badge={scopedFoodConsumption.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodConsumption')} onClick={handleNavClick} />
             <NavItem id="nav-food-surveys" page="foodSurveys" label="Food Surveys" icon={Soup} iconColor="text-emerald-600" badge={scopedFoodSurveys.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('foodSurveys')} onClick={handleNavClick} />
             <NavItem id="nav-food-wastage" page="foodWastage" label="Food Wastage Tracker" icon={Trash2} iconColor="text-amber-700" badge={scopedFoodWastage.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodWastage')} onClick={handleNavClick} />
             <NavItem id="nav-room-checks" page="roomChecks" label="Room Checks" icon={Building2} iconColor="text-cyan-700" badge={scopedRoomChecks.length || null} badgeClass="bg-cyan-50 text-cyan-800" active={isNavActive('roomChecks')} onClick={handleNavClick} />

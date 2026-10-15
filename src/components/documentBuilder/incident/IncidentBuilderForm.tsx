@@ -242,7 +242,7 @@ export const IncidentBuilderForm: React.FC<FormProps> = ({
   const people: { key: 'offenders' | 'victims' | 'witnesses'; label: string }[] = [
     { key: 'offenders', label: 'Offenders (Name / Port)' },
     { key: 'victims', label: 'Victims (Name / Port)' },
-    { key: 'witnesses', label: 'Witnesses – SUs (Name / Port)' },
+    { key: 'witnesses', label: 'Witnesses (Security, Welfare, Managers, SUs & Others)' },
   ];
   const personText = (k: 'offenders' | 'victims' | 'witnesses') => state.core[k];
   const personMode = (k: 'offenders' | 'victims' | 'witnesses') => state.core[`${k}Mode` as 'offendersMode'];
@@ -256,6 +256,16 @@ export const IncidentBuilderForm: React.FC<FormProps> = ({
       if (!existing.includes(line)) existing.push(line);
       s.core[k] = existing.join('\n');
       s.core[`${k}Mode` as 'victimsMode'] = 'write';
+    });
+  };
+
+  const appendWitnessRole = (roleTitle: string) => {
+    mutate(s => {
+      const existing = s.core.witnesses.split('\n').map(x => x.trim()).filter(Boolean);
+      const template = `[${roleTitle}] Name: `;
+      existing.push(template);
+      s.core.witnesses = existing.join('\n');
+      s.core.witnessesMode = 'write';
     });
   };
 
@@ -495,6 +505,39 @@ export const IncidentBuilderForm: React.FC<FormProps> = ({
                     <option value="">+ Add a resident from site records{'…'}</option>
                     {siteSUs.map(su => <option key={su.id} value={su.id}>{residentLabel(su)}{su.room ? ` • Room ${su.room}` : ''} [{su.source}]</option>)}
                   </select>
+                )}
+                {p.key === 'witnesses' && (
+                  <div className="flex flex-wrap items-center gap-1 mt-1">
+                    <span className="text-[10px] text-[#64748b] font-medium">+ Quick add witness:</span>
+                    <button
+                      type="button"
+                      onClick={() => appendWitnessRole('Security Staff')}
+                      className="px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300"
+                    >
+                      + Security Staff
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => appendWitnessRole('Welfare Staff')}
+                      className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-300"
+                    >
+                      + Welfare Staff
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => appendWitnessRole('Manager')}
+                      className="px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-800 rounded border border-indigo-300"
+                    >
+                      + Manager
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => appendWitnessRole('Other Witness')}
+                      className="px-1.5 py-0.5 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 rounded border border-amber-300"
+                    >
+                      + Other Witness
+                    </button>
+                  </div>
                 )}
               </Field>
             );

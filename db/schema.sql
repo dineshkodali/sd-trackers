@@ -3329,5 +3329,150 @@ ON CONFLICT DO NOTHING;
 --   JOIN public.properties p ON p.id = s.property_id
 --   WHERE s.quantity_on_hand < s.minimum_level ORDER BY p.property_name, i.item_name;
 
+-- =====================================================================
+-- 52. CRM Updates & New Modules
+-- =====================================================================
+ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS reported_time TEXT;
+ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS actual_closed_time TEXT;
+ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS before_picture_url TEXT;
+ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS before_picture_date TEXT;
+ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS after_picture_url TEXT;
+ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS after_picture_date TEXT;
+ALTER TABLE public.dispersal_records ADD COLUMN IF NOT EXISTS type_of_dispersal TEXT DEFAULT 'Dispersal';
+ALTER TABLE public.ir_records ADD COLUMN IF NOT EXISTS witnesses TEXT;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS further_updates TEXT;
+
+UPDATE public.role_permissions 
+SET can_edit_records = TRUE, updated_at = NOW() 
+WHERE id = 'Staff' OR role = 'Staff';
+
+-- 53. MH-Complaint Welfare Checks Table
+CREATE TABLE IF NOT EXISTS public.mh_complaint_welfare_checks (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  site_name TEXT NOT NULL,
+  room_or_flat_no TEXT,
+  name TEXT NOT NULL,
+  dob TEXT,
+  port_or_nass_ref TEXT,
+  mh_ticket_ref TEXT NOT NULL,
+  complaint_category TEXT,
+  complaint_details TEXT NOT NULL,
+  action_taken TEXT,
+  status TEXT DEFAULT 'Open',
+  duty_staff TEXT,
+  notes TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  file_url TEXT,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 54. Daily Laundry Logs Table
+CREATE TABLE IF NOT EXISTS public.daily_laundry_logs (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  site TEXT NOT NULL,
+  house TEXT,
+  room_no TEXT NOT NULL,
+  quantity_received TEXT NOT NULL,
+  batches TEXT NOT NULL DEFAULT '1',
+  done_by TEXT NOT NULL,
+  remarks TEXT,
+  logged_by TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  file_url TEXT,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 55. Housekeeping Logs Table
+CREATE TABLE IF NOT EXISTS public.housekeeping_logs (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  site TEXT NOT NULL,
+  communal_areas_swept_mopped BOOLEAN DEFAULT true,
+  windows_wiped BOOLEAN DEFAULT true,
+  furniture_dusted BOOLEAN DEFAULT true,
+  staff_toilets_cleaned BOOLEAN DEFAULT true,
+  mirrors_cleaned BOOLEAN DEFAULT true,
+  fridges_cleaned BOOLEAN DEFAULT false,
+  lifts_stairs_cleaned BOOLEAN DEFAULT false,
+  offices_cleaned BOOLEAN DEFAULT false,
+  inspected_by TEXT NOT NULL,
+  notes TEXT,
+  room_logs JSONB DEFAULT '[]'::jsonb,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  file_url TEXT,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 56. Housekeeping Room Logs Table
+CREATE TABLE IF NOT EXISTS public.housekeeping_room_logs (
+  id TEXT PRIMARY KEY,
+  housekeeping_id TEXT REFERENCES public.housekeeping_logs(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  site TEXT NOT NULL,
+  room_no TEXT NOT NULL,
+  shower_heads BOOLEAN DEFAULT true,
+  bedding BOOLEAN DEFAULT true,
+  washroom BOOLEAN DEFAULT true,
+  floor BOOLEAN DEFAULT true,
+  cleaned_by TEXT NOT NULL,
+  notes TEXT,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 57. Food Consumption Daily Reports Table
+CREATE TABLE IF NOT EXISTS public.food_consumption_reports (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  site TEXT NOT NULL,
+  feedback_comments TEXT,
+  reported_by TEXT,
+  items JSONB DEFAULT '[]'::jsonb,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  file_url TEXT,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 58. Food Box Requests & Complaints Table
+CREATE TABLE IF NOT EXISTS public.food_box_requests (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  site TEXT NOT NULL,
+  room_no TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'Request',
+  reason TEXT NOT NULL,
+  status TEXT DEFAULT 'Pending',
+  logged_by TEXT,
+  remarks TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  file_url TEXT,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 NOTIFY pgrst, 'reload schema';
+
 

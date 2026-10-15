@@ -46,7 +46,12 @@ import {
   TransportFeedbackRecord,
   TransportChallengeRecord,
   TransportFundingRequestRecord,
-  TransportRoomMoveRecord
+  TransportRoomMoveRecord,
+  MHComplaintWelfareRecord,
+  DailyLaundryRecord,
+  HousekeepingRecord,
+  FoodConsumptionReport,
+  FoodBoxRequest
 } from '../types';
 import { checksService } from '../services/checksService';
 import {
@@ -431,6 +436,35 @@ interface AppContextType {
   updateRoomCheck: (id: string, updates: Partial<RoomCheckRecord>) => Promise<void>;
   deleteRoomCheck: (id: string) => Promise<void>;
 
+  // MH-Complaint Welfare Checks
+  mhComplaintWelfareRecords: MHComplaintWelfareRecord[];
+  addMHComplaintWelfareRecord: (record: Omit<MHComplaintWelfareRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateMHComplaintWelfareRecord: (id: string, updates: Partial<MHComplaintWelfareRecord>) => void;
+  deleteMHComplaintWelfareRecord: (id: string) => void;
+
+  // Daily Laundry Log
+  dailyLaundryRecords: DailyLaundryRecord[];
+  addDailyLaundryRecord: (record: Omit<DailyLaundryRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateDailyLaundryRecord: (id: string, updates: Partial<DailyLaundryRecord>) => void;
+  deleteDailyLaundryRecord: (id: string) => void;
+
+  // Housekeeping Log
+  housekeepingRecords: HousekeepingRecord[];
+  addHousekeepingRecord: (record: Omit<HousekeepingRecord, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateHousekeepingRecord: (id: string, updates: Partial<HousekeepingRecord>) => void;
+  deleteHousekeepingRecord: (id: string) => void;
+
+  // Food Consumption Reports & Box Requests
+  foodConsumptionReports: FoodConsumptionReport[];
+  addFoodConsumptionReport: (record: Omit<FoodConsumptionReport, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateFoodConsumptionReport: (id: string, updates: Partial<FoodConsumptionReport>) => void;
+  deleteFoodConsumptionReport: (id: string) => void;
+
+  foodBoxRequests: FoodBoxRequest[];
+  addFoodBoxRequest: (record: Omit<FoodBoxRequest, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateFoodBoxRequest: (id: string, updates: Partial<FoodBoxRequest>) => void;
+  deleteFoodBoxRequest: (id: string) => void;
+
   // 11. Finance Bills state
   financeBills: FinanceBill[];
   refreshFinanceBills: () => Promise<void>;
@@ -721,6 +755,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [welfareChecks, setWelfareChecks] = useState<WelfareCheckRecord[]>([]);
   const [foodSurveys, setFoodSurveys] = useState<FoodSurveyRecord[]>([]);
   const [roomChecks, setRoomChecks] = useState<RoomCheckRecord[]>([]);
+  const [mhComplaintWelfareRecords, setMhComplaintWelfareRecords] = useState<MHComplaintWelfareRecord[]>([]);
+  const [dailyLaundryRecords, setDailyLaundryRecords] = useState<DailyLaundryRecord[]>([]);
+  const [housekeepingRecords, setHousekeepingRecords] = useState<HousekeepingRecord[]>([]);
+  const [foodConsumptionReports, setFoodConsumptionReports] = useState<FoodConsumptionReport[]>([]);
+  const [foodBoxRequests, setFoodBoxRequests] = useState<FoodBoxRequest[]>([]);
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
   const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>([]);
   const [users, setUsers] = useState<UserAccount[]>(() => {
@@ -1707,6 +1746,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       { key: 'newArrivals', entity: 'newArrivals', label: 'New Arrivals' },
       { key: 'evictions', entity: 'evictions', label: 'Evictions' },
       { key: 'welfareChecks', entity: 'welfareChecks', label: 'Welfare Checks' },
+      { key: 'mhComplaintWelfare', entity: 'mhComplaintWelfare', label: 'MH-Complaint Welfare Checks' },
+      { key: 'dailyLaundry', entity: 'dailyLaundry', label: 'Daily Laundry Log' },
+      { key: 'housekeeping', entity: 'housekeeping', label: 'Housekeeping Log' },
+      { key: 'foodConsumption', entity: 'foodConsumption', label: 'Food Consumption Report' },
+      { key: 'foodBoxRequests', entity: 'foodBoxRequests', label: 'Food Box Requests' },
       { key: 'foodSurveys', entity: 'foodSurveys', label: 'Food Survey Checks' },
       { key: 'roomChecks', entity: 'roomChecks', label: 'Room Checks' },
       { key: 'requests', entity: 'requests', label: 'Requests & Approvals' },
@@ -1788,6 +1832,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apply<NewArrivalRecord>('newArrivals', setNewArrivalsRecords);
       apply<EvictionRecord>('evictions', setEvictionRecords);
       apply<WelfareCheckRecord>('welfareChecks', setWelfareChecks);
+      apply<MHComplaintWelfareRecord>('mhComplaintWelfare', setMhComplaintWelfareRecords);
+      apply<DailyLaundryRecord>('dailyLaundry', setDailyLaundryRecords);
+      apply<HousekeepingRecord>('housekeeping', setHousekeepingRecords);
+      apply<FoodConsumptionReport>('foodConsumption', setFoodConsumptionReports);
+      apply<FoodBoxRequest>('foodBoxRequests', setFoodBoxRequests);
       apply<FoodSurveyRecord>('foodSurveys', setFoodSurveys);
       apply<RoomCheckRecord>('roomChecks', setRoomChecks);
       apply<DataChangeRequest>('requests', rows =>
@@ -4464,6 +4513,235 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [roomChecks, persistDelete, requestConfirmation, closeConfirmation, currentUserName, currentUserRole]);
 
+  // --- MH-Complaint Welfare Checks CRUD ---
+  const addMHComplaintWelfareRecord = useCallback((data: Omit<MHComplaintWelfareRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: MHComplaintWelfareRecord = {
+      ...data,
+      id: 'mhc-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setMhComplaintWelfareRecords(prev => [newRecord, ...prev]);
+    persistCreate('mhComplaintWelfare', 'MH complaint welfare check', setMhComplaintWelfareRecords, newRecord, {
+      action: 'CREATE', module: 'Vulnerable SUs', targetItem: `MH Complaint: ${newRecord.name}`, site: newRecord.siteName,
+      details: `Logged MH complaint welfare check for ${newRecord.name} (Room ${newRecord.roomOrFlatNo}, Ticket ${newRecord.mhTicketRef}).`
+    });
+  }, [persistCreate]);
+
+  const updateMHComplaintWelfareRecord = useCallback((id: string, updates: Partial<MHComplaintWelfareRecord>) => {
+    const current = mhComplaintWelfareRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<MHComplaintWelfareRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setMhComplaintWelfareRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('mhComplaintWelfare', 'MH complaint welfare check update', setMhComplaintWelfareRecords, current, changes, {
+      action: 'UPDATE', module: 'Vulnerable SUs', targetItem: `MH Complaint: ${current.name}`, site: current.siteName,
+      details: `Updated MH complaint record for ${current.name}.`
+    });
+  }, [mhComplaintWelfareRecords, persistUpdate]);
+
+  const deleteMHComplaintWelfareRecord = useCallback((id: string) => {
+    const current = mhComplaintWelfareRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete MH-Complaint Welfare Record',
+      message: `Permanently delete MH-Complaint welfare record for ${current.name} (Ticket ${current.mhTicketRef})?`,
+      confirmLabel: 'Delete Record',
+      isDanger: true,
+      onConfirm: async () => {
+        setMhComplaintWelfareRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('mhComplaintWelfare', 'MH complaint record deletion', setMhComplaintWelfareRecords, current, {
+          action: 'DELETE', module: 'Vulnerable SUs', targetItem: `MH Complaint: ${current.name}`, site: current.siteName,
+          details: 'Deleted MH complaint welfare check.'
+        });
+      }
+    });
+  }, [mhComplaintWelfareRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- Daily Laundry Log CRUD ---
+  const addDailyLaundryRecord = useCallback((data: Omit<DailyLaundryRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: DailyLaundryRecord = {
+      ...data,
+      id: 'dl-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setDailyLaundryRecords(prev => [newRecord, ...prev]);
+    persistCreate('dailyLaundry', 'Daily laundry log entry', setDailyLaundryRecords, newRecord, {
+      action: 'CREATE', module: 'Laundry', targetItem: `Daily Laundry Room ${newRecord.roomNo}`, site: newRecord.site,
+      details: `Logged laundry for room ${newRecord.roomNo} (${newRecord.quantityReceived} bags, ${newRecord.batches} batches) by ${newRecord.doneBy}.`
+    });
+  }, [persistCreate]);
+
+  const updateDailyLaundryRecord = useCallback((id: string, updates: Partial<DailyLaundryRecord>) => {
+    const current = dailyLaundryRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<DailyLaundryRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setDailyLaundryRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('dailyLaundry', 'Daily laundry log update', setDailyLaundryRecords, current, changes, {
+      action: 'UPDATE', module: 'Laundry', targetItem: `Daily Laundry Room ${current.roomNo}`, site: current.site,
+      details: `Updated laundry record for room ${current.roomNo}.`
+    });
+  }, [dailyLaundryRecords, persistUpdate]);
+
+  const deleteDailyLaundryRecord = useCallback((id: string) => {
+    const current = dailyLaundryRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Daily Laundry Record',
+      message: `Permanently delete laundry record for Room ${current.roomNo} (${current.date})?`,
+      confirmLabel: 'Delete Entry',
+      isDanger: true,
+      onConfirm: async () => {
+        setDailyLaundryRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('dailyLaundry', 'Daily laundry log deletion', setDailyLaundryRecords, current, {
+          action: 'DELETE', module: 'Laundry', targetItem: `Daily Laundry Room ${current.roomNo}`, site: current.site,
+          details: 'Deleted daily laundry record.'
+        });
+      }
+    });
+  }, [dailyLaundryRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- Housekeeping Log CRUD ---
+  const addHousekeepingRecord = useCallback((data: Omit<HousekeepingRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: HousekeepingRecord = {
+      ...data,
+      id: 'hk-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setHousekeepingRecords(prev => [newRecord, ...prev]);
+    persistCreate('housekeeping', 'Housekeeping log entry', setHousekeepingRecords, newRecord, {
+      action: 'CREATE', module: 'Housekeeping', targetItem: `Housekeeping Log (${newRecord.date})`, site: newRecord.site,
+      details: `Logged housekeeping inspection and room checks for ${newRecord.site} on ${newRecord.date} by ${newRecord.inspectedBy}.`
+    });
+  }, [persistCreate]);
+
+  const updateHousekeepingRecord = useCallback((id: string, updates: Partial<HousekeepingRecord>) => {
+    const current = housekeepingRecords.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<HousekeepingRecord> = { ...updates, updatedAt: new Date().toISOString() };
+    setHousekeepingRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('housekeeping', 'Housekeeping log update', setHousekeepingRecords, current, changes, {
+      action: 'UPDATE', module: 'Housekeeping', targetItem: `Housekeeping Log (${current.date})`, site: current.site,
+      details: `Updated housekeeping log for ${current.site}.`
+    });
+  }, [housekeepingRecords, persistUpdate]);
+
+  const deleteHousekeepingRecord = useCallback((id: string) => {
+    const current = housekeepingRecords.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Housekeeping Log',
+      message: `Permanently delete housekeeping log for ${current.site} (${current.date})?`,
+      confirmLabel: 'Delete Log',
+      isDanger: true,
+      onConfirm: async () => {
+        setHousekeepingRecords(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('housekeeping', 'Housekeeping log deletion', setHousekeepingRecords, current, {
+          action: 'DELETE', module: 'Housekeeping', targetItem: `Housekeeping Log (${current.date})`, site: current.site,
+          details: 'Deleted housekeeping log entry.'
+        });
+      }
+    });
+  }, [housekeepingRecords, persistDelete, requestConfirmation, closeConfirmation]);
+
+  // --- Food Consumption Reports & Box Requests CRUD ---
+  const addFoodConsumptionReport = useCallback((data: Omit<FoodConsumptionReport, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: FoodConsumptionReport = {
+      ...data,
+      id: 'fcr-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setFoodConsumptionReports(prev => [newRecord, ...prev]);
+    persistCreate('foodConsumption', 'Food consumption daily report', setFoodConsumptionReports, newRecord, {
+      action: 'CREATE', module: 'Food Consumption', targetItem: `Food Consumption (${newRecord.date})`, site: newRecord.site,
+      details: `Created daily food consumption report for ${newRecord.site} on ${newRecord.date}.`
+    });
+  }, [persistCreate]);
+
+  const updateFoodConsumptionReport = useCallback((id: string, updates: Partial<FoodConsumptionReport>) => {
+    const current = foodConsumptionReports.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<FoodConsumptionReport> = { ...updates, updatedAt: new Date().toISOString() };
+    setFoodConsumptionReports(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('foodConsumption', 'Food consumption report update', setFoodConsumptionReports, current, changes, {
+      action: 'UPDATE', module: 'Food Consumption', targetItem: `Food Consumption (${current.date})`, site: current.site,
+      details: `Updated food consumption daily report for ${current.site}.`
+    });
+  }, [foodConsumptionReports, persistUpdate]);
+
+  const deleteFoodConsumptionReport = useCallback((id: string) => {
+    const current = foodConsumptionReports.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Food Consumption Report',
+      message: `Permanently delete food consumption report for ${current.site} on ${current.date}?`,
+      confirmLabel: 'Delete Report',
+      isDanger: true,
+      onConfirm: async () => {
+        setFoodConsumptionReports(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('foodConsumption', 'Food consumption report deletion', setFoodConsumptionReports, current, {
+          action: 'DELETE', module: 'Food Consumption', targetItem: `Food Consumption (${current.date})`, site: current.site,
+          details: 'Deleted food consumption report.'
+        });
+      }
+    });
+  }, [foodConsumptionReports, persistDelete, requestConfirmation, closeConfirmation]);
+
+  const addFoodBoxRequest = useCallback((data: Omit<FoodBoxRequest, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newRecord: FoodBoxRequest = {
+      ...data,
+      id: 'fbr-' + Date.now(),
+      createdAt: now,
+      updatedAt: now
+    };
+    setFoodBoxRequests(prev => [newRecord, ...prev]);
+    persistCreate('foodBoxRequests', 'Food box request/complaint', setFoodBoxRequests, newRecord, {
+      action: 'CREATE', module: 'Food Consumption', targetItem: `Food Box Room ${newRecord.roomNo}`, site: newRecord.site,
+      details: `Logged ${newRecord.type} for room ${newRecord.roomNo}: ${newRecord.reason}.`
+    });
+  }, [persistCreate]);
+
+  const updateFoodBoxRequest = useCallback((id: string, updates: Partial<FoodBoxRequest>) => {
+    const current = foodBoxRequests.find(r => r.id === id);
+    if (!current) return;
+    const changes: Partial<FoodBoxRequest> = { ...updates, updatedAt: new Date().toISOString() };
+    setFoodBoxRequests(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
+    persistUpdate('foodBoxRequests', 'Food box request update', setFoodBoxRequests, current, changes, {
+      action: 'UPDATE', module: 'Food Consumption', targetItem: `Food Box Room ${current.roomNo}`, site: current.site,
+      details: `Updated food box entry for room ${current.roomNo}.`
+    });
+  }, [foodBoxRequests, persistUpdate]);
+
+  const deleteFoodBoxRequest = useCallback((id: string) => {
+    const current = foodBoxRequests.find(r => r.id === id);
+    if (!current) return;
+    requestConfirmation({
+      title: 'Delete Food Box Request / Complaint',
+      message: `Permanently delete food box entry for Room ${current.roomNo}?`,
+      confirmLabel: 'Delete Entry',
+      isDanger: true,
+      onConfirm: async () => {
+        setFoodBoxRequests(prev => prev.filter(r => r.id !== id));
+        closeConfirmation();
+        await persistDelete('foodBoxRequests', 'Food box entry deletion', setFoodBoxRequests, current, {
+          action: 'DELETE', module: 'Food Consumption', targetItem: `Food Box Room ${current.roomNo}`, site: current.site,
+          details: 'Deleted food box request.'
+        });
+      }
+    });
+  }, [foodBoxRequests, persistDelete, requestConfirmation, closeConfirmation]);
+
 
   /**
    * Replace a whole module with its bundled master dataset: records not in the
@@ -5609,6 +5887,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addRoomCheck,
       updateRoomCheck,
       deleteRoomCheck,
+      mhComplaintWelfareRecords,
+      addMHComplaintWelfareRecord,
+      updateMHComplaintWelfareRecord,
+      deleteMHComplaintWelfareRecord,
+      dailyLaundryRecords,
+      addDailyLaundryRecord,
+      updateDailyLaundryRecord,
+      deleteDailyLaundryRecord,
+      housekeepingRecords,
+      addHousekeepingRecord,
+      updateHousekeepingRecord,
+      deleteHousekeepingRecord,
+      foodConsumptionReports,
+      addFoodConsumptionReport,
+      updateFoodConsumptionReport,
+      deleteFoodConsumptionReport,
+      foodBoxRequests,
+      addFoodBoxRequest,
+      updateFoodBoxRequest,
+      deleteFoodBoxRequest,
       financeBills,
       refreshFinanceBills,
       properties,

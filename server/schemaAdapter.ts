@@ -197,6 +197,7 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
   dispersal_records: [
     ['sno', 'sno', 'int'],
     ['siteName', 'site_name', 'text'],
+    ['typeOfDispersal', 'type_of_dispersal', 'text'],
     ['dateReceived', 'date_received', 'text'],
     ['suPortNassRef', 'su_port_nass_ref', 'text'],
     ['reasonForDeparture', 'reason_for_departure', 'text'],
@@ -290,6 +291,7 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['portRef', 'port_ref', 'text'],
     ['irSummary', 'ir_summary', 'text'],
     ['incidentTime', 'incident_time', 'text'],
+    ['witnesses', 'witnesses', 'text'],
     ['inFor1stReview', 'in_for_1st_review', 'text'],
     ['ct1stReview', 'ct_1st_review', 'text'],
     ['inFor2ndReview', 'in_for_2nd_review', 'text'],
@@ -920,6 +922,91 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['uploadedBy', 'uploaded_by', 'text'],
     ['notes', 'notes', 'text'],
   ],
+  mh_complaint_welfare_checks: [
+    ['date', 'date', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['roomOrFlatNo', 'room_or_flat_no', 'text'],
+    ['name', 'name', 'text'],
+    ['dob', 'dob', 'text'],
+    ['portOrNassRef', 'port_or_nass_ref', 'text'],
+    ['mhTicketRef', 'mh_ticket_ref', 'text'],
+    ['complaintCategory', 'complaint_category', 'text'],
+    ['complaintDetails', 'complaint_details', 'text'],
+    ['actionTaken', 'action_taken', 'text'],
+    ['status', 'status', 'text'],
+    ['dutyStaff', 'duty_staff', 'text'],
+    ['notes', 'notes', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  daily_laundry_logs: [
+    ['date', 'date', 'text'],
+    ['site', 'site', 'text'],
+    ['house', 'house', 'text'],
+    ['roomNo', 'room_no', 'text'],
+    ['quantityReceived', 'quantity_received', 'text'],
+    ['batches', 'batches', 'text'],
+    ['doneBy', 'done_by', 'text'],
+    ['remarks', 'remarks', 'text'],
+    ['loggedBy', 'logged_by', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  housekeeping_logs: [
+    ['date', 'date', 'text'],
+    ['site', 'site', 'text'],
+    ['communalAreasSweptMopped', 'communal_areas_swept_mopped', 'bool'],
+    ['windowsWiped', 'windows_wiped', 'bool'],
+    ['furnitureDusted', 'furniture_dusted', 'bool'],
+    ['staffToiletsCleaned', 'staff_toilets_cleaned', 'bool'],
+    ['mirrorsCleaned', 'mirrors_cleaned', 'bool'],
+    ['fridgesCleaned', 'fridges_cleaned', 'bool'],
+    ['liftsStairsCleaned', 'lifts_stairs_cleaned', 'bool'],
+    ['officesCleaned', 'offices_cleaned', 'bool'],
+    ['inspectedBy', 'inspected_by', 'text'],
+    ['notes', 'notes', 'text'],
+    ['roomLogs', 'room_logs', 'json'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  housekeeping_room_logs: [
+    ['housekeepingId', 'housekeeping_id', 'text'],
+    ['date', 'date', 'text'],
+    ['site', 'site', 'text'],
+    ['roomNo', 'room_no', 'text'],
+    ['showerHeads', 'shower_heads', 'bool'],
+    ['bedding', 'bedding', 'bool'],
+    ['washroom', 'washroom', 'bool'],
+    ['floor', 'floor', 'bool'],
+    ['cleanedBy', 'cleaned_by', 'text'],
+    ['notes', 'notes', 'text'],
+  ],
+  food_consumption_reports: [
+    ['date', 'date', 'text'],
+    ['site', 'site', 'text'],
+    ['feedbackComments', 'feedback_comments', 'text'],
+    ['reportedBy', 'reported_by', 'text'],
+    ['items', 'items', 'json'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
+  food_box_requests: [
+    ['date', 'date', 'text'],
+    ['site', 'site', 'text'],
+    ['roomNo', 'room_no', 'text'],
+    ['type', 'type', 'text'],
+    ['reason', 'reason', 'text'],
+    ['status', 'status', 'text'],
+    ['loggedBy', 'logged_by', 'text'],
+    ['remarks', 'remarks', 'text'],
+    ['attachments', 'attachments', 'json'],
+    ['attachmentUrl', 'attachment_url', 'text'],
+    ['fileUrl', 'file_url', 'text'],
+  ],
 };
 
 const DEFAULT_ORG_UUID = '00000000-0000-0000-0000-000000000001';
@@ -1021,7 +1108,7 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   referrals: new Set([
     'id', 'site', 'su_name', 'su_port_reference', 'port_ref', 'room_number',
     'date_referred', 'referral_type', 'reason', 'status', 'priority',
-    'actions_taken', 'assigned_to', 'notes', 'follow_up_date', 'attachments',
+    'actions_taken', 'assigned_to', 'notes', 'follow_up_date', 'further_updates', 'attachments',
     'attachment_url', 'file_url', 'data', 'created_by', 'created_at', 'updated_at'
   ]),
   vulnerable_residents: new Set([
@@ -1041,7 +1128,8 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   maintenance_records: new Set([
     'id', 'site', 'room_or_area', 'defect_status', 'description',
     'contractor', 'contractor_quote', 'priority', 'reported_date',
-    'completion_date', 'sign_off_status', 'notes', 'category', 'reported_by',
+    'reported_time', 'completion_date', 'actual_closed_time', 'sign_off_status', 'notes', 'category', 'reported_by',
+    'before_picture_url', 'before_picture_date', 'after_picture_url', 'after_picture_date',
     'attachments', 'attachment_url', 'file_url', 'data',
     'created_by', 'created_at', 'updated_at'
   ]),
@@ -1332,6 +1420,11 @@ export const ENTITY_MODULE_LABELS: Record<string, string> = {
   roomKitTemplates: 'Room Management', room_kit_templates: 'Room Management',
   roomIssues: 'Room Management', room_issues: 'Room Management',
   roomActivityLog: 'Room Management', room_activity_log: 'Room Management',
+  mhComplaintWelfare: 'MH-Complaint Welfare Checks', mh_complaint_welfare_checks: 'MH-Complaint Welfare Checks',
+  dailyLaundry: 'Daily Laundry Log', daily_laundry_logs: 'Daily Laundry Log',
+  housekeeping: 'Housekeeping', housekeeping_logs: 'Housekeeping', housekeeping_room_logs: 'Housekeeping',
+  foodConsumption: 'Food Consumption', food_consumption_reports: 'Food Consumption',
+  foodBoxRequests: 'Food Box Requests', food_box_requests: 'Food Box Requests',
   auditLogs: 'Audit Logs', audit_logs: 'Audit Logs'
 };
 export const moduleLabelFor = (entity?: string | null) => (entity && ENTITY_MODULE_LABELS[entity]) || entity || 'Settings';
@@ -1688,12 +1781,20 @@ export function toDatabaseRow(
       dbRow.sign_off_status = record.signOffStatus || (record.defectStatus === 'Completed' || record.action === 'Closed' ? 'Signed Off' : 'Pending');
       dbRow.category = record.criteriaCode || record.issueCategory || record.category || 'General';
       dbRow.reported_by = record.raisedBy || record.reportedBy || record.loggedBy || '';
+      dbRow.reported_time = record.reportedTime || '';
+      dbRow.actual_closed_time = record.actualClosedTime || '';
+      dbRow.before_picture_url = record.beforePictureUrl || (Array.isArray(record.beforePictures) && record.beforePictures[0]?.url) || '';
+      dbRow.before_picture_date = record.beforePictureDate || '';
+      dbRow.after_picture_url = record.afterPictureUrl || (Array.isArray(record.afterPictures) && record.afterPictures[0]?.url) || '';
+      dbRow.after_picture_date = record.afterPictureDate || '';
 
       const knownMaintKeys = new Set([
         'id', 'site', 'assignedSite', 'siteName', 'room', 'roomNumber', 'location',
         'roomOrArea', 'roomNo', 'defectStatus', 'status', 'description', 'allocatedContractor',
         'contractor', 'costEstimate', 'contractorQuote', 'priority', 'date', 'reportedDate',
-        'createdAt', 'completionDate', 'actualClosedDate', 'completedDate', 'targetCompletionDate',
+        'reportedTime', 'reported_time', 'createdAt', 'completionDate', 'actualClosedDate', 'actualClosedTime',
+        'actual_closed_time', 'closureDateTime', 'completedDate', 'targetCompletionDate',
+        'beforePictures', 'beforePictureUrl', 'beforePictureDate', 'afterPictures', 'afterPictureUrl', 'afterPictureDate',
         'signOffStatus', 'action', 'criteriaCode', 'issueCategory', 'category', 'raisedBy',
         'reportedBy', 'loggedBy', 'notes', 'userNotes', 'progress', 'priorityTimeScale',
         'closeDueDate', 'actualCost', 'updatedAt', 'createdBy', 'created_at', 'updated_at',

@@ -22,7 +22,12 @@ import {
   EvictionRecord,
   WelfareCheckRecord,
   FoodSurveyRecord,
-  RoomCheckRecord
+  RoomCheckRecord,
+  MHComplaintWelfareRecord,
+  DailyLaundryRecord,
+  HousekeepingRecord,
+  FoodConsumptionReport,
+  FoodBoxRequest
 } from '../types';
 
 export const renderSchemaAttachmentCell = (val: any, row: any) =>
@@ -236,6 +241,28 @@ export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
   { key: 'siteName', label: 'Site / Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Dispersal Identification' },
   { key: 'flatRoomNumber', label: 'Flat / Room No', type: 'text', required: true, section: 'Dispersal Identification' },
   { key: 'suPortNassRef', label: 'SU Port / NASS Ref', type: 'text', required: true, section: 'Dispersal Identification' },
+  { 
+    key: 'typeOfDispersal', 
+    label: 'Type of Dispersal', 
+    type: 'select', 
+    required: true,
+    optionCategory: 'dispersalTypes',
+    allowQuickAdd: true,
+    options: [
+      'NTV (Move on Completed)',
+      'Eviction',
+      'Dispersal',
+      'Self-Departure (Gone to Contact)'
+    ],
+    defaultValue: 'Dispersal',
+    badgeColors: {
+      'NTV (Move on Completed)': 'bg-blue-100 text-blue-800 border border-blue-200',
+      'Eviction': 'bg-red-100 text-red-800 border border-red-200',
+      'Dispersal': 'bg-purple-100 text-purple-800 border border-purple-200',
+      'Self-Departure (Gone to Contact)': 'bg-amber-100 text-amber-800 border border-amber-200'
+    },
+    section: 'Departure Details' 
+  },
   { key: 'reasonForDeparture', label: 'Reason for Departure', type: 'text', section: 'Departure Details' },
   { key: 'dateReceived', label: 'Date Received', type: 'text', section: 'Departure Details' },
   { key: 'dispersalDate', label: 'Dispersal Date', type: 'text', section: 'Departure Details' },
@@ -611,6 +638,7 @@ export const IR_TRACKER_TABLE_COLUMNS: TableColumnConfig<IRRecord>[] = [
   { key: 'suName', label: 'SU NAME', type: 'text', required: true, section: 'Incident Information' },
   { key: 'portRef', label: 'Port Ref', type: 'text', section: 'Incident Information' },
   { key: 'incidentTime', label: 'Incident Time', type: 'text', placeholder: 'HH:MM e.g. 14:30', section: 'Incident Information' },
+  { key: 'witnesses', label: 'Witnesses (Security, Welfare, Managers, SUs, etc.)', type: 'textarea', colSpan: 2, placeholder: 'Enter names & roles of witnesses (e.g. John Doe - Security, Jane Smith - Welfare, Sarah - Manager, SU Port Ref)', section: 'Incident Information' },
   { key: 'irSummary', label: 'IR SUMMARY', type: 'textarea', required: true, colSpan: 2, section: 'Incident Information' },
   { key: 'inFor1stReview', label: 'IN for 1st review', type: 'text', placeholder: 'YYYY-MM-DD HH:MM', section: 'First Review' },
   { key: 'ct1stReview', label: 'CT 1ST Review', type: 'text', placeholder: 'YYYY-MM-DD HH:MM', section: 'First Review' },
@@ -825,6 +853,130 @@ export const ROOM_CHECKS_TABLE_COLUMNS: TableColumnConfig<RoomCheckRecord>[] = [
   },
   { key: 'finalComments', label: 'Comments', type: 'textarea', section: 'Inspection Details' }
 ];
+
+export const MH_COMPLAINT_WELFARE_TABLE_COLUMNS: TableColumnConfig<MHComplaintWelfareRecord>[] = [
+  { key: 'date', label: 'Date', type: 'date', required: true, section: 'Complaint Details' },
+  { key: 'siteName', label: 'Hotel / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location' },
+  { key: 'roomOrFlatNo', label: 'Room / Flat No', type: 'text', required: true, section: 'Location' },
+  { key: 'name', label: 'Resident Name', type: 'text', required: true, section: 'Resident Details' },
+  { key: 'dob', label: 'Date of Birth', type: 'date', section: 'Resident Details' },
+  { key: 'portOrNassRef', label: 'Port / NASS Ref', type: 'text', required: true, section: 'Resident Details' },
+  { key: 'mhTicketRef', label: 'MH Complaint / Ticket Ref', type: 'text', required: true, placeholder: 'e.g. MH-123456 or Portal Ref', section: 'Complaint Details' },
+  { 
+    key: 'complaintCategory', 
+    label: 'Category of Complaint', 
+    type: 'select', 
+    optionCategory: 'mhComplaintCategories',
+    allowQuickAdd: true,
+    options: [
+      'Accommodation & Room',
+      'Food & Special Dietary Box',
+      'Maintenance & Repairs',
+      'Welfare & Medical Care',
+      'Financial Support (ASPEN)',
+      'Staff Conduct & Communication',
+      'Other Issue'
+    ],
+    defaultValue: 'Accommodation & Room',
+    section: 'Complaint Details'
+  },
+  { key: 'complaintDetails', label: 'Complaint Details / Issue Description', type: 'textarea', required: true, colSpan: 2, section: 'Complaint Details' },
+  { key: 'actionTaken', label: 'Action Taken / Site Remedies', type: 'textarea', colSpan: 2, section: 'Investigation & Resolution' },
+  { 
+    key: 'status', 
+    label: 'Status', 
+    type: 'select', 
+    optionCategory: 'mhComplaintStatuses',
+    allowQuickAdd: true,
+    options: ['Open', 'Under Review', 'Escalated to Home Office', 'Resolved', 'Closed'],
+    defaultValue: 'Open',
+    badgeColors: {
+      'Open': 'bg-red-100 text-red-800 border border-red-200',
+      'Under Review': 'bg-amber-100 text-amber-800 border border-amber-200',
+      'Escalated to Home Office': 'bg-purple-100 text-purple-800 border border-purple-200',
+      'Resolved': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      'Closed': 'bg-neutral-100 text-neutral-600 border border-neutral-200'
+    },
+    section: 'Investigation & Resolution'
+  },
+  { key: 'dutyStaff', label: 'Handled / Logged By', type: 'text', section: 'Investigation & Resolution' },
+  { key: 'notes', label: 'Internal Notes', type: 'textarea', colSpan: 2, section: 'Investigation & Resolution' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Evidence & Documents', renderCell: renderSchemaAttachmentCell }
+];
+
+export const DAILY_LAUNDRY_TABLE_COLUMNS: TableColumnConfig<DailyLaundryRecord>[] = [
+  { key: 'date', label: 'Date', type: 'date', required: true, defaultValue: () => new Date().toISOString().slice(0, 10), section: 'Laundry Details' },
+  { key: 'site', label: 'Property / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location' },
+  { key: 'house', label: 'House / Block', type: 'text', placeholder: 'e.g. Pier Avenue House, Main House', section: 'Location' },
+  { key: 'roomNo', label: 'Room No.', type: 'text', required: true, placeholder: 'e.g. 101, Room 4', section: 'Location' },
+  { key: 'quantityReceived', label: 'No of bags/ Quantity Received', type: 'text', required: true, placeholder: 'e.g. 2 bags, 5 items', section: 'Laundry Details' },
+  { key: 'batches', label: 'No of Batches', type: 'text', required: true, placeholder: 'e.g. 1, 2', defaultValue: '1', section: 'Laundry Details' },
+  { key: 'doneBy', label: 'Done by', type: 'text', required: true, placeholder: 'Staff / Operator name', section: 'Staff & Accountability' },
+  { key: 'remarks', label: 'Remarks / Notes', type: 'textarea', colSpan: 2, section: 'Staff & Accountability' },
+  { key: 'attachments' as any, label: 'Attached Files / Receipts', type: 'text', section: 'Staff & Accountability', renderCell: renderSchemaAttachmentCell }
+];
+
+export const HOUSEKEEPING_TABLE_COLUMNS: TableColumnConfig<HousekeepingRecord>[] = [
+  { key: 'date', label: 'Date', type: 'date', required: true, defaultValue: () => new Date().toISOString().slice(0, 10), section: 'Housekeeping Log' },
+  { key: 'site', label: 'Property / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Housekeeping Log' },
+  { key: 'communalAreasSweptMopped', label: 'All communal areas swept, vacuumed and mopped', type: 'checkbox', section: 'Daily Communal Checklist' },
+  { key: 'windowsWiped', label: 'All windows are wiped down', type: 'checkbox', section: 'Daily Communal Checklist' },
+  { key: 'furnitureDusted', label: 'All furniture is dusted and cleaned', type: 'checkbox', section: 'Daily Communal Checklist' },
+  { key: 'staffToiletsCleaned', label: 'All staff toilets thoroughly cleaned and disinfected', type: 'checkbox', section: 'Daily Communal Checklist' },
+  { key: 'mirrorsCleaned', label: 'All mirrors are cleaned and shined', type: 'checkbox', section: 'Daily Communal Checklist' },
+  { key: 'fridgesCleaned', label: 'Communal fridges cleaned (Thu & Sun)', type: 'checkbox', section: 'Scheduled Communal Checks' },
+  { key: 'liftsStairsCleaned', label: 'All Lifts and stairs cleaned (Sat & Sun)', type: 'checkbox', section: 'Scheduled Communal Checks' },
+  { key: 'officesCleaned', label: 'All offices cleaned (Sun)', type: 'checkbox', section: 'Scheduled Communal Checks' },
+  { key: 'inspectedBy', label: 'Inspected / Signed off by', type: 'text', required: true, section: 'Accountability & Signoff' },
+  { key: 'notes', label: 'Remarks & Follow-up', type: 'textarea', colSpan: 2, section: 'Accountability & Signoff' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Accountability & Signoff', renderCell: renderSchemaAttachmentCell }
+];
+
+export const FOOD_CONSUMPTION_TABLE_COLUMNS: TableColumnConfig<FoodConsumptionReport>[] = [
+  { key: 'date', label: 'Date', type: 'date', required: true, defaultValue: () => new Date().toISOString().slice(0, 10), section: 'Report Header' },
+  { key: 'site', label: 'Property / Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Report Header' },
+  { key: 'feedbackComments', label: 'Feedback / Comments', type: 'textarea', colSpan: 2, placeholder: 'e.g. Menu Satisfactory. Special diets fulfilled.', section: 'Report Summary' },
+  { key: 'reportedBy', label: 'Reported / Inspected By', type: 'text', section: 'Report Summary' },
+  { key: 'attachments' as any, label: 'Attached Files / Invoices', type: 'text', section: 'Report Summary', renderCell: renderSchemaAttachmentCell }
+];
+
+export const FOOD_BOX_REQUEST_TABLE_COLUMNS: TableColumnConfig<FoodBoxRequest>[] = [
+  { key: 'date', label: 'Date', type: 'date', required: true, defaultValue: () => new Date().toISOString().slice(0, 10), section: 'Request Details' },
+  { key: 'site', label: 'Property / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Request Details' },
+  { key: 'roomNo', label: 'Room No.', type: 'text', required: true, placeholder: 'e.g. NF 2, Room 104', section: 'Resident & Room' },
+  { 
+    key: 'type', 
+    label: 'Type', 
+    type: 'select', 
+    required: true,
+    options: ['Request', 'Complaint', 'Special Box'],
+    defaultValue: 'Request',
+    badgeColors: {
+      'Request': 'bg-blue-100 text-blue-800 border border-blue-200',
+      'Complaint': 'bg-red-100 text-red-800 border border-red-200',
+      'Special Box': 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+    },
+    section: 'Request Details'
+  },
+  { key: 'reason', label: 'Reason / Dietary Requirements', type: 'textarea', required: true, colSpan: 2, placeholder: 'e.g. Requested for a Special Box as he doesnt eat foods with salt / spicy foods', section: 'Request Details' },
+  { 
+    key: 'status', 
+    label: 'Status', 
+    type: 'select', 
+    options: ['Pending', 'Active', 'Resolved'],
+    defaultValue: 'Pending',
+    badgeColors: {
+      'Pending': 'bg-amber-100 text-amber-800 border border-amber-200',
+      'Active': 'bg-blue-100 text-blue-800 border border-blue-200',
+      'Resolved': 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+    },
+    section: 'Resolution'
+  },
+  { key: 'loggedBy', label: 'Logged By', type: 'text', section: 'Resolution' },
+  { key: 'remarks', label: 'Remarks / Action Taken', type: 'textarea', colSpan: 2, section: 'Resolution' },
+  { key: 'attachments' as any, label: 'Attached Files', type: 'text', section: 'Resolution', renderCell: renderSchemaAttachmentCell }
+];
+
 
 
 

@@ -56,6 +56,9 @@ import { FoodSurveysView } from './components/food/FoodSurveysView';
 import { RoomChecksView } from './components/room/RoomChecksView';
 import { ServiceUsersView } from './components/serviceUsers/ServiceUsersView';
 import { PropertyManagementView } from './components/propertyManagement/PropertyManagementView';
+import { MHComplaintWelfareChecksView } from './components/welfare/MHComplaintWelfareChecksView';
+import { HousekeepingView } from './components/housekeeping/HousekeepingView';
+import { FoodConsumptionView } from './components/food/FoodConsumptionView';
 import { PageMaintenanceView } from './components/common/PageMaintenanceView';
 import { SuperAdminMaintenanceBanner } from './components/common/SuperAdminMaintenanceBanner';
 import { getPageTitle } from './config/pageRegistry';
@@ -235,6 +238,8 @@ function AppLayout() {
         return <RoomChecksView />;
       case 'rfaWelfare':
         return <RFAWelfareChecksView />;
+      case 'mhComplaintWelfare':
+        return <MHComplaintWelfareChecksView />;
       case 'gpAppointments':
         return <GPAppointmentsView />;
       case 'maintenance':
@@ -253,8 +258,12 @@ function AppLayout() {
         return <SDVCSDirectoryView />;
       case 'laundry':
         return <LaundryView />;
+      case 'housekeeping':
+        return <HousekeepingView />;
       case 'food':
         return <FoodView />;
+      case 'foodConsumption':
+        return <FoodConsumptionView />;
       case 'foodWastage':
         return <FoodWastageView />;
       case 'dailyRegisters':

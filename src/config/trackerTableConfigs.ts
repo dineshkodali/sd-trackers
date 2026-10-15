@@ -52,10 +52,18 @@ export const resolveConfigSiteDefault = (ctx: any): string => {
 export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
   {
     key: 'date',
-    label: 'Date',
+    label: 'Date Reported',
     type: 'date',
     required: true,
     defaultValue: () => new Date().toISOString().slice(0, 10),
+    section: 'Defect Details'
+  },
+  {
+    key: 'reportedTime',
+    label: 'Reported Time',
+    type: 'text',
+    placeholder: 'HH:MM e.g. 10:30',
+    defaultValue: () => new Date().toTimeString().slice(0, 5),
     section: 'Defect Details'
   },
   {
@@ -190,6 +198,45 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     section: 'Status & Progression'
   },
   {
+    key: 'actualClosedTime',
+    label: 'Closure Time',
+    type: 'text',
+    placeholder: 'HH:MM e.g. 15:45',
+    section: 'Status & Progression'
+  },
+  {
+    key: 'beforePictures' as any,
+    label: 'Before Picture(s) (Reported/Open)',
+    type: 'text',
+    section: 'Photographs & Evidence',
+    placeholder: 'Upload when defect is first reported or opened',
+    visibleInTable: true,
+    renderCell: renderAttachmentCell
+  },
+  {
+    key: 'beforePictureDate',
+    label: 'Before Photo Date & Time',
+    type: 'text',
+    placeholder: 'YYYY-MM-DD HH:MM',
+    section: 'Photographs & Evidence'
+  },
+  {
+    key: 'afterPictures' as any,
+    label: 'After Picture(s) (Resolved/Closed)',
+    type: 'text',
+    section: 'Photographs & Evidence',
+    placeholder: 'Upload when defect is resolved and closed',
+    visibleInTable: true,
+    renderCell: renderAttachmentCell
+  },
+  {
+    key: 'afterPictureDate',
+    label: 'After Photo Date & Time',
+    type: 'text',
+    placeholder: 'YYYY-MM-DD HH:MM',
+    section: 'Photographs & Evidence'
+  },
+  {
     key: 'notes',
     label: 'Notes & Follow-up',
     type: 'textarea',
@@ -199,9 +246,9 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
   },
   {
     key: 'attachments',
-    label: 'Attached Files',
+    label: 'Attached Files / Invoices',
     type: 'text',
-    section: 'Status & Progression',
+    section: 'Photographs & Evidence',
     visibleInTable: true,
     renderCell: renderAttachmentCell
   },
@@ -271,7 +318,7 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     required: true,
     optionCategory: 'referralTypes',
     allowQuickAdd: true,
-    options: (ctx) => (ctx?.referralTypeOptions || ['Safeguarding Adult', 'Safeguarding Child', 'Mental Health Crisis', 'Modern Slavery / NRM', 'Domestic Abuse']),
+    options: (ctx) => (ctx?.referralTypeOptions || ['Safeguarding Adult', 'Safeguarding Child', 'Mental Health Crisis', 'Modern Slavery / NRM', 'Domestic Abuse', 'Care', 'OT', 'Housing Needs', 'Wheelchair']),
     defaultValue: 'Safeguarding Adult',
     section: 'Referral Details'
   },
@@ -380,6 +427,14 @@ export const referralsTableConfig: TableColumnConfig<SGReferral>[] = [
     type: 'textarea',
     colSpan: 2,
     placeholder: 'Review comments, outcomes, follow-up dates...',
+    section: 'Case Notes & Review'
+  },
+  {
+    key: 'furtherUpdates',
+    label: 'Further Updates & Information Received',
+    type: 'textarea',
+    colSpan: 2,
+    placeholder: 'Add new information, ongoing updates, contact logs, statutory changes...',
     section: 'Case Notes & Review'
   },
   {

@@ -362,6 +362,27 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     department: 'Operations & Governance',
     description: 'Contracted local borough councils and statutory authorities',
     iconName: 'Landmark'
+  },
+  {
+    key: 'dispersalTypes',
+    name: 'Type of Dispersal',
+    department: 'Facilities',
+    description: 'Categories of departure (NTV, Eviction, Dispersal, Self-Departure)',
+    iconName: 'PlaneTakeoff'
+  },
+  {
+    key: 'mhComplaintCategories',
+    name: 'MH-Complaint Categories',
+    department: 'Safeguarding',
+    description: 'Categories of Migrant Help resident complaints',
+    iconName: 'AlertTriangle'
+  },
+  {
+    key: 'mhComplaintStatuses',
+    name: 'MH-Complaint Statuses',
+    department: 'Safeguarding',
+    description: 'Stages of Migrant Help complaint investigation',
+    iconName: 'CheckCircle'
   }
 ];
 
@@ -375,6 +396,10 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-ref-6', category: 'referralTypes', label: 'Emergency Medical Transfer', value: 'Emergency Medical', color: 'rose', description: 'Urgent hospital discharge, post-operative, or complex medical care', isActive: true, isSystem: true, order: 6 },
   { id: 'opt-ref-7', category: 'referralTypes', label: 'Substance & Addiction Support', value: 'Substance Support', color: 'amber', description: 'Referral for detox, harm reduction, or addiction specialist care', isActive: true, isSystem: false, order: 7 },
   { id: 'opt-ref-8', category: 'referralTypes', label: 'Modern Slavery / NRM', value: 'Modern Slavery', color: 'red', description: 'National Referral Mechanism trafficking or modern slavery alert', isActive: true, isSystem: false, order: 8 },
+  { id: 'opt-ref-9', category: 'referralTypes', label: 'Care', value: 'Care', color: 'teal', description: 'Social and medical care package needs', isActive: true, isSystem: true, order: 9 },
+  { id: 'opt-ref-10', category: 'referralTypes', label: 'OT', value: 'OT', color: 'blue', description: 'Occupational Therapy assessment and equipment', isActive: true, isSystem: true, order: 10 },
+  { id: 'opt-ref-11', category: 'referralTypes', label: 'Housing Needs', value: 'Housing Needs', color: 'purple', description: 'Specific accommodation or accessibility housing needs', isActive: true, isSystem: true, order: 11 },
+  { id: 'opt-ref-12', category: 'referralTypes', label: 'Wheelchair', value: 'Wheelchair', color: 'amber', description: 'Wheelchair user accessible accommodation and transit', isActive: true, isSystem: true, order: 12 },
 
   // 2. Referral Methods
   { id: 'opt-meth-1', category: 'referralMethods', label: 'Mosaic Social Care Portal', value: 'Mosaic Portal', color: 'blue', description: 'Direct electronic submission through council Mosaic system', isActive: true, isSystem: true, order: 1 },
@@ -704,5 +729,27 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-wunit-2', category: 'wastageUnits', label: 'grams (Grams)', value: 'grams', color: 'cyan', description: 'Weight in grams', isActive: true, isSystem: true, order: 2 },
   { id: 'opt-wunit-3', category: 'wastageUnits', label: 'litres (Litres)', value: 'litres', color: 'blue', description: 'Liquid volume in litres', isActive: true, isSystem: true, order: 3 },
   { id: 'opt-wunit-4', category: 'wastageUnits', label: 'portions (Portions)', value: 'portions', color: 'emerald', description: 'Individual meal portions / servings', isActive: true, isSystem: true, order: 4 },
-  { id: 'opt-wunit-5', category: 'wastageUnits', label: 'trays (Trays)', value: 'trays', color: 'amber', description: 'Standard gastro trays', isActive: true, isSystem: true, order: 5 }
+  { id: 'opt-wunit-5', category: 'wastageUnits', label: 'trays (Trays)', value: 'trays', color: 'amber', description: 'Standard gastro trays', isActive: true, isSystem: true, order: 5 },
+
+  // 48. Type of Dispersal
+  { id: 'opt-disp-t1', category: 'dispersalTypes', label: 'NTV (Move on Completed)', value: 'NTV (Move on Completed)', color: 'blue', description: 'Notice to Vacate - move on completed', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-disp-t2', category: 'dispersalTypes', label: 'Eviction', value: 'Eviction', color: 'red', description: 'Breach of license or formal eviction', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-disp-t3', category: 'dispersalTypes', label: 'Dispersal', value: 'Dispersal', color: 'purple', description: 'Standard Home Office dispersal relocation', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-disp-t4', category: 'dispersalTypes', label: 'Self-Departure (Gone to Contact)', value: 'Self-Departure (Gone to Contact)', color: 'amber', description: 'Resident departed voluntarily to contact address', isActive: true, isSystem: true, order: 4 },
+
+  // 49. MH-Complaint Categories
+  { id: 'opt-mhc-1', category: 'mhComplaintCategories', label: 'Accommodation & Room', value: 'Accommodation & Room', color: 'blue', description: 'Room condition, space, heating, or facilities', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-mhc-2', category: 'mhComplaintCategories', label: 'Food & Special Dietary Box', value: 'Food & Special Dietary Box', color: 'emerald', description: 'Food quality, portion, dietary needs, special box', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-mhc-3', category: 'mhComplaintCategories', label: 'Maintenance & Repairs', value: 'Maintenance & Repairs', color: 'amber', description: 'Pending defect or physical repairs', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-mhc-4', category: 'mhComplaintCategories', label: 'Welfare & Medical Care', value: 'Welfare & Medical Care', color: 'purple', description: 'Health, medication, mental health support', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-mhc-5', category: 'mhComplaintCategories', label: 'Financial Support (ASPEN)', value: 'Financial Support (ASPEN)', color: 'teal', description: 'Asylum support payment or card issues', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-mhc-6', category: 'mhComplaintCategories', label: 'Staff Conduct & Communication', value: 'Staff Conduct & Communication', color: 'rose', description: 'Staff communication or treatment complaint', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-mhc-7', category: 'mhComplaintCategories', label: 'Other Migrant Help Issue', value: 'Other Issue', color: 'slate', description: 'Other statutory Migrant Help escalation', isActive: true, isSystem: true, order: 7 },
+
+  // 50. MH-Complaint Statuses
+  { id: 'opt-mhs-1', category: 'mhComplaintStatuses', label: 'Open', value: 'Open', color: 'red', description: 'Newly logged Migrant Help complaint awaiting action', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-mhs-2', category: 'mhComplaintStatuses', label: 'Under Review', value: 'Under Review', color: 'amber', description: 'Investigation or remedy in progress by site team', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-mhs-3', category: 'mhComplaintStatuses', label: 'Escalated to Home Office', value: 'Escalated', color: 'purple', description: 'Escalated to Home Office or contract provider', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-mhs-4', category: 'mhComplaintStatuses', label: 'Resolved', value: 'Resolved', color: 'emerald', description: 'Issue remedied and confirmed with resident', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-mhs-5', category: 'mhComplaintStatuses', label: 'Closed', value: 'Closed', color: 'slate', description: 'Case officially closed with MH confirmation', isActive: true, isSystem: true, order: 5 }
 ];

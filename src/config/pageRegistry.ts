@@ -70,6 +70,12 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     description: 'Room and flat welfare checks register with vulnerability categorizations.'
   },
   {
+    id: 'mhComplaintWelfare',
+    title: 'MH-Complaint Welfare Checks',
+    category: 'Safeguarding',
+    description: 'Migrant Help complaint welfare checks, case investigations, and resident resolution tracking.'
+  },
+  {
     id: 'gpAppointments',
     title: 'GP Appointments',
     category: 'Safeguarding',
@@ -126,10 +132,22 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     description: 'Weekly laundry cycle weights, contractor invoices, and variance flags.'
   },
   {
+    id: 'housekeeping',
+    title: 'Housekeeping Log',
+    category: 'Facilities & Welfare',
+    description: 'Daily room cleaning logs, communal sanitisation audits, and housekeeping inspections.'
+  },
+  {
     id: 'food',
     title: 'Hot Meals Tracker',
     category: 'Facilities & Welfare',
     description: 'Daily hot meal distribution, vendor buffet temperature logs, and quality scores.'
+  },
+  {
+    id: 'foodConsumption',
+    title: 'Food Consumption (In & Out)',
+    category: 'Facilities & Welfare',
+    description: 'Daily meal consumption ratings, portion waste percentages, and special box requests.'
   },
   {
     id: 'foodSurveys',

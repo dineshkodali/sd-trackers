@@ -64,15 +64,16 @@ export interface SGReferral {
   dob: string;
   officerLeadingHotel: string;
   raisedBy?: string;
-  referralType: 'Safeguarding Adult' | 'Safeguarding Child' | 'Mental Health' | 'Domestic Abuse' | 'Social Care' | 'Emergency Medical';
+  referralType: 'Safeguarding Adult' | 'Safeguarding Child' | 'Mental Health' | 'Domestic Abuse' | 'Social Care' | 'Emergency Medical' | 'Care' | 'OT' | 'Housing Needs' | 'Wheelchair' | string;
   status: StatusType;
   dateReferred: string;
-  methodOfReferral: 'Mosaic Portal' | 'Encrypted Email' | 'Phone / Portal Follow-up' | 'LA Direct Case Management';
-  acknowledgementReceived: 'Yes' | 'No' | 'Pending';
-  responseReceivedFromLA: 'Yes' | 'No' | 'Awaiting Allocation';
+  methodOfReferral: 'Mosaic Portal' | 'Encrypted Email' | 'Phone / Portal Follow-up' | 'LA Direct Case Management' | string;
+  acknowledgementReceived: 'Yes' | 'No' | 'Pending' | string;
+  responseReceivedFromLA: 'Yes' | 'No' | 'Awaiting Allocation' | string;
   laOfficerLeading: string;
   notesActionTaken: string;
   sgReview: string;
+  furtherUpdates?: string;
   urgency: RiskLevel;
   attachments?: RecordAttachment[];
   createdAt: string;
@@ -319,7 +320,8 @@ export type MaintenanceAction = 'Open' | 'Closed';
 
 export interface MaintenanceRecord {
   id: string;
-  date: string;
+  date: string; // Report date
+  reportedTime?: string; // Report time (HH:MM)
   priority: MaintenancePriority;
   priorityTimeScale: string; // e.g. "0 (4 Hours)", "1 (24 Hours - Interim)", "5 Working Days", "21 Working Days"
   location: string;
@@ -333,6 +335,14 @@ export interface MaintenanceRecord {
   action: MaintenanceAction;
   progress: string;
   actualClosedDate?: string;
+  actualClosedTime?: string; // Closure time (HH:MM)
+  closureDateTime?: string; // Full closure ISO datetime or string
+  beforePictures?: RecordAttachment[];
+  beforePictureUrl?: string;
+  beforePictureDate?: string;
+  afterPictures?: RecordAttachment[];
+  afterPictureUrl?: string;
+  afterPictureDate?: string;
   notes?: string;
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
@@ -340,6 +350,7 @@ export interface MaintenanceRecord {
   fileUrl?: string;
   file_url?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface SPCDRecord {
@@ -488,7 +499,10 @@ export type FieldOptionCategory =
   | 'financeVendorStatuses'
   | 'financeCardMerchants'
   | 'crhSubmissionStatuses'
-  | 'councils';
+  | 'councils'
+  | 'dispersalTypes'
+  | 'mhComplaintCategories'
+  | 'mhComplaintStatuses';
 
 export interface CustomFieldOption {
   id: string;
@@ -602,6 +616,7 @@ export interface DispersalRecord {
   id: string;
   sno: number; // SNO
   siteName: string; // Site Name
+  typeOfDispersal?: 'NTV (Move on Completed)' | 'Eviction' | 'Dispersal' | 'Self-Departure (Gone to Contact)' | string;
   dateReceived: string; // Date Received(MM/DD/YYYY)
   suPortNassRef: string; // SU Port/Nass Reference
   reasonForDeparture: string; // Reason for the Departure
@@ -686,6 +701,7 @@ export interface IRRecord {
   inFor2ndReview?: string; // In for 2nd review
   ct2ndReview?: string; // CT 2nd review
   submittedToCrh?: string; // Submitted to CRH
+  witnesses?: string; // Witnesses (Security, Welfare, Managers, SUs, etc.)
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
   attachment_url?: string;
@@ -1232,6 +1248,118 @@ export interface TransportRoomMoveRecord {
   createdByName?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// 23. MH-Complaint Welfare Checks Record
+export interface MHComplaintWelfareRecord {
+  id: string;
+  date: string;
+  siteName: string;
+  roomOrFlatNo: string;
+  name: string;
+  dob?: string;
+  portOrNassRef: string;
+  mhTicketRef: string;
+  complaintCategory?: string;
+  complaintDetails: string;
+  actionTaken?: string;
+  status: 'Open' | 'Under Review' | 'Escalated' | 'Resolved' | 'Closed' | string;
+  dutyStaff?: string;
+  notes?: string;
+  attachments?: RecordAttachment[];
+  attachmentUrl?: string;
+  fileUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 24. Daily Laundry Log Record (e.g. Clacton Pier Avenue Daily Laundry Log)
+export interface DailyLaundryRecord {
+  id: string;
+  date: string;
+  site: string; // Property / Hotel (e.g. Clacton - Pier Avenue)
+  house?: string; // House / Block / Wing
+  roomNo: string; // Room No.
+  quantityReceived: string | number; // No of bags / Quantity Received
+  batches: string | number; // No of Batches
+  doneBy: string; // Done by
+  remarks?: string;
+  loggedBy?: string;
+  attachments?: RecordAttachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 25. Housekeeping Log Record & Room Check Lines (e.g. Clacton Pier Avenue Housekeeping Log)
+export interface HousekeepingRoomCheck {
+  id?: string;
+  roomNo: string;
+  showerHeads: boolean | 'Yes' | 'No' | string;
+  bedding: boolean | 'Yes' | 'No' | string;
+  washroom: boolean | 'Yes' | 'No' | string;
+  floor: boolean | 'Yes' | 'No' | string;
+  cleanedBy: string;
+  notes?: string;
+}
+
+export interface HousekeepingRecord {
+  id: string;
+  date: string;
+  site: string;
+  // Daily Communal Checks
+  communalAreasSweptMopped: boolean;
+  windowsWiped: boolean;
+  furnitureDusted: boolean;
+  staffToiletsCleaned: boolean;
+  mirrorsCleaned: boolean;
+  fridgesCleaned: boolean; // Thu & Sun
+  liftsStairsCleaned: boolean; // Sat & Sun
+  officesCleaned: boolean; // Sun
+  inspectedBy: string;
+  notes?: string;
+  roomLogs?: HousekeepingRoomCheck[];
+  attachments?: RecordAttachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 26. Daily Food Consumption Report & Box Requests (e.g. Pier Avenue Food Consumption In and Out)
+export interface FoodConsumptionItem {
+  id: string;
+  meal: 'Breakfast' | 'Lunch' | 'Dinner';
+  item: string;
+  quantityVol: string;
+  consumptionPercent: number | string; // e.g. 100%
+  binnedPercent: number | string; // e.g. 0%
+  rating: number | string; // 01 to 10
+  remarks?: string;
+}
+
+export interface FoodConsumptionReport {
+  id: string;
+  date: string;
+  site: string;
+  items: FoodConsumptionItem[];
+  feedbackComments?: string;
+  reportedBy?: string;
+  attachments?: RecordAttachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FoodBoxRequest {
+  id: string;
+  date: string;
+  site: string;
+  roomNo: string;
+  type: 'Request' | 'Complaint' | 'Special Box' | string;
+  reason: string;
+  status: 'Pending' | 'Active' | 'Resolved' | string;
+  loggedBy?: string;
+  remarks?: string;
+  attachments?: RecordAttachment[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Master Data Module re-exports

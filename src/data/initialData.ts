@@ -391,7 +391,7 @@ export const INITIAL_ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   'Staff': {
     canViewAllProperties: false,
     canCreateRecords: true,
-    canEditRecords: false,
+    canEditRecords: true,
     canDeleteRecords: false,
     canArchiveRestore: false,
     canExportData: false,
