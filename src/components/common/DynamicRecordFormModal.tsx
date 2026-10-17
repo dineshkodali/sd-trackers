@@ -16,6 +16,11 @@ interface DynamicRecordFormModalProps<T = any> {
   initialValues?: Partial<T> | null;
   onSave?: (record: any) => Promise<void> | void;
   onSubmit?: (record: any) => Promise<void> | void;
+  /**
+   * Edit mode only: called as soon as a file is removed from the record, with the remaining files,
+   * so the removal is stored immediately instead of waiting for "Save Changes".
+   */
+  onAttachmentRemoved?: (remaining: any[]) => void;
   isEdit?: boolean;
   submitLabel?: string;
   contextData?: Record<string, any>;
@@ -29,6 +34,7 @@ export function DynamicRecordFormModal<T = any>({
   initialValues,
   onSave,
   onSubmit,
+  onAttachmentRemoved,
   isEdit = false,
   submitLabel,
   contextData = {}
@@ -1190,7 +1196,11 @@ export function DynamicRecordFormModal<T = any>({
           {/* Universal Proof & Document Attachments Section */}
           <AttachmentsSection
             attachments={formData.attachments || []}
-            onChange={atts => setFormData(prev => ({ ...prev, attachments: atts }))}
+            onChange={atts => {
+              const before: any[] = Array.isArray(formData.attachments) ? formData.attachments : [];
+              setFormData(prev => ({ ...prev, attachments: atts }));
+              if (isEditing && onAttachmentRemoved && atts.length < before.length) onAttachmentRemoved(atts);
+            }}
             allowUpload={true}
             entityName={title}
           />

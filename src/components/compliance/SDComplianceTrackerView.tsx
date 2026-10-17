@@ -196,6 +196,13 @@ export const SDComplianceTrackerView: React.FC = () => {
     setEditingRecord(null);
   };
 
+  // Removing a file stores right away; it must not depend on remembering to press "Save Changes".
+  const handleAttachmentRemoved = (remaining: any[]) => {
+    if (!editingRecord) return;
+    updateComplianceRecord(editingRecord.id, { attachments: remaining });
+    setEditingRecord(prev => (prev ? { ...prev, attachments: remaining } : prev));
+  };
+
   // Export Handlers with Custom Download & PDF/CSV Options
   const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
     let sourceData = complianceRecords;
@@ -557,6 +564,7 @@ export const SDComplianceTrackerView: React.FC = () => {
           columns={columns}
           initialValues={editingRecord}
           onSubmit={handleEditSubmit}
+          onAttachmentRemoved={handleAttachmentRemoved}
           submitLabel="Save Changes"
         />
       )}

@@ -40,8 +40,7 @@ export const HousekeepingView: React.FC = () => {
     canCreateRecord,
     canEditRecord,
     canDeleteRecord,
-    currentUserRole,
-    requestConfirmation
+    currentUserRole
   } = useApp();
 
   const {
@@ -153,6 +152,18 @@ export const HousekeepingView: React.FC = () => {
     ]);
     setIsCreateModalOpen(true);
   };
+
+  // One modal serves both "add" and "edit"
+  const isFormOpen = isCreateModalOpen || !!editingRecord;
+  const closeForm = () => {
+    setIsCreateModalOpen(false);
+    setEditingRecord(null);
+    setActiveRoomLogs([]);
+  };
+  const checked = (key: keyof HousekeepingRecord, whenNew: boolean) =>
+    editingRecord ? Boolean(editingRecord[key]) : whenNew;
+  const formSite = editingRecord?.site || (siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || ''));
+  const siteOptions = !formSite || allowedSites.includes(formSite) ? allowedSites : [formSite, ...allowedSites];
 
   return (
     <div className="space-y-4">
@@ -361,15 +372,7 @@ export const HousekeepingView: React.FC = () => {
 
                           {canDelete && (
                             <button
-                              onClick={() => {
-                                requestConfirmation({
-                                  title: 'Delete Housekeeping Log',
-                                  message: `Permanently remove housekeeping log for ${rec.site} on ${rec.date}?`,
-                                  confirmLabel: 'Delete Log',
-                                  isDanger: true,
-                                  onConfirm: async () => deleteHousekeepingRecord(rec.id)
-                                });
-                              }}
+                              onClick={() => deleteHousekeepingRecord(rec.id)}
                               title="Delete log"
                               className="p-1 text-[#64748b] hover:text-rose-600 hover:bg-rose-50 rounded"
                             >
@@ -397,22 +400,25 @@ export const HousekeepingView: React.FC = () => {
         </div>
       </div>
 
-      {/* CREATE & ROOM CHECKS MODAL */}
-      {isCreateModalOpen && (
+      {/* CREATE / EDIT & ROOM CHECKS MODAL */}
+      {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xs shadow-xl border border-[#cbd5e1] max-w-4xl w-full max-h-[90vh] flex flex-col">
             <div className="px-5 py-4 border-b border-[#e2e8f0] flex items-center justify-between">
-              <h2 className="text-base font-bold text-[#1e293b]">Daily Housekeeping Log & Rooms Cleaned Checklist</h2>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-[#64748b] hover:text-[#1e293b] font-bold">✕</button>
+              <h2 className="text-base font-bold text-[#1e293b]">
+                {editingRecord ? 'Edit Daily Housekeeping Log & Rooms Cleaned Checklist' : 'Daily Housekeeping Log & Rooms Cleaned Checklist'}
+              </h2>
+              <button type="button" onClick={closeForm} className="text-[#64748b] hover:text-[#1e293b] font-bold">✕</button>
             </div>
 
             <form
+              key={editingRecord ? editingRecord.id : 'new-housekeeping-log'}
               onSubmit={(e) => {
                 e.preventDefault();
                 const form = e.currentTarget;
                 const formData = new FormData(form);
 
-                addHousekeepingRecord({
+                const payload = {
                   date: (formData.get('date') as string) || selectedDate || new Date().toISOString().slice(0, 10),
                   site: (formData.get('site') as string) || (siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || '')),
                   communalAreasSweptMopped: formData.get('communalAreasSweptMopped') === 'on',
@@ -426,9 +432,15 @@ export const HousekeepingView: React.FC = () => {
                   inspectedBy: (formData.get('inspectedBy') as string) || currentUserRole || 'Staff Member',
                   notes: (formData.get('notes') as string) || '',
                   roomLogs: activeRoomLogs.filter(r => r.roomNo.trim() !== '')
-                });
+                };
 
-                setIsCreateModalOpen(false);
+                if (editingRecord) {
+                  updateHousekeepingRecord(editingRecord.id, payload);
+                } else {
+                  addHousekeepingRecord(payload);
+                }
+
+                closeForm();
               }}
               className="flex-1 overflow-y-auto p-5 space-y-5"
             >
@@ -439,7 +451,7 @@ export const HousekeepingView: React.FC = () => {
                   <input
                     type="date"
                     name="date"
-                    defaultValue={selectedDate || new Date().toISOString().slice(0, 10)}
+                    defaultValue={editingRecord?.date || selectedDate || new Date().toISOString().slice(0, 10)}
                     required
                     className="w-full px-2.5 py-1.5 border border-[#cbd5e1] rounded-xs text-xs font-semibold"
                   />
@@ -448,11 +460,11 @@ export const HousekeepingView: React.FC = () => {
                   <label className="block text-xs font-bold text-[#475569] uppercase mb-1">Hotel / Property</label>
                   <select
                     name="site"
-                    defaultValue={siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || '')}
+                    defaultValue={formSite}
                     required
                     className="w-full px-2.5 py-1.5 border border-[#cbd5e1] rounded-xs text-xs font-semibold"
                   >
-                    {allowedSites.map(s => <option key={s} value={s}>{s}</option>)}
+                    {siteOptions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
@@ -460,7 +472,7 @@ export const HousekeepingView: React.FC = () => {
                   <input
                     type="text"
                     name="inspectedBy"
-                    defaultValue={currentUserRole || 'Housekeeping Staff'}
+                    defaultValue={editingRecord?.inspectedBy || currentUserRole || 'Housekeeping Staff'}
                     required
                     className="w-full px-2.5 py-1.5 border border-[#cbd5e1] rounded-xs text-xs"
                   />
@@ -474,35 +486,35 @@ export const HousekeepingView: React.FC = () => {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#334155]">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="communalAreasSweptMopped" defaultChecked className="rounded text-[#0d9488]" />
+                    <input type="checkbox" name="communalAreasSweptMopped" defaultChecked={checked('communalAreasSweptMopped', true)} className="rounded text-[#0d9488]" />
                     <span>All communal areas are swept, vacuumed and mopped.</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="windowsWiped" defaultChecked className="rounded text-[#0d9488]" />
+                    <input type="checkbox" name="windowsWiped" defaultChecked={checked('windowsWiped', true)} className="rounded text-[#0d9488]" />
                     <span>All windows are wiped down.</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="furnitureDusted" defaultChecked className="rounded text-[#0d9488]" />
+                    <input type="checkbox" name="furnitureDusted" defaultChecked={checked('furnitureDusted', true)} className="rounded text-[#0d9488]" />
                     <span>All furniture is dusted and cleaned.</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="staffToiletsCleaned" defaultChecked className="rounded text-[#0d9488]" />
+                    <input type="checkbox" name="staffToiletsCleaned" defaultChecked={checked('staffToiletsCleaned', true)} className="rounded text-[#0d9488]" />
                     <span>All staff toilets are thoroughly cleaned and disinfected.</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="mirrorsCleaned" defaultChecked className="rounded text-[#0d9488]" />
+                    <input type="checkbox" name="mirrorsCleaned" defaultChecked={checked('mirrorsCleaned', true)} className="rounded text-[#0d9488]" />
                     <span>All mirrors are cleaned and shined.</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="fridgesCleaned" className="rounded text-[#0d9488]" />
+                    <input type="checkbox" name="fridgesCleaned" defaultChecked={checked('fridgesCleaned', false)} className="rounded text-[#0d9488]" />
                     <span>Communal fridges cleaned (Thursday & Sunday).</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="liftsStairsCleaned" className="rounded text-[#0d9488]" />
+                    <input type="checkbox" name="liftsStairsCleaned" defaultChecked={checked('liftsStairsCleaned', false)} className="rounded text-[#0d9488]" />
                     <span>All the Lifts and stairs cleaned (Saturday & Sunday).</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="officesCleaned" className="rounded text-[#0d9488]" />
+                    <input type="checkbox" name="officesCleaned" defaultChecked={checked('officesCleaned', false)} className="rounded text-[#0d9488]" />
                     <span>All offices cleaned (Sunday).</span>
                   </label>
                 </div>
@@ -638,6 +650,7 @@ export const HousekeepingView: React.FC = () => {
                 <label className="block text-xs font-bold text-[#475569] uppercase mb-1">General Notes / Remarks</label>
                 <textarea
                   name="notes"
+                  defaultValue={editingRecord?.notes || ''}
                   rows={2}
                   placeholder="Additional observations or notes for the day..."
                   className="w-full px-2.5 py-1.5 border border-[#cbd5e1] rounded-xs text-xs"
@@ -647,7 +660,7 @@ export const HousekeepingView: React.FC = () => {
               <div className="pt-3 border-t border-[#e2e8f0] flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
+                  onClick={closeForm}
                   className="px-4 py-2 border border-[#cbd5e1] rounded-xs text-xs font-semibold text-[#475569] hover:bg-[#f8fafc]"
                 >
                   Cancel
@@ -656,7 +669,7 @@ export const HousekeepingView: React.FC = () => {
                   type="submit"
                   className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs text-xs font-semibold"
                 >
-                  Save Daily Housekeeping Log
+                  {editingRecord ? 'Save Changes' : 'Save Daily Housekeeping Log'}
                 </button>
               </div>
             </form>
