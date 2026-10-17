@@ -770,7 +770,10 @@ export function DynamicRecordFormModal<T = any>({
 
       const primaryAtt = processed.attachments.length > 0 ? processed.attachments[0] : null;
       if (primaryAtt) {
-        const primaryLink = primaryAtt.url || primaryAtt.dataUrl || '';
+        // Uploaded files already travel inside `attachments` as data URLs; repeating that base64
+        // in four more fields multiplies the request/row size and gets large uploads rejected.
+        const rawLink = primaryAtt.url || primaryAtt.dataUrl || '';
+        const primaryLink = rawLink.startsWith('data:') ? '' : rawLink;
         processed.attachmentUrl = primaryLink;
         processed.attachment_url = primaryLink;
         processed.fileUrl = primaryLink;

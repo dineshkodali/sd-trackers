@@ -2166,8 +2166,11 @@ export function toDatabaseRow(
     if (rawAtts.length > 0) {
       const primaryAtt = rawAtts[0];
       const genLink = primaryAtt?.url || primaryAtt?.dataUrl || record.attachmentUrl || record.attachment_url || record.fileUrl || null;
-      dbRow.attachment_url = genLink;
-      dbRow.file_url = genLink;
+      // A data: URI is the file itself and already lives in `attachments`; storing it again here
+      // multiplies the row size (readers blank data: links anyway, see sanitizeRowAttachments).
+      const storableLink = typeof genLink === 'string' && genLink.startsWith('data:') ? null : genLink;
+      dbRow.attachment_url = storableLink;
+      dbRow.file_url = storableLink;
     } else {
       dbRow.attachment_url = null;
       dbRow.file_url = null;

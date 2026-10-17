@@ -660,8 +660,12 @@ test('universal attachments with multiple formats and loggedBy persist and round
 
   const row = toDatabaseRow('challenging_behavior', rec);
   assert.ok(row.attachments, 'row.attachments column must be populated for database table');
-  assert.equal(row.attachment_url, 'data:image/jpeg;base64,abc', 'row.attachment_url must hold accessible link');
-  assert.equal(row.file_url, 'data:image/jpeg;base64,abc', 'row.file_url must hold accessible link');
+  // data: URIs are the file itself and live in `attachments`; they are not repeated in the link columns.
+  assert.equal(row.attachment_url, null);
+  assert.equal(row.file_url, null);
+  assert.equal(row.attachments[0].dataUrl, 'data:image/jpeg;base64,abc');
+  const hosted = toDatabaseRow('challenging_behavior', { ...rec, attachments: [{ ...sampleAttachments[0], dataUrl: undefined, url: 'https://files.example/a.jpeg' }] });
+  assert.equal(hosted.attachment_url, 'https://files.example/a.jpeg', 'real http(s) links are still stored in the link columns');
 
   const back = fromDatabaseRow('challenging_behavior', row);
 
@@ -1040,3 +1044,20 @@ test('attachment deletion across all pages/tables completely clears file URLs an
 });
 
 
+
+test('uploaded files are stored once: not repeated in link columns or the data copy, and still round-trip', () => {
+  const dataUrl = 'data:application/pdf;base64,' + 'A'.repeat(5000);
+  const att = { id: 'a1', name: 'cert.pdf', size: 5000, type: 'application/pdf', dataUrl, url: dataUrl, uploadedBy: 'u', uploadedAt: '2026-01-01' };
+  const record = { id: 'comp-dup', srNo: 1, complianceType: 'FRA', siteName: 'Stansted', attachments: [att] };
+
+  const row = toDatabaseRow('compliance_records', record);
+  assert.equal(row.attachment_url, null);
+  assert.equal(row.file_url, null);
+  assert.equal(row.attachments.length, 1);
+  // attachments column + the full-fidelity data copy, each holding url + dataUrl: 4 copies, not the link columns on top.
+  assert.ok(JSON.stringify(row).length < dataUrl.length * 5, 'file base64 must not be repeated in the link columns');
+
+  const back = fromDatabaseRow('compliance_records', { ...row, created_at: 't', updated_at: 't' });
+  assert.equal(back.attachments.length, 1);
+  assert.equal(back.attachments[0].dataUrl, dataUrl);
+});
