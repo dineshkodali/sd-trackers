@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { Wrench, AlertTriangle, CheckCircle2, Clock, Plus, Trash2, Edit3, Search, X, BookOpen, Flame, Hammer, Eye, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { calculateDueDate, getPriorityRule } from '../../utils/maintenancePriority';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';
 import { MAINTENANCE_CRITERIA_LIST, MaintenanceCriteria } from '../../data/maintenanceCriteria';
 import { Pagination } from '../common/Pagination';
@@ -144,7 +145,7 @@ export const MaintenanceTrackerView: React.FC = () => {
     priorityTimeScale: '4 Hours',
     description: '',
     raisedBy: loggedInUserName,
-    closeDueDate: new Date(Date.now() + 4 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' '),
+    closeDueDate: calculateDueDate('CAT 1'),
     defectStatus: 'In Process' as DefectStatus,
     action: 'Open' as MaintenanceAction,
     progress: 'Reported - Assessing issue',
@@ -338,66 +339,24 @@ export const MaintenanceTrackerView: React.FC = () => {
 
   // When selecting criteria in create form
   const handleSelectCriteria = (c: MaintenanceCriteria) => {
-    let timescale = c.timescale;
-    let priority: MaintenancePriority = 'CAT 1';
-    let dueHours = 4;
-
-    if (c.category === 'CAT 1') {
-      priority = 'CAT 1';
-      dueHours = 4;
-      timescale = '4 Hours (0 Days)';
-    } else if (c.category === 'CAT 2') {
-      priority = 'CAT 2';
-      dueHours = 5 * 24;
-      timescale = '5 Working Days (Interim 24h)';
-    } else {
-      priority = 'CAT 3';
-      dueHours = 21 * 24;
-      timescale = '21 Working Days';
-    }
-
-    const calculatedDueDate = new Date(Date.now() + dueHours * 3600 * 1000)
-      .toISOString()
-      .slice(0, 16)
-      .replace('T', ' ');
-
+    const priority: MaintenancePriority = c.category === 'CAT 1' ? 'CAT 1' : c.category === 'CAT 2' ? 'CAT 2' : 'CAT 3';
     setFormData(prev => ({
       ...prev,
       criteriaCode: c.code,
       priority,
-      priorityTimeScale: timescale,
+      priorityTimeScale: getPriorityRule(priority)!.timescale,
       description: `${c.code} - ${c.title}`,
-      closeDueDate: calculatedDueDate
+      closeDueDate: calculateDueDate(priority)
     }));
   };
 
   const handlePriorityChange = (newPriority: MaintenancePriority) => {
-    let dueHours = 4;
-    let timescale = '4 Hours';
-    if (newPriority === 'CAT 1') {
-      dueHours = 4;
-      timescale = '4 Hours (0 Days)';
-    } else if (newPriority === 'CAT 2 - Interim') {
-      dueHours = 24;
-      timescale = '1 (24 Hours Interim)';
-    } else if (newPriority === 'CAT 2') {
-      dueHours = 5 * 24;
-      timescale = '5 Working Days';
-    } else if (newPriority === 'CAT 3') {
-      dueHours = 21 * 24;
-      timescale = '21 Working Days';
-    }
-
-    const calculatedDueDate = new Date(Date.now() + dueHours * 3600 * 1000)
-      .toISOString()
-      .slice(0, 16)
-      .replace('T', ' ');
-
+    const rule = getPriorityRule(newPriority);
     setFormData(prev => ({
       ...prev,
       priority: newPriority,
-      priorityTimeScale: timescale,
-      closeDueDate: calculatedDueDate
+      priorityTimeScale: rule?.timescale || prev.priorityTimeScale,
+      closeDueDate: calculateDueDate(newPriority)
     }));
   };
 
@@ -576,28 +535,28 @@ export const MaintenanceTrackerView: React.FC = () => {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-200">
             <Flame className="w-3 h-3 text-red-600" />
-            CAT 1 (0 / 4h)
+            Cat 1 (4 Hours)
           </span>
         );
       case 'CAT 2 - Interim':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
             <Clock className="w-3 h-3 text-amber-600" />
-            CAT 2 - Interim (1d)
+            Cat 2 - Interim (24 Hours)
           </span>
         );
       case 'CAT 2':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
             <AlertTriangle className="w-3 h-3 text-yellow-600" />
-            CAT 2 (5 Days)
+            Cat 2 (5 Working Days)
           </span>
         );
       case 'CAT 3':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-teal-50 text-blue-800 border border-teal-200">
             <Hammer className="w-3 h-3 text-blue-600" />
-            CAT 3 (21 Days)
+            Cat 3 (28 Working Days)
           </span>
         );
       default:
@@ -1204,6 +1163,7 @@ export const MaintenanceTrackerView: React.FC = () => {
           date: new Date().toISOString().slice(0, 10),
           priority: 'CAT 2',
           priorityTimeScale: '5 Working Days',
+          closeDueDate: calculateDueDate('CAT 2'),
           defectStatus: 'In Process',
           action: 'Open',
           site: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),

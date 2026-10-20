@@ -15,6 +15,9 @@ interface PropertyRelativeSUSelectorProps {
       property?: PropertyMaster;
       room?: PropertyRoom;
       portRef?: string;
+      dob?: string;
+      nationality?: string;
+      language?: string;
       roomNumber?: string;
       address?: string;
     }
@@ -109,7 +112,7 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
     });
 
     // 2. Synthesize from other app collections if not already present
-    const addSyntheticSU = (name: string, portRef?: string, room?: string, site?: string) => {
+    const addSyntheticSU = (name: string, portRef?: string, room?: string, site?: string, dob?: string, nationality?: string, language?: string) => {
       if (!name || typeof name !== 'string') return;
       const cleanName = name.trim();
       const normName = cleanName.toLowerCase();
@@ -128,18 +131,20 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
         status: 'Active',
         siteId: site || '',
         gender: 'Not Specified',
-        preferredLanguage: 'English',
+        preferredLanguage: language || 'English',
+        dateOfBirth: dob || undefined,
+        nationality: nationality || undefined,
         interpreterRequired: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
     };
 
-    vulnerableSUs?.forEach(r => addSyntheticSU(r.suName, r.portOrNassRef, r.roomOrFlatNo, r.site));
+    vulnerableSUs?.forEach(r => addSyntheticSU(r.suName, r.portOrNassRef, r.roomOrFlatNo, r.site, (r as any).dob));
     challengingSUs?.forEach(r => addSyntheticSU(r.name, r.portRef, undefined, r.site));
     spcdRecords?.forEach(r => addSyntheticSU(r.suName, r.suPortReference, r.roomNumber, r.site || r.siteName));
-    dailyRegisterRecords?.forEach(r => addSyntheticSU(r.name, r.portRef, r.roomNo, r.hotel));
-    newArrivalsRecords?.forEach(r => addSyntheticSU(r.name, r.portReference, r.room, r.hotel));
+    dailyRegisterRecords?.forEach(r => addSyntheticSU(r.name, r.portRef, r.roomNo, r.hotel, r.dob, r.nationality, r.language));
+    newArrivalsRecords?.forEach(r => addSyntheticSU(r.name, r.portReference, r.room, r.hotel, r.dob, r.country, r.language));
 
     return Array.from(map.values()).sort((a, b) =>
       `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
@@ -226,6 +231,9 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
       property: resolvedProperty || undefined,
       room: rm || undefined,
       portRef: su.externalReference || su.suReference,
+      dob: su.dateOfBirth || '',
+      nationality: su.nationality || '',
+      language: su.preferredLanguage || '',
       roomNumber: rm?.roomNumber || '',
       address
     });
@@ -257,6 +265,9 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
       property: resolvedProperty || undefined,
       room: rm || undefined,
       portRef: su.externalReference || su.suReference,
+      dob: su.dateOfBirth || '',
+      nationality: su.nationality || '',
+      language: su.preferredLanguage || '',
       roomNumber: rm?.roomNumber || '',
       address
     });

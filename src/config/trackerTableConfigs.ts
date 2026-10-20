@@ -1,4 +1,5 @@
 import React from 'react';
+import { MAINTENANCE_PRIORITY_RULES, getPriorityRule, calculateDueDate, reportedAt } from '../utils/maintenancePriority';
 import { TableColumnConfig } from '../types/tableSchema';
 import { 
   MaintenanceRecord, 
@@ -74,12 +75,17 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     optionCategory: 'maintenancePriorities',
     allowQuickAdd: true,
     options: [
-      { label: 'CAT 1 (Emergency - 4h)', value: 'CAT 1', badgeBg: 'bg-red-100', badgeText: 'text-red-800' },
-      { label: 'CAT 2 - Interim (24h)', value: 'CAT 2 - Interim', badgeBg: 'bg-amber-100', badgeText: 'text-amber-800' },
-      { label: 'CAT 2 (5 Working Days)', value: 'CAT 2', badgeBg: 'bg-amber-50', badgeText: 'text-amber-700' },
-      { label: 'CAT 3 (21 Working Days)', value: 'CAT 3', badgeBg: 'bg-blue-100', badgeText: 'text-blue-800' }
+      ...MAINTENANCE_PRIORITY_RULES.map(r => ({ label: r.label, value: r.value }))
     ],
     defaultValue: 'CAT 1',
+    onValueChange: (value, form) => {
+      const rule = getPriorityRule(value);
+      if (!rule) return;
+      return {
+        priorityTimeScale: rule.timescale,
+        closeDueDate: calculateDueDate(value, reportedAt(form.date, form.reportedTime))
+      };
+    },
     badgeColors: {
       'CAT 1': 'bg-red-100 text-red-800 border-red-200',
       'CAT 2 - Interim': 'bg-amber-100 text-amber-800 border-amber-200',
@@ -94,9 +100,9 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     type: 'select',
     optionCategory: 'maintenanceTimeScales',
     allowQuickAdd: true,
-    options: ['4 Hours (0 Days)', '1 (24 Hours Interim)', '2 (5 Working Days)', '3 (21 Working Days)'],
-    placeholder: 'e.g. 4 Hours (0 Days), 1 (24 Hours Interim)',
-    defaultValue: '4 Hours (0 Days)',
+    options: MAINTENANCE_PRIORITY_RULES.map(r => r.timescale),
+    placeholder: 'Set automatically from priority',
+    defaultValue: '4 Hours',
     section: 'Defect Details'
   },
   {
@@ -150,6 +156,7 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     label: 'Close Due Date',
     type: 'text',
     placeholder: 'YYYY-MM-DD HH:MM',
+    helperText: 'Calculated automatically from the selected priority; can be overridden.',
     section: 'Status & Progression'
   },
   {

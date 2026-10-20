@@ -41,6 +41,8 @@ export interface TableColumnConfig<T = any> {
   colSpan?: 1 | 2; // For modal grid layout (1 = half-width on desktop, 2 = full-width)
   section?: string; // Optional grouping in Add/Edit/View forms
   helperText?: string;
+  /** Returns other field values to set whenever this field changes (e.g. derived dates). */
+  onValueChange?: (value: any, formData: Record<string, any>) => Record<string, any> | void;
   renderCell?: (value: any, record: T) => React.ReactNode;
   formatValue?: (value: any) => string;
   isCustom?: boolean;

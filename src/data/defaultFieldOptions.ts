@@ -472,10 +472,10 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-esc-6', category: 'escalationAuthorities', label: 'Home Office Safeguarding Hub', value: 'Home Office Safeguarding', color: 'amber', description: 'Statutory notification for Section 95 / Section 98 cases', isActive: true, isSystem: false, order: 6 },
 
   // 7. Maintenance Priorities
-  { id: 'opt-maint-1', category: 'maintenancePriorities', label: 'CAT 1 - Emergency (4 Hours)', value: 'CAT 1', color: 'red', description: 'Risk to life, complete power loss, gas leak, severe water burst', isActive: true, isSystem: true, order: 1 },
-  { id: 'opt-maint-2', category: 'maintenancePriorities', label: 'CAT 2 - Urgent (24 Hours)', value: 'CAT 2', color: 'amber', description: 'Heating failure in winter, blocked toilet in single facility', isActive: true, isSystem: true, order: 2 },
-  { id: 'opt-maint-3', category: 'maintenancePriorities', label: 'CAT 3 - Routine (7 Days)', value: 'CAT 3', color: 'blue', description: 'Minor leak, faulty window catch, non-urgent door adjustment', isActive: true, isSystem: true, order: 3 },
-  { id: 'opt-maint-4', category: 'maintenancePriorities', label: 'CAT 4 - Planned Works (28 Days)', value: 'CAT 4', color: 'slate', description: 'Painting, cyclical redecoration, cosmetic maintenance', isActive: true, isSystem: false, order: 4 },
+  { id: 'opt-maint-1', category: 'maintenancePriorities', label: 'Cat 1 (4 Hours)', value: 'CAT 1', color: 'red', description: 'Risk to life, complete power loss, gas leak, severe water burst', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-maint-2', category: 'maintenancePriorities', label: 'Cat 2 - Interim (24 Hours)', value: 'CAT 2 - Interim', color: 'amber', description: 'Interim make-safe within 24 hours', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-maint-3', category: 'maintenancePriorities', label: 'Cat 2 (5 Working Days)', value: 'CAT 2', color: 'amber', description: 'Heating failure, blocked toilet in single facility', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-maint-4', category: 'maintenancePriorities', label: 'Cat 3 (28 Working Days)', value: 'CAT 3', color: 'blue', description: 'Minor leak, faulty window catch, non-urgent door adjustment', isActive: true, isSystem: true, order: 4 },
 
   // 8. Maintenance Time Scales
   { id: 'opt-scale-1', category: 'maintenanceTimeScales', label: '4 Hours (Immediate)', value: '4 Hours', color: 'red', description: 'Contractor on site within 4 hours', isActive: true, isSystem: true, order: 1 },

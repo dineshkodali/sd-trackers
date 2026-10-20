@@ -598,6 +598,9 @@ export function DynamicRecordFormModal<T = any>({
     setFormData(prev => {
       const next = { ...prev, [key]: value };
       const col = formColumns.find(c => String(c.key) === key);
+      if (col?.onValueChange) {
+        Object.assign(next, col.onValueChange(value, next) || {});
+      }
       if (col && isSiteColumn(col)) {
         const mgr = resolveSiteManager(value);
         formColumns.forEach(c => {
@@ -1048,7 +1051,20 @@ export function DynamicRecordFormModal<T = any>({
                                   }
                                 });
                               }
-                              if (extra.roomNumber) {
+                              const derived: Record<string, string | undefined> = { dob: extra.dob, nationality: extra.nationality, language: extra.language };
+              const derivedKeys: Record<string, string[]> = {
+                dob: ['dob', 'dateofbirth'],
+                nationality: ['nationality', 'country'],
+                language: ['language', 'preferredlanguage']
+              };
+              Object.entries(derivedKeys).forEach(([field, aliases]) => {
+                const v = derived[field];
+                if (!v) return;
+                formColumns.forEach(c => {
+                  if (aliases.includes(String(c.key).toLowerCase())) handleChange(String(c.key), v);
+                });
+              });
+              if (extra.roomNumber) {
                                 formColumns.forEach(c => {
                                   const ck = String(c.key).toLowerCase();
                                   if (ck === 'roomno' || ck === 'roomnumber' || ck === 'roomorflatno' || ck === 'flatnumber') {
