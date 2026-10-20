@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Building2, Search, Plus, SlidersHorizontal, Lock, RefreshCw } from 'lucide-react';
+import { buildRegisterSyncPlan } from '../../utils/registerMasterSync';
 import { useApp } from '../../context/AppContext';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
@@ -56,8 +57,44 @@ export const LiveDailyRegistersView: React.FC = () => {
     currentUserRole,
     canCreateRecord,
     isSitePermitted,
-    syncFromDatabase
+    syncFromDatabase,
+    liveDataStatus,
+    addDailyRegisterRoom,
+    addDailyRegisterRecord
   } = useApp();
+
+  // Keep the register in line with the Rooms / Service User master data: missing rooms and
+  // active placements are added, existing register rows are never touched.
+  const latest = React.useRef({ sites, dailyRegisterRooms, dailyRegisterRecords });
+  latest.current = { sites, dailyRegisterRooms, dailyRegisterRecords };
+  const syncing = React.useRef(false);
+  const runMasterSync = React.useCallback(async () => {
+    if (syncing.current) return;
+    syncing.current = true;
+    try {
+      const { sites: s, dailyRegisterRooms: rooms, dailyRegisterRecords: records } = latest.current;
+      const plan = await buildRegisterSyncPlan(
+        (s || []).map((x: any) => typeof x === 'string' ? { id: x, name: x } : { id: x.id, name: x.name }),
+        rooms,
+        records
+      );
+      plan.rooms.forEach(r => addDailyRegisterRoom(r));
+      plan.records.forEach(r => addDailyRegisterRecord(r));
+    } catch (err) {
+      console.error('Register sync with Rooms / Service Users failed:', err);
+    } finally {
+      syncing.current = false;
+    }
+  }, [addDailyRegisterRoom, addDailyRegisterRecord]);
+
+  const dataReady = liveDataStatus.state === 'live' || liveDataStatus.state === 'degraded';
+  useEffect(() => {
+    if (!dataReady) return;
+    runMasterSync();
+    const onMasterChange = () => { runMasterSync(); };
+    window.addEventListener('sdtracker:masterDataUpdated', onMasterChange);
+    return () => window.removeEventListener('sdtracker:masterDataUpdated', onMasterChange);
+  }, [dataReady, runMasterSync, liveDataStatus.lastSyncAt]);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const handleManualSync = async () => {
