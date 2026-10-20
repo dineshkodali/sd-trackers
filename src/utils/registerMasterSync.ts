@@ -1,5 +1,5 @@
 import { suPropertyService } from '../services/suPropertyService';
-import { isOutOfUse } from './roomManagementLogic';
+import { isOutOfUse, isPlaceholderRoom } from './roomManagementLogic';
 import { roomKey } from './roomAllocation';
 import type { DailyRegisterRoom, DailyRegisterRecord } from '../types';
 
@@ -30,7 +30,8 @@ export async function buildRegisterSyncPlan(
   ]);
 
   const properties = propsRes.data || [];
-  const masterRooms = roomsRes.data || [];
+  // Auto-generated demo rooms are not real accommodation, so they never reach the register.
+  const masterRooms = (roomsRes.data || []).filter(r => !isPlaceholderRoom(r as any));
   const placements = plcRes.data || [];
   const serviceUsers = suRes.data || [];
 

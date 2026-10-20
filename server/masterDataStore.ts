@@ -84,23 +84,22 @@ export function buildInitialMasterData(): MasterStoreState {
       propertyName: site.name,
       propertyType: site.capacity > 100 ? 'Commercial' : 'HMO',
       siteId: site.id,
-      addressLine1: site.address || `${site.pid || 100 + idx} High Street`,
+      addressLine1: site.address || '',
       city: site.city.split(',')[0].trim(),
-      county: site.council || 'Greater London',
-      postcode: `SD${idx + 1} 1AA`,
+      county: site.council || '',
+      postcode: '',
       ownershipType: 'Leased',
-      provider: 'SD Commercial Operations',
-      landlord: 'SD Commercial Properties Ltd',
-      propertyManager: site.leadOfficer || 'Michael Thorne',
+      provider: '',
+      landlord: '',
+      propertyManager: site.leadOfficer || '',
       // No assumed figures: bed spaces come from the rooms that are added for the property
       maximumOccupancy: 0,
       bedrooms: 0,
       bathrooms: 0,
       numberOfFloors: 0,
-      accessibilityInformation: 'Wheelchair access ramp at ground entrance; accessible ground-floor bedroom.',
+      accessibilityInformation: '',
       status: 'Active',
-      startDate: '2024-01-01T00:00:00.000Z',
-      notes: `Operational property for site ${site.name} (PID: ${site.pid || '—'}). Address: ${site.address || '—'}. Key safe: 4921.`
+      notes: `Operational property for site ${site.name} (PID: ${site.pid || '—'}). Address: ${site.address || '—'}.`
     });
   });
 

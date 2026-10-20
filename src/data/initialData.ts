@@ -29,23 +29,29 @@ import {
   TransportRoomMoveRecord
 } from '../types';
 
+/**
+ * Lead officers that older installs were seeded with. They were placeholders, not real staff, so
+ * they are treated as unassigned when matching a property to an account.
+ */
+export const LEGACY_PLACEHOLDER_LEAD_OFFICERS: string[] = ["Michael Thorne","Sarah Jenkins","David Miller","Amina Begum","Rachel O'Connor","James Wilson","Priya Sharma","Robert Clarke","Gareth Edwards","Chloe Taylor","Thomas Evans","Hannah Foster","Liam Davis","Arjun Patel","Sophie Green"];
+
 export const INITIAL_SITES: SiteInfo[] = [
-  { id: 'site-519', pid: '519', name: 'Brit Hotel', address: '35 Hampton Street', city: 'London', capacity: 110, activeResidents: 0, council: 'Barnet Council', leadOfficer: 'Michael Thorne', contactNumber: '+44 20 8200 5190', status: 'Active' },
-  { id: 'site-712', pid: '712', name: 'Leigham Court Hotel', address: '18 Leigham Crt Rd, London', city: 'Streatham, London', capacity: 85, activeResidents: 0, council: 'Lambeth Council', leadOfficer: 'Sarah Jenkins', contactNumber: '+44 20 8677 0712', status: 'Active' },
-  { id: 'site-483', pid: '483', name: 'Maida Vale Aparthotel', address: 'Kilburn, London', city: 'Maida Vale, London', capacity: 95, activeResidents: 0, council: 'Westminster Council', leadOfficer: 'David Miller', contactNumber: '+44 20 7289 0483', status: 'Active' },
-  { id: 'site-640', pid: '640', name: 'Clapham South Dudley Hotel', address: '79-81 Clapham Common South Side', city: 'Clapham, London', capacity: 100, activeResidents: 0, council: 'Wandsworth Council', leadOfficer: 'Amina Begum', contactNumber: '+44 20 8673 0640', status: 'Active' },
-  { id: 'site-443', pid: '443', name: 'Holiday Inn Lambeth', address: '87 S Lambeth Rd', city: 'Lambeth, London', capacity: 140, activeResidents: 0, council: 'Lambeth Council', leadOfficer: 'Rachel O\'Connor', contactNumber: '+44 20 7735 0443', status: 'Active' },
-  { id: 'site-632', pid: '632', name: 'Stansted Hotel (Ibis Budget Bisop Stortford)', address: 'Birchanger Lane', city: 'Bishop\'s Stortford / Stansted', capacity: 120, activeResidents: 0, council: 'East Herts Council', leadOfficer: 'James Wilson', contactNumber: '+44 1279 632000', status: 'Active' },
-  { id: 'site-449', pid: '449', name: 'Holiday Inn Old Street', address: '275 Old St', city: 'Islington, London', capacity: 130, activeResidents: 0, council: 'Islington Council', leadOfficer: 'Priya Sharma', contactNumber: '+44 20 7250 0449', status: 'Active' },
-  { id: 'site-546', pid: '546', name: 'Holiday Inn Swiss Cottage', address: '152 – 156 Finchley Road', city: 'Camden, London', capacity: 150, activeResidents: 0, council: 'Camden Council', leadOfficer: 'Robert Clarke', contactNumber: '+44 20 7722 0546', status: 'Active' },
-  { id: 'site-715', pid: '715', name: 'Ibis Cardiff City Centre', address: 'Churchill Way, Cardiff', city: 'Cardiff', capacity: 105, activeResidents: 0, council: 'Cardiff Council', leadOfficer: 'Gareth Edwards', contactNumber: '+44 29 2064 0715', status: 'Active' },
-  { id: 'site-665', pid: '665', name: 'Hilton Hampton - Ealing', address: '111 Uxbridge Rd, Ealing, London', city: 'Ealing, London', capacity: 135, activeResidents: 0, council: 'Ealing Council', leadOfficer: 'Chloe Taylor', contactNumber: '+44 20 8567 0665', status: 'Active' },
-  { id: 'site-562', pid: '562', name: 'Ibis Styles - Seven Kings', address: 'Cameron Rd, Ilford', city: 'Seven Kings, Redbridge', capacity: 150, activeResidents: 0, council: 'Redbridge Council', leadOfficer: 'Sarah Jenkins', contactNumber: '+44 20 8599 0100', status: 'Active' },
-  { id: 'site-741', pid: '741', name: 'Clacton Pier Avenue', address: '107 – 111 Pier Avenue, Clacton', city: 'Clacton-on-Sea', capacity: 75, activeResidents: 0, council: 'Tendring District Council', leadOfficer: 'Thomas Evans', contactNumber: '+44 1255 741000', status: 'Active' },
-  { id: 'site-776', pid: '776', name: 'Lea Halls', address: '70 Bute Street, Luton', city: 'Luton', capacity: 160, activeResidents: 0, council: 'Luton Council', leadOfficer: 'Hannah Foster', contactNumber: '+44 121 776 0000', status: 'Active' },
-  { id: 'site-820', pid: '820', name: 'Mercure Heathrow Hotel', address: 'Hayes', city: 'Heathrow, Hillingdon', capacity: 180, activeResidents: 0, council: 'Hillingdon Council', leadOfficer: 'Liam Davis', contactNumber: '+44 20 8820 0000', status: 'Active' },
-  { id: 'site-545', pid: '545', name: 'Parmiter PDA', address: 'Seth Court, 23 Parmiter Street', city: 'London', capacity: 90, activeResidents: 0, council: 'Tower Hamlets Council', leadOfficer: 'Arjun Patel', contactNumber: '+44 20 7545 0000', status: 'Active' },
-  { id: 'site-burrows', pid: '—', name: 'Burrows Court', address: 'Windmill Lane, Notthingam', city: 'Nottingham', capacity: 70, activeResidents: 0, council: 'Nottingham City Council', leadOfficer: 'Sophie Green', contactNumber: '+44 115 900 0101', status: 'Active' }
+  { id: 'site-519', pid: '519', name: 'Brit Hotel', address: '35 Hampton Street', city: 'London', capacity: 0, activeResidents: 0, council: 'Barnet Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-712', pid: '712', name: 'Leigham Court Hotel', address: '18 Leigham Crt Rd, London', city: 'Streatham, London', capacity: 0, activeResidents: 0, council: 'Lambeth Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-483', pid: '483', name: 'Maida Vale Aparthotel', address: 'Kilburn, London', city: 'Maida Vale, London', capacity: 0, activeResidents: 0, council: 'Westminster Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-640', pid: '640', name: 'Clapham South Dudley Hotel', address: '79-81 Clapham Common South Side', city: 'Clapham, London', capacity: 0, activeResidents: 0, council: 'Wandsworth Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-443', pid: '443', name: 'Holiday Inn Lambeth', address: '87 S Lambeth Rd', city: 'Lambeth, London', capacity: 0, activeResidents: 0, council: 'Lambeth Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-632', pid: '632', name: 'Stansted Hotel (Ibis Budget Bisop Stortford)', address: 'Birchanger Lane', city: 'Bishop\'s Stortford / Stansted', capacity: 0, activeResidents: 0, council: 'East Herts Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-449', pid: '449', name: 'Holiday Inn Old Street', address: '275 Old St', city: 'Islington, London', capacity: 0, activeResidents: 0, council: 'Islington Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-546', pid: '546', name: 'Holiday Inn Swiss Cottage', address: '152 – 156 Finchley Road', city: 'Camden, London', capacity: 0, activeResidents: 0, council: 'Camden Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-715', pid: '715', name: 'Ibis Cardiff City Centre', address: 'Churchill Way, Cardiff', city: 'Cardiff', capacity: 0, activeResidents: 0, council: 'Cardiff Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-665', pid: '665', name: 'Hilton Hampton - Ealing', address: '111 Uxbridge Rd, Ealing, London', city: 'Ealing, London', capacity: 0, activeResidents: 0, council: 'Ealing Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-562', pid: '562', name: 'Ibis Styles - Seven Kings', address: 'Cameron Rd, Ilford', city: 'Seven Kings, Redbridge', capacity: 0, activeResidents: 0, council: 'Redbridge Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-741', pid: '741', name: 'Clacton Pier Avenue', address: '107 – 111 Pier Avenue, Clacton', city: 'Clacton-on-Sea', capacity: 0, activeResidents: 0, council: 'Tendring District Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-776', pid: '776', name: 'Lea Halls', address: '70 Bute Street, Luton', city: 'Luton', capacity: 0, activeResidents: 0, council: 'Luton Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-820', pid: '820', name: 'Mercure Heathrow Hotel', address: 'Hayes', city: 'Heathrow, Hillingdon', capacity: 0, activeResidents: 0, council: 'Hillingdon Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-545', pid: '545', name: 'Parmiter PDA', address: 'Seth Court, 23 Parmiter Street', city: 'London', capacity: 0, activeResidents: 0, council: 'Tower Hamlets Council', leadOfficer: '', contactNumber: '', status: 'Active' },
+  { id: 'site-burrows', pid: '—', name: 'Burrows Court', address: 'Windmill Lane, Notthingam', city: 'Nottingham', capacity: 0, activeResidents: 0, council: 'Nottingham City Council', leadOfficer: '', contactNumber: '', status: 'Active' }
 ];
 
 export const INITIAL_REFERRALS: SGReferral[] = [];

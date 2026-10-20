@@ -56,6 +56,7 @@ import {
 import { checksService } from '../services/checksService';
 import {
   INITIAL_SITES,
+  LEGACY_PLACEHOLDER_LEAD_OFFICERS,
   INITIAL_REFERRALS,
   INITIAL_VULNERABLE,
   INITIAL_CHALLENGING,
@@ -5081,7 +5082,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const removedSites = currentSites.filter(s => s !== 'All Sites' && s !== 'All' && !newSites.includes(s));
       const officerLabel = officerLabelFor(users, { ...current, ...updates } as UserAccount);
 
-      const initialMockOfficers = new Set(INITIAL_SITES.map(s => (s.leadOfficer || '').toLowerCase()));
+      const initialMockOfficers = new Set(LEGACY_PLACEHOLDER_LEAD_OFFICERS.map(o => o.toLowerCase()));
       const officerChanges: Array<{ site: SiteInfo; leadOfficer: string }> = [];
       for (const site of sites) {
         const curOfficer = (site.leadOfficer || '').trim();
