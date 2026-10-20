@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';
 import { ServiceUserFormModal } from './ServiceUserFormModal';
+import { getServiceUserRecords, countServiceUserRecords } from '../../utils/serviceUserRecords';
 import { ServiceUserProfileView } from './ServiceUserProfileView';
 import { MoveAccommodationModal } from './MoveAccommodationModal';
 import { Pagination } from '../common/Pagination';
@@ -27,8 +28,12 @@ const suExportColumns: ExportColumnOption[] = [
 ];
 
 export const ServiceUsersView: React.FC = () => {
-  const { sites, canAccessAllSites, assignedSite, allowedSites, isSitePermitted, canManageUsers, requestConfirmation } = useApp();
+  const {
+    irRecords, challengingSUs, referrals, welfareChecks, rfaWelfareRecords, mhComplaintWelfareRecords,
+    gpAppointmentRecords, publicTransportRecords,
+    sites, canAccessAllSites, assignedSite, allowedSites, isSitePermitted, canManageUsers, requestConfirmation } = useApp();
   const canCRUD = canManageUsers();
+  const [profileInitialTab, setProfileInitialTab] = useState<string | undefined>(undefined);
 
   const [serviceUsers, setServiceUsers] = useState<ServiceUserMaster[]>([]);
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
@@ -302,6 +307,7 @@ export const ServiceUsersView: React.FC = () => {
     return (
       <div className="space-y-4 w-full animate-fade-in">
         <ServiceUserProfileView
+          initialTab={profileInitialTab}
           serviceUser={selectedSUForProfile}
           onBack={() => setSelectedSUForProfile(null)}
           onEditSU={(su) => {
@@ -517,20 +523,25 @@ export const ServiceUsersView: React.FC = () => {
                 <th className="py-2.5 px-3">Room</th>
                 <th className="py-2.5 px-3">Status</th>
                 <th className="py-2.5 px-3">Placement</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Incident Reports</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">SG Referrals</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Welfare Checks</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">GP Appointments</th>
+                <th className="py-2.5 px-3 text-center whitespace-nowrap">Public Transport</th>
                 <th className="py-2.5 px-3 text-right w-36 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10 select-none">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f0f0]">
               {loading && paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-neutral-400">
+                  <td colSpan={15} className="py-12 text-center text-neutral-400">
                     <RefreshCw className="w-8 h-8 mx-auto mb-2 text-[#0d9488] animate-spin" />
                     <p className="font-medium text-xs">Loading Service User records...</p>
                   </td>
                 </tr>
               ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-neutral-400">
+                  <td colSpan={15} className="py-12 text-center text-neutral-400">
                     <UsersRound className="w-8 h-8 mx-auto mb-2 text-neutral-300 opacity-60" />
                     <p className="font-medium text-xs">No Service Users matching current filters</p>
                     <p className="text-[11px] mt-0.5">Click "+ Add Service User" to create a new master record.</p>
@@ -542,11 +553,15 @@ export const ServiceUsersView: React.FC = () => {
                   const prop = plc ? propMap.get(plc.propertyId) : null;
                   const rm = plc ? roomMap.get(plc.roomId) : null;
                   const siteObj = sites.find(s => s.id === (plc?.siteId || u.siteId));
+                  const counts = countServiceUserRecords(getServiceUserRecords(u, {
+                    irRecords, challengingSUs, referrals, welfareChecks, rfaWelfareRecords, mhComplaintWelfareRecords,
+                    gpAppointmentRecords, publicTransportRecords
+                  }));
 
                   return (
                     <tr
                       key={u.id}
-                      onClick={() => setSelectedSUForProfile(u)}
+                      onClick={() => { setProfileInitialTab(undefined); setSelectedSUForProfile(u); }}
                       className={`group hover:bg-[#fbfbfa] transition-colors cursor-pointer ${selectedIds.includes(u.id) ? 'bg-[#f0fdfa]' : ''}`}
                     >
                       <td className="py-2.5 px-3 w-8" onClick={e => e.stopPropagation()}>
@@ -613,11 +628,16 @@ export const ServiceUsersView: React.FC = () => {
                           </span>
                         )}
                       </td>
+                      {([['incidents', counts.incidents], ['referrals', counts.referrals], ['welfare', counts.welfare], ['gp', counts.gp], ['transport', counts.transport]] as [string, number][]).map(([tab, n]) => (
+                        <td key={tab} className="py-2.5 px-3 text-center" onClick={e => { e.stopPropagation(); setProfileInitialTab(tab); setSelectedSUForProfile(u); }}>
+                          <span className={`inline-block min-w-6 px-1.5 py-0.5 rounded text-[11px] font-semibold border cursor-pointer ${n > 0 ? 'bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100' : 'bg-neutral-50 text-neutral-400 border-neutral-200'}`}>{n}</span>
+                        </td>
+                      ))}
                       <td className="py-2.5 px-3 text-right sticky right-0 bg-white group-hover:bg-[#fbfbfa] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10 select-none">
                         <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
                           <button
                             type="button"
-                            onClick={() => setSelectedSUForProfile(u)}
+                            onClick={() => { setProfileInitialTab(undefined); setSelectedSUForProfile(u); }}
                             className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
                             title="View SU Profile & Dossier"
                           >

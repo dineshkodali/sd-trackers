@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { getServiceUserRecords } from '../../utils/serviceUserRecords';
+import { SUIncidentsTab, SUReferralsTab, SUGpTab, SUTransportTab, SUOtherWelfareTable } from './SURecordTabs';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { ArrowLeft, ChevronRight, Building2, DoorOpen, Edit3, ArrowRightLeft, FileText, UserMinus, Trash2 } from 'lucide-react';
 import { suPropertyService } from '../../services/suPropertyService';
@@ -29,6 +31,7 @@ import {
 
 interface ServiceUserProfileViewProps {
   serviceUser: ServiceUserMaster;
+  initialTab?: string;
   onBack: () => void;
   onEditSU: (su: ServiceUserMaster) => void;
   onRefreshData: () => void;
@@ -36,14 +39,19 @@ interface ServiceUserProfileViewProps {
 
 export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
   serviceUser,
+  initialTab,
   onBack,
   onEditSU,
   onRefreshData
 }) => {
-  const { sites, welfareChecks, foodSurveys, roomChecks, canManageUsers , requestConfirmation } = useApp();
+  const {
+    sites, welfareChecks, foodSurveys, roomChecks, canManageUsers, requestConfirmation,
+    irRecords, challengingSUs, referrals, rfaWelfareRecords, mhComplaintWelfareRecords,
+    gpAppointmentRecords, publicTransportRecords
+  } = useApp();
   const canCRUD = canManageUsers();
 
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>(initialTab || 'overview');
   const [contact, setContact] = useState<ServiceUserContact | null>(null);
   const [activePlacement, setActivePlacement] = useState<Placement | null>(null);
   const [placementHistory, setPlacementHistory] = useState<Placement[]>([]);
@@ -118,6 +126,11 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     w.suId === serviceUser.id || 
     (serviceUser.externalReference && w.portReference === serviceUser.externalReference)
   );
+
+  const suRecords = React.useMemo(() => getServiceUserRecords(serviceUser, {
+    irRecords, challengingSUs, referrals, welfareChecks, rfaWelfareRecords, mhComplaintWelfareRecords,
+    gpAppointmentRecords, publicTransportRecords
+  }), [serviceUser, irRecords, challengingSUs, referrals, welfareChecks, rfaWelfareRecords, mhComplaintWelfareRecords, gpAppointmentRecords, publicTransportRecords]);
 
   const suFood = foodSurveys.filter(f => 
     f.suId === serviceUser.id || 
@@ -283,7 +296,11 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     { id: 'household', label: `Household (${household.length})` },
     { id: 'support', label: `Support (${supportRecords.length})` },
     { id: 'documents', label: `Documents (${documents.length})` },
-    { id: 'welfare', label: `Welfare (${suWelfare.length})` },
+    { id: 'incidents', label: `Incident Reports (${suRecords.incidents.length})` },
+    { id: 'referrals', label: `SG Referrals (${suRecords.referrals.length})` },
+    { id: 'welfare', label: `Welfare Checks (${suWelfare.length + suRecords.otherWelfare.length})` },
+    { id: 'gp', label: `GP Appointments (${suRecords.gp.length})` },
+    { id: 'transport', label: `Public Transport (${suRecords.transport.length})` },
     { id: 'foodSurveys', label: `Food Surveys (${suFood.length})` },
     { id: 'roomChecks', label: `Room Checks (${suRooms.length})` },
     { id: 'activity', label: 'Activity' }
@@ -516,6 +533,11 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
             />
           )}
 
+          {activeTab === 'incidents' && <SUIncidentsTab rows={suRecords.incidents} />}
+          {activeTab === 'referrals' && <SUReferralsTab rows={suRecords.referrals} />}
+          {activeTab === 'gp' && <SUGpTab rows={suRecords.gp} />}
+          {activeTab === 'transport' && <SUTransportTab rows={suRecords.transport} />}
+
           {activeTab === 'welfare' && (
             <div className="space-y-3">
               <h4 className="font-bold text-xs text-neutral-800">Operational Welfare Records</h4>
@@ -551,6 +573,12 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'welfare' && (
+            <div className="mt-5">
+              <SUOtherWelfareTable rows={suRecords.otherWelfare} />
             </div>
           )}
 

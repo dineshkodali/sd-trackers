@@ -12,6 +12,7 @@ import { TableColumnConfig } from '../../types/tableSchema';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
+import { syncArrivalToServiceUser } from '../../utils/arrivalServiceUserSync';
 
 interface NewArrivalsSectionProps {
   selectedSite: string;
@@ -41,7 +42,8 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     assignedSite,
     syncFromDatabase,
     liveDataStatus,
-    isSitePermitted
+    isSitePermitted,
+    sites
   } = useApp();
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -133,7 +135,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     }
   };
 
-  const handleCreateSubmit = (data: Partial<NewArrivalRecord>) => {
+  const handleCreateSubmit = async (data: Partial<NewArrivalRecord>) => {
     const finalHotel = (data.hotel && data.hotel !== 'All Sites' && data.hotel !== 'all')
       ? data.hotel
       : defaultSite;
@@ -143,6 +145,21 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       return;
     }
 
+    const checkInDate = data.checkInDate || new Date().toISOString().slice(0, 10);
+    const roomInput = (data.room || '').trim();
+
+    // A valid, free room checks the person straight into the Daily Register; otherwise they stay "Arrived".
+    const check = roomInput
+      ? evaluateRegisterAllocation({
+          rooms: dailyRegisterRooms,
+          records: dailyRegisterRecords,
+          hotel: finalHotel,
+          roomNo: roomInput,
+          portRef: data.portReference || ''
+        })
+      : null;
+    const allocatedRoom = check?.ok ? check.room! : null;
+
     addNewArrivalRecord({
       portReference: data.portReference || '',
       name: data.name || '',
@@ -150,15 +167,62 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       country: data.country || '',
       language: data.language || '',
       contactNumber: data.contactNumber || '',
-      hotel: finalHotel,
-      room: data.room || '',
+      hotel: allocatedRoom?.hotel || finalHotel,
+      room: allocatedRoom?.roomNo || roomInput,
       email: data.email || '',
       aspenCard: data.aspenCard || '',
-      checkInDate: data.checkInDate || new Date().toISOString().slice(0, 10),
-      status: data.status || 'Arrived',
+      checkInDate,
+      status: allocatedRoom ? 'Checked In' : (data.status || 'Arrived'),
       attachments: []
     } as any);
     setIsCreateModalOpen(false);
+
+    if (allocatedRoom) {
+      addDailyRegisterRecord({
+        hotel: allocatedRoom.hotel,
+        roomNo: allocatedRoom.roomNo,
+        floor: allocatedRoom.floor || undefined,
+        registerDate: checkInDate,
+        dailyOccupancy: { [checkInDate]: 'Occupied' },
+        portRef: data.portReference || '',
+        name: data.name || '',
+        checkInDate,
+        contactNo: data.contactNumber,
+        email: data.email,
+        dob: data.dob,
+        nationality: data.country,
+        language: data.language,
+        singleBed: 1,
+        doubleBed: 0,
+        singleBunk: 0,
+        doubleBunk: 0,
+        cot: 0,
+        occupied: 'Yes',
+        isVoid: 'No',
+        availableToBook: 'No'
+      });
+    } else if (check && !check.ok) {
+      alert(`${data.name} was recorded as Arrived, but not placed in room ${roomInput}: ${check.error}`);
+    }
+
+    // Also register the person in Service User Management and the Rooms module.
+    try {
+      const sync = await syncArrivalToServiceUser({
+        portReference: data.portReference,
+        name: data.name || '',
+        dob: data.dob,
+        country: data.country,
+        language: data.language,
+        contactNumber: data.contactNumber,
+        email: data.email,
+        hotel: allocatedRoom?.hotel || finalHotel,
+        room: allocatedRoom?.roomNo || roomInput,
+        checkInDate
+      }, sites as any);
+      if (sync.warnings.length) alert(sync.warnings.join('\n'));
+    } catch (err: any) {
+      alert(`Arrival saved, but the Service User record could not be created: ${err?.message || 'unknown error'}`);
+    }
   };
 
   // Anyone who can see an arrival's property may edit it (arrival details are corrected by frontline staff).
