@@ -210,17 +210,18 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
     onSelect?.(selectedSummary);
   };
 
-  // Residents of the chosen property (active placement), or of the chosen site. Never anyone else.
+  // Residents of the chosen property or site, never anyone else. A resident's current site is that of their active
+  // placement, otherwise the site on their profile.
   const propertySUs = useMemo(() => {
     if (!currentSiteId) return [];
-    if (currentPropertyId) {
-      const validSuIds = new Set(placements.filter(p => p.propertyId === currentPropertyId && p.status === 'Active').map(p => p.suId));
-      return serviceUsers.filter(u => validSuIds.has(u.id));
-    }
     const siteName = (sites.find(s => s.id === currentSiteId)?.name || '').toLowerCase();
-    const placedAtSite = new Set(placements.filter(p => p.status === 'Active' && (!p.siteId || p.siteId === currentSiteId)).map(p => p.suId));
-    return serviceUsers.filter(u =>
-      u.siteId === currentSiteId || (siteName && String(u.siteId || '').toLowerCase() === siteName) || placedAtSite.has(u.id));
+    const isThisSite = (v?: string) => !!v && (v === currentSiteId || v.toLowerCase() === siteName);
+    const activeBySu = new Map(placements.filter(p => p.status === 'Active').map(p => [p.suId, p] as const));
+    return serviceUsers.filter(u => {
+      const plc = activeBySu.get(u.id);
+      if (plc) return currentPropertyId ? plc.propertyId === currentPropertyId : (isThisSite(plc.siteId) || isThisSite(u.siteId));
+      return isThisSite(u.siteId);
+    });
   }, [currentPropertyId, currentSiteId, placements, serviceUsers, sites]);
 
   const filteredSUs = useMemo(() => {
@@ -237,7 +238,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
 
   return (
     <div className={`space-y-3.5 bg-neutral-50/80 p-3.5 rounded-lg border border-neutral-200/90 text-xs ${className}`}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Site Selector */}
         <div>
           <label className="block text-[11px] font-semibold text-neutral-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -260,8 +261,9 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
           </select>
         </div>
 
-        {/* Property / Accommodation Selector */}
-        <div>
+        {/* Property / Accommodation Selector (only when the site has several) */}
+        {properties.length > 1 && (
+        <div className="sm:col-span-2 sm:order-3">
           <label className="block text-[11px] font-semibold text-neutral-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
             <Home className="w-3.5 h-3.5 text-teal-600" />
             <span>Property / Hotel</span>
@@ -283,6 +285,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
             ))}
           </select>
         </div>
+        )}
 
         {/* Service User Selector (Strictly Relative to Property) */}
         <div>
@@ -324,7 +327,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
 
       {/* Auto-populated Read-Only Property & Room Display (Rule: DO NOT allow manual typing) */}
       {showPropertyRoomDisplay && selectedSuId && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2 border-t border-neutral-200/80">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-neutral-200/80">
           <div>
             <label className="block text-[11px] font-semibold text-neutral-600 mb-1 flex items-center gap-1.5">
               <Home className="w-3.5 h-3.5 text-blue-600" />

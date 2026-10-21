@@ -521,7 +521,7 @@ export const WelfareChecksView: React.FC = () => {
       {/* CREATE / EDIT 3-COLUMN COMPREHENSIVE MODAL */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-3 sm:p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-[#e1dfdd] bg-[#faf9f8] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
@@ -542,7 +542,7 @@ export const WelfareChecksView: React.FC = () => {
 
             {/* Scrollable 3-Column Form Body */}
             <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 {/* COLUMN 1: Location & Resident Engagement */}
                 <div className="space-y-5">
                   {/* Subsection: Check Details */}
@@ -568,8 +568,8 @@ export const WelfareChecksView: React.FC = () => {
                             suId: sel.suId,
                             propertyId: sel.propertyId,
                             roomId: sel.roomId,
-                            portReference: sel.suReference || prev.portReference,
-                            flatNumber: sel.roomName || prev.flatNumber
+                            portReference: sel.externalReference || sel.suReference || '',
+                            flatNumber: sel.roomNumber && sel.roomNumber !== 'Unassigned Room' ? sel.roomNumber : ''
                           }));
                         }}
                       />
@@ -591,10 +591,10 @@ export const WelfareChecksView: React.FC = () => {
                         <label className="block font-medium text-neutral-700 mb-1">SU Port / Ref *</label>
                         <input
                           type="text"
-                          placeholder="e.g. 1029384"
-                          value={formData.portReference}
-                          onChange={e => setFormData({ ...formData, portReference: e.target.value })}
-                          className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs font-mono focus:border-[#0d9488] outline-hidden"
+                          placeholder="From the Service User profile"
+                          value={formData.portReference || ''}
+                          readOnly
+                          className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-xs font-mono cursor-not-allowed outline-hidden"
                         />
                         {formErrors.portReference && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.portReference}</p>}
                       </div>
@@ -602,10 +602,10 @@ export const WelfareChecksView: React.FC = () => {
                         <label className="block font-medium text-neutral-700 mb-1">Room / Flat</label>
                         <input
                           type="text"
-                          placeholder="e.g. 104"
+                          placeholder="From the Service User profile"
                           value={formData.flatNumber || ''}
-                          onChange={e => setFormData({ ...formData, flatNumber: e.target.value })}
-                          className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                          readOnly
+                          className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-xs cursor-not-allowed outline-hidden"
                         />
                       </div>
                     </div>

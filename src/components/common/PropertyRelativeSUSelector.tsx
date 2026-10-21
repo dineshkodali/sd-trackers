@@ -198,7 +198,13 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
         .filter(p => p.status === 'Active' && (propIds.has(p.propertyId) || (p.siteId && keys.has(String(p.siteId).toLowerCase()))))
         .map(p => p.suId)
     );
-    const rel = allKnownServiceUsers.filter(su => placedIds.has(su.id) || (su.siteId && keys.has(String(su.siteId).toLowerCase())));
+    // current site = site of the active placement, otherwise the profile's site
+    const activeBySu = new Map(placements.filter(p => p.status === 'Active').map(p => [p.suId, p] as const));
+    const rel = allKnownServiceUsers.filter(su => {
+      const plc = activeBySu.get(su.id);
+      if (plc) return placedIds.has(su.id);
+      return !!su.siteId && keys.has(String(su.siteId).toLowerCase());
+    });
     return { relativeSUs: rel, otherSUs: [] as ServiceUserMaster[] };
   }, [targetSites, sites, properties, placements, allKnownServiceUsers]);
 
