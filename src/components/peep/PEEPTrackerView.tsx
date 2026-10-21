@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, RefreshCw, AlertCircle, Pencil, Eye, X, Lock, ClipboardCheck, History } from 'lucide-react';
+import { Plus, Search, RefreshCw, AlertCircle, Pencil, Eye, X, Lock, ClipboardCheck, History, Archive, Accessibility, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   suTrackerService, PEEP_RISK_LEVELS, PEEP_COMPANIONS, PEEP_ALARMS, PEEP_ASSISTANCE,
@@ -8,6 +8,7 @@ import {
 import { canEditSuTrackers, formatUkDate } from '../../utils/suTrackerAccess';
 import { addDays, todayIso } from '../../utils/attendanceLogic';
 import { Pagination } from '../common/Pagination';
+import { SiteFilterSelect, RefreshButton, ResetFiltersButton, TrackerExport, filterInputCls } from '../common/TrackerToolbar';
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
@@ -26,10 +27,34 @@ const riskBadge: Record<string, string> = {
   High: 'bg-red-50 text-red-800 border-red-200'
 };
 
+type PeepRow = { plan: PeepPlan; d: SuDirectoryRow };
+const SORT_VALUE: Record<string, (x: PeepRow) => string> = {
+  port: x => x.d.su.externalReference || x.d.su.suReference || '',
+  name: x => `${x.d.su.firstName} ${x.d.su.lastName}`,
+  dob: x => x.d.su.dateOfBirth || '',
+  room: x => x.d.roomNo || '',
+  mobility: x => x.plan.mobilityType || '',
+  risk: x => ({ High: '1', Medium: '2', Low: '3' } as Record<string, string>)[x.plan.riskLevel] || '9',
+  companion: x => x.plan.companion || '',
+  alarm: x => x.plan.emergencyAlarm || '',
+  assistance: x => x.plan.assistance || '',
+  evac: x => x.plan.evacuationProcedure || '',
+  exit: x => x.plan.safeExitRoutes || '',
+  dev: x => x.plan.developedBy || '',
+  date: x => x.plan.planDate || '',
+  review: x => x.plan.reviewDate || '9999-12-31'
+};
+const sortValue = (x: PeepRow, k: string) => (SORT_VALUE[k] || SORT_VALUE.review)(x);
+const PEEP_COLUMNS: Array<[string, string]> = [
+  ['port', 'Port reference'], ['name', 'Name'], ['dob', 'DOB'], ['room', 'Room No'], ['mobility', 'Mobility type'], ['risk', 'PEEP risk level'],
+  ['companion', 'Companion'], ['alarm', 'Emergency Alarm'], ['assistance', 'Assistance'], ['evac', 'Evacuation procedure'],
+  ['exit', 'Safe exit routes'], ['dev', 'Developed by'], ['date', 'Date'], ['review', 'Review date']
+];
+
 const clip = (s?: string, n = 60) => (s && s.length > n ? `${s.slice(0, n)}…` : s || '');
 
 export const PEEPTrackerView: React.FC = () => {
-  const { sites, isSitePermitted, currentUserRole, currentUserName } = useApp();
+  const { sites, isSitePermitted, currentUserRole, currentUserName, defaultSiteFilter, requestConfirmation } = useApp();
   const canEdit = canEditSuTrackers(currentUserRole);
 
   const [directory, setDirectory] = useState<SuDirectoryRow[]>([]);
@@ -42,6 +67,10 @@ export const PEEPTrackerView: React.FC = () => {
   const [riskFilter, setRiskFilter] = useState('all');
   const [reviewFilter, setReviewFilter] = useState<'all' | ReviewStatus>('all');
   const [roomFilter, setRoomFilter] = useState('all');
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
+  useEffect(() => { setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
+  const [sortKey, setSortKey] = useState('review');
+  const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [dialog, setDialog] = useState<{ mode: 'view' | 'edit' | 'create' | 'review'; suId?: string } | null>(null);
@@ -86,12 +115,27 @@ export const PEEPTrackerView: React.FC = () => {
         if (riskFilter !== 'all' && plan.riskLevel !== riskFilter) return false;
         if (reviewFilter !== 'all' && reviewStatusOf(plan.reviewDate, today) !== reviewFilter) return false;
         if (roomFilter !== 'all' && d.roomNo !== roomFilter) return false;
+        if (!isSitePermitted(d.siteName, siteFilter)) return false;
         if (q && !`${d.su.firstName} ${d.su.lastName} ${d.su.externalReference || ''} ${d.su.suReference} ${d.roomNo}`.toLowerCase().includes(q)) return false;
         return true;
       })
-      // overdue first, then by review date
-      .sort((a, b) => (a.plan.reviewDate || '9999').localeCompare(b.plan.reviewDate || '9999'));
-  }, [rows, search, riskFilter, reviewFilter, roomFilter, today]);
+      .sort((a, b) => sortValue(a, sortKey).localeCompare(sortValue(b, sortKey), undefined, { numeric: true, sensitivity: 'base' }) * (sortAsc ? 1 : -1));
+  }, [rows, search, riskFilter, reviewFilter, roomFilter, siteFilter, sortKey, sortAsc, today, isSitePermitted]);
+
+  const filtersActive = !!search || riskFilter !== 'all' || reviewFilter !== 'all' || roomFilter !== 'all' || siteFilter !== defaultSiteFilter;
+  const resetFilters = () => { setSearch(''); setRiskFilter('all'); setReviewFilter('all'); setRoomFilter('all'); setSiteFilter(defaultSiteFilter); setPage(1); };
+  const sortBy = (k: string) => { if (k === sortKey) setSortAsc(a => !a); else { setSortKey(k); setSortAsc(true); } setPage(1); };
+
+  const confirmArchive = (plan: PeepPlan, name: string) => requestConfirmation({
+    title: 'Archive PEEP plan',
+    message: `Archive the PEEP plan for ${name}? The plan and its history are kept, and a new plan can then be created.`,
+    confirmLabel: 'Archive plan',
+    isDanger: true,
+    onConfirm: async () => {
+      const res = await suTrackerService.archivePeepPlan(plan, currentUserName);
+      if (!res.success) setWarning(res.error || 'Could not archive the plan.'); else load();
+    }
+  });
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const reset = () => setPage(1);
@@ -100,15 +144,48 @@ export const PEEPTrackerView: React.FC = () => {
     <div className="space-y-3.5">
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-base font-bold text-[#242424]">PEEP Tracker</h1>
-            <p className="text-xs text-neutral-500">Personal Emergency Evacuation Plans for Service Users: mobility, risk, assistance, evacuation procedure and review dates.</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs"><Accessibility className="w-5 h-5" /></div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">PEEP Tracker</h1>
+                {!loading && !error && <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">{filtered.length} Plans</span>}
+              </div>
+              <p className="text-xs text-neutral-500">Personal Emergency Evacuation Plans for Service Users: mobility, risk, assistance, evacuation procedure and review dates.</p>
+            </div>
           </div>
-          {canEdit && (
-            <button type="button" onClick={() => setDialog({ mode: 'create' })} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs cursor-pointer">
-              <Plus className="w-3.5 h-3.5" /> New PEEP Plan
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <RefreshButton onClick={load} loading={loading} />
+            <TrackerExport<PeepRow>
+              moduleName="PEEP Tracker"
+              filename="PEEP_Tracker"
+              title="PEEP Tracker"
+              allRows={rows}
+              filteredRows={filtered}
+              dateOf={x => x.plan.planDate || ''}
+              columns={[
+                { id: 'port', label: 'Port reference', get: x => sortValue(x, 'port') },
+                { id: 'name', label: 'Name', get: x => sortValue(x, 'name') },
+                { id: 'dob', label: 'DOB', get: x => formatUkDate(x.d.su.dateOfBirth) },
+                { id: 'room', label: 'Room No', get: x => x.d.roomNo },
+                { id: 'mobility', label: 'Mobility type', get: x => x.plan.mobilityType },
+                { id: 'risk', label: 'PEEP risk level', get: x => x.plan.riskLevel },
+                { id: 'companion', label: 'Companion', get: x => x.plan.companion },
+                { id: 'alarm', label: 'Emergency Alarm', get: x => x.plan.emergencyAlarm },
+                { id: 'assistance', label: 'Assistance', get: x => x.plan.assistance },
+                { id: 'evac', label: 'Evacuation procedure', get: x => x.plan.evacuationProcedure },
+                { id: 'exit', label: 'Safe exit routes', get: x => x.plan.safeExitRoutes },
+                { id: 'dev', label: 'Developed by', get: x => x.plan.developedBy },
+                { id: 'date', label: 'Date', get: x => formatUkDate(x.plan.planDate) },
+                { id: 'review', label: 'Review date', get: x => formatUkDate(x.plan.reviewDate) }
+              ]}
+            />
+            {canEdit && (
+              <button type="button" onClick={() => setDialog({ mode: 'create' })} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs cursor-pointer">
+                <Plus className="w-3.5 h-3.5" /> + New PEEP Plan
+              </button>
+            )}
+          </div>
         </div>
         {!loading && !error && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-3">
@@ -125,20 +202,22 @@ export const PEEPTrackerView: React.FC = () => {
             ))}
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-3">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input value={search} onChange={e => { setSearch(e.target.value); reset(); }} placeholder="Search resident, port ref, room..." className={`${inputCls} pl-8`} aria-label="Search" />
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+          <div className="relative lg:col-span-2">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input value={search} onChange={e => { setSearch(e.target.value); reset(); }} placeholder="Search resident, port ref, room..." className={`${filterInputCls} pl-9`} aria-label="Search" />
           </div>
-          <select className={inputCls} value={riskFilter} onChange={e => { setRiskFilter(e.target.value); reset(); }} aria-label="Risk level">
+          <SiteFilterSelect value={siteFilter} onChange={v => { setSiteFilter(v); reset(); }} />
+          <select className={filterInputCls} value={riskFilter} onChange={e => { setRiskFilter(e.target.value); reset(); }} aria-label="Risk level">
             <option value="all">All risk levels</option>{PEEP_RISK_LEVELS.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
-          <select className={inputCls} value={reviewFilter} onChange={e => { setReviewFilter(e.target.value as any); reset(); }} aria-label="Review status">
+          <select className={filterInputCls} value={reviewFilter} onChange={e => { setReviewFilter(e.target.value as any); reset(); }} aria-label="Review status">
             <option value="all">All review statuses</option><option value="overdue">Overdue</option><option value="due-soon">Due within {REVIEW_WARNING_DAYS} days</option><option value="current">Up to date</option>
           </select>
-          <select className={inputCls} value={roomFilter} onChange={e => { setRoomFilter(e.target.value); reset(); }} aria-label="Room">
+          <select className={filterInputCls} value={roomFilter} onChange={e => { setRoomFilter(e.target.value); reset(); }} aria-label="Room">
             <option value="all">All rooms</option>{rooms.map(r => <option key={r} value={r}>Room {r}</option>)}
           </select>
+          <div className="lg:col-span-6 flex justify-end"><ResetFiltersButton onClick={resetFilters} active={filtersActive} /></div>
         </div>
         {warning && <div className="mt-3 p-2 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xs">{warning}</div>}
       </div>
@@ -156,8 +235,13 @@ export const PEEPTrackerView: React.FC = () => {
             <table className="w-full text-left text-xs border-collapse min-w-[1500px]">
               <thead>
                 <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
-                  {['Port reference', 'Name', 'DOB', 'Room No', 'Mobility type', 'PEEP risk level', 'Companion', 'Emergency Alarm', 'Assistance', 'Evacuation procedure', 'Safe exit routes', 'Developed by', 'Date', 'Review date'].map(h => (
-                    <th key={h} className="py-2.5 px-3 whitespace-nowrap">{h}</th>
+                  {PEEP_COLUMNS.map(([k, label]) => (
+                    <th key={k} className="py-2.5 px-3 whitespace-nowrap" aria-sort={sortKey === k ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
+                      <button type="button" onClick={() => sortBy(k)} className="inline-flex items-center gap-1 hover:text-[#0d9488] cursor-pointer">
+                        {label}
+                        {sortKey === k ? (sortAsc ? <ArrowUp className="w-3 h-3 text-[#0078d4]" /> : <ArrowDown className="w-3 h-3 text-[#0078d4]" />) : <ArrowUpDown className="w-3 h-3 opacity-50" />}
+                      </button>
+                    </th>
                   ))}
                   <th className="py-2.5 px-3 text-right sticky right-0 bg-[#faf9f8]">Actions</th>
                 </tr>
@@ -193,6 +277,7 @@ export const PEEPTrackerView: React.FC = () => {
                         <div className="flex justify-end gap-1">
                           <button type="button" title="View full plan" onClick={() => setDialog({ mode: 'view', suId: plan.suId })} className="p-1 text-[#605e5c] hover:bg-[#edebe9] rounded-xs cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
                           {canEdit && <button type="button" title="Edit" onClick={() => setDialog({ mode: 'edit', suId: plan.suId })} className="p-1 text-[#605e5c] hover:bg-[#edebe9] rounded-xs cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}
+                          {canEdit && <button type="button" title="Archive plan" onClick={() => confirmArchive(plan, `${d.su.firstName} ${d.su.lastName}`)} className="p-1 text-[#a4262c] hover:bg-[#fceef1] rounded-xs cursor-pointer"><Archive className="w-3.5 h-3.5" /></button>}
                           {canEdit && <button type="button" title="Record a review" onClick={() => setDialog({ mode: 'review', suId: plan.suId })} className="p-1 text-teal-700 hover:bg-teal-50 rounded-xs cursor-pointer"><ClipboardCheck className="w-3.5 h-3.5" /></button>}
                         </div>
                       </td>

@@ -120,6 +120,11 @@ export const suTrackerService = {
     return res.success ? { success: true, data: { ...record, ...(res.record || {}) } } : fail(res.error);
   },
 
+  async deleteGpRegistration(id: string): Promise<Result<null>> {
+    const res = await apiService.deleteEntityRecord('gpRegistrations', id, { module: 'GP Registrations', action: 'DELETE', targetItem: id, details: 'Deleted GP registration' });
+    return res.success ? { success: true, data: null } : fail(res.error);
+  },
+
   /* ---------------------------------------------------------------------------------------------- PEEP plans */
   listPeepPlans: () => list<PeepPlan>('peepPlans', { order: 'review_date.asc' }),
   listPeepHistory: (planId: string) => list<PeepHistoryEntry>('peepPlanHistory', { eq: { plan_id: planId }, order: 'changed_at.desc' }),
@@ -188,7 +193,24 @@ export const suTrackerService = {
     return { success: true, data: saved };
   },
 
+  /** Archive keeps the plan and its history; the resident can then be given a new active plan. */
+  async archivePeepPlan(plan: PeepPlan, user: string): Promise<Result<PeepPlan>> {
+    const version = (plan.version || 1) + 1;
+    const res = await apiService.updateEntityRecord<PeepPlan>('peepPlans', plan.id, { status: 'Archived', version, updatedBy: user }, { module: 'PEEP Tracker', action: 'ARCHIVE', targetItem: plan.suId, details: 'Archived PEEP plan' });
+    if (!res.success) return fail(res.error);
+    const archived = { ...plan, status: 'Archived' as const, version, updatedBy: user };
+    await apiService.saveEntityRecord<PeepHistoryEntry>('peepPlanHistory', {
+      id: newId('peeph'), planId: plan.id, suId: plan.suId, version, changeType: 'Archived', snapshot: archived, changedFields: 'status', changedBy: user, changedAt: nowIso()
+    }, { module: 'PEEP Tracker', action: 'CREATE', targetItem: plan.suId, details: 'PEEP history: Archived' });
+    return { success: true, data: archived };
+  },
+
   /* ------------------------------------------------------------------------------------------ Attendance */
+  async deleteAttendance(id: string): Promise<Result<null>> {
+    const res = await apiService.deleteEntityRecord('suAttendance', id, { module: 'SU Attendance', action: 'DELETE', targetItem: id, details: 'Deleted attendance record' });
+    return res.success ? { success: true, data: null } : fail(res.error);
+  },
+
   async listAttendance(range: { from?: string; to?: string; suId?: string } = {}): Promise<Result<AttendanceRecord[]>> {
     const res = await list<AttendanceRecord>('suAttendance', { eq: range.suId ? { su_id: range.suId } : undefined, order: 'attendance_date.desc', limit: 20000 });
     if (!res.success) return res;

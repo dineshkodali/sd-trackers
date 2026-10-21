@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, RefreshCw, AlertCircle, Pencil, History, X, Lock } from 'lucide-react';
+import { Plus, Search, RefreshCw, AlertCircle, Pencil, History, X, Lock, Trash2, CalendarCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   suTrackerService, type AttendanceRecord, type AbsenceFollowUp, type SuDirectoryRow
@@ -9,6 +9,7 @@ import {
   addDays, todayIso, dayCounts, currentAbsenceEpisode, DEFAULT_ABSENCE_POLICY, type AttendanceEntry
 } from '../../utils/attendanceLogic';
 import { Pagination } from '../common/Pagination';
+import { SiteFilterSelect, RefreshButton, ResetFiltersButton, TrackerExport, filterInputCls } from '../common/TrackerToolbar';
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
@@ -24,12 +25,16 @@ const statusBadge = (s?: string) =>
     : 'bg-neutral-100 text-neutral-600 border-neutral-200';
 
 export const SUAttendanceTrackerView: React.FC = () => {
-  const { sites, isSitePermitted, currentUserRole, currentUserName } = useApp();
+  const { sites, isSitePermitted, currentUserRole, currentUserName, defaultSiteFilter, canDeleteRecord, requestConfirmation } = useApp();
   const canEdit = canEditSuTrackers(currentUserRole);
   const canSeeNotes = canViewAttendanceNotes(currentUserRole);
 
   const [tab, setTab] = useState<Tab>('roll');
-  const [directory, setDirectory] = useState<SuDirectoryRow[]>([]);
+  const [allDirectory, setDirectory] = useState<SuDirectoryRow[]>([]);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
+  useEffect(() => { setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
+  // Every card, list and form below works on the residents of the chosen site(s)
+  const directory = useMemo(() => allDirectory.filter(r => isSitePermitted(r.siteName, siteFilter)), [allDirectory, siteFilter, isSitePermitted]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [followUps, setFollowUps] = useState<AbsenceFollowUp[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,15 +112,26 @@ export const SUAttendanceTrackerView: React.FC = () => {
     <div className="space-y-3.5">
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-base font-bold text-[#242424]">SU Attendance Tracker</h1>
-            <p className="text-xs text-neutral-500">Daily attendance, absence monitoring and follow-up. A day with no record is “Not recorded”, never an absence.</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs"><CalendarCheck className="w-5 h-5" /></div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">SU Attendance Tracker</h1>
+                {!loading && !error && <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">{directory.length} Residents</span>}
+              </div>
+              <p className="text-xs text-neutral-500">Daily attendance, absence monitoring and follow-up. A day with no record is “Not recorded”, never an absence.</p>
+            </div>
           </div>
-          {canEdit && (
-            <button type="button" onClick={() => setEditFor({})} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs cursor-pointer">
-              <Plus className="w-3.5 h-3.5" /> Record Attendance
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-56"><SiteFilterSelect value={siteFilter} onChange={setSiteFilter} /></div>
+            <ResetFiltersButton onClick={() => setSiteFilter(defaultSiteFilter)} active={siteFilter !== defaultSiteFilter} />
+            <RefreshButton onClick={load} loading={loading} />
+            {canEdit && (
+              <button type="button" onClick={() => setEditFor({})} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs cursor-pointer">
+                <Plus className="w-3.5 h-3.5" /> + Record Attendance
+              </button>
+            )}
+          </div>
         </div>
         {!loading && !error && (
           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2.5 mt-3">
@@ -149,7 +165,8 @@ export const SUAttendanceTrackerView: React.FC = () => {
       ) : tab === 'roll' ? (
         <DailyRoll directory={directory} records={records} canEdit={canEdit} user={currentUserName} onChanged={load} onHistory={setHistoryFor} />
       ) : tab === 'records' ? (
-        <RecordsTable directory={directory} records={records} canEdit={canEdit} canSeeNotes={canSeeNotes} onEdit={(suId, date) => setEditFor({ suId, date })} onHistory={setHistoryFor} />
+        <RecordsTable directory={directory} records={records} canEdit={canEdit} canDelete={canDeleteRecord()} canSeeNotes={canSeeNotes} onEdit={(suId, date) => setEditFor({ suId, date })} onHistory={setHistoryFor}
+          onDelete={(r, name) => requestConfirmation({ title: 'Delete attendance record', message: `Delete the attendance record for ${name} on ${formatUkDate(r.attendanceDate)}? It will then show as Not recorded.`, confirmLabel: 'Delete record', isDanger: true, onConfirm: async () => { const res = await suTrackerService.deleteAttendance(r.id); if (!res.success) setNotice(res.error || 'Could not delete the record.'); else load(); } })} />
       ) : (
         <FollowUpsTable followUps={followUps} byId={byId} canEdit={canEdit} onOpen={setFollowUpFor} />
       )}
@@ -176,6 +193,7 @@ const DailyRoll: React.FC<{
   const [date, setDate] = useState(todayIso());
   const [search, setSearch] = useState('');
   const [room, setRoom] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Present' | 'Absent' | 'Not recorded'>('all');
   const [saving, setSaving] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -186,9 +204,10 @@ const DailyRoll: React.FC<{
     const q = search.trim().toLowerCase();
     return directory
       .filter(d => room === 'all' || d.roomNo === room)
+      .filter(d => statusFilter === 'all' || (forDay.get(d.su.id)?.attendanceStatus || 'Not recorded') === statusFilter)
       .filter(d => !q || `${d.su.firstName} ${d.su.lastName} ${d.su.externalReference || ''} ${d.su.suReference} ${d.roomNo}`.toLowerCase().includes(q))
       .sort((a, b) => a.roomNo.localeCompare(b.roomNo, undefined, { numeric: true }) || a.su.lastName.localeCompare(b.su.lastName));
-  }, [directory, search, room]);
+  }, [directory, search, room, statusFilter, forDay]);
 
   const mark = async (suId: string, status: 'Present' | 'Absent') => {
     setSaving(suId); setErr('');
@@ -199,10 +218,12 @@ const DailyRoll: React.FC<{
 
   return (
     <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs">
-      <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5 border-b border-[#e5e5e5]">
+      <div className="p-3 grid grid-cols-1 sm:grid-cols-5 gap-2.5 border-b border-[#e5e5e5]">
         <div><label className="block text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Date</label><input type="date" className={inputCls} value={date} max={todayIso()} onChange={e => setDate(e.target.value || todayIso())} /></div>
         <div className="relative self-end"><Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" /><input className={`${inputCls} pl-8`} placeholder="Search resident, room..." value={search} onChange={e => setSearch(e.target.value)} aria-label="Search" /></div>
         <select className={`${inputCls} self-end`} value={room} onChange={e => setRoom(e.target.value)} aria-label="Room"><option value="all">All rooms</option>{rooms.map(r => <option key={r} value={r}>Room {r}</option>)}</select>
+        <select className={`${inputCls} self-end`} value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} aria-label="Status"><option value="all">All statuses</option><option>Present</option><option>Absent</option><option>Not recorded</option></select>
+        <div className="self-end"><ResetFiltersButton onClick={() => { setDate(todayIso()); setSearch(''); setRoom('all'); setStatusFilter('all'); }} active={date !== todayIso() || !!search || room !== 'all' || statusFilter !== 'all'} /></div>
       </div>
       {err && <div className="m-3 p-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xs" role="alert">{err}</div>}
       <div className="overflow-x-auto">
@@ -243,9 +264,9 @@ const DailyRoll: React.FC<{
 
 /* ------------------------------------------------------------------------------------------------ Records */
 const RecordsTable: React.FC<{
-  directory: SuDirectoryRow[]; records: AttendanceRecord[]; canEdit: boolean; canSeeNotes: boolean;
-  onEdit: (suId: string, date: string) => void; onHistory: (id: string) => void;
-}> = ({ directory, records, canEdit, canSeeNotes, onEdit, onHistory }) => {
+  directory: SuDirectoryRow[]; records: AttendanceRecord[]; canEdit: boolean; canDelete: boolean; canSeeNotes: boolean;
+  onEdit: (suId: string, date: string) => void; onHistory: (id: string) => void; onDelete: (r: AttendanceRecord, name: string) => void;
+}> = ({ directory, records, canEdit, canDelete, canSeeNotes, onEdit, onHistory, onDelete }) => {
   const [from, setFrom] = useState(addDays(todayIso(), -30));
   const [to, setTo] = useState(todayIso());
   const [status, setStatus] = useState('all');
@@ -277,6 +298,29 @@ const RecordsTable: React.FC<{
         <select className={`${inputCls} self-end`} value={status} onChange={e => { setStatus(e.target.value); reset(); }} aria-label="Attendance status"><option value="all">All statuses</option><option>Present</option><option>Absent</option></select>
         <select className={`${inputCls} self-end`} value={room} onChange={e => { setRoom(e.target.value); reset(); }} aria-label="Room"><option value="all">All rooms</option>{rooms.map(r => <option key={r} value={r}>Room {r}</option>)}</select>
         <div className="relative self-end"><Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" /><input className={`${inputCls} pl-8`} placeholder="Search resident..." value={search} onChange={e => { setSearch(e.target.value); reset(); }} aria-label="Search" /></div>
+        <div className="col-span-2 lg:col-span-5 flex items-center justify-between gap-2">
+          <span className="text-[11px] text-neutral-500">{filtered.length} record{filtered.length === 1 ? '' : 's'}</span>
+          <div className="flex items-center gap-2">
+            <ResetFiltersButton onClick={() => { setFrom(addDays(todayIso(), -30)); setTo(todayIso()); setStatus('all'); setRoom('all'); setSearch(''); reset(); }} active={status !== 'all' || room !== 'all' || !!search || from !== addDays(todayIso(), -30) || to !== todayIso()} />
+            <TrackerExport<AttendanceRecord>
+              moduleName="SU Attendance"
+              filename="SU_Attendance"
+              title="SU Attendance Records"
+              allRows={records.filter(r => byId.has(r.suId))}
+              filteredRows={filtered}
+              dateOf={r => r.attendanceDate}
+              columns={[
+                { id: 'port', label: 'Port reference', get: r => byId.get(r.suId)?.su.externalReference || byId.get(r.suId)?.su.suReference },
+                { id: 'name', label: 'Name', get: r => { const s = byId.get(r.suId)?.su; return s ? `${s.firstName} ${s.lastName}` : ''; } },
+                { id: 'dob', label: 'DOB', get: r => formatUkDate(byId.get(r.suId)?.su.dateOfBirth) },
+                { id: 'room', label: 'Room No', get: r => byId.get(r.suId)?.roomNo },
+                { id: 'date', label: 'Date', get: r => formatUkDate(r.attendanceDate) },
+                { id: 'status', label: 'Attendance', get: r => r.attendanceStatus },
+                { id: 'notes', label: 'Additional notes', get: r => (canSeeNotes ? r.additionalNotes : 'Restricted') }
+              ]}
+            />
+          </div>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
@@ -299,6 +343,7 @@ const RecordsTable: React.FC<{
                   <td className="py-2.5 px-3 text-right"><div className="flex justify-end gap-1">
                     <button type="button" title="History" onClick={() => onHistory(r.suId)} className="p-1 text-[#605e5c] hover:bg-[#edebe9] rounded-xs cursor-pointer"><History className="w-3.5 h-3.5" /></button>
                     {canEdit && <button type="button" title="Edit" onClick={() => onEdit(r.suId, r.attendanceDate)} className="p-1 text-[#605e5c] hover:bg-[#edebe9] rounded-xs cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}
+                    {canDelete && <button type="button" title="Delete" onClick={() => onDelete(r, `${d.su.firstName} ${d.su.lastName}`)} className="p-1 text-[#a4262c] hover:bg-[#fceef1] rounded-xs cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
                   </div></td>
                 </tr>
               );

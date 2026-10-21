@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, RefreshCw, AlertCircle, Pencil, Eye, ArrowUpDown, X, Lock } from 'lucide-react';
+import { Plus, Search, RefreshCw, AlertCircle, Pencil, Eye, ArrowUpDown, X, Lock, Trash2, Stethoscope } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type GpRegistration, type SuDirectoryRow } from '../../services/suTrackerService';
 import { canViewNhsNumber, canEditSuTrackers, maskNhsNumber, isValidNhsNumber, formatUkDate } from '../../utils/suTrackerAccess';
 import { Pagination } from '../common/Pagination';
+import { SiteFilterSelect, RefreshButton, ResetFiltersButton, TrackerExport, filterInputCls } from '../common/TrackerToolbar';
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
@@ -11,7 +12,7 @@ const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] r
 type SortKey = 'port' | 'name' | 'dob' | 'gp' | 'pharmacy';
 
 export const GPRegistrationsTab: React.FC = () => {
-  const { sites, isSitePermitted, currentUserRole, currentUserName } = useApp();
+  const { sites, isSitePermitted, currentUserRole, currentUserName, defaultSiteFilter, canDeleteRecord, requestConfirmation } = useApp();
   const canSeeNhs = canViewNhsNumber(currentUserRole);
   const canEdit = canEditSuTrackers(currentUserRole);
 
@@ -20,6 +21,9 @@ export const GPRegistrationsTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
+  const [detailFilter, setDetailFilter] = useState<'all' | 'missing-gp' | 'missing-pharmacy' | 'missing-nhs' | 'complete'>('all');
+  useEffect(() => { setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
@@ -56,12 +60,19 @@ export const GPRegistrationsTab: React.FC = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const bySite = rows.filter(({ d }) => isSitePermitted(d.siteName, siteFilter));
+    const byDetail = bySite.filter(({ reg }) =>
+      detailFilter === 'missing-gp' ? !reg?.gpPractice
+        : detailFilter === 'missing-pharmacy' ? !reg?.pharmacy
+        : detailFilter === 'missing-nhs' ? !reg?.nhsNumber
+        : detailFilter === 'complete' ? !!(reg?.gpPractice && reg?.pharmacy && reg?.nhsNumber)
+        : true);
     const list = q
-      ? rows.filter(({ d, reg }) => [
+      ? byDetail.filter(({ d, reg }) => [
           d.su.externalReference, d.su.suReference, `${d.su.firstName} ${d.su.lastName}`, reg?.gpPractice, reg?.pharmacy,
           canSeeNhs ? reg?.nhsNumber : ''
         ].join(' ').toLowerCase().includes(q))
-      : rows;
+      : byDetail;
     const val = (x: typeof rows[number]) => {
       switch (sortKey) {
         case 'port': return x.d.su.externalReference || x.d.su.suReference || '';
@@ -72,7 +83,21 @@ export const GPRegistrationsTab: React.FC = () => {
       }
     };
     return [...list].sort((a, b) => val(a).localeCompare(val(b), undefined, { numeric: true, sensitivity: 'base' }) * (sortAsc ? 1 : -1));
-  }, [rows, search, sortKey, sortAsc, canSeeNhs]);
+  }, [rows, search, siteFilter, detailFilter, sortKey, sortAsc, canSeeNhs, isSitePermitted]);
+
+  const filtersActive = !!search || siteFilter !== defaultSiteFilter || detailFilter !== 'all';
+  const resetFilters = () => { setSearch(''); setSiteFilter(defaultSiteFilter); setDetailFilter('all'); setPage(1); };
+
+  const confirmDelete = (suId: string, regId: string, name: string) => requestConfirmation({
+    title: 'Delete GP registration',
+    message: `Delete the GP registration for ${name}? The Service User record is not affected.`,
+    confirmLabel: 'Delete registration',
+    isDanger: true,
+    onConfirm: async () => {
+      const res = await suTrackerService.deleteGpRegistration(regId);
+      if (!res.success) setError(res.error || 'Could not delete the registration.'); else load();
+    }
+  });
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const sortBy = (k: SortKey) => { if (k === sortKey) setSortAsc(a => !a); else { setSortKey(k); setSortAsc(true); } setPage(1); };
@@ -91,22 +116,57 @@ export const GPRegistrationsTab: React.FC = () => {
     <div className="space-y-3.5">
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-[#242424]">GP Registrations</h2>
-            <p className="text-xs text-neutral-500">
-              GP practice, pharmacy and NHS number for each Service User. Name, DOB and port reference come from the Service User record.
-              {!loading && !error && <> <b>{rows.length}</b> registered{missingCount > 0 && <>, <b>{missingCount}</b> without a registration</>}.</>}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs"><Stethoscope className="w-5 h-5" /></div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-[#242424] tracking-tight">GP Registrations</h2>
+                {!loading && !error && <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">{filtered.length} Registrations</span>}
+              </div>
+              <p className="text-xs text-neutral-500">
+                GP practice, pharmacy and NHS number for each Service User. Name, DOB and port reference come from the Service User record.
+                {!loading && !error && missingCount > 0 && <> <b>{missingCount}</b> Service User{missingCount === 1 ? '' : 's'} without a registration.</>}
+              </p>
+            </div>
           </div>
-          {canEdit && (
-            <button type="button" onClick={() => setFormFor({})} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs cursor-pointer">
-              <Plus className="w-3.5 h-3.5" /> Add GP Registration
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <RefreshButton onClick={load} loading={loading} />
+            <TrackerExport
+              moduleName="GP Registrations"
+              filename="GP_Registrations"
+              title="GP Registrations"
+              allRows={rows}
+              filteredRows={filtered}
+              columns={[
+                { id: 'port', label: 'Port reference', get: x => x.d.su.externalReference || x.d.su.suReference },
+                { id: 'name', label: 'Name', get: x => `${x.d.su.firstName} ${x.d.su.lastName}` },
+                { id: 'dob', label: 'DOB', get: x => formatUkDate(x.d.su.dateOfBirth) },
+                { id: 'gp', label: 'GP', get: x => x.reg?.gpPractice },
+                { id: 'pharmacy', label: 'Pharmacy', get: x => x.reg?.pharmacy },
+                { id: 'nhs', label: 'NHS number', get: x => (canSeeNhs ? x.reg?.nhsNumber : maskNhsNumber(x.reg?.nhsNumber)) }
+              ]}
+            />
+            {canEdit && (
+              <button type="button" onClick={() => setFormFor({})} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs cursor-pointer">
+                <Plus className="w-3.5 h-3.5" /> + Add GP Registration
+              </button>
+            )}
+          </div>
         </div>
-        <div className="relative mt-3 max-w-md">
-          <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search port reference, name, GP, pharmacy, NHS number..." className={`${inputCls} pl-8`} />
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search port ref, name, GP, pharmacy, NHS..." className={`${filterInputCls} pl-9`} aria-label="Search" />
+          </div>
+          <SiteFilterSelect value={siteFilter} onChange={v => { setSiteFilter(v); setPage(1); }} />
+          <select value={detailFilter} onChange={e => { setDetailFilter(e.target.value as any); setPage(1); }} className={filterInputCls} aria-label="Details">
+            <option value="all">All registrations</option>
+            <option value="complete">Complete (GP, pharmacy, NHS)</option>
+            <option value="missing-gp">Missing GP practice</option>
+            <option value="missing-pharmacy">Missing pharmacy</option>
+            <option value="missing-nhs">Missing NHS number</option>
+          </select>
+          <ResetFiltersButton onClick={resetFilters} active={filtersActive} />
         </div>
       </div>
 
@@ -159,6 +219,7 @@ export const GPRegistrationsTab: React.FC = () => {
                       <div className="flex justify-end gap-1">
                         <button type="button" title="View" onClick={() => setFormFor({ suId: d.su.id, readOnly: true })} className="p-1 text-[#605e5c] hover:bg-[#edebe9] rounded-xs cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
                         {canEdit && <button type="button" title="Edit" onClick={() => setFormFor({ suId: d.su.id })} className="p-1 text-[#605e5c] hover:bg-[#edebe9] rounded-xs cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}
+                        {canDeleteRecord() && reg && <button type="button" title="Delete" onClick={() => confirmDelete(d.su.id, reg.id, `${d.su.firstName} ${d.su.lastName}`)} className="p-1 text-[#a4262c] hover:bg-[#fceef1] rounded-xs cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
                       </div>
                     </td>
                   </tr>
