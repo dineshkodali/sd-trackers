@@ -67,7 +67,17 @@ DECLARE
     'daily_register_rooms',
     'daily_register_records',
     'new_arrivals_records',
-    'eviction_records'
+    'eviction_records',
+    -- Room management (migration 016). That migration locks these to the server only, which breaks
+    -- the app on static hosting where the browser talks to Supabase directly.
+    'room_beds',
+    'inventory_items',
+    'property_inventory_stock',
+    'room_inventory',
+    'inventory_movements',
+    'room_kit_templates',
+    'room_issues',
+    'room_activity_log'
   ];
   t TEXT;
 BEGIN

@@ -608,7 +608,7 @@ export const apiService = {
         return {
           success: false,
           data: [],
-          error: json?.error || `HTTP ${res.status}`,
+          error: [json?.error || `HTTP ${res.status}`, direct.error ? `Direct database read also failed: ${direct.error}` : ''].filter(Boolean).join(' | '),
           status: res.status,
           tableMissing: !!json?.tableMissing
         };
@@ -621,7 +621,7 @@ export const apiService = {
         return direct;
       }
       console.warn(`Failed to fetch ${entity} from API:`, err);
-      return { success: false, data: [], error: err.message };
+      return { success: false, data: [], error: [err.message, direct.error ? `Direct database read also failed: ${direct.error}` : ''].filter(Boolean).join(' | '), tableMissing: direct.tableMissing };
     }
   },
 
