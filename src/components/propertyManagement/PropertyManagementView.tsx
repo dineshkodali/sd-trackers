@@ -41,26 +41,19 @@ export const PropertyManagementView: React.FC = () => {
 
   // Initial site filter based on permissions
   const initialSiteFilter = useMemo(() => {
-    if (canAccessAllSites()) return 'all';
+    if (canAccessAllSites() || (allowedSites || []).length > 1) return 'all';
     if (!assignedSite || assignedSite === 'All Sites' || assignedSite === 'all') return 'all';
     const found = sites.find(s => s.name === assignedSite || s.id === assignedSite);
     return found ? found.id : assignedSite;
-  }, [sites, assignedSite, canAccessAllSites]);
+  }, [sites, assignedSite, canAccessAllSites, allowedSites]);
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
   const [siteFilter, setSiteFilter] = useState(initialSiteFilter);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSiteFilter('all');
-      }
-    } else if (assignedSite) {
-      const found = sites.find(s => s.name === assignedSite || s.id === assignedSite);
-      setSiteFilter(found ? found.id : assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites, sites]);
+    setSiteFilter(initialSiteFilter);
+  }, [initialSiteFilter]);
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');

@@ -136,6 +136,7 @@ function formatWeekRangeFromDates(startDateStr: string, endDateStr: string): { w
 
 export const FoodVendorBuffetLogSection: React.FC = () => {
   const {
+    defaultSiteFilter,
     foodVendorBuffetLogs,
     getFieldOptions,
     allowedSites,
@@ -196,18 +197,14 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : userAssignedHotel);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [vendorFilter, setVendorFilter] = useState<FoodVendorName | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   
   const todayBounds = useMemo(() => getWeekBounds(todayStr), [todayStr]);
   const initialWeekInfo = useMemo(() => formatWeekRangeFromDates(todayBounds.start, todayBounds.end), [todayBounds]);

@@ -30,6 +30,7 @@ const welfareExportColumns: ExportColumnOption[] = [
 
 export const WelfareChecksView: React.FC = () => {
   const {
+    defaultSiteFilter,
     welfareChecks,
     addWelfareCheck,
     updateWelfareCheck,
@@ -65,17 +66,13 @@ export const WelfareChecksView: React.FC = () => {
     }
   };
 
-  const [siteFilter, setSiteFilter] = useState(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<keyof WelfareCheckRecord>('checkDatetime');

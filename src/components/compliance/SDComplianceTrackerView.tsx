@@ -40,7 +40,8 @@ const complianceExportColumns: ExportColumnOption[] = [
 ];
 
 export const SDComplianceTrackerView: React.FC = () => {
-  const {complianceRecords,
+  const {
+    defaultSiteFilter,complianceRecords,
     addComplianceRecord,
     updateComplianceRecord,
     deleteComplianceRecord,
@@ -85,20 +86,11 @@ export const SDComplianceTrackerView: React.FC = () => {
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [siteFilter, setSiteFilter] = useState(() => {
-    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') return assignedSite;
-    return 'all';
-  });
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSiteFilter('all');
-      }
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<string>('expiryDate');

@@ -24,6 +24,7 @@ const requestsExportColumns: ExportColumnOption[] = [
 
 export const RequestsApprovalsView: React.FC = () => {
   const {
+    defaultSiteFilter,
     dataChangeRequests,
     addDataChangeRequest,
     reviewDataChangeRequest,
@@ -72,19 +73,15 @@ export const RequestsApprovalsView: React.FC = () => {
     return allowedSites || [];
   }, [canAccessAllSites, sites, allowedSites]);
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : (assignedSite || 'all'));
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [moduleFilter, setModuleFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Sync with active property switcher in Header
   React.useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 

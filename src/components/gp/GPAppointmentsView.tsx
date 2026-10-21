@@ -37,6 +37,7 @@ const gpExportColumns: ExportColumnOption[] = [
 
 export const GPAppointmentsView: React.FC = () => {
   const {
+    defaultSiteFilter,
     gpAppointmentRecords,
     addGPAppointmentRecord,
     updateGPAppointmentRecord,
@@ -76,20 +77,11 @@ export const GPAppointmentsView: React.FC = () => {
   };
 
   const [statusFilter, setStatusFilter] = useState('all');
-  const [siteFilter, setSiteFilter] = useState(() => {
-    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') return assignedSite;
-    return 'all';
-  });
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSiteFilter('all');
-      }
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<string>('appointmentDate');

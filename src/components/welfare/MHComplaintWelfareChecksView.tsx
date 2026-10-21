@@ -43,6 +43,7 @@ const mhExportColumns: ExportColumnOption[] = [
 
 export const MHComplaintWelfareChecksView: React.FC = () => {
   const {
+    defaultSiteFilter,
     mhComplaintWelfareRecords,
     addMHComplaintWelfareRecord,
     updateMHComplaintWelfareRecord,
@@ -68,20 +69,11 @@ export const MHComplaintWelfareChecksView: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [siteFilter, setSiteFilter] = useState(() => {
-    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') return assignedSite;
-    return 'all';
-  });
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSiteFilter('all');
-      }
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);

@@ -45,6 +45,7 @@ const vcsExportColumns: ExportColumnOption[] = [
 
 export const SDVCSDirectoryView: React.FC = () => {
   const {
+    defaultSiteFilter,
     vcsAgencies,
     addVCSAgency,
     updateVCSAgency,
@@ -68,20 +69,11 @@ export const SDVCSDirectoryView: React.FC = () => {
     resetToDefault
   } = useTableSchema<SDVCSAgency>('vcsDirectory', VCS_AGENCIES_TABLE_COLUMNS);
 
-  const [selectedProperty, setSelectedProperty] = useState<string>(() => {
-    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') return assignedSite;
-    return 'all';
-  });
+  const [selectedProperty, setSelectedProperty] = useState<string>(defaultSiteFilter);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSelectedProperty('all');
-      }
-    } else if (assignedSite) {
-      setSelectedProperty(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSelectedProperty(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 

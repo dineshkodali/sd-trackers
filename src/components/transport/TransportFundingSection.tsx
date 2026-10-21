@@ -47,6 +47,7 @@ const fundingExportColumns: ExportColumnOption[] = [
 
 export const TransportFundingSection: React.FC = () => {
   const {
+    defaultSiteFilter,
     transportFundingRequests,
     addTransportFundingRequest,
     updateTransportFundingRequest,
@@ -81,7 +82,7 @@ export const TransportFundingSection: React.FC = () => {
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSite, setSelectedSite] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+  const [selectedSite, setSelectedSite] = useState<string>(defaultSiteFilter);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [exceptionalFilter, setExceptionalFilter] = useState<string>('all');
@@ -96,12 +97,8 @@ export const TransportFundingSection: React.FC = () => {
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSelectedSite('all');
-    } else if (assignedSite) {
-      setSelectedSite(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSelectedSite(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Pagination & Sorting
   const [currentPage, setCurrentPage] = useState(1);

@@ -33,6 +33,7 @@ const spcdExportColumns: ExportColumnOption[] = [
 
 export const SPCDTrackerView: React.FC = () => {
   const {
+    defaultSiteFilter,
     spcdRecords,
     addSPCDRecord,
     updateSPCDRecord,
@@ -67,7 +68,7 @@ export const SPCDTrackerView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'current' | 'archived'>('current');
 
   // Filters
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Bulk Selection
@@ -95,12 +96,8 @@ export const SPCDTrackerView: React.FC = () => {
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);

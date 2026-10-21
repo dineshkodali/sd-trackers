@@ -41,7 +41,8 @@ const approvalExportColumns: ExportColumnOption[] = [
 ];
 
 export const FinanceApprovalsView: React.FC = () => {
-  const { properties, isFinanceUser, currentUserRole, authProfile, requestConfirmation, closeConfirmation, canAccessAllSites, isSitePermitted, allowedSites, assignedSite } = useApp();
+  const {
+    defaultSiteFilter, properties, isFinanceUser, currentUserRole, authProfile, requestConfirmation, closeConfirmation, canAccessAllSites, isSitePermitted, allowedSites, assignedSite } = useApp();
 
   const { columns, saveColumns, resetToDefault } = useTableSchema('finance_approvals', FINANCE_APPROVALS_TABLE_COLUMNS);
 
@@ -49,15 +50,11 @@ export const FinanceApprovalsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(() => financeService.getCachedBills().length === 0);
 
   // Filters
-  const [siteFilter, setSiteFilter] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [statusFilter, setStatusFilter] = useState<string>('pending_any');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');

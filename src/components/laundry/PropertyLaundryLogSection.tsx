@@ -144,7 +144,8 @@ function formatPeriodFromDates(
 }
 
 export const PropertyLaundryLogSection: React.FC = () => {
-  const {propertyLaundryLogs,
+  const {
+    defaultSiteFilter,propertyLaundryLogs,
     allowedSites,
     addPropertyLaundryLog,
     updatePropertyLaundryLog,
@@ -201,18 +202,14 @@ export const PropertyLaundryLogSection: React.FC = () => {
   const todayBounds = useMemo(() => getWeekBounds(todayStr), [todayStr]);
 
   // Filter states
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : userAssignedHotel);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [periodTypeFilter, setPeriodTypeFilter] = useState<'all' | 'Weekly' | 'Monthly'>('all');
   const [discrepancyFilter, setDiscrepancyFilter] = useState<'all' | 'flagged' | 'reconciled'>('all');
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [activeWeekCursor, setActiveWeekCursor] = useState<string>(() => todayBounds.start);

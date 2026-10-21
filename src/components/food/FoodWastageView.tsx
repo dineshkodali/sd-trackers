@@ -35,6 +35,7 @@ interface FormItemRow {
 
 export const FoodWastageView: React.FC = () => {
   const {
+    defaultSiteFilter,
     foodWastageRecords,
     addFoodWastageRecord,
     updateFoodWastageRecord,
@@ -65,12 +66,8 @@ export const FoodWastageView: React.FC = () => {
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [mealTypeFilter, setMealTypeFilter] = useState<string>('all');
   const [foodItemFilter, setFoodItemFilter] = useState<string>('all');
   const [startDateFilter, setStartDateFilter] = useState<string>('');

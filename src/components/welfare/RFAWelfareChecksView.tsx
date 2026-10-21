@@ -43,6 +43,7 @@ const welfareExportColumns: ExportColumnOption[] = [
 
 export const RFAWelfareChecksView: React.FC = () => {
   const {
+    defaultSiteFilter,
     rfaWelfareRecords,
     addRFAWelfareRecord,
     updateRFAWelfareRecord,
@@ -81,20 +82,11 @@ export const RFAWelfareChecksView: React.FC = () => {
     }
   };
 
-  const [siteFilter, setSiteFilter] = useState(() => {
-    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') return assignedSite;
-    return 'all';
-  });
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSiteFilter('all');
-      }
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [groupFilter, setGroupFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);

@@ -45,6 +45,7 @@ const escalationExportColumns: ExportColumnOption[] = [
 
 export const EscalationsView: React.FC = () => {
   const {
+    defaultSiteFilter,
     escalations,
     allowedSites,
     addEscalation,
@@ -72,7 +73,7 @@ export const EscalationsView: React.FC = () => {
     resetToDefault
   } = useTableSchema<EscalationRecord>('escalations', ESCALATIONS_TABLE_COLUMNS);
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [wlFilter, setWlFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -97,12 +98,8 @@ export const EscalationsView: React.FC = () => {
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [sortKey, setSortKey] = useState<string>('dateOfIncident');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 

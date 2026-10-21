@@ -58,6 +58,7 @@ export const LiveDailyRegistersView: React.FC = () => {
     canCreateRecord,
     isSitePermitted,
     syncFromDatabase,
+    defaultSiteFilter,
     liveDataStatus,
     addDailyRegisterRoom,
     addDailyRegisterRecord
@@ -114,19 +115,11 @@ export const LiveDailyRegistersView: React.FC = () => {
     }
   }, [activeTab]);
 
-  const [selectedSite, setSelectedSite] = useState<string>(() => {
-    return assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all' ? assignedSite : 'all';
-  });
+  const [selectedSite, setSelectedSite] = useState<string>(defaultSiteFilter);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSelectedSite('all');
-      }
-    } else if (assignedSite) {
-      setSelectedSite(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSelectedSite(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   const [registerDate, setRegisterDate] = useState<string>(() => {
     return new Date().toISOString().slice(0, 10);

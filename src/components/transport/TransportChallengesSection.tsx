@@ -33,6 +33,7 @@ const challengesExportColumns: ExportColumnOption[] = [
 
 export const TransportChallengesSection: React.FC = () => {
   const {
+    defaultSiteFilter,
     transportChallengeRecords,
     addTransportChallengeRecord,
     updateTransportChallengeRecord,
@@ -79,18 +80,14 @@ export const TransportChallengesSection: React.FC = () => {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSite, setSelectedSite] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+  const [selectedSite, setSelectedSite] = useState<string>(defaultSiteFilter);
   const [periodFilter, setPeriodFilter] = useState('all');
   const [sgFilter, setSgFilter] = useState('all');
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSelectedSite('all');
-    } else if (assignedSite) {
-      setSelectedSite(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSelectedSite(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   const defaultSite = useMemo(() => {
     const list = (allowedSites || []).filter(s => s && s !== 'All Sites' && s !== 'all');

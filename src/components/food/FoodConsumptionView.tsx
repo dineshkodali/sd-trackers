@@ -74,6 +74,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
   showInternalTabs = true
 }) => {
   const {
+    defaultSiteFilter,
     foodConsumptionReports,
     addFoodConsumptionReport,
     updateFoodConsumptionReport,
@@ -105,10 +106,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
   }, [initialTab]);
 
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [siteFilter, setSiteFilter] = useState(() => {
-    if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') return assignedSite;
-    return 'all';
-  });
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
 
   const [reportSearchQuery, setReportSearchQuery] = useState('');
   const [boxSearchQuery, setBoxSearchQuery] = useState('');
@@ -150,14 +148,8 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
   };
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSiteFilter('all');
-      }
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Modal states for Daily Food Report
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);

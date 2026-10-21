@@ -53,6 +53,7 @@ interface VulnerableViewProps {
 
 export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = false }) => {
   const {
+    defaultSiteFilter,
     vulnerableSUs,
     allowedSites,
     addVulnerableSU,
@@ -81,7 +82,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
 
   const vulnerableStatusOptions = useMemo(() => getFieldOptions('vulnerableStatuses'), [getFieldOptions]);
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -111,12 +112,8 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Dynamic Table Schema & Columns (Local persistence with fallback to trackerTableConfigs)
   const {
@@ -198,7 +195,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
   };
 
   const handleResetFilters = () => {
-    setSiteFilter(canAccessAllSites() ? 'all' : assignedSite);
+    setSiteFilter(defaultSiteFilter);
     setMonthFilter('all');
     setStatusFilter('all');
     setSearchQuery('');

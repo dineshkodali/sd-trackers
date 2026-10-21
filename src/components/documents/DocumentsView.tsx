@@ -42,6 +42,7 @@ const documentsExportColumns: ExportColumnOption[] = [
 
 export const DocumentsView: React.FC = () => {
   const {
+    defaultSiteFilter,
     documents,
     allowedSites,
     addDocument,
@@ -64,18 +65,14 @@ export const DocumentsView: React.FC = () => {
     resetToDefault
   } = useTableSchema<DocumentRecord>('documents', DOCUMENTS_TABLE_COLUMNS);
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);

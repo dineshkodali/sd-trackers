@@ -55,6 +55,7 @@ interface ReferralsViewProps {
 
 export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false }) => {
   const {
+    defaultSiteFilter,
     referrals,
     allowedSites,
     addReferral,
@@ -84,7 +85,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
 
   const referralStatusOptions = useMemo(() => getFieldOptions('referralStatuses'), [getFieldOptions]);
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -99,12 +100,8 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Dynamic Table Schema & Columns (Local persistence with fallback to trackerTableConfigs)
   const {
@@ -198,7 +195,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
   };
 
   const handleResetFilters = () => {
-    setSiteFilter(canAccessAllSites() ? 'all' : assignedSite);
+    setSiteFilter(defaultSiteFilter);
     setMonthFilter('all');
     setStatusFilter('all');
     setSearchQuery('');

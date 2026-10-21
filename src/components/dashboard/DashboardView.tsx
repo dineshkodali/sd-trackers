@@ -39,7 +39,8 @@ const dashboardExportColumns: ExportColumnOption[] = [
 ];
 
 export const DashboardView: React.FC = () => {
-  const { 
+  const {
+    defaultSiteFilter, 
     referrals, 
     vulnerableSUs, 
     challengingSUs, 
@@ -54,10 +55,7 @@ export const DashboardView: React.FC = () => {
     isSitePermitted
   } = useApp();
 
-  const [siteFilter, setSiteFilter] = useState<string>(() => {
-    if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) return 'all';
-    return (allowedSites && allowedSites.length > 0 ? allowedSites[0] : assignedSite) || 'all';
-  });
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -77,16 +75,8 @@ export const DashboardView: React.FC = () => {
   const widgetMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) {
-        setSiteFilter('all');
-      } else if (allowedSites && allowedSites.length > 0) {
-        setSiteFilter(allowedSites[0]);
-      }
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

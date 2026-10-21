@@ -45,7 +45,8 @@ const feedbackExportColumns: ExportColumnOption[] = [
 ];
 
 export const TransportFeedbackSection: React.FC = () => {
-  const { 
+  const {
+    defaultSiteFilter, 
     transportFeedbackRecords, 
     addTransportFeedbackRecord, 
     updateTransportFeedbackRecord, 
@@ -93,7 +94,7 @@ export const TransportFeedbackSection: React.FC = () => {
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSite, setSelectedSite] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+  const [selectedSite, setSelectedSite] = useState<string>(defaultSiteFilter);
   const [impactFilter, setImpactFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [resolutionFilter, setResolutionFilter] = useState<string>('all');
@@ -101,12 +102,8 @@ export const TransportFeedbackSection: React.FC = () => {
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSelectedSite('all');
-    } else if (assignedSite) {
-      setSelectedSite(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSelectedSite(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   const defaultSite = useMemo(() => {
     const list = (allowedSites || []).filter(s => s && s !== 'All Sites' && s !== 'all');

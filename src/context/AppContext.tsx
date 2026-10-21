@@ -248,6 +248,8 @@ interface AppContextType {
   canManageRoles: () => boolean;
   canAccessAllSites: () => boolean;
   canSwitchSites: () => boolean;
+  /** Initial value for every page's site filter: 'all' (every site this account may see) or the one assigned site. */
+  defaultSiteFilter: string;
   isSitePermitted: (itemSite?: string | null, activeFilter?: string | null) => boolean;
   canManageFiles: () => boolean;
   canManageProperties: () => boolean;
@@ -2176,6 +2178,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const canSwitchSites = useCallback(() => {
     if (canAccessAllSites()) return true;
     return (allowedSites || []).length > 1;
+  }, [canAccessAllSites, allowedSites]);
+
+  // Admins, Super Admins, Regional Managers and anyone with several sites open every page on "all" (which
+  // isSitePermitted limits to the sites they may see); an account with exactly one site opens on that site.
+  const defaultSiteFilter = useMemo(() => {
+    if (canAccessAllSites() || (allowedSites || []).length > 1) return 'all';
+    return (allowedSites && allowedSites[0]) || 'all';
   }, [canAccessAllSites, allowedSites]);
 
   const isSitePermitted = useCallback((itemSite?: string | null, activeFilter?: string | null) => {
@@ -5990,6 +5999,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canManageRoles,
       canAccessAllSites,
       canSwitchSites,
+      defaultSiteFilter,
       isSitePermitted,
       canManageFiles,
       canManageProperties,

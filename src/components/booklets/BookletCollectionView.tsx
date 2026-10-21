@@ -43,6 +43,7 @@ const bookletExportColumns: ExportColumnOption[] = [
 
 export const BookletCollectionView: React.FC = () => {
   const {
+    defaultSiteFilter,
     bookletRecords,
     updateBookletRecord,
     addBookletRecord,
@@ -82,12 +83,8 @@ export const BookletCollectionView: React.FC = () => {
 
   // Sync with active property switcher in Header
   React.useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSelectedHotel('all');
-    } else if (assignedSite) {
-      setSelectedHotel(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSelectedHotel(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Strict Site Isolation - only single-site staff are locked
   const isLockedToSingleSite = !canAccessAllSites() && (allowedSites || []).length <= 1;

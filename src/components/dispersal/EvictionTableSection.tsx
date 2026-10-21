@@ -38,6 +38,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
   evictionCount
 }) => {
   const {
+    defaultSiteFilter,
     evictionRecords,
     addEvictionRecord,
     updateEvictionRecord,
@@ -61,16 +62,12 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
   } = useTableSchema<EvictionRecord>('evictions', EVICTION_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);

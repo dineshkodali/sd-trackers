@@ -59,6 +59,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
   evictionCount
 }) => {
   const {
+    defaultSiteFilter,
     dispersalRecords,
     addDispersalRecord,
     updateDispersalRecord,
@@ -81,16 +82,12 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
   } = useTableSchema<DispersalRecord>('dispersal', DISPERSAL_TABLE_COLUMNS);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [siteFilter, setSiteFilter] = useState(!canAccessAllSites() ? assignedSite : 'all');
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [travelledFilter, setTravelledFilter] = useState('all');
   const [secondDispersalFilter, setSecondDispersalFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');

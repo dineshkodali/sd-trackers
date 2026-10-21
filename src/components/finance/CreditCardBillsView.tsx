@@ -28,7 +28,8 @@ const creditCardExportColumns: ExportColumnOption[] = [
 ];
 
 export const CreditCardBillsView: React.FC = () => {
-  const { properties, assignedSite, allowedSites, canAccessAllSites, isSitePermitted, currentUserRole, isFinanceUser, canManageFinance, authProfile, requestConfirmation, closeConfirmation, getFieldOptions } = useApp();
+  const {
+    defaultSiteFilter, properties, assignedSite, allowedSites, canAccessAllSites, isSitePermitted, currentUserRole, isFinanceUser, canManageFinance, authProfile, requestConfirmation, closeConfirmation, getFieldOptions } = useApp();
 
   const { columns, saveColumns, resetToDefault } = useTableSchema('credit_card_bills', FINANCE_CREDIT_CARD_TABLE_COLUMNS);
 
@@ -36,19 +37,15 @@ export const CreditCardBillsView: React.FC = () => {
   const [vendors, setVendors] = useState<FinanceVendor[]>(() => financeService.getCachedVendors());
   const [isLoading, setIsLoading] = useState(() => financeService.getCachedBills('credit_card_expense').length === 0);
 
-  const [siteFilter, setSiteFilter] = useState<string>(!canAccessAllSites() ? (assignedSite || 'all') : 'all');
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [merchantFilter, setMerchantFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);

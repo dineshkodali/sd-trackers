@@ -57,6 +57,7 @@ interface ChallengingViewProps {
 
 export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = false }) => {
   const {
+    defaultSiteFilter,
     challengingSUs,
     allowedSites,
     addChallengingSU,
@@ -85,7 +86,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
 
   const challengingStatusOptions = useMemo(() => getFieldOptions('challengingStatuses'), [getFieldOptions]);
 
-  const [siteFilter, setSiteFilter] = useState<string>(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -115,12 +116,8 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(settings.pageSize || 10);
@@ -200,7 +197,7 @@ export const ChallengingView: React.FC<ChallengingViewProps> = ({ isArchive = fa
   }, [sortedData, currentPage, pageSize]);
 
   const handleResetFilters = () => {
-    setSiteFilter(canAccessAllSites() ? 'all' : assignedSite);
+    setSiteFilter(defaultSiteFilter);
     setMonthFilter('all');
     setStatusFilter('all');
     setSearchQuery('');

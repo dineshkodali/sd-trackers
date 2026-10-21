@@ -34,6 +34,7 @@ const foodSurveyExportColumns: ExportColumnOption[] = [
 
 export const FoodSurveysView: React.FC = () => {
   const {
+    defaultSiteFilter,
     foodSurveys,
     addFoodSurvey,
     updateFoodSurvey,
@@ -69,16 +70,12 @@ export const FoodSurveysView: React.FC = () => {
     }
   };
 
-  const [siteFilter, setSiteFilter] = useState(canAccessAllSites() ? 'all' : assignedSite);
+  const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
   const [ratingFilter, setRatingFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);

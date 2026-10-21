@@ -32,6 +32,7 @@ import {
 
 export const IRTrackerView: React.FC = () => {
   const {
+    defaultSiteFilter,
     irRecords,
     addIRRecord,
     updateIRRecord,
@@ -80,12 +81,8 @@ export const IRTrackerView: React.FC = () => {
 
   // Sync with active property switcher in Header
   useEffect(() => {
-    if (assignedSite === 'All Sites' || assignedSite === 'all') {
-      if (canAccessAllSites() || (allowedSites && allowedSites.length > 1)) setSiteFilter('all');
-    } else if (assignedSite) {
-      setSiteFilter(assignedSite);
-    }
-  }, [assignedSite, canAccessAllSites, allowedSites]);
+    setSiteFilter(defaultSiteFilter);
+  }, [defaultSiteFilter]);
 
   // Modals
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
