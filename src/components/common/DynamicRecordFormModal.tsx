@@ -331,12 +331,27 @@ export function DynamicRecordFormModal<T = any>({
     );
   };
 
+  /**
+   * Fields that come from the Service User's profile (port reference, room, date of birth, nationality, language).
+   * Once the form has a single Service User picker these are filled in automatically and locked, never typed by hand.
+   */
+  const isSuProfileColumn = (col: TableColumnConfig<T>): boolean => {
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    return ['portref', 'portrefs', 'portreference', 'portornassref', 'nassref', 'roomno', 'roomnumber', 'roomorflatno', 'flatnumber',
+      'dob', 'sudob', 'dateofbirth', 'nationality', 'preferredlanguage'].includes(key) || isDobColumn(col);
+  };
+  const singleSuColumn = (cols: TableColumnConfig<T>[]) => {
+    const suCols = cols.filter(isServiceUserColumn);
+    return suCols.length === 1 && !(String(suCols[0].key).toLowerCase() === 'sunames' || suCols[0].label.toLowerCase().includes('(s)'));
+  };
+
   const isUserColumn = (col: TableColumnConfig<T>): boolean => {
     if (isLoggedByColumn(col)) return false;
     return isUserAssignmentField(String(col.key), col.label) || isSiteManagerColumn(col);
   };
 
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const hasSingleSu = useMemo(() => singleSuColumn(columns), [columns]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -760,7 +775,7 @@ export function DynamicRecordFormModal<T = any>({
         }
       }
 
-      if (col.required) {
+      if (col.required && !(hasSingleSu && !isServiceUserColumn(col) && isSuProfileColumn(col))) {
         if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
           newErrors[key] = `${col.label} is required`;
           return;
@@ -908,7 +923,8 @@ export function DynamicRecordFormModal<T = any>({
                   const isStaffPlace = isStaffPlaceColumn(col);
                   const displayLabel = isLoggedBy ? 'Reporting Staff Member' : isSiteManager ? 'Site Manager' : isStaffPlace ? 'Staff Place' : col.label;
                   const isLockedToSingleSite = isSite && (!canAccessAllSites() && allSiteNames.length <= 1);
-                  const isReadOnly = col.editable === false || isLockedToSingleSite || isLoggedBy || isSiteManager || isStaffPlace;
+                  const isSuProfile = hasSingleSu && !isServiceUserColumn(col) && isSuProfileColumn(col);
+                  const isReadOnly = col.editable === false || isLockedToSingleSite || isLoggedBy || isSiteManager || isStaffPlace || isSuProfile;
                   const value = isLockedToSingleSite
                     ? (userAssignedHotel || allSiteNames[0])
                     : isLoggedBy
@@ -948,6 +964,10 @@ export function DynamicRecordFormModal<T = any>({
                         ) : isLockedToSingleSite ? (
                           <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
                             <Lock className="w-2.5 h-2.5 text-teal-600" /> Assigned Property (Locked)
+                          </span>
+                        ) : isSuProfile ? (
+                          <span className="text-[10px] text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-teal-600" /> From Service User profile
                           </span>
                         ) : isReadOnly ? (
                           <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-medium flex items-center gap-0.5">
@@ -1049,8 +1069,11 @@ export function DynamicRecordFormModal<T = any>({
                           onChange={(val, extra) => {
                             handleChange(key, val);
                             // Remember which Service User this record belongs to (by id, not by name)
-                            handleChange('suId', extra?.su?.id || '');
+                            handleChange('suId', extra?.su?.id && !String(extra.su.id).startsWith('synth-') ? extra.su.id : '');
                             onServiceUserChange?.(extra?.su ? { id: extra.su.id, firstName: extra.su.firstName, lastName: extra.su.lastName } : null);
+                            if (!extra && hasSingleSu) {
+                              formColumns.forEach(c => { if (!isServiceUserColumn(c) && isSuProfileColumn(c)) handleChange(String(c.key), ''); });
+                            }
                             if (extra) {
                               if (extra.portRef) {
                                 formColumns.forEach(c => {

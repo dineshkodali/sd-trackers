@@ -17,6 +17,7 @@ import { RiskLevel, EscalationRecord, RecordAttachment } from '../../types';
 import { saveFormDraft, loadFormDraft, clearFormDraft, formatDraftTime } from '../../utils/autoSave';
 import { AttachmentsSection } from '../common/AttachmentsSection';
 import { ManageableSelect } from '../common/ManageableSelect';
+import { PropertyRelativeSUSelector } from '../common/PropertyRelativeSUSelector';
 
 interface QuickIncidentModalProps {
   isOpen: boolean;
@@ -549,14 +550,16 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                 <label className="font-semibold text-neutral-700 block mb-1">
                   Service User (Resident) <span className="text-red-600">*</span>
                 </label>
-                <input
-                  id="incident-su-name"
-                  type="text"
+                <PropertyRelativeSUSelector
+                  siteOrPropertyName={isLockedToSingleSite ? userAssignedHotel : site}
                   value={suName}
-                  onChange={(e) => setSuName(e.target.value)}
-                  placeholder="e.g. Tariq Al-Mansoor"
-                  className="w-full p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
                   required
+                  placeholder="Select Service User..."
+                  onChange={(val, extra) => {
+                    setSuName(val);
+                    setSuPortNassRef(extra?.portRef || '');
+                    setRoomNumber(extra?.roomNumber || '');
+                  }}
                 />
               </div>
 
@@ -568,9 +571,9 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                   id="incident-room"
                   type="text"
                   value={roomNumber}
-                  onChange={(e) => setRoomNumber(e.target.value)}
-                  placeholder="e.g. Room 204"
-                  className="w-full p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
+                  readOnly
+                  placeholder="From the Service User profile"
+                  className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 cursor-not-allowed"
                 />
               </div>
             </div>
@@ -608,9 +611,9 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                   id="incident-ref"
                   type="text"
                   value={suPortNassRef}
-                  onChange={(e) => setSuPortNassRef(e.target.value)}
-                  placeholder="e.g. 9845-2940"
-                  className="w-full p-2 border border-neutral-300 rounded-xs bg-white text-neutral-900 focus:outline-2 focus:outline-red-500"
+                  readOnly
+                  placeholder="From the Service User profile"
+                  className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 cursor-not-allowed"
                 />
               </div>
 

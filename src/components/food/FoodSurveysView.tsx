@@ -616,7 +616,7 @@ export const FoodSurveysView: React.FC = () => {
                           suId: sel.suId,
                           propertyId: sel.propertyId,
                           roomId: sel.roomId,
-                          portReference: sel.suReference || prev.portReference
+                          portReference: sel.externalReference || sel.suReference || ''
                         }));
                       }}
                     />
@@ -624,13 +624,16 @@ export const FoodSurveysView: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-medium text-neutral-700 mb-1">Port Reference Number of SU *</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-medium text-neutral-700">Port Reference Number of SU *</label>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200"><Lock className="w-2.5 h-2.5" /><span>From Service User profile</span></span>
+                      </div>
                       <input
                         type="text"
-                        placeholder="e.g. 1049281"
-                        value={formData.portReference}
-                        onChange={e => setFormData({ ...formData, portReference: e.target.value })}
-                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs font-mono"
+                        placeholder="Choose the Service User above"
+                        value={formData.portReference || ''}
+                        readOnly
+                        className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-teal-950 text-xs font-mono cursor-not-allowed"
                       />
                       {formErrors.portReference && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.portReference}</p>}
                     </div>

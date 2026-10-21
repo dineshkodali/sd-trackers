@@ -654,8 +654,8 @@ export const RoomChecksView: React.FC = () => {
                     suId: sel.suId,
                     propertyId: sel.propertyId,
                     roomId: sel.roomId,
-                    roomNumber: sel.roomName || prev.roomNumber,
-                    aicReference: sel.suReference || prev.aicReference
+                    roomNumber: sel.roomNumber && sel.roomNumber !== 'Unassigned Room' ? sel.roomNumber : '',
+                    aicReference: sel.externalReference || sel.suReference || ''
                   }));
                 }}
               />
@@ -668,8 +668,9 @@ export const RoomChecksView: React.FC = () => {
                 <input
                   type="text"
                   value={formData.siteName || ''}
-                  onChange={e => setFormData({ ...formData, siteName: e.target.value })}
-                  className="w-full p-1.5 border border-[#e5e5e5] rounded-xs bg-white text-xs"
+                  readOnly
+                  placeholder="From the selection above"
+                  className="w-full p-1.5 border border-teal-200 rounded-xs bg-teal-50/50 text-xs cursor-not-allowed"
                 />
                 {formErrors.siteName && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.siteName}</p>}
               </div>
@@ -678,10 +679,10 @@ export const RoomChecksView: React.FC = () => {
                 <label className="block text-[11px] font-semibold text-neutral-600 mb-0.5">Room Number *</label>
                 <input
                   type="text"
-                  placeholder="e.g. 204"
-                  value={formData.roomNumber}
-                  onChange={e => setFormData({ ...formData, roomNumber: e.target.value })}
-                  className="w-full p-1.5 border border-[#e5e5e5] rounded-xs bg-white text-xs font-semibold"
+                  placeholder="From the selection above"
+                  value={formData.roomNumber || ''}
+                  readOnly
+                  className="w-full p-1.5 border border-teal-200 rounded-xs bg-teal-50/50 text-xs font-semibold cursor-not-allowed"
                 />
                 {formErrors.roomNumber && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.roomNumber}</p>}
               </div>
@@ -690,10 +691,10 @@ export const RoomChecksView: React.FC = () => {
                 <label className="block text-[11px] font-semibold text-neutral-600 mb-0.5">AIC Reference</label>
                 <input
                   type="text"
-                  placeholder="e.g. AIC-9281"
+                  placeholder="From the selection above"
                   value={formData.aicReference || ''}
-                  onChange={e => setFormData({ ...formData, aicReference: e.target.value })}
-                  className="w-full p-1.5 border border-[#e5e5e5] rounded-xs bg-white text-xs font-mono"
+                  readOnly
+                  className="w-full p-1.5 border border-teal-200 rounded-xs bg-teal-50/50 text-xs font-mono cursor-not-allowed"
                 />
               </div>
 

@@ -206,10 +206,6 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
 
   // Handle single selection
   const handleSelectOne = (suId: string) => {
-    if (suId === '__CUSTOM__') {
-      setIsCustomMode(true);
-      return;
-    }
     if (!suId) {
       onChange('');
       return;
@@ -457,7 +453,6 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
           })
         )}
 
-        <option value="__CUSTOM__">➕ Enter unlisted / manual resident name...</option>
       </select>
 
       {value && !matchedSU && (
