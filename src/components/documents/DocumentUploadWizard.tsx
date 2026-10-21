@@ -35,6 +35,17 @@ interface Props {
   onSelect: (target: DocumentUploadTarget) => void;
 }
 
+const TypeCard: React.FC<{ icon: React.ReactNode; title: string; text: string; onPick: () => void }> = ({ icon, title, text, onPick }) => (
+  <button
+    type="button"
+    onClick={onPick}
+    className="text-left p-4 border border-[#e5e5e5] rounded-xs bg-white hover:border-[#0d9488] hover:bg-[#f0fdfa] transition-colors cursor-pointer"
+  >
+    <div className="flex items-center gap-2 font-semibold text-sm text-[#242424]">{icon}<span>{title}</span></div>
+    <p className="mt-1 text-[11px] text-neutral-500">{text}</p>
+  </button>
+);
+
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 
 /**
@@ -83,6 +94,10 @@ export const DocumentUploadWizard: React.FC<Props> = ({ isOpen, onClose, onSelec
     return list.slice(0, 200);
   }, [serviceUsers, search]);
 
+  useEffect(() => {
+    if (linkType === 'service_user' && search.trim() && filteredUsers.length === 1) setSuId(filteredUsers[0].id);
+  }, [filteredUsers, search, linkType]);
+
   if (!isOpen) return null;
 
   const choose = (t: DocumentLinkType) => { setLinkType(t); setStep('details'); setError(''); };
@@ -108,17 +123,6 @@ export const DocumentUploadWizard: React.FC<Props> = ({ isOpen, onClose, onSelec
     }
   };
 
-  const Card: React.FC<{ t: DocumentLinkType; icon: React.ReactNode; title: string; text: string }> = ({ t, icon, title, text }) => (
-    <button
-      type="button"
-      onClick={() => choose(t)}
-      className="text-left p-4 border border-[#e5e5e5] rounded-xs bg-white hover:border-[#0d9488] hover:bg-[#f0fdfa] transition-colors cursor-pointer"
-    >
-      <div className="flex items-center gap-2 font-semibold text-sm text-[#242424]">{icon}<span>{title}</span></div>
-      <p className="mt-1 text-[11px] text-neutral-500">{text}</p>
-    </button>
-  );
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
       <div className="bg-white rounded-xs border border-[#e5e5e5] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -136,24 +140,21 @@ export const DocumentUploadWizard: React.FC<Props> = ({ isOpen, onClose, onSelec
 
         {step === 'type' ? (
           <div className="p-5 grid grid-cols-1 gap-3">
-            <Card t="service_user" icon={<UserRound className="w-4 h-4 text-indigo-600" />} title="Service User document"
+            <TypeCard onPick={() => choose('service_user')} icon={<UserRound className="w-4 h-4 text-indigo-600" />} title="Service User document"
               text="ID, medical, safeguarding or support papers. Shows in that resident's profile under Documents." />
-            <Card t="property" icon={<Building2 className="w-4 h-4 text-[#0d9488]" />} title="Property document"
+            <TypeCard onPick={() => choose('property')} icon={<Building2 className="w-4 h-4 text-[#0d9488]" />} title="Property document"
               text="Certificates, leases, inspections. Shows in that property's Documents section." />
-            <Card t="general" icon={<FileText className="w-4 h-4 text-amber-600" />} title="General / compliance document"
+            <TypeCard onPick={() => choose('general')} icon={<FileText className="w-4 h-4 text-amber-600" />} title="General / compliance document"
               text="Site-level compliance and other records that are not tied to one person or property." />
           </div>
         ) : (
           <div className="p-5 space-y-3.5 overflow-y-auto text-xs">
-            {error && <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 rounded-xs">{error}</div>}
-
             {linkType === 'service_user' && (
               <div>
                 <label className="block text-neutral-600 font-medium mb-1">Service User <span className="text-red-500">*</span></label>
                 <input className={`${inputCls} mb-1.5`} placeholder="Search by name, SU ID or Port Ref..." value={search} onChange={e => setSearch(e.target.value)} />
-                <select className={inputCls} value={suId} onChange={e => setSuId(e.target.value)} size={Math.min(8, Math.max(3, filteredUsers.length + 1))}>
-                  {loading && <option value="">Loading Service Users...</option>}
-                  {!loading && filteredUsers.length === 0 && <option value="">No Service Users found</option>}
+                <select className={inputCls} value={suId} onChange={e => { setSuId(e.target.value); setError(''); }}>
+                  <option value="">{loading ? 'Loading Service Users...' : filteredUsers.length === 0 ? 'No Service Users found' : `-- Select Service User (${filteredUsers.length}) --`}</option>
                   {filteredUsers.map(u => (
                     <option key={u.id} value={u.id}>
                       {u.firstName} {u.lastName} - {u.suReference}{u.externalReference ? ` - ${u.externalReference}` : ''} - {siteName(u.siteId) || 'No site'}
@@ -166,7 +167,7 @@ export const DocumentUploadWizard: React.FC<Props> = ({ isOpen, onClose, onSelec
             {linkType === 'property' && (
               <div>
                 <label className="block text-neutral-600 font-medium mb-1">Property <span className="text-red-500">*</span></label>
-                <select className={inputCls} value={propertyId} onChange={e => setPropertyId(e.target.value)}>
+                <select className={inputCls} value={propertyId} onChange={e => { setPropertyId(e.target.value); setError(''); }}>
                   <option value="">{loading ? 'Loading properties...' : '-- Select Property --'}</option>
                   {properties.map(p => (
                     <option key={p.id} value={p.id}>{p.propertyReference} - {p.propertyName}</option>
@@ -190,6 +191,8 @@ export const DocumentUploadWizard: React.FC<Props> = ({ isOpen, onClose, onSelec
                 {typeOptions.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
+
+            {error && <div className="p-2 bg-red-50 border border-red-200 text-red-700 rounded-xs font-medium">{error}</div>}
 
             <div className="flex items-center justify-between pt-2 border-t border-[#e5e5e5]">
               <button type="button" onClick={() => setStep('type')} className="flex items-center gap-1 px-3 py-1.5 border border-[#e5e5e5] rounded-xs text-neutral-700 hover:bg-neutral-100 cursor-pointer">
