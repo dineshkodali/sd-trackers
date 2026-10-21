@@ -164,6 +164,35 @@ export const ENTITY_TABLE_MAP: Record<string, EntityMapping> = {
   food_box_requests: { table: 'food_box_requests' }
 };
 
+/**
+ * Runs a write and retries it without anything the live table cannot accept: a column that is not in the
+ * table yet (PostgREST PGRST204, i.e. a migration is pending) or a created_by that is not a known auth user
+ * (foreign key violation). Without this one missing column makes every submit for that module fail.
+ */
+async function writeWithSchemaFallback<R extends { error: any }>(
+  table: string,
+  row: Record<string, any>,
+  run: (row: Record<string, any>) => PromiseLike<R>
+): Promise<R> {
+  const working = { ...row };
+  let result = await run(working);
+  for (let attempt = 0; attempt < 12 && result.error; attempt++) {
+    const err = result.error;
+    const msg = String(err.message || '');
+    const missing = err.code === 'PGRST204' ? msg.match(/the '([^']+)' column/i)?.[1] : undefined;
+    if (missing && missing in working) {
+      console.warn(`[direct write] ${table}.${missing} does not exist in the live database - saving without it. Run the pending migration.`);
+      delete working[missing];
+    } else if (err.code === '23503' && /created_by/i.test(`${msg} ${err.details || ''}`) && 'created_by' in working) {
+      delete working.created_by;
+    } else {
+      break;
+    }
+    result = await run(working);
+  }
+  return result;
+}
+
 function ensureId(entity: string, record: any): any {
   if (!record || typeof record !== 'object') return record;
   if (!record.id) {
@@ -309,11 +338,9 @@ export async function directSaveEntityRecord<T = any>(
     const recordWithId = ensureId(entity, record);
     const dbRow = toDatabaseRow(mapping.table, recordWithId, activeUser?.userId);
 
-    const { data, error, status } = await supabase
-      .from(mapping.table)
-      .upsert(dbRow, { onConflict: 'id' })
-      .select()
-      .single();
+    const { data, error, status } = await writeWithSchemaFallback(mapping.table, dbRow, row =>
+      supabase.from(mapping.table).upsert(row, { onConflict: 'id' }).select().single()
+    );
 
     if (error) {
       return { success: false, error: error.message, status, tableMissing: error.code === '42P01' || error.code === 'PGRST205' };
@@ -369,12 +396,9 @@ export async function directUpdateEntityRecord<T = any>(
     delete dbRow.created_by;
     delete dbRow.created_at;
 
-    const { data, error, status } = await supabase
-      .from(mapping.table)
-      .update(dbRow)
-      .eq('id', targetId)
-      .select()
-      .maybeSingle();
+    const { data, error, status } = await writeWithSchemaFallback(mapping.table, dbRow, row =>
+      supabase.from(mapping.table).update(row).eq('id', targetId).select().maybeSingle()
+    );
 
     if (error) {
       return { success: false, error: error.message, status };
@@ -383,11 +407,9 @@ export async function directUpdateEntityRecord<T = any>(
     // If the update matched 0 rows (id not found in DB), try to upsert the full record instead
     if (!data) {
       const upsertRow = toDatabaseRow(mapping.table, fullRecord, activeUser?.userId);
-      const { data: upserted, error: upsertErr } = await supabase
-        .from(mapping.table)
-        .upsert(upsertRow, { onConflict: 'id' })
-        .select()
-        .maybeSingle();
+      const { data: upserted, error: upsertErr } = await writeWithSchemaFallback(mapping.table, upsertRow, row =>
+        supabase.from(mapping.table).upsert(row, { onConflict: 'id' }).select().maybeSingle()
+      );
       if (upsertErr) {
         return { success: false, error: upsertErr.message };
       }

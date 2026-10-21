@@ -1013,10 +1013,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * `{ success: false }` rather than throwing, so every `.catch()` was dead code
    * and a refused save looked exactly like a successful one.
    */
+  // Records created locally whose save has not finished yet. A background sync that completes meanwhile
+  // must not wipe them from the screen (it would make a just-submitted record vanish).
+  const pendingCreatesRef = useRef<Map<string, Map<string, any>>>(new Map());
+
   const persistCreate = useCallback(async <T extends { id: string }>(
     entity: string, label: string, setter: RecordSetter<T>, record: T, audit?: AuditDescriptor
   ): Promise<boolean> => {
-    const res = await apiService.saveEntityRecord(entity, record, audit);
+    const pendingForEntity = pendingCreatesRef.current.get(entity) || new Map<string, any>();
+    pendingForEntity.set(record.id, record);
+    pendingCreatesRef.current.set(entity, pendingForEntity);
+    let res: Awaited<ReturnType<typeof apiService.saveEntityRecord>>;
+    try {
+      res = await apiService.saveEntityRecord(entity, record, audit);
+    } finally {
+      pendingForEntity.delete(record.id);
+    }
     if (!res.success) {
       setter(prev => prev.filter(r => r.id !== record.id));
       reportPersistFailure(label, res.error);
@@ -1785,7 +1797,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const got = <T,>(key: string): T[] | undefined => (r[key]?.success && Array.isArray(r[key].data) ? r[key].data as T[] : undefined);
       const apply = <T,>(key: string, setter: (rows: T[]) => void) => {
         const rows = got<T>(key);
-        if (rows) setter(rows);
+        if (!rows) return;
+        const pending = pendingCreatesRef.current.get(key);
+        if (pending && pending.size > 0) {
+          const have = new Set(rows.map((x: any) => x?.id));
+          setter([...Array.from(pending.values()).filter(p => !have.has(p.id)), ...rows]);
+        } else {
+          setter(rows);
+        }
       };
 
       // Empty results are applied too: a record deleted elsewhere must disappear here (BUG-021).
