@@ -121,7 +121,18 @@ export const RoomWorkspace: React.FC<Props> = ({ room: initial, property, allRoo
 
         {/* Body */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4">
-          {data.error && <div className="mb-3 p-2 bg-amber-50 border border-amber-300 text-amber-900 rounded-xs text-xs">Some room data could not be loaded: {data.error}</div>}
+          {data.error && (
+            <div className="mb-3 p-2 bg-amber-50 border border-amber-300 text-amber-900 rounded-xs text-xs">
+              {/permission denied/i.test(data.error) ? (
+                <>
+                  <b>Bed, item and issue data is blocked by a database permission.</b> The room details and residents shown here are not affected.
+                  One-time fix: an admin runs <code>db/migrations/019_room_management_direct_access.sql</code> in the Supabase SQL Editor, then reloads this page.
+                </>
+              ) : (
+                <>Some room data could not be loaded: {data.error}</>
+              )}
+            </div>
+          )}
           {data.loading && data.items.length === 0 && data.beds.length === 0 ? (
             <div className="text-center py-12 text-xs text-neutral-500">Loading room…</div>
           ) : (
