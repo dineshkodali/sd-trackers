@@ -22,6 +22,7 @@ import { GP_APPOINTMENTS_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { GPRegistrationsTab } from './GPRegistrationsTab';
+import { TabSwitcher } from '../common/TrackerLayout';
 import { GpBookingInfoCard } from './GpBookingInfoCard';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
@@ -37,7 +38,7 @@ const gpExportColumns: ExportColumnOption[] = [
   { id: 'comments', label: 'Clinical / Case Comments' }
 ];
 
-const GPAppointmentsTab: React.FC = () => {
+const GPAppointmentsTab: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
     defaultSiteFilter,
     gpAppointmentRecords,
@@ -352,6 +353,8 @@ const GPAppointmentsTab: React.FC = () => {
           </div>
         </div>
 
+        {tabSwitcher}
+
         {/* Integrated Filter Row */}
         <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <div className="relative">
@@ -558,28 +561,16 @@ const GPAppointmentsTab: React.FC = () => {
   );
 };
 
-/** GP Appointments page: the appointments register and the GP registrations, on two tabs. */
+/** GP Appointments page: the appointments register and the GP registrations, switched from the header card. */
 export const GPAppointmentsView: React.FC = () => {
   const [tab, setTab] = useState<'appointments' | 'registrations'>('appointments');
-  const tabBtn = (id: 'appointments' | 'registrations', label: string) => (
-    <button
-      key={id}
-      type="button"
-      role="tab"
-      aria-selected={tab === id}
-      onClick={() => setTab(id)}
-      className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${tab === id ? 'border-[#0d9488] text-teal-800' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
-    >
-      {label}
-    </button>
+  const switcher = (
+    <TabSwitcher
+      label="GP sections"
+      active={tab}
+      onChange={id => setTab(id as 'appointments' | 'registrations')}
+      tabs={[{ id: 'appointments', label: 'GP Appointments' }, { id: 'registrations', label: 'GP Registrations' }]}
+    />
   );
-  return (
-    <div className="space-y-3.5">
-      <div role="tablist" aria-label="GP sections" className="flex items-center gap-1 border-b border-[#e5e5e5] bg-white px-2 rounded-xs">
-        {tabBtn('appointments', 'GP Appointments')}
-        {tabBtn('registrations', 'GP Registrations')}
-      </div>
-      {tab === 'appointments' ? <GPAppointmentsTab /> : <GPRegistrationsTab />}
-    </div>
-  );
+  return tab === 'appointments' ? <GPAppointmentsTab tabSwitcher={switcher} /> : <GPRegistrationsTab tabSwitcher={switcher} />;
 };

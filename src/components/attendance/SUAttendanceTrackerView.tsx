@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, RefreshCw, AlertCircle, Pencil, History, X, Lock, Trash2, CalendarCheck } from 'lucide-react';
+import { Plus, Search, Pencil, History, X, Lock, Trash2, CalendarCheck, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   suTrackerService, type AttendanceRecord, type AbsenceFollowUp, type SuDirectoryRow
@@ -8,8 +8,14 @@ import { canEditSuTrackers, canViewAttendanceNotes, formatUkDate } from '../../u
 import {
   addDays, todayIso, dayCounts, currentAbsenceEpisode, DEFAULT_ABSENCE_POLICY, type AttendanceEntry
 } from '../../utils/attendanceLogic';
-import { Pagination } from '../common/Pagination';
-import { SiteFilterSelect, RefreshButton, ResetFiltersButton, TrackerExport, filterInputCls } from '../common/TrackerToolbar';
+import { SiteFilterSelect, ResetFiltersButton, TrackerExport, filterInputCls } from '../common/TrackerToolbar';
+import {
+  TrackerHeader, TabSwitcher, CustomizeTableButton, PrimaryButton, TablePanel, SortableTh, ActionsTh, actionsTdCls, EmptyRow, SkeletonRows,
+  theadRowCls, tbodyCls, tdCls, AuditAccountability
+} from '../common/TrackerLayout';
+import { useTableSchema } from '../../hooks/useTableSchema';
+import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
+import type { TableColumnConfig } from '../../types/tableSchema';
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
@@ -17,30 +23,66 @@ const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] r
 const HISTORY_DAYS = 120;
 const policy = DEFAULT_ABSENCE_POLICY;
 
-type Tab = 'records' | 'roll' | 'followups';
+type Tab = 'roll' | 'records' | 'followups';
 
 const statusBadge = (s?: string) =>
   s === 'Present' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
     : s === 'Absent' ? 'bg-red-50 text-red-800 border-red-200'
     : 'bg-neutral-100 text-neutral-600 border-neutral-200';
 
+/** Default columns of the attendance records table, in the required order (Customize Table can rename / hide / reorder). */
+const ATTENDANCE_TABLE_COLUMNS: TableColumnConfig<any>[] = [
+  ['port', 'Port reference'], ['name', 'Name'], ['dob', 'DOB'], ['room', 'Room No'], ['date', 'Date'], ['status', 'Attendance'], ['notes', 'Additional notes']
+].map(([key, label]) => ({ key, label, type: 'text' as const }));
+
+type RecRow = { r: AttendanceRecord; d: SuDirectoryRow };
+const REC_SORT: Record<string, (x: RecRow) => string> = {
+  port: x => x.d.su.externalReference || x.d.su.suReference || '',
+  name: x => `${x.d.su.firstName} ${x.d.su.lastName}`,
+  dob: x => x.d.su.dateOfBirth || '',
+  room: x => x.d.roomNo || '',
+  date: x => x.r.attendanceDate,
+  status: x => x.r.attendanceStatus,
+  notes: x => x.r.additionalNotes || ''
+};
+
 export const SUAttendanceTrackerView: React.FC = () => {
   const { sites, isSitePermitted, currentUserRole, currentUserName, defaultSiteFilter, canDeleteRecord, requestConfirmation } = useApp();
   const canEdit = canEditSuTrackers(currentUserRole);
   const canSeeNotes = canViewAttendanceNotes(currentUserRole);
+  const { columns, visibleColumns, saveColumns, resetToDefault } = useTableSchema<any>('suAttendance', ATTENDANCE_TABLE_COLUMNS);
 
   const [tab, setTab] = useState<Tab>('roll');
   const [allDirectory, setDirectory] = useState<SuDirectoryRow[]>([]);
-  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
-  useEffect(() => { setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
-  // Every card, list and form below works on the residents of the chosen site(s)
-  const directory = useMemo(() => allDirectory.filter(r => isSitePermitted(r.siteName, siteFilter)), [allDirectory, siteFilter, isSitePermitted]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [followUps, setFollowUps] = useState<AbsenceFollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const today = todayIso();
+
+  // Filters (shared where they make sense across the three tabs)
+  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
+  useEffect(() => { setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
+  const [search, setSearch] = useState('');
+  const [room, setRoom] = useState('all');
+  const [rollDate, setRollDate] = useState(todayIso());
+  const [rollStatus, setRollStatus] = useState<'all' | 'Present' | 'Absent' | 'Not recorded'>('all');
+  const [recFrom, setRecFrom] = useState(addDays(todayIso(), -30));
+  const [recTo, setRecTo] = useState(todayIso());
+  const [recStatus, setRecStatus] = useState('all');
+  const [fuShow, setFuShow] = useState<'open' | 'all'>('open');
+  const [sortKey, setSortKey] = useState('date');
+  const [sortAsc, setSortAsc] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const [editFor, setEditFor] = useState<{ suId?: string; date?: string } | null>(null);
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
+  const [followUpFor, setFollowUpFor] = useState<AbsenceFollowUp | null>(null);
+  const [isSchemaOpen, setIsSchemaOpen] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [rollNotes, setRollNotes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -69,29 +111,110 @@ export const SUAttendanceTrackerView: React.FC = () => {
   }, [sites, isSitePermitted, canEdit, currentUserName]);
   useEffect(() => { load(); }, [load]);
 
+  // Every card, list and form works on the residents of the chosen site(s)
+  const directory = useMemo(() => allDirectory.filter(r => isSitePermitted(r.siteName, siteFilter)), [allDirectory, siteFilter, isSitePermitted]);
+  const byId = useMemo(() => new Map(directory.map(d => [d.su.id, d] as const)), [directory]);
   const entries: AttendanceEntry[] = useMemo(
     () => records.map(r => ({ suId: r.suId, date: r.attendanceDate, status: r.attendanceStatus, updatedAt: r.updatedAt })),
     [records]
   );
-  const byId = useMemo(() => new Map(directory.map(d => [d.su.id, d] as const)), [directory]);
+  const rooms = useMemo(() => Array.from(new Set(directory.map(d => d.roomNo).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [directory]);
 
   const summary = useMemo(() => {
     const ids = directory.map(d => d.su.id);
     const counts = dayCounts(ids, entries, today);
     const episodes = ids.map(id => currentAbsenceEpisode(id, entries, today, policy)).filter(Boolean);
-    const open = followUps.filter(f => f.status !== 'Resolved');
+    const open = followUps.filter(f => f.status !== 'Resolved' && byId.has(f.suId));
     return {
       ...counts,
       followUpRequired: open.length,
-      threshold3: episodes.filter(e => e!.thresholdsReached.includes(3)).length,
-      threshold7: episodes.filter(e => e!.thresholdsReached.includes(7)).length,
+      threshold3: episodes.filter(e => e!.thresholdsReached.includes(policy.thresholds[0])).length,
+      threshold7: episodes.filter(e => e!.thresholdsReached.includes(policy.thresholds[1])).length,
       overdue: open.filter(f => f.dueDate && String(f.dueDate).slice(0, 10) < today).length
     };
-  }, [directory, entries, followUps, today]);
+  }, [directory, entries, followUps, byId, today]);
 
-  const [editFor, setEditFor] = useState<{ suId?: string; date?: string } | null>(null);
-  const [historyFor, setHistoryFor] = useState<string | null>(null);
-  const [followUpFor, setFollowUpFor] = useState<AbsenceFollowUp | null>(null);
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (d: SuDirectoryRow) => !q || `${d.su.firstName} ${d.su.lastName} ${d.su.externalReference || ''} ${d.su.suReference} ${d.roomNo}`.toLowerCase().includes(q);
+
+  // ---- Daily roll rows
+  const forDay = useMemo(() => new Map(records.filter(r => r.attendanceDate === rollDate).map(r => [r.suId, r] as const)), [records, rollDate]);
+  const rollRows = useMemo(() => directory
+    .filter(d => room === 'all' || d.roomNo === room)
+    .filter(d => rollStatus === 'all' || (forDay.get(d.su.id)?.attendanceStatus || 'Not recorded') === rollStatus)
+    .filter(matchesSearch)
+    .sort((a, b) => a.roomNo.localeCompare(b.roomNo, undefined, { numeric: true }) || a.su.lastName.localeCompare(b.su.lastName)),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [directory, room, rollStatus, forDay, q]);
+
+  // ---- Records rows
+  const recRows = useMemo<RecRow[]>(() => {
+    const val = REC_SORT[sortKey] || REC_SORT.date;
+    return records
+      .filter(r => byId.has(r.suId))
+      .map(r => ({ r, d: byId.get(r.suId)! }))
+      .filter(({ r }) => (!recFrom || r.attendanceDate >= recFrom) && (!recTo || r.attendanceDate <= recTo))
+      .filter(({ r }) => recStatus === 'all' || r.attendanceStatus === recStatus)
+      .filter(({ d }) => room === 'all' || d.roomNo === room)
+      .filter(({ d }) => matchesSearch(d))
+      .sort((a, b) => val(a).localeCompare(val(b), undefined, { numeric: true, sensitivity: 'base' }) * (sortAsc ? 1 : -1));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records, byId, recFrom, recTo, recStatus, room, q, sortKey, sortAsc]);
+
+  // ---- Follow-up rows
+  const fuRows = useMemo(() => followUps
+    .filter(f => byId.has(f.suId) && (fuShow === 'all' || f.status !== 'Resolved'))
+    .filter(f => matchesSearch(byId.get(f.suId)!))
+    .sort((a, b) => (b.thresholdDays - a.thresholdDays) || String(b.absenceStartDate).localeCompare(String(a.absenceStartDate))),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [followUps, byId, fuShow, q]);
+
+  const total = tab === 'roll' ? rollRows.length : tab === 'records' ? recRows.length : fuRows.length;
+  const from = (page - 1) * pageSize;
+
+  const defaultRecFrom = addDays(todayIso(), -30);
+  const filtersActive =
+    siteFilter !== defaultSiteFilter || !!search || room !== 'all' ||
+    (tab === 'roll' && (rollDate !== todayIso() || rollStatus !== 'all')) ||
+    (tab === 'records' && (recFrom !== defaultRecFrom || recTo !== todayIso() || recStatus !== 'all')) ||
+    (tab === 'followups' && fuShow !== 'open');
+  const resetFilters = () => {
+    setSiteFilter(defaultSiteFilter); setSearch(''); setRoom('all'); setRollDate(todayIso()); setRollStatus('all');
+    setRecFrom(defaultRecFrom); setRecTo(todayIso()); setRecStatus('all'); setFuShow('open'); setPage(1);
+  };
+  const switchTab = (id: string) => { setTab(id as Tab); setPage(1); };
+  const sortBy = (k: string) => { if (k === sortKey) setSortAsc(a => !a); else { setSortKey(k); setSortAsc(true); } setPage(1); };
+
+  const mark = async (suId: string, status: 'Present' | 'Absent') => {
+    setSaving(suId);
+    const res = await suTrackerService.saveAttendance({ suId, date: rollDate, status, notes: rollNotes[suId] ?? forDay.get(suId)?.additionalNotes ?? '' }, currentUserName);
+    setSaving(null);
+    if (!res.success) setNotice(res.error || 'Could not save.'); else { setNotice(null); load(); }
+  };
+
+  const confirmDelete = (r: AttendanceRecord, name: string) => requestConfirmation({
+    title: 'Delete attendance record',
+    message: `Delete the attendance record for ${name} on ${formatUkDate(r.attendanceDate)}? It will then show as Not recorded.`,
+    confirmLabel: 'Delete record',
+    isDanger: true,
+    onConfirm: async () => {
+      const res = await suTrackerService.deleteAttendance(r.id);
+      if (!res.success) setNotice(res.error || 'Could not delete the record.'); else load();
+    }
+  });
+
+  const recCell = (key: string, { r, d }: RecRow) => {
+    switch (key) {
+      case 'port': return <span className="font-mono text-[11px]">{d.su.externalReference || d.su.suReference}</span>;
+      case 'name': return <span className="font-medium whitespace-nowrap">{d.su.firstName} {d.su.lastName}</span>;
+      case 'dob': return d.su.dateOfBirth ? <span className="font-mono text-[11px]">{formatUkDate(d.su.dateOfBirth)}</span> : <span className="text-neutral-400 italic">Not set</span>;
+      case 'room': return d.roomNo || <span className="text-neutral-400 italic">Not placed</span>;
+      case 'date': return <span className="font-mono text-[11px]">{formatUkDate(r.attendanceDate)}</span>;
+      case 'status': return <span className={`inline-block px-2 py-0.5 rounded border font-semibold ${statusBadge(r.attendanceStatus)}`}>{r.attendanceStatus}</span>;
+      case 'notes': return <span className="block max-w-[260px]">{canSeeNotes ? (r.additionalNotes || '') : <span className="text-neutral-400 italic">Restricted</span>}</span>;
+      default: return '';
+    }
+  };
 
   const cards: Array<[string, number, string]> = [
     ['Present today', summary.present, 'text-emerald-700'],
@@ -103,73 +226,203 @@ export const SUAttendanceTrackerView: React.FC = () => {
     ['Overdue follow-up actions', summary.overdue, 'text-red-700']
   ];
 
-  const tabBtn = (id: Tab, label: string) => (
-    <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-      className={`px-4 py-2 text-xs font-semibold border-b-2 cursor-pointer ${tab === id ? 'border-[#0d9488] text-teal-800' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}>{label}</button>
+  const countLabel = loading || error ? undefined
+    : tab === 'roll' ? `${rollRows.length} Residents` : tab === 'records' ? `${recRows.length} Records` : `${fuRows.length} Follow-ups`;
+
+  const recExportCols = [
+    { id: 'port', label: 'Port reference', get: (x: RecRow) => x.d.su.externalReference || x.d.su.suReference },
+    { id: 'name', label: 'Name', get: (x: RecRow) => `${x.d.su.firstName} ${x.d.su.lastName}` },
+    { id: 'dob', label: 'DOB', get: (x: RecRow) => formatUkDate(x.d.su.dateOfBirth) },
+    { id: 'room', label: 'Room No', get: (x: RecRow) => x.d.roomNo },
+    { id: 'date', label: 'Date', get: (x: RecRow) => formatUkDate(x.r.attendanceDate) },
+    { id: 'status', label: 'Attendance', get: (x: RecRow) => x.r.attendanceStatus },
+    { id: 'notes', label: 'Additional notes', get: (x: RecRow) => (canSeeNotes ? x.r.additionalNotes : 'Restricted') }
+  ];
+
+  const dateField = (label: string, value: string, onChange: (v: string) => void, max?: string) => (
+    <label className="flex items-center gap-2 text-[11px] text-neutral-500">
+      <span className="whitespace-nowrap">{label}</span>
+      <input type="date" className={filterInputCls} value={value} max={max} onChange={e => { onChange(e.target.value); setPage(1); }} aria-label={label} />
+    </label>
   );
 
   return (
-    <div className="space-y-3.5">
-      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs"><CalendarCheck className="w-5 h-5" /></div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-[#242424] tracking-tight">SU Attendance Tracker</h1>
-                {!loading && !error && <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">{directory.length} Residents</span>}
-              </div>
-              <p className="text-xs text-neutral-500">Daily attendance, absence monitoring and follow-up. A day with no record is “Not recorded”, never an absence.</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-56"><SiteFilterSelect value={siteFilter} onChange={setSiteFilter} /></div>
-            <ResetFiltersButton onClick={() => setSiteFilter(defaultSiteFilter)} active={siteFilter !== defaultSiteFilter} />
-            <RefreshButton onClick={load} loading={loading} />
-            {canEdit && (
-              <button type="button" onClick={() => setEditFor({})} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs cursor-pointer">
-                <Plus className="w-3.5 h-3.5" /> + Record Attendance
-              </button>
+    <div className="space-y-4">
+      <TrackerHeader
+        icon={<CalendarCheck className="w-5 h-5" />}
+        title="SU Attendance Tracker"
+        countLabel={countLabel}
+        description="Daily attendance, absence monitoring and follow-up. A day with no record is “Not recorded”, never an absence."
+        actions={
+          <>
+            {currentUserRole === 'Super Admin' && tab === 'records' && <CustomizeTableButton onClick={() => setIsSchemaOpen(true)} />}
+            {tab === 'records' && (
+              <TrackerExport<RecRow>
+                moduleName="SU Attendance" filename="SU_Attendance" title="SU Attendance Records"
+                allRows={records.filter(r => byId.has(r.suId)).map(r => ({ r, d: byId.get(r.suId)! }))} filteredRows={recRows}
+                dateOf={x => x.r.attendanceDate} columns={recExportCols}
+              />
             )}
-          </div>
-        </div>
-        {!loading && !error && (
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2.5 mt-3">
-            {cards.map(([label, n, cls]) => (
-              <div key={label} className="border border-[#e5e5e5] rounded-xs px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wider text-neutral-500 leading-tight">{label}</div>
-                <div className={`text-xl font-bold ${cls}`}>{n}</div>
-              </div>
-            ))}
-          </div>
+            {canEdit && <PrimaryButton onClick={() => setEditFor({})} label="+ Record Attendance" />}
+          </>
+        }
+        tabs={
+          <TabSwitcher label="Attendance sections" active={tab} onChange={switchTab}
+            tabs={[{ id: 'roll', label: 'Daily Roll' }, { id: 'records', label: 'Attendance Records' }, { id: 'followups', label: `Absence Follow-ups (${summary.followUpRequired})` }]} />
+        }
+        summary={!loading && !error ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2.5 mt-3">
+              {cards.map(([label, n, cls]) => (
+                <div key={label} className="border border-[#e5e5e5] rounded-xs px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wider text-neutral-500 leading-tight">{label}</div>
+                  <div className={`text-xl font-bold ${cls}`}>{n}</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-neutral-400 mt-2">
+              Absence thresholds: {policy.thresholds.join(' and ')} consecutive recorded days. Counts use recorded attendance dates only, and are for {formatUkDate(today)}.
+            </p>
+          </>
+        ) : null}
+        notice={notice ? <div className="mt-3 p-2 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xs">{notice}</div> : null}
+        filtersClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5"
+        filters={
+          <>
+            <div className="relative lg:col-span-2">
+              <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search Resident, Port Ref, Room..." className={`${filterInputCls} pl-9`} aria-label="Search" />
+            </div>
+            <SiteFilterSelect value={siteFilter} onChange={v => { setSiteFilter(v); setPage(1); }} />
+            {tab !== 'followups' && (
+              <select className={filterInputCls} value={room} onChange={e => { setRoom(e.target.value); setPage(1); }} aria-label="Room">
+                <option value="all">All Rooms</option>{rooms.map(r => <option key={r} value={r}>Room {r}</option>)}
+              </select>
+            )}
+            {tab === 'roll' && (
+              <>
+                {dateField('Date', rollDate, v => setRollDate(v || todayIso()), todayIso())}
+                <select className={filterInputCls} value={rollStatus} onChange={e => { setRollStatus(e.target.value as any); setPage(1); }} aria-label="Status">
+                  <option value="all">All Statuses</option><option>Present</option><option>Absent</option><option>Not recorded</option>
+                </select>
+              </>
+            )}
+            {tab === 'records' && (
+              <>
+                {dateField('From', recFrom, setRecFrom)}
+                {dateField('To', recTo, setRecTo)}
+                <select className={filterInputCls} value={recStatus} onChange={e => { setRecStatus(e.target.value); setPage(1); }} aria-label="Attendance status">
+                  <option value="all">All Statuses</option><option>Present</option><option>Absent</option>
+                </select>
+              </>
+            )}
+            {tab === 'followups' && (
+              <select className={filterInputCls} value={fuShow} onChange={e => { setFuShow(e.target.value as any); setPage(1); }} aria-label="Show">
+                <option value="open">Open and in progress</option><option value="all">All, including resolved</option>
+              </select>
+            )}
+            <div className="lg:col-span-6 flex justify-end"><ResetFiltersButton onClick={resetFilters} active={filtersActive} /></div>
+          </>
+        }
+      />
+
+      <TablePanel totalItems={total} page={page} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} error={error} onRetry={load} errorTitle="Could not load attendance">
+        {tab === 'roll' && (
+          <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+            <thead><tr className={theadRowCls}>
+              {['Room No', 'Port reference', 'Name', `Status for ${formatUkDate(rollDate)}`, 'Notes'].map(h => <th key={h} className="p-2.5">{h}</th>)}
+              {canEdit && <th className="p-2.5 text-right sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Record</th>}
+            </tr></thead>
+            <tbody className={tbodyCls}>
+              {loading ? <SkeletonRows cols={canEdit ? 6 : 5} /> : rollRows.length === 0 ? (
+                <EmptyRow colSpan={6} icon={<CalendarCheck className="w-8 h-8" />} title="No Service Users to show" hint="Change the site or filters to see residents." />
+              ) : rollRows.slice(from, from + pageSize).map(d => {
+                const rec = forDay.get(d.su.id);
+                const busy = saving === d.su.id;
+                return (
+                  <tr key={d.su.id} className="hover:bg-[#f3f8fd] transition-colors">
+                    <td className={tdCls}>{d.roomNo || <span className="text-neutral-400 italic">Not placed</span>}</td>
+                    <td className={`${tdCls} font-mono text-[11px]`}>{d.su.externalReference || d.su.suReference}</td>
+                    <td className={`${tdCls} font-medium`}><button type="button" className="hover:underline text-left cursor-pointer" onClick={() => setHistoryFor(d.su.id)}>{d.su.firstName} {d.su.lastName}</button></td>
+                    <td className={tdCls}><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${statusBadge(rec?.attendanceStatus)}`}>{rec?.attendanceStatus || 'Not recorded'}</span></td>
+                    <td className={`${tdCls} min-w-[200px]`}>
+                      {canEdit && canSeeNotes
+                        ? <input className={inputCls} placeholder="Optional note" value={rollNotes[d.su.id] ?? rec?.additionalNotes ?? ''} onChange={e => setRollNotes(n => ({ ...n, [d.su.id]: e.target.value }))} aria-label={`Note for ${d.su.firstName} ${d.su.lastName}`} />
+                        : <span className="text-neutral-500">{canSeeNotes ? rec?.additionalNotes || '' : (rec ? 'Restricted' : '')}</span>}
+                    </td>
+                    {canEdit && (
+                      <td className={actionsTdCls}>
+                        <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Present')} className={`px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}`}>Present</button>
+                        <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Absent')} className={`ml-1.5 px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Absent' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>Absent</button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
-        {notice && <div className="mt-3 p-2 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xs">{notice}</div>}
-        <p className="text-[10px] text-neutral-400 mt-2">
-          Absence thresholds: {policy.thresholds.join(' and ')} consecutive recorded days. Counts use recorded attendance dates only, and are for {formatUkDate(today)}.
-        </p>
-      </div>
 
-      <div role="tablist" aria-label="Attendance sections" className="flex items-center gap-1 border-b border-[#e5e5e5] bg-white px-2 rounded-xs">
-        {tabBtn('roll', 'Daily roll')}{tabBtn('records', 'Attendance records')}{tabBtn('followups', `Absence follow-ups (${summary.followUpRequired})`)}
-      </div>
+        {tab === 'records' && (
+          <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+            <thead><tr className={theadRowCls}>
+              {visibleColumns.map(col => <SortableTh key={String(col.key)} label={col.label} active={sortKey === col.key} asc={sortAsc} onSort={() => sortBy(String(col.key))} />)}
+              <ActionsTh />
+            </tr></thead>
+            <tbody className={tbodyCls}>
+              {loading ? <SkeletonRows cols={visibleColumns.length + 1} /> : recRows.length === 0 ? (
+                <EmptyRow colSpan={visibleColumns.length + 1} icon={<CalendarCheck className="w-8 h-8" />} title="No attendance records found" hint="Use the Daily Roll or '+ Record Attendance' to record attendance." />
+              ) : recRows.slice(from, from + pageSize).map(x => (
+                <tr key={x.r.id} className="hover:bg-[#f3f8fd] transition-colors">
+                  {visibleColumns.map(col => <td key={String(col.key)} className={tdCls}>{recCell(String(col.key), x)}</td>)}
+                  <td className={actionsTdCls}>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button type="button" title="Attendance history" onClick={() => setHistoryFor(x.r.suId)} className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors cursor-pointer"><History className="w-3.5 h-3.5" /></button>
+                      {canEdit && <button type="button" title="Edit" onClick={() => setEditFor({ suId: x.r.suId, date: x.r.attendanceDate })} className="p-1 hover:bg-[#f0fdfa] text-[#0d9488] rounded-xs transition-colors cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}
+                      {canDeleteRecord() && <button type="button" title="Delete" onClick={() => confirmDelete(x.r, `${x.d.su.firstName} ${x.d.su.lastName}`)} className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs transition-colors cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-      {error ? (
-        <div className="bg-white border border-[#e5e5e5] rounded-xs p-6 text-center">
-          <AlertCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
-          <p className="text-xs font-semibold text-red-700">Could not load attendance</p>
-          <p className="text-[11px] text-neutral-500 mt-1 max-w-xl mx-auto break-words">{error}</p>
-          <button type="button" onClick={load} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#8a8886] rounded-xs text-xs font-semibold bg-white hover:bg-[#f3f2f1] cursor-pointer"><RefreshCw className="w-3.5 h-3.5" /> Retry</button>
-        </div>
-      ) : loading ? (
-        <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-4 bg-neutral-100 rounded animate-pulse" />)}</div>
-      ) : tab === 'roll' ? (
-        <DailyRoll directory={directory} records={records} canEdit={canEdit} user={currentUserName} onChanged={load} onHistory={setHistoryFor} />
-      ) : tab === 'records' ? (
-        <RecordsTable directory={directory} records={records} canEdit={canEdit} canDelete={canDeleteRecord()} canSeeNotes={canSeeNotes} onEdit={(suId, date) => setEditFor({ suId, date })} onHistory={setHistoryFor}
-          onDelete={(r, name) => requestConfirmation({ title: 'Delete attendance record', message: `Delete the attendance record for ${name} on ${formatUkDate(r.attendanceDate)}? It will then show as Not recorded.`, confirmLabel: 'Delete record', isDanger: true, onConfirm: async () => { const res = await suTrackerService.deleteAttendance(r.id); if (!res.success) setNotice(res.error || 'Could not delete the record.'); else load(); } })} />
-      ) : (
-        <FollowUpsTable followUps={followUps} byId={byId} canEdit={canEdit} onOpen={setFollowUpFor} />
-      )}
+        {tab === 'followups' && (
+          <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
+            <thead><tr className={theadRowCls}>
+              {['Port reference', 'Name', 'Room No', 'Absent since', 'Days', 'Threshold', 'Status', 'Assigned to', 'Last action'].map(h => <th key={h} className="p-2.5">{h}</th>)}
+              <ActionsTh />
+            </tr></thead>
+            <tbody className={tbodyCls}>
+              {loading ? <SkeletonRows cols={10} /> : fuRows.length === 0 ? (
+                <EmptyRow colSpan={10} icon={<CalendarCheck className="w-8 h-8" />} title="No absence follow-ups" hint="A follow-up opens automatically when a resident's recorded absence reaches a threshold." />
+              ) : fuRows.slice(from, from + pageSize).map(f => {
+                const d = byId.get(f.suId)!;
+                const overdue = f.status !== 'Resolved' && f.dueDate && String(f.dueDate).slice(0, 10) < today;
+                return (
+                  <tr key={f.id} className={overdue ? 'bg-red-50/60' : 'hover:bg-[#f3f8fd] transition-colors'}>
+                    <td className={`${tdCls} font-mono text-[11px]`}>{d.su.externalReference || d.su.suReference}</td>
+                    <td className={`${tdCls} font-medium whitespace-nowrap`}>{d.su.firstName} {d.su.lastName}</td>
+                    <td className={tdCls}>{d.roomNo || '—'}</td>
+                    <td className={`${tdCls} font-mono text-[11px]`}>{formatUkDate(String(f.absenceStartDate).slice(0, 10))}</td>
+                    <td className={tdCls}>{f.consecutiveDays ?? ''}</td>
+                    <td className={tdCls}><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${f.thresholdDays >= 7 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>{f.thresholdDays} days</span></td>
+                    <td className={tdCls}>{f.status}{overdue && <span className="ml-1.5 text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded">OVERDUE</span>}</td>
+                    <td className={tdCls}>{f.assignedTo || <span className="text-neutral-400 italic">Unassigned</span>}</td>
+                    <td className={`${tdCls} text-[11px] text-neutral-500`}>{f.lastActionAt ? new Date(f.lastActionAt).toLocaleString('en-GB') : '—'}</td>
+                    <td className={actionsTdCls}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button type="button" title="Open follow-up" onClick={() => setFollowUpFor(f)} className="p-1 hover:bg-[#f0fdfa] text-[#0d9488] rounded-xs transition-colors cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </TablePanel>
 
       {editFor && (
         <AttendanceForm directory={directory} records={records} initial={editFor} user={currentUserName} canSeeNotes={canSeeNotes}
@@ -182,220 +435,16 @@ export const SUAttendanceTrackerView: React.FC = () => {
         <FollowUpDialog followUp={followUpFor} row={byId.get(followUpFor.suId)} user={currentUserName} canEdit={canEdit}
           onClose={() => setFollowUpFor(null)} onSaved={() => { setFollowUpFor(null); load(); }} />
       )}
-    </div>
-  );
-};
 
-/* ------------------------------------------------------------------------------------------------ Daily roll */
-const DailyRoll: React.FC<{
-  directory: SuDirectoryRow[]; records: AttendanceRecord[]; canEdit: boolean; user: string; onChanged: () => void; onHistory: (id: string) => void;
-}> = ({ directory, records, canEdit, user, onChanged, onHistory }) => {
-  const [date, setDate] = useState(todayIso());
-  const [search, setSearch] = useState('');
-  const [room, setRoom] = useState('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'Present' | 'Absent' | 'Not recorded'>('all');
-  const [saving, setSaving] = useState<string | null>(null);
-  const [err, setErr] = useState('');
-  const [notes, setNotes] = useState<Record<string, string>>({});
-
-  const forDay = useMemo(() => new Map(records.filter(r => r.attendanceDate === date).map(r => [r.suId, r] as const)), [records, date]);
-  const rooms = useMemo(() => Array.from(new Set(directory.map(d => d.roomNo).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [directory]);
-  const rows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return directory
-      .filter(d => room === 'all' || d.roomNo === room)
-      .filter(d => statusFilter === 'all' || (forDay.get(d.su.id)?.attendanceStatus || 'Not recorded') === statusFilter)
-      .filter(d => !q || `${d.su.firstName} ${d.su.lastName} ${d.su.externalReference || ''} ${d.su.suReference} ${d.roomNo}`.toLowerCase().includes(q))
-      .sort((a, b) => a.roomNo.localeCompare(b.roomNo, undefined, { numeric: true }) || a.su.lastName.localeCompare(b.su.lastName));
-  }, [directory, search, room, statusFilter, forDay]);
-
-  const mark = async (suId: string, status: 'Present' | 'Absent') => {
-    setSaving(suId); setErr('');
-    const res = await suTrackerService.saveAttendance({ suId, date, status, notes: notes[suId] ?? forDay.get(suId)?.additionalNotes ?? '' }, user);
-    setSaving(null);
-    if (!res.success) setErr(res.error || 'Could not save.'); else onChanged();
-  };
-
-  return (
-    <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs">
-      <div className="p-3 grid grid-cols-1 sm:grid-cols-5 gap-2.5 border-b border-[#e5e5e5]">
-        <div><label className="block text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Date</label><input type="date" className={inputCls} value={date} max={todayIso()} onChange={e => setDate(e.target.value || todayIso())} /></div>
-        <div className="relative self-end"><Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" /><input className={`${inputCls} pl-8`} placeholder="Search resident, room..." value={search} onChange={e => setSearch(e.target.value)} aria-label="Search" /></div>
-        <select className={`${inputCls} self-end`} value={room} onChange={e => setRoom(e.target.value)} aria-label="Room"><option value="all">All rooms</option>{rooms.map(r => <option key={r} value={r}>Room {r}</option>)}</select>
-        <select className={`${inputCls} self-end`} value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} aria-label="Status"><option value="all">All statuses</option><option>Present</option><option>Absent</option><option>Not recorded</option></select>
-        <div className="self-end"><ResetFiltersButton onClick={() => { setDate(todayIso()); setSearch(''); setRoom('all'); setStatusFilter('all'); }} active={date !== todayIso() || !!search || room !== 'all' || statusFilter !== 'all'} /></div>
-      </div>
-      {err && <div className="m-3 p-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xs" role="alert">{err}</div>}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs border-collapse">
-          <thead><tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold">
-            {['Room No', 'Port reference', 'Name', 'Status for ' + formatUkDate(date), 'Notes'].map(h => <th key={h} className="py-2.5 px-3 whitespace-nowrap">{h}</th>)}
-            {canEdit && <th className="py-2.5 px-3 text-right">Record</th>}
-          </tr></thead>
-          <tbody className="divide-y divide-[#f0f0f0]">
-            {rows.length === 0 ? <tr><td colSpan={6} className="py-10 text-center text-neutral-500">No Service Users to show.</td></tr> : rows.map(d => {
-              const rec = forDay.get(d.su.id);
-              const busy = saving === d.su.id;
-              return (
-                <tr key={d.su.id} className="hover:bg-[#fbfbfa]">
-                  <td className="py-2 px-3">{d.roomNo || <span className="text-neutral-400 italic">Not placed</span>}</td>
-                  <td className="py-2 px-3 font-mono text-[11px]">{d.su.externalReference || d.su.suReference}</td>
-                  <td className="py-2 px-3 font-medium"><button type="button" className="hover:underline text-left cursor-pointer" onClick={() => onHistory(d.su.id)}>{d.su.firstName} {d.su.lastName}</button></td>
-                  <td className="py-2 px-3"><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${statusBadge(rec?.attendanceStatus)}`}>{rec?.attendanceStatus || 'Not recorded'}</span></td>
-                  <td className="py-2 px-3 min-w-[180px]">
-                    {canEdit ? <input className={inputCls} placeholder="Optional note" value={notes[d.su.id] ?? rec?.additionalNotes ?? ''} onChange={e => setNotes(n => ({ ...n, [d.su.id]: e.target.value }))} aria-label={`Note for ${d.su.firstName} ${d.su.lastName}`} />
-                      : <span className="text-neutral-500">{rec?.additionalNotes || ''}</span>}
-                  </td>
-                  {canEdit && (
-                    <td className="py-2 px-3 text-right whitespace-nowrap">
-                      <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Present')} className={`px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}`}>Present</button>
-                      <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Absent')} className={`ml-1.5 px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Absent' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>Absent</button>
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-/* ------------------------------------------------------------------------------------------------ Records */
-const RecordsTable: React.FC<{
-  directory: SuDirectoryRow[]; records: AttendanceRecord[]; canEdit: boolean; canDelete: boolean; canSeeNotes: boolean;
-  onEdit: (suId: string, date: string) => void; onHistory: (id: string) => void; onDelete: (r: AttendanceRecord, name: string) => void;
-}> = ({ directory, records, canEdit, canDelete, canSeeNotes, onEdit, onHistory, onDelete }) => {
-  const [from, setFrom] = useState(addDays(todayIso(), -30));
-  const [to, setTo] = useState(todayIso());
-  const [status, setStatus] = useState('all');
-  const [room, setRoom] = useState('all');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(15);
-  const byId = useMemo(() => new Map(directory.map(d => [d.su.id, d] as const)), [directory]);
-  const rooms = useMemo(() => Array.from(new Set(directory.map(d => d.roomNo).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [directory]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return records
-      .filter(r => byId.has(r.suId))
-      .filter(r => (!from || r.attendanceDate >= from) && (!to || r.attendanceDate <= to))
-      .filter(r => status === 'all' || r.attendanceStatus === status)
-      .filter(r => room === 'all' || byId.get(r.suId)!.roomNo === room)
-      .filter(r => { const d = byId.get(r.suId)!; return !q || `${d.su.firstName} ${d.su.lastName} ${d.su.externalReference || ''} ${d.su.suReference}`.toLowerCase().includes(q); })
-      .sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate) || (byId.get(a.suId)!.su.lastName).localeCompare(byId.get(b.suId)!.su.lastName));
-  }, [records, byId, from, to, status, room, search]);
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
-  const reset = () => setPage(1);
-
-  return (
-    <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs">
-      <div className="p-3 grid grid-cols-2 lg:grid-cols-5 gap-2.5 border-b border-[#e5e5e5]">
-        <div><label className="block text-[10px] uppercase tracking-wider text-neutral-500 mb-1">From</label><input type="date" className={inputCls} value={from} onChange={e => { setFrom(e.target.value); reset(); }} /></div>
-        <div><label className="block text-[10px] uppercase tracking-wider text-neutral-500 mb-1">To</label><input type="date" className={inputCls} value={to} onChange={e => { setTo(e.target.value); reset(); }} /></div>
-        <select className={`${inputCls} self-end`} value={status} onChange={e => { setStatus(e.target.value); reset(); }} aria-label="Attendance status"><option value="all">All statuses</option><option>Present</option><option>Absent</option></select>
-        <select className={`${inputCls} self-end`} value={room} onChange={e => { setRoom(e.target.value); reset(); }} aria-label="Room"><option value="all">All rooms</option>{rooms.map(r => <option key={r} value={r}>Room {r}</option>)}</select>
-        <div className="relative self-end"><Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" /><input className={`${inputCls} pl-8`} placeholder="Search resident..." value={search} onChange={e => { setSearch(e.target.value); reset(); }} aria-label="Search" /></div>
-        <div className="col-span-2 lg:col-span-5 flex items-center justify-between gap-2">
-          <span className="text-[11px] text-neutral-500">{filtered.length} record{filtered.length === 1 ? '' : 's'}</span>
-          <div className="flex items-center gap-2">
-            <ResetFiltersButton onClick={() => { setFrom(addDays(todayIso(), -30)); setTo(todayIso()); setStatus('all'); setRoom('all'); setSearch(''); reset(); }} active={status !== 'all' || room !== 'all' || !!search || from !== addDays(todayIso(), -30) || to !== todayIso()} />
-            <TrackerExport<AttendanceRecord>
-              moduleName="SU Attendance"
-              filename="SU_Attendance"
-              title="SU Attendance Records"
-              allRows={records.filter(r => byId.has(r.suId))}
-              filteredRows={filtered}
-              dateOf={r => r.attendanceDate}
-              columns={[
-                { id: 'port', label: 'Port reference', get: r => byId.get(r.suId)?.su.externalReference || byId.get(r.suId)?.su.suReference },
-                { id: 'name', label: 'Name', get: r => { const s = byId.get(r.suId)?.su; return s ? `${s.firstName} ${s.lastName}` : ''; } },
-                { id: 'dob', label: 'DOB', get: r => formatUkDate(byId.get(r.suId)?.su.dateOfBirth) },
-                { id: 'room', label: 'Room No', get: r => byId.get(r.suId)?.roomNo },
-                { id: 'date', label: 'Date', get: r => formatUkDate(r.attendanceDate) },
-                { id: 'status', label: 'Attendance', get: r => r.attendanceStatus },
-                { id: 'notes', label: 'Additional notes', get: r => (canSeeNotes ? r.additionalNotes : 'Restricted') }
-              ]}
-            />
-          </div>
-        </div>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs border-collapse">
-          <thead><tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold">
-            {['Port reference', 'Name', 'DOB', 'Room No', 'Date', 'Attendance', 'Additional notes'].map(h => <th key={h} className="py-2.5 px-3 whitespace-nowrap">{h}</th>)}
-            <th className="py-2.5 px-3 text-right">Actions</th>
-          </tr></thead>
-          <tbody className="divide-y divide-[#f0f0f0]">
-            {paged.length === 0 ? <tr><td colSpan={8} className="py-10 text-center text-neutral-500">No attendance records match.</td></tr> : paged.map(r => {
-              const d = byId.get(r.suId)!;
-              return (
-                <tr key={r.id} className="hover:bg-[#fbfbfa]">
-                  <td className="py-2.5 px-3 font-mono text-[11px]">{d.su.externalReference || d.su.suReference}</td>
-                  <td className="py-2.5 px-3 font-medium whitespace-nowrap">{d.su.firstName} {d.su.lastName}</td>
-                  <td className="py-2.5 px-3 font-mono text-[11px]">{formatUkDate(d.su.dateOfBirth) || <span className="text-neutral-400 italic font-sans">Not set</span>}</td>
-                  <td className="py-2.5 px-3">{d.roomNo || <span className="text-neutral-400 italic">Not placed</span>}</td>
-                  <td className="py-2.5 px-3 font-mono text-[11px]">{formatUkDate(r.attendanceDate)}</td>
-                  <td className="py-2.5 px-3"><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${statusBadge(r.attendanceStatus)}`}>{r.attendanceStatus}</span></td>
-                  <td className="py-2.5 px-3 max-w-[260px]">{canSeeNotes ? (r.additionalNotes || '') : <span className="text-neutral-400 italic">Restricted</span>}</td>
-                  <td className="py-2.5 px-3 text-right"><div className="flex justify-end gap-1">
-                    <button type="button" title="History" onClick={() => onHistory(r.suId)} className="p-1 text-[#605e5c] hover:bg-[#edebe9] rounded-xs cursor-pointer"><History className="w-3.5 h-3.5" /></button>
-                    {canEdit && <button type="button" title="Edit" onClick={() => onEdit(r.suId, r.attendanceDate)} className="p-1 text-[#605e5c] hover:bg-[#edebe9] rounded-xs cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>}
-                    {canDelete && <button type="button" title="Delete" onClick={() => onDelete(r, `${d.su.firstName} ${d.su.lastName}`)} className="p-1 text-[#a4262c] hover:bg-[#fceef1] rounded-xs cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
-                  </div></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {filtered.length > 0 && <Pagination currentPage={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} onPageSizeChange={s => { setPageSize(s); setPage(1); }} />}
-    </div>
-  );
-};
-
-/* ------------------------------------------------------------------------------------------------ Follow-ups */
-const FollowUpsTable: React.FC<{ followUps: AbsenceFollowUp[]; byId: Map<string, SuDirectoryRow>; canEdit: boolean; onOpen: (f: AbsenceFollowUp) => void }> = ({ followUps, byId, onOpen }) => {
-  const today = todayIso();
-  const [show, setShow] = useState<'open' | 'all'>('open');
-  const list = followUps.filter(f => byId.has(f.suId) && (show === 'all' || f.status !== 'Resolved'))
-    .sort((a, b) => (b.thresholdDays - a.thresholdDays) || String(b.absenceStartDate).localeCompare(String(a.absenceStartDate)));
-  return (
-    <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs">
-      <div className="p-3 border-b border-[#e5e5e5] flex items-center gap-2">
-        <select className={`${inputCls} max-w-[200px]`} value={show} onChange={e => setShow(e.target.value as any)} aria-label="Show"><option value="open">Open and in progress</option><option value="all">All, including resolved</option></select>
-        <span className="text-[11px] text-neutral-500">A follow-up is opened automatically when a resident's recorded absence run reaches a threshold.</span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs border-collapse">
-          <thead><tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold">
-            {['Port reference', 'Name', 'Room No', 'Absent since', 'Days', 'Threshold', 'Status', 'Assigned to', 'Last action'].map(h => <th key={h} className="py-2.5 px-3 whitespace-nowrap">{h}</th>)}
-            <th className="py-2.5 px-3 text-right">Actions</th>
-          </tr></thead>
-          <tbody className="divide-y divide-[#f0f0f0]">
-            {list.length === 0 ? <tr><td colSpan={10} className="py-10 text-center text-neutral-500">No absence follow-ups.</td></tr> : list.map(f => {
-              const d = byId.get(f.suId)!;
-              const overdue = f.status !== 'Resolved' && f.dueDate && String(f.dueDate).slice(0, 10) < today;
-              return (
-                <tr key={f.id} className={overdue ? 'bg-red-50/60' : 'hover:bg-[#fbfbfa]'}>
-                  <td className="py-2.5 px-3 font-mono text-[11px]">{d.su.externalReference || d.su.suReference}</td>
-                  <td className="py-2.5 px-3 font-medium whitespace-nowrap">{d.su.firstName} {d.su.lastName}</td>
-                  <td className="py-2.5 px-3">{d.roomNo || '—'}</td>
-                  <td className="py-2.5 px-3 font-mono text-[11px]">{formatUkDate(String(f.absenceStartDate).slice(0, 10))}</td>
-                  <td className="py-2.5 px-3">{f.consecutiveDays ?? ''}</td>
-                  <td className="py-2.5 px-3"><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${f.thresholdDays >= 7 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>{f.thresholdDays} days</span></td>
-                  <td className="py-2.5 px-3">{f.status}{overdue && <span className="ml-1.5 text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded">OVERDUE</span>}</td>
-                  <td className="py-2.5 px-3">{f.assignedTo || <span className="text-neutral-400 italic">Unassigned</span>}</td>
-                  <td className="py-2.5 px-3 text-[11px] text-neutral-500">{f.lastActionAt ? new Date(f.lastActionAt).toLocaleString('en-GB') : '—'}</td>
-                  <td className="py-2.5 px-3 text-right"><button type="button" onClick={() => onOpen(f)} className="px-2.5 py-1 border border-[#8a8886] rounded-xs font-semibold bg-white hover:bg-[#f3f2f1] cursor-pointer">Open</button></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <TableSchemaEditorModal<any>
+        isOpen={isSchemaOpen}
+        onClose={() => setIsSchemaOpen(false)}
+        moduleTitle="SU Attendance Records"
+        columns={columns}
+        onSaveColumns={saveColumns}
+        onResetToDefault={resetToDefault}
+        currentUserRole={currentUserRole}
+      />
     </div>
   );
 };
@@ -482,6 +531,7 @@ const AttendanceForm: React.FC<{
       <div><label className="block text-neutral-600 mb-1">Additional notes</label>
         {canSeeNotes ? <textarea className={inputCls} rows={3} value={notes} onChange={e => setNotes(e.target.value)} /> : <div className={lockedCls}>Restricted</div>}
       </div>
+      <AuditAccountability userName={user} createdBy={existing?.recordedBy} updatedBy={existing?.updatedBy} updatedAt={existing?.updatedAt} />
       <div className="flex justify-end gap-2 pt-2 border-t border-[#e5e5e5]">
         <button type="button" onClick={onClose} className="px-3.5 py-1.5 border border-[#e5e5e5] rounded-xs text-neutral-700 hover:bg-neutral-100 cursor-pointer">Cancel</button>
         <button type="button" onClick={save} disabled={saving} className="px-4 py-1.5 bg-[#0d9488] hover:bg-teal-700 text-white rounded-xs font-semibold disabled:opacity-50 cursor-pointer">{saving ? 'Saving...' : 'Save'}</button>
@@ -556,6 +606,7 @@ const FollowUpDialog: React.FC<{ followUp: AbsenceFollowUp; row?: SuDirectoryRow
         </ul>
         {followUp.resolvedAt && <p className="text-[11px] text-neutral-500 mt-1">Resolved {new Date(followUp.resolvedAt).toLocaleString('en-GB')}</p>}
       </div>
+      <AuditAccountability userName={user} createdBy={followUp.createdBy} updatedBy={followUp.updatedBy} updatedAt={followUp.updatedAt} />
       <div className="flex justify-end gap-2 pt-2 border-t border-[#e5e5e5]">
         <button type="button" onClick={onClose} className="px-3.5 py-1.5 border border-[#e5e5e5] rounded-xs text-neutral-700 hover:bg-neutral-100 cursor-pointer">{canEdit ? 'Cancel' : 'Close'}</button>
         {canEdit && <button type="button" onClick={save} disabled={saving} className="px-4 py-1.5 bg-[#0d9488] hover:bg-teal-700 text-white rounded-xs font-semibold disabled:opacity-50 cursor-pointer">{saving ? 'Saving...' : 'Save'}</button>}
