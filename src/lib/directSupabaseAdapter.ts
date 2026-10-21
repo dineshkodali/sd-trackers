@@ -396,12 +396,30 @@ export async function directUpdateEntityRecord<T = any>(
     delete dbRow.created_by;
     delete dbRow.created_at;
 
-    const { data, error, status } = await writeWithSchemaFallback(mapping.table, dbRow, row =>
+    let { data, error, status } = await writeWithSchemaFallback(mapping.table, dbRow, row =>
       supabase.from(mapping.table).update(row).eq('id', targetId).select().maybeSingle()
     );
 
+    // A conflict (HTTP 409 / 23xxx) on the full-row rewrite: retry touching only the fields that changed, so a
+    // stale or invalid value elsewhere in the row (unique reference, foreign key) cannot block the change.
+    if (error && (status === 409 || /^23/.test(String(error.code || '')))) {
+      const patch = toDatabaseRow(mapping.table, { ...record, id: targetId }, activeUser?.userId);
+      const touched: Record<string, any> = {};
+      const changedColumns = new Set(Object.keys(toDatabaseRow(mapping.table, { ...record }, null)));
+      for (const k of changedColumns) if (k in patch && !['id', 'created_by', 'created_at', 'data'].includes(k)) touched[k] = patch[k];
+      if (Object.keys(touched).length > 0) {
+        console.warn(`[direct update] ${mapping.table} full-row update conflicted (${error.message}); retrying changed columns only.`);
+        const retry = await writeWithSchemaFallback(mapping.table, touched, row =>
+          supabase.from(mapping.table).update(row).eq('id', targetId).select().maybeSingle()
+        );
+        if (!retry.error) { data = retry.data; error = null as any; status = retry.status; }
+        else { error = retry.error; status = retry.status; }
+      }
+    }
+
     if (error) {
-      return { success: false, error: error.message, status };
+      const detail = [error.message, (error as any).details, (error as any).hint].filter(Boolean).join(' - ');
+      return { success: false, error: detail, status };
     }
 
     // If the update matched 0 rows (id not found in DB), try to upsert the full record instead

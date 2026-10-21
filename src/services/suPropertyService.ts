@@ -283,18 +283,22 @@ export const suPropertyService = {
         if (currentPlc) {
           // If room or property changed, transfer to the new room
           if (currentPlc.roomId !== placementOptions.roomId || currentPlc.propertyId !== placementOptions.propertyId) {
-            await this.moveServiceUser(
+            // The form pre-fills the old placement's start date; a move starts today unless a different date was typed.
+            const sameDateAsOld = (placementOptions.startDate || '').slice(0, 10) === (currentPlc.startDate || '').slice(0, 10);
+            const moveRes = await this.moveServiceUser(
               id,
               placementOptions.siteId,
               placementOptions.propertyId,
               placementOptions.roomId,
-              placementOptions.startDate || new Date().toISOString(),
+              placementOptions.startDate && !sameDateAsOld ? placementOptions.startDate : new Date().toISOString(),
               placementOptions.notes || 'Room reallocated during profile update'
             );
+            // Never report success when the room did not change.
+            if (!moveRes.success) return { success: false, error: moveRes.error || 'The room change could not be saved.' };
           }
         } else {
           // User previously had no placement, allocate now
-          await this.createPlacement({
+          const created = await this.createPlacement({
             suId: id,
             siteId: placementOptions.siteId,
             propertyId: placementOptions.propertyId,
@@ -303,6 +307,7 @@ export const suPropertyService = {
             notes: placementOptions.notes || 'Accommodation allocated during profile update',
             status: 'Active'
           });
+          if (!created.success) return { success: false, error: created.error || 'The room allocation could not be saved.' };
         }
       }
     }
@@ -672,11 +677,15 @@ export const suPropertyService = {
     if (res.success) {
       // 3. Close any previous active placement for this SU and release those rooms
       for (const oldPlc of existingUserPlcs) {
-        await apiService.updateEntityRecord<Placement>('placements', oldPlc.id, {
+        const closeRes = await apiService.updateEntityRecord<Placement>('placements', oldPlc.id, {
           endDate: record.startDate,
           status: 'Completed',
           notes: `${oldPlc.notes || ''} [Closed: ${data.reason || 'Reallocated to new room'}]`.trim()
         });
+        if (!closeRes.success) {
+          // The new placement is stored and newest, so it is the current one; repairPlacements() closes this leftover.
+          console.warn(`[placements] could not close previous placement ${oldPlc.id}: ${closeRes.error}`);
+        }
         await this.logAudit('Placement Changes', 'placements', oldPlc.id, oldPlc, { status: 'Completed', endDate: record.startDate });
         if (oldPlc.roomId) await this.syncRoomOccupancy(oldPlc.roomId);
       }

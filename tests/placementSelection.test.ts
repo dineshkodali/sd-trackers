@@ -27,3 +27,11 @@ test('the answer does not depend on the order of the list', () => {
   const b = plc('b', 'su1', 'r2', '2026-10-05');
   assert.equal(pickActivePlacement([a, b])?.id, pickActivePlacement([b, a])?.id);
 });
+
+test('a room change made later wins even when its start date was left at the old placement date', () => {
+  const oldOne = { ...plc('old', 'su1', 'r1', '2026-10-01'), createdAt: '2026-10-01T09:00:00Z' };
+  const moved = { ...plc('new', 'su1', 'r2', '2026-10-01'), createdAt: '2026-10-21T09:00:00Z' };
+  assert.equal(pickActivePlacement([oldOne, moved])?.id, 'new');
+  const keptStartOlder = { ...plc('new2', 'su1', 'r3', '2025-02-08'), createdAt: '2026-10-22T09:00:00Z' };
+  assert.equal(pickActivePlacement([oldOne, keptStartOlder])?.id, 'new2');
+});

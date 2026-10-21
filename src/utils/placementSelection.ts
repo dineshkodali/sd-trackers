@@ -1,6 +1,8 @@
 import type { Placement } from '../types/masterData';
 
-const stamp = (p: Placement) => Date.parse(p.startDate || '') || Date.parse(p.createdAt || '') || 0;
+// When a placement was created decides which one is current: a room change made today must win even if its
+// start date was left at the old placement's date. Start date is only the fallback for records without it.
+const stamp = (p: Placement) => Date.parse(p.createdAt || '') || Date.parse(p.startDate || '') || 0;
 
 /**
  * A resident can end up with more than one Active placement (an interrupted move, a repeated save).
