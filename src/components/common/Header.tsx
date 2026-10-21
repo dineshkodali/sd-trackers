@@ -373,7 +373,7 @@ export const Header: React.FC = () => {
         )}
 
         {/* Network Connectivity Status Indicator */}
-        <NetworkStatusIndicator />
+        {currentUserRole === 'Super Admin' && <NetworkStatusIndicator />}
 
 
         {/* Super Admin Role Preview Switcher */}
@@ -768,17 +768,19 @@ export const Header: React.FC = () => {
                       <Zap className="w-3 h-3 text-[#107c10]" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowProfile(false);
-                      setDiagnosticModalOpen(true);
-                    }}
-                    className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between text-xs cursor-pointer"
-                  >
-                    <span>System Diagnostics</span>
-                    <Activity className="w-3 h-3 text-[#0d9488]" />
-                  </button>
+                  {currentUserRole === 'Super Admin' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfile(false);
+                        setDiagnosticModalOpen(true);
+                      }}
+                      className="w-full text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between text-xs cursor-pointer"
+                    >
+                      <span>System Diagnostics</span>
+                      <Activity className="w-3 h-3 text-[#0d9488]" />
+                    </button>
+                  )}
 
                   <a
                     href="/docs/index.html"
