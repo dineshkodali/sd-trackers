@@ -313,6 +313,7 @@ export const Sidebar: React.FC = () => {
               active={isNavActive('propertyManagement')} 
               onClick={handleNavClick} 
             />
+            <NavItem id="nav-su-attendance" page="suAttendance" label="SU Attendance Tracker" icon={CalendarCheck} iconColor="text-emerald-700" active={isNavActive('suAttendance')} onClick={handleNavClick} />
           </div>
 
           {/* 3. Safeguarding & Welfare */}
@@ -434,7 +435,6 @@ export const Sidebar: React.FC = () => {
             <NavItem id="nav-mh-complaint" page="mhComplaintWelfare" label="MH-Complaint Welfare" icon={ShieldAlert} iconColor="text-rose-600" badge={scopedMhComplaint.length || null} badgeClass="bg-rose-50 text-rose-800 font-semibold" active={isNavActive('mhComplaintWelfare')} onClick={handleNavClick} />
             <NavItem id="nav-gp-appointments" page="gpAppointments" label="GP Appointments" icon={Stethoscope} iconColor="text-blue-600" badge={scopedGpAppointments.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('gpAppointments')} onClick={handleNavClick} />
             <NavItem id="nav-peep-tracker" page="peepTracker" label="PEEP Tracker" icon={Accessibility} iconColor="text-rose-600" active={isNavActive('peepTracker')} onClick={handleNavClick} />
-            <NavItem id="nav-su-attendance" page="suAttendance" label="SU Attendance Tracker" icon={CalendarCheck} iconColor="text-emerald-700" active={isNavActive('suAttendance')} onClick={handleNavClick} />
             <NavItem id="nav-escalations" page="escalations" label="Escalations Log" icon={Siren} iconColor="text-red-600" badge={activeEscalations || null} badgeClass="bg-red-100 text-red-800 font-bold" active={isNavActive('escalations')} onClick={handleNavClick} />
           </div>
 

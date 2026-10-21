@@ -7,7 +7,7 @@ import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 
 export const filterInputCls =
-  'w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed';
+  'w-full flex-1 min-w-0 px-2 py-1 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-[11px] text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all disabled:opacity-60 disabled:cursor-not-allowed';
 
 /** The same site filter every other tracker page has: all permitted sites, or one; locked for single-site accounts. */
 export const SiteFilterSelect: React.FC<{ value: string; onChange: (v: string) => void }> = ({ value, onChange }) => {
@@ -57,9 +57,9 @@ export const ResetFiltersButton: React.FC<{ onClick: () => void; active: boolean
     type="button"
     onClick={onClick}
     disabled={!active}
-    className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:text-[#0d9488] border border-[#e5e5e5] rounded-xs bg-white hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+    className="flex-none whitespace-nowrap flex items-center justify-center gap-1 px-2 py-1 text-[11px] font-semibold text-neutral-600 hover:text-[#0d9488] border border-[#e5e5e5] rounded-xs bg-white hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
   >
-    <RotateCcw className="w-3.5 h-3.5" /><span>Reset filters</span>
+    <RotateCcw className="w-3 h-3" /><span>Reset</span>
   </button>
 );
 

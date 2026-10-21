@@ -95,6 +95,50 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     iconName: 'FileText'
   },
 
+  // --- PEEP & GP registrations: staff add their own choices from the forms ---
+  {
+    key: 'peepMobilityTypes',
+    name: 'PEEP Mobility Types',
+    department: 'Safeguarding',
+    description: 'Mobility requirements recorded on a Personal Emergency Evacuation Plan',
+    iconName: 'Accessibility'
+  },
+  {
+    key: 'peepCompanions',
+    name: 'PEEP Companions',
+    department: 'Safeguarding',
+    description: 'Who provides evacuation assistance',
+    iconName: 'Users'
+  },
+  {
+    key: 'peepAlarms',
+    name: 'PEEP Emergency Alarms',
+    department: 'Safeguarding',
+    description: 'Alarm arrangements assessed for a resident',
+    iconName: 'Siren'
+  },
+  {
+    key: 'peepAssistance',
+    name: 'PEEP Assistance',
+    department: 'Safeguarding',
+    description: 'Equipment or physical assistance required to evacuate',
+    iconName: 'LifeBuoy'
+  },
+  {
+    key: 'gpPractices',
+    name: 'GP Practices',
+    department: 'Healthcare & Transport',
+    description: 'GP practices residents are registered with',
+    iconName: 'Stethoscope'
+  },
+  {
+    key: 'gpPharmacies',
+    name: 'Pharmacies',
+    department: 'Healthcare & Transport',
+    description: 'Pharmacies used by residents',
+    iconName: 'Pill'
+  },
+
   // --- 2. Facilities & Assets ---
   {
     key: 'maintenancePriorities',
@@ -810,5 +854,22 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-fdi-7', category: 'foodDinnerItems', label: 'Shepherd\'s Pie', value: 'Shepherd\'s Pie', color: 'rose', description: 'Minced lamb with mashed potato topping', isActive: true, isSystem: true, order: 7 },
   { id: 'opt-fdi-8', category: 'foodDinnerItems', label: 'Battered Fish & Chips', value: 'Fish & Chips', color: 'blue', description: 'Crispy battered fish fillet with chips and peas', isActive: true, isSystem: true, order: 8 },
   { id: 'opt-fdi-9', category: 'foodDinnerItems', label: 'Halal Lamb Stew with Veg', value: 'Halal Lamb Stew', color: 'red', description: 'Slow cooked lamb stew with root vegetables', isActive: true, isSystem: true, order: 9 },
-  { id: 'opt-fdi-10', category: 'foodDinnerItems', label: 'Vegetable Biryani', value: 'Vegetable Biryani', color: 'amber', description: 'Aromatic spiced basmati rice with mixed vegetables', isActive: true, isSystem: true, order: 10 }
+  { id: 'opt-fdi-10', category: 'foodDinnerItems', label: 'Vegetable Biryani', value: 'Vegetable Biryani', color: 'amber', description: 'Aromatic spiced basmati rice with mixed vegetables', isActive: true, isSystem: true, order: 10 },
+
+  // PEEP starter choices (editable and extendable from the PEEP form)
+  { id: 'opt-peepmob-1', category: 'peepMobilityTypes', label: 'Independent', value: 'Independent', color: 'teal', description: '', isActive: true, isSystem: false, order: 1 },
+  { id: 'opt-peepmob-2', category: 'peepMobilityTypes', label: 'Walking aid / stick', value: 'Walking aid / stick', color: 'teal', description: '', isActive: true, isSystem: false, order: 2 },
+  { id: 'opt-peepmob-3', category: 'peepMobilityTypes', label: 'Wheelchair user', value: 'Wheelchair user', color: 'teal', description: '', isActive: true, isSystem: false, order: 3 },
+  { id: 'opt-peepmob-4', category: 'peepMobilityTypes', label: 'Limited mobility', value: 'Limited mobility', color: 'teal', description: '', isActive: true, isSystem: false, order: 4 },
+  { id: 'opt-peepmob-5', category: 'peepMobilityTypes', label: 'Visual impairment', value: 'Visual impairment', color: 'teal', description: '', isActive: true, isSystem: false, order: 5 },
+  { id: 'opt-peepmob-6', category: 'peepMobilityTypes', label: 'Hearing impairment', value: 'Hearing impairment', color: 'teal', description: '', isActive: true, isSystem: false, order: 6 },
+  { id: 'opt-peepcomp-1', category: 'peepCompanions', label: 'SD Commercial staff and Security', value: 'SD Commercial staff and Security', color: 'teal', description: '', isActive: true, isSystem: false, order: 1 },
+  { id: 'opt-peepcomp-2', category: 'peepCompanions', label: 'Other authorised assistance', value: 'Other authorised assistance', color: 'teal', description: '', isActive: true, isSystem: false, order: 2 },
+  { id: 'opt-peepalarm-1', category: 'peepAlarms', label: 'Existing alarm system', value: 'Existing alarm system', color: 'teal', description: '', isActive: true, isSystem: false, order: 1 },
+  { id: 'opt-peepalarm-2', category: 'peepAlarms', label: 'Pager device', value: 'Pager device', color: 'teal', description: '', isActive: true, isSystem: false, order: 2 },
+  { id: 'opt-peepalarm-3', category: 'peepAlarms', label: 'Visual alarm system / device', value: 'Visual alarm system / device', color: 'teal', description: '', isActive: true, isSystem: false, order: 3 },
+  { id: 'opt-peepalarm-4', category: 'peepAlarms', label: 'Other system', value: 'Other system', color: 'teal', description: '', isActive: true, isSystem: false, order: 4 },
+  { id: 'opt-peepassist-1', category: 'peepAssistance', label: 'No device required', value: 'No device required', color: 'teal', description: '', isActive: true, isSystem: false, order: 1 },
+  { id: 'opt-peepassist-2', category: 'peepAssistance', label: 'Emergency evacuation chair required', value: 'Emergency evacuation chair required', color: 'teal', description: '', isActive: true, isSystem: false, order: 2 },
+  { id: 'opt-peepassist-3', category: 'peepAssistance', label: 'Other assistance required', value: 'Other assistance required', color: 'teal', description: '', isActive: true, isSystem: false, order: 3 },
 ];

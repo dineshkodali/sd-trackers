@@ -31,6 +31,14 @@ const statusBadge = (s?: string) =>
     : 'bg-neutral-100 text-neutral-600 border-neutral-200';
 
 /** Default columns of the attendance records table, in the required order (Customize Table can rename / hide / reorder). */
+const ROLL_TABLE_COLUMNS: TableColumnConfig<any>[] = [
+  ['room', 'Room No'], ['port', 'Port reference'], ['name', 'Name'], ['status', 'Status'], ['notes', 'Notes']
+].map(([key, label]) => ({ key, label, type: 'text' as const }));
+
+const FOLLOWUP_TABLE_COLUMNS: TableColumnConfig<any>[] = [
+  ['port', 'Port reference'], ['name', 'Name'], ['room', 'Room No'], ['since', 'Absent since'], ['days', 'Days'], ['threshold', 'Threshold'], ['status', 'Status'], ['assigned', 'Assigned to'], ['last', 'Last action']
+].map(([key, label]) => ({ key, label, type: 'text' as const }));
+
 const ATTENDANCE_TABLE_COLUMNS: TableColumnConfig<any>[] = [
   ['port', 'Port reference'], ['name', 'Name'], ['dob', 'DOB'], ['room', 'Room No'], ['date', 'Date'], ['status', 'Attendance'], ['notes', 'Additional notes']
 ].map(([key, label]) => ({ key, label, type: 'text' as const }));
@@ -51,6 +59,8 @@ export const SUAttendanceTrackerView: React.FC = () => {
   const canEdit = canEditSuTrackers(currentUserRole);
   const canSeeNotes = canViewAttendanceNotes(currentUserRole);
   const { columns, visibleColumns, saveColumns, resetToDefault } = useTableSchema<any>('suAttendance', ATTENDANCE_TABLE_COLUMNS);
+  const rollSchema = useTableSchema<any>('suAttendanceRoll', ROLL_TABLE_COLUMNS);
+  const fuSchema = useTableSchema<any>('suAttendanceFollowups', FOLLOWUP_TABLE_COLUMNS);
 
   const [tab, setTab] = useState<Tab>('roll');
   const [allDirectory, setDirectory] = useState<SuDirectoryRow[]>([]);
@@ -239,8 +249,41 @@ export const SUAttendanceTrackerView: React.FC = () => {
     { id: 'notes', label: 'Additional notes', get: (x: RecRow) => (canSeeNotes ? x.r.additionalNotes : 'Restricted') }
   ];
 
+
+  const rollCell = (key: string, d: SuDirectoryRow, rec: AttendanceRecord | undefined): React.ReactNode => {
+    switch (key) {
+      case 'room': return <td className={tdCls}>{d.roomNo || <span className="text-neutral-400 italic">Not placed</span>}</td>;
+      case 'port': return <td className={`${tdCls} font-mono text-[11px]`}>{d.su.externalReference || d.su.suReference}</td>;
+      case 'name': return <td className={`${tdCls} font-medium`}><button type="button" className="hover:underline text-left cursor-pointer" onClick={() => setHistoryFor(d.su.id)}>{d.su.firstName} {d.su.lastName}</button></td>;
+      case 'status': return <td className={tdCls}><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${statusBadge(rec?.attendanceStatus)}`}>{rec?.attendanceStatus || 'Not recorded'}</span></td>;
+      case 'notes': return (
+        <td className={`${tdCls} min-w-[200px]`}>
+          {canEdit && canSeeNotes
+            ? <input className={inputCls} placeholder="Optional note" value={rollNotes[d.su.id] ?? rec?.additionalNotes ?? ''} onChange={e => setRollNotes(n => ({ ...n, [d.su.id]: e.target.value }))} aria-label={`Note for ${d.su.firstName} ${d.su.lastName}`} />
+            : <span className="text-neutral-500">{canSeeNotes ? rec?.additionalNotes || '' : (rec ? 'Restricted' : '')}</span>}
+        </td>
+      );
+      default: return <td className={tdCls} />;
+    }
+  };
+
+  const fuCell = (key: string, f: AbsenceFollowUp, d: SuDirectoryRow, overdue: boolean): React.ReactNode => {
+    switch (key) {
+      case 'port': return <td className={`${tdCls} font-mono text-[11px]`}>{d.su.externalReference || d.su.suReference}</td>;
+      case 'name': return <td className={`${tdCls} font-medium whitespace-nowrap`}>{d.su.firstName} {d.su.lastName}</td>;
+      case 'room': return <td className={tdCls}>{d.roomNo || '—'}</td>;
+      case 'since': return <td className={`${tdCls} font-mono text-[11px]`}>{formatUkDate(String(f.absenceStartDate).slice(0, 10))}</td>;
+      case 'days': return <td className={tdCls}>{f.consecutiveDays ?? ''}</td>;
+      case 'threshold': return <td className={tdCls}><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${f.thresholdDays >= 7 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>{f.thresholdDays} days</span></td>;
+      case 'status': return <td className={tdCls}>{f.status}{overdue && <span className="ml-1.5 text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded">OVERDUE</span>}</td>;
+      case 'assigned': return <td className={tdCls}>{f.assignedTo || <span className="text-neutral-400 italic">Unassigned</span>}</td>;
+      case 'last': return <td className={`${tdCls} text-[11px] text-neutral-500`}>{f.lastActionAt ? new Date(f.lastActionAt).toLocaleString('en-GB') : '—'}</td>;
+      default: return <td className={tdCls} />;
+    }
+  };
+
   const dateField = (label: string, value: string, onChange: (v: string) => void, max?: string) => (
-    <label className="flex items-center gap-2 text-[11px] text-neutral-500">
+    <label className="flex flex-1 min-w-[130px] items-center gap-1 text-[11px] text-neutral-500">
       <span className="whitespace-nowrap">{label}</span>
       <input type="date" className={filterInputCls} value={value} max={max} onChange={e => { onChange(e.target.value); setPage(1); }} aria-label={label} />
     </label>
@@ -255,7 +298,7 @@ export const SUAttendanceTrackerView: React.FC = () => {
         description="Daily attendance, absence monitoring and follow-up. A day with no record is “Not recorded”, never an absence."
         actions={
           <>
-            {currentUserRole === 'Super Admin' && tab === 'records' && <CustomizeTableButton onClick={() => setIsSchemaOpen(true)} />}
+            {currentUserRole === 'Super Admin' && <CustomizeTableButton onClick={() => setIsSchemaOpen(true)} />}
             {tab === 'records' && (
               <TrackerExport<RecRow>
                 moduleName="SU Attendance" filename="SU_Attendance" title="SU Attendance Records"
@@ -286,12 +329,12 @@ export const SUAttendanceTrackerView: React.FC = () => {
           </>
         ) : null}
         notice={notice ? <div className="mt-3 p-2 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xs">{notice}</div> : null}
-        filtersClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5"
+        filtersClassName="flex flex-wrap lg:flex-nowrap items-center gap-2"
         filters={
           <>
-            <div className="relative lg:col-span-2">
+            <div className="relative flex-[2] min-w-[140px]">
               <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search Resident, Port Ref, Room..." className={`${filterInputCls} pl-9`} aria-label="Search" />
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search Resident, Port Ref, Room..." className={`${filterInputCls} pl-7`} aria-label="Search" />
             </div>
             <SiteFilterSelect value={siteFilter} onChange={v => { setSiteFilter(v); setPage(1); }} />
             {tab !== 'followups' && (
@@ -321,7 +364,7 @@ export const SUAttendanceTrackerView: React.FC = () => {
                 <option value="open">Open and in progress</option><option value="all">All, including resolved</option>
               </select>
             )}
-            <div className="lg:col-span-6 flex justify-end"><ResetFiltersButton onClick={resetFilters} active={filtersActive} /></div>
+            <ResetFiltersButton onClick={resetFilters} active={filtersActive} />
           </>
         }
       />
@@ -330,26 +373,18 @@ export const SUAttendanceTrackerView: React.FC = () => {
         {tab === 'roll' && (
           <table className="w-full text-left text-xs border-collapse min-w-[900px]">
             <thead><tr className={theadRowCls}>
-              {['Room No', 'Port reference', 'Name', `Status for ${formatUkDate(rollDate)}`, 'Notes'].map(h => <th key={h} className="p-2.5">{h}</th>)}
+              {rollSchema.visibleColumns.map(col => <th key={String(col.key)} className="p-2.5">{col.key === 'status' ? `${col.label} for ${formatUkDate(rollDate)}` : col.label}</th>)}
               {canEdit && <th className="p-2.5 text-right sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Record</th>}
             </tr></thead>
             <tbody className={tbodyCls}>
-              {loading ? <SkeletonRows cols={canEdit ? 6 : 5} /> : rollRows.length === 0 ? (
-                <EmptyRow colSpan={6} icon={<CalendarCheck className="w-8 h-8" />} title="No Service Users to show" hint="Change the site or filters to see residents." />
+              {loading ? <SkeletonRows cols={rollSchema.visibleColumns.length + (canEdit ? 1 : 0)} /> : rollRows.length === 0 ? (
+                <EmptyRow colSpan={rollSchema.visibleColumns.length + 1} icon={<CalendarCheck className="w-8 h-8" />} title="No Service Users to show" hint="Change the site or filters to see residents." />
               ) : rollRows.slice(from, from + pageSize).map(d => {
                 const rec = forDay.get(d.su.id);
                 const busy = saving === d.su.id;
                 return (
                   <tr key={d.su.id} className="hover:bg-[#f3f8fd] transition-colors">
-                    <td className={tdCls}>{d.roomNo || <span className="text-neutral-400 italic">Not placed</span>}</td>
-                    <td className={`${tdCls} font-mono text-[11px]`}>{d.su.externalReference || d.su.suReference}</td>
-                    <td className={`${tdCls} font-medium`}><button type="button" className="hover:underline text-left cursor-pointer" onClick={() => setHistoryFor(d.su.id)}>{d.su.firstName} {d.su.lastName}</button></td>
-                    <td className={tdCls}><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${statusBadge(rec?.attendanceStatus)}`}>{rec?.attendanceStatus || 'Not recorded'}</span></td>
-                    <td className={`${tdCls} min-w-[200px]`}>
-                      {canEdit && canSeeNotes
-                        ? <input className={inputCls} placeholder="Optional note" value={rollNotes[d.su.id] ?? rec?.additionalNotes ?? ''} onChange={e => setRollNotes(n => ({ ...n, [d.su.id]: e.target.value }))} aria-label={`Note for ${d.su.firstName} ${d.su.lastName}`} />
-                        : <span className="text-neutral-500">{canSeeNotes ? rec?.additionalNotes || '' : (rec ? 'Restricted' : '')}</span>}
-                    </td>
+                    {rollSchema.visibleColumns.map(col => <React.Fragment key={String(col.key)}>{rollCell(String(col.key), d, rec)}</React.Fragment>)}
                     {canEdit && (
                       <td className={actionsTdCls}>
                         <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Present')} className={`px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}`}>Present</button>
@@ -391,26 +426,18 @@ export const SUAttendanceTrackerView: React.FC = () => {
         {tab === 'followups' && (
           <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
             <thead><tr className={theadRowCls}>
-              {['Port reference', 'Name', 'Room No', 'Absent since', 'Days', 'Threshold', 'Status', 'Assigned to', 'Last action'].map(h => <th key={h} className="p-2.5">{h}</th>)}
+              {fuSchema.visibleColumns.map(col => <th key={String(col.key)} className="p-2.5">{col.label}</th>)}
               <ActionsTh />
             </tr></thead>
             <tbody className={tbodyCls}>
-              {loading ? <SkeletonRows cols={10} /> : fuRows.length === 0 ? (
-                <EmptyRow colSpan={10} icon={<CalendarCheck className="w-8 h-8" />} title="No absence follow-ups" hint="A follow-up opens automatically when a resident's recorded absence reaches a threshold." />
+              {loading ? <SkeletonRows cols={fuSchema.visibleColumns.length + 1} /> : fuRows.length === 0 ? (
+                <EmptyRow colSpan={fuSchema.visibleColumns.length + 1} icon={<CalendarCheck className="w-8 h-8" />} title="No absence follow-ups" hint="A follow-up opens automatically when a resident's recorded absence reaches a threshold." />
               ) : fuRows.slice(from, from + pageSize).map(f => {
                 const d = byId.get(f.suId)!;
                 const overdue = f.status !== 'Resolved' && f.dueDate && String(f.dueDate).slice(0, 10) < today;
                 return (
                   <tr key={f.id} className={overdue ? 'bg-red-50/60' : 'hover:bg-[#f3f8fd] transition-colors'}>
-                    <td className={`${tdCls} font-mono text-[11px]`}>{d.su.externalReference || d.su.suReference}</td>
-                    <td className={`${tdCls} font-medium whitespace-nowrap`}>{d.su.firstName} {d.su.lastName}</td>
-                    <td className={tdCls}>{d.roomNo || '—'}</td>
-                    <td className={`${tdCls} font-mono text-[11px]`}>{formatUkDate(String(f.absenceStartDate).slice(0, 10))}</td>
-                    <td className={tdCls}>{f.consecutiveDays ?? ''}</td>
-                    <td className={tdCls}><span className={`inline-block px-2 py-0.5 rounded border font-semibold ${f.thresholdDays >= 7 ? 'bg-red-50 text-red-800 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>{f.thresholdDays} days</span></td>
-                    <td className={tdCls}>{f.status}{overdue && <span className="ml-1.5 text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded">OVERDUE</span>}</td>
-                    <td className={tdCls}>{f.assignedTo || <span className="text-neutral-400 italic">Unassigned</span>}</td>
-                    <td className={`${tdCls} text-[11px] text-neutral-500`}>{f.lastActionAt ? new Date(f.lastActionAt).toLocaleString('en-GB') : '—'}</td>
+                    {fuSchema.visibleColumns.map(col => <React.Fragment key={String(col.key)}>{fuCell(String(col.key), f, d, !!overdue)}</React.Fragment>)}
                     <td className={actionsTdCls}>
                       <div className="flex items-center justify-end gap-1.5">
                         <button type="button" title="Open follow-up" onClick={() => setFollowUpFor(f)} className="p-1 hover:bg-[#f0fdfa] text-[#0d9488] rounded-xs transition-colors cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
@@ -439,10 +466,10 @@ export const SUAttendanceTrackerView: React.FC = () => {
       <TableSchemaEditorModal<any>
         isOpen={isSchemaOpen}
         onClose={() => setIsSchemaOpen(false)}
-        moduleTitle="SU Attendance Records"
-        columns={columns}
-        onSaveColumns={saveColumns}
-        onResetToDefault={resetToDefault}
+        moduleTitle={tab === 'roll' ? 'SU Attendance Daily Roll' : tab === 'followups' ? 'SU Absence Follow-ups' : 'SU Attendance Records'}
+        columns={tab === 'roll' ? rollSchema.columns : tab === 'followups' ? fuSchema.columns : columns}
+        onSaveColumns={tab === 'roll' ? rollSchema.saveColumns : tab === 'followups' ? fuSchema.saveColumns : saveColumns}
+        onResetToDefault={tab === 'roll' ? rollSchema.resetToDefault : tab === 'followups' ? fuSchema.resetToDefault : resetToDefault}
         currentUserRole={currentUserRole}
       />
     </div>

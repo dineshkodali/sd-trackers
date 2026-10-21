@@ -15,6 +15,10 @@ import {
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
+import { OptionSelect } from '../common/OptionSelect';
+import { TrackerDossier } from '../common/TrackerDossier';
+
+const PEEP_MOBILITY_DEFAULTS = ['Independent', 'Walking aid / stick', 'Wheelchair user', 'Limited mobility', 'Visual impairment', 'Hearing impairment'];
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
@@ -231,12 +235,12 @@ export const PEEPTrackerView: React.FC = () => {
         }
         summary={summary}
         notice={warning ? <div className="mt-3 p-2 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xs">{warning}</div> : null}
-        filtersClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5"
+        filtersClassName="flex flex-wrap lg:flex-nowrap items-center gap-2"
         filters={
           <>
-            <div className="relative lg:col-span-2">
+            <div className="relative flex-[2] min-w-[140px]">
               <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input value={search} onChange={e => { setSearch(e.target.value); reset(); }} placeholder="Search Resident, Port Ref, Room..." className={`${filterInputCls} pl-9`} aria-label="Search" />
+              <input value={search} onChange={e => { setSearch(e.target.value); reset(); }} placeholder="Search Resident, Port Ref, Room..." className={`${filterInputCls} pl-7`} aria-label="Search" />
             </div>
             <SiteFilterSelect value={siteFilter} onChange={v => { setSiteFilter(v); reset(); }} />
             <select className={filterInputCls} value={riskFilter} onChange={e => { setRiskFilter(e.target.value); reset(); }} aria-label="Risk level">
@@ -248,7 +252,7 @@ export const PEEPTrackerView: React.FC = () => {
             <select className={filterInputCls} value={roomFilter} onChange={e => { setRoomFilter(e.target.value); reset(); }} aria-label="Room">
               <option value="all">All Rooms</option>{rooms.map(r => <option key={r} value={r}>Room {r}</option>)}
             </select>
-            <div className="lg:col-span-6 flex justify-end"><ResetFiltersButton onClick={resetFilters} active={filtersActive} /></div>
+            <ResetFiltersButton onClick={resetFilters} active={filtersActive} />
           </>
         }
       />
@@ -318,28 +322,6 @@ interface DialogProps {
   onSaved: (warning?: string) => void;
 }
 
-/** Option list whose last entry is an "Other" free-text escape: the supplied options are examples, not a full assessment. */
-const OptionField: React.FC<{ label: string; value: string; options: string[]; onChange: (v: string) => void; disabled?: boolean }> = ({ label, value, options, onChange, disabled }) => {
-  const other = options[options.length - 1];
-  const isOtherValue = !!value && !options.includes(value) ? true : value === other;
-  const [otherText, setOtherText] = useState(isOtherValue ? value.replace(/^Other:s*/, '') : '');
-  const selectValue = !value ? '' : options.includes(value) ? value : other;
-  return (
-    <div>
-      <label className="block text-neutral-600 mb-1">{label}</label>
-      <select className={inputCls} value={selectValue} disabled={disabled}
-        onChange={e => { const v = e.target.value; onChange(v === other && otherText ? `Other: ${otherText}` : v); }}>
-        <option value="">-- Select (assessed requirement) --</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-      {selectValue === other && !disabled && (
-        <input className={`${inputCls} mt-1.5`} placeholder="Describe the arrangement" value={otherText}
-          onChange={e => { setOtherText(e.target.value); onChange(e.target.value ? `Other: ${e.target.value}` : other); }} />
-      )}
-    </div>
-  );
-};
-
 const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initialSuId, user, onClose, onSaved }) => {
   const readOnly = mode === 'view';
   const planFor = (id: string) => plans.find(p => p.suId === id);
@@ -392,11 +374,65 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
     if (!suId) { setError('Choose a Service User.'); return; }
     if (mode === 'review' && existing && form.reviewDate <= todayIso()) { setError('Choose a new review date in the future.'); return; }
     setSaving(true);
-    const res = await suTrackerService.savePeepPlan({ id: existing?.id, suId, ...form }, user, mode === 'review' ? 'review' : 'save');
+    const res = await suTrackerService.savePeepPlan({ id: existing?.id, suId, ...form, developedBy: existing?.developedBy || user }, user, mode === 'review' ? 'review' : 'save');
     setSaving(false);
     if (!res.success) { setError(res.error || 'Could not save the plan.'); return; }
     onSaved(res.warning);
   };
+
+  if (readOnly && existing && selected) {
+    const su = selected.su;
+    return (
+      <TrackerDossier
+        title={`PEEP Plan Dossier: ${su.firstName} ${su.lastName}`}
+        recordId={existing.id}
+        onClose={onClose}
+        sections={[
+          { title: 'Service User Identification', fields: [
+            { label: 'Port / NASS Ref', value: su.externalReference || su.suReference },
+            { label: 'Room No', value: selected.roomNo || 'Not placed' },
+            { label: 'Service User Name', value: `${su.firstName} ${su.lastName}` },
+            { label: 'Date of Birth', value: formatUkDate(su.dateOfBirth) }
+          ] },
+          { title: 'Mobility & Risk', fields: [
+            { label: 'Mobility Type', value: existing.mobilityType },
+            { label: 'PEEP Risk Level', value: <span className={`inline-block px-2 py-0.5 rounded border font-semibold ${riskBadge[existing.riskLevel] || ''}`}>{existing.riskLevel}</span> }
+          ] },
+          { title: 'Evacuation Arrangements', fields: [
+            { label: 'Companion', value: existing.companion },
+            { label: 'Emergency Alarm', value: existing.emergencyAlarm },
+            { label: 'Assistance', value: existing.assistance }
+          ] },
+          { title: 'Evacuation Procedure', fields: [
+            { label: 'Evacuation Procedure', value: existing.evacuationProcedure, full: true },
+            { label: 'Safe Exit Routes', value: existing.safeExitRoutes, full: true }
+          ] },
+          { title: 'Plan & Review', fields: [
+            { label: 'Developed By', value: existing.developedBy },
+            { label: 'Date', value: formatUkDate(existing.planDate) },
+            { label: 'Review Date', value: formatUkDate(existing.reviewDate) },
+            { label: 'Version', value: String(existing.version) },
+            { label: 'Added By', value: existing.createdBy },
+            { label: 'Last Updated By', value: existing.updatedBy }
+          ] }
+        ]}
+      >
+        {history.length > 0 && (
+          <div className="space-y-3">
+            <div className="pb-1 border-b border-neutral-200"><h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">History</h4></div>
+            <ul className="border border-[#e5e5e5] rounded-xs divide-y divide-[#f0f0f0]">
+              {history.map(h => (
+                <li key={h.id} className="px-3 py-1.5 flex items-center justify-between gap-3">
+                  <span><b>v{h.version}</b> {h.changeType}{h.changedFields ? ` (${h.changedFields})` : ''}</span>
+                  <span className="text-neutral-500 whitespace-nowrap">{h.changedBy} · {h.changedAt ? new Date(h.changedAt).toLocaleString('en-GB') : ''}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </TrackerDossier>
+    );
+  }
 
   const title = mode === 'view' ? 'PEEP Plan' : mode === 'review' ? 'Review PEEP Plan' : existing ? 'Edit PEEP Plan' : 'New PEEP Plan';
 
@@ -447,16 +483,15 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div><label className="block text-neutral-600 mb-1">Mobility type <span className="text-red-500">*</span></label><input className={inputCls} value={form.mobilityType} onChange={e => set('mobilityType', e.target.value)} /></div>
+                    <OptionSelect label="Mobility type" category="peepMobilityTypes" required value={form.mobilityType} onChange={v => set('mobilityType', v)} fallback={PEEP_MOBILITY_DEFAULTS} />
                     <div><label className="block text-neutral-600 mb-1">PEEP risk level <span className="text-red-500">*</span></label>
                       <select className={inputCls} value={form.riskLevel} onChange={e => set('riskLevel', e.target.value)}>
                         <option value="">-- Select --</option>{PEEP_RISK_LEVELS.map(r => <option key={r} value={r}>{r}</option>)}
                       </select>
                     </div>
-                    <OptionField label="Companion" value={form.companion} options={PEEP_COMPANIONS} onChange={v => set('companion', v)} />
-                    <OptionField label="Emergency Alarm" value={form.emergencyAlarm} options={PEEP_ALARMS} onChange={v => set('emergencyAlarm', v)} />
-                    <OptionField label="Assistance" value={form.assistance} options={PEEP_ASSISTANCE} onChange={v => set('assistance', v)} />
-                    <div><label className="block text-neutral-600 mb-1">Developed by <span className="text-red-500">*</span></label><input className={inputCls} value={form.developedBy} onChange={e => set('developedBy', e.target.value)} /></div>
+                    <OptionSelect label="Companion" category="peepCompanions" value={form.companion} onChange={v => set('companion', v)} fallback={PEEP_COMPANIONS} />
+                    <OptionSelect label="Emergency Alarm" category="peepAlarms" value={form.emergencyAlarm} onChange={v => set('emergencyAlarm', v)} fallback={PEEP_ALARMS} />
+                    <OptionSelect label="Assistance" category="peepAssistance" value={form.assistance} onChange={v => set('assistance', v)} fallback={PEEP_ASSISTANCE} />
                   </div>
                   <div><label className="block text-neutral-600 mb-1">Evacuation procedure <span className="text-red-500">*</span></label><textarea className={inputCls} rows={4} value={form.evacuationProcedure} onChange={e => set('evacuationProcedure', e.target.value)} /></div>
                   <div><label className="block text-neutral-600 mb-1">Safe exit routes <span className="text-red-500">*</span></label><textarea className={inputCls} rows={3} value={form.safeExitRoutes} onChange={e => set('safeExitRoutes', e.target.value)} /></div>

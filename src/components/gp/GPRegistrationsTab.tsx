@@ -9,6 +9,8 @@ import {
   theadRowCls, tbodyCls, tdCls, AuditAccountability
 } from '../common/TrackerLayout';
 import { useTableSchema } from '../../hooks/useTableSchema';
+import { OptionSelect } from '../common/OptionSelect';
+import { TrackerDossier } from '../common/TrackerDossier';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
 
@@ -154,12 +156,12 @@ export const GPRegistrationsTab: React.FC<{ tabSwitcher?: React.ReactNode }> = (
           </>
         }
         tabs={tabSwitcher}
-        filtersClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5"
+        filtersClassName="flex flex-wrap lg:flex-nowrap items-center gap-2"
         filters={
           <>
-            <div className="relative">
+            <div className="relative flex-[2] min-w-[140px]">
               <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search Port Ref, Name, GP, Pharmacy, NHS..." className={`${filterInputCls} pl-9`} aria-label="Search" />
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search Port Ref, Name, GP, Pharmacy, NHS..." className={`${filterInputCls} pl-7`} aria-label="Search" />
             </div>
             <SiteFilterSelect value={siteFilter} onChange={v => { setSiteFilter(v); setPage(1); }} />
             <select value={detailFilter} onChange={e => { setDetailFilter(e.target.value as any); setPage(1); }} className={filterInputCls} aria-label="Details">
@@ -294,6 +296,35 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
     onSaved();
   };
 
+  if (readOnly && selected && existing) {
+    return (
+      <TrackerDossier
+        title={`GP Registration Dossier: ${selected.su.firstName} ${selected.su.lastName}`}
+        recordId={existing.id}
+        onClose={onClose}
+        sections={[
+          { title: 'Service User Identification', fields: [
+            { label: 'Port / NASS Ref', value: selected.su.externalReference || selected.su.suReference },
+            { label: 'Room No', value: selected.roomNo || 'Not placed' },
+            { label: 'Service User Name', value: `${selected.su.firstName} ${selected.su.lastName}` },
+            { label: 'Date of Birth', value: formatUkDate(selected.su.dateOfBirth) }
+          ] },
+          { title: 'GP Registration Details', fields: [
+            { label: 'GP Practice', value: existing.gpPractice },
+            { label: 'Pharmacy', value: existing.pharmacy },
+            { label: 'NHS Number', value: canSeeNhs ? existing.nhsNumber : maskNhsNumber(existing.nhsNumber) },
+            { label: 'Notes', value: existing.notes, full: true }
+          ] },
+          { title: 'Audit & Accountability', fields: [
+            { label: 'Added By', value: existing.createdBy },
+            { label: 'Last Updated By', value: existing.updatedBy },
+            { label: 'Last Updated', value: existing.updatedAt ? new Date(existing.updatedAt).toLocaleString('en-GB') : '' }
+          ] }
+        ]}
+      />
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-xs border border-[#e5e5e5] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -332,8 +363,8 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
                 {!suId && !readOnly && <p className="mb-2 text-[11px] text-neutral-500">Choose the Service User above; their details and any existing GP registration fill in here.</p>}
                 {!loadingReg && !!suId && !existing && !readOnly && <p className="mb-2 text-[11px] text-amber-700">No GP registration exists yet for this Service User. Fill in what is known; blank fields stay blank.</p>}
                 <div className="space-y-3">
-                  <div><label className="block text-neutral-600 mb-1">GP practice</label><input className={inputCls} value={gp} onChange={e => setGp(e.target.value)} disabled={readOnly || loadingReg} /></div>
-                  <div><label className="block text-neutral-600 mb-1">Pharmacy</label><input className={inputCls} value={pharmacy} onChange={e => setPharmacy(e.target.value)} disabled={readOnly || loadingReg} /></div>
+                  <OptionSelect label="GP practice" category="gpPractices" value={gp} onChange={setGp} disabled={readOnly || loadingReg} />
+                  <OptionSelect label="Pharmacy" category="gpPharmacies" value={pharmacy} onChange={setPharmacy} disabled={readOnly || loadingReg} />
                   <div>
                     <label className="block text-neutral-600 mb-1">NHS number</label>
                     {hideNhs ? (
