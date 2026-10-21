@@ -81,6 +81,8 @@ export interface ServiceUserDocument {
   fileUrl?: string;
   uploadedBy?: string;
   notes?: string;
+  /** 'repository' = uploaded in Compliance & Document Repository (read-only here). */
+  source?: 'repository';
   createdAt?: string;
   updatedAt?: string;
 }
@@ -216,6 +218,7 @@ export interface PropertyDocument {
   verificationStatus: 'Verified' | 'Pending' | 'Expired';
   uploadedBy?: string;
   notes?: string;
+  source?: 'repository';
   createdAt?: string;
   updatedAt?: string;
 }

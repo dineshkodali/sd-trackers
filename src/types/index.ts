@@ -271,6 +271,11 @@ export interface DocumentRecord {
   uploadDate?: string;
   uploadedDate?: string;
   notes?: string;
+  /** What the document belongs to: a Service User, a property, or nothing in particular (general). */
+  linkType?: 'service_user' | 'property' | 'general';
+  suId?: string;
+  propertyId?: string;
+  propertyName?: string;
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
   attachment_url?: string;

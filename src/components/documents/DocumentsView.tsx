@@ -25,6 +25,8 @@ import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { DocumentUploadWizard, DocumentUploadTarget, SU_DOCUMENT_TYPES, PROPERTY_DOCUMENT_TYPES, GENERAL_DOCUMENT_TYPES } from './DocumentUploadWizard';
+import { describeFirstAttachment } from '../../utils/repositoryDocuments';
 
 const documentsExportColumns: ExportColumnOption[] = [
   { id: 'documentTitle', label: 'Document Title' },
@@ -55,6 +57,7 @@ export const DocumentsView: React.FC = () => {
     isSitePermitted,
     assignedSite,
     settings,
+    currentUserName,
     currentUserRole , requestConfirmation } = useApp();
 
   // Table Schema Hook
@@ -97,6 +100,8 @@ export const DocumentsView: React.FC = () => {
   // Modals
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState<DocumentUploadTarget | null>(null);
   const [editingRecord, setEditingRecord] = useState<DocumentRecord | null>(null);
   const [viewingRecord, setViewingRecord] = useState<DocumentRecord | null>(null);
 
@@ -137,6 +142,21 @@ export const DocumentsView: React.FC = () => {
     }
   };
 
+  // The upload form follows what the wizard chose: document types for that kind of document, the linked
+  // resident / property locked in, and no resident fields for property documents.
+  const uploadColumns = useMemo<TableColumnConfig<DocumentRecord>[]>(() => {
+    if (!uploadTarget) return columns;
+    const types = uploadTarget.linkType === 'service_user' ? SU_DOCUMENT_TYPES : uploadTarget.linkType === 'property' ? PROPERTY_DOCUMENT_TYPES : GENERAL_DOCUMENT_TYPES;
+    return columns
+      .filter(c => !(uploadTarget.linkType === 'property' && (c.key === 'suName' || c.key === 'refNumber')))
+      .filter(c => !(uploadTarget.linkType === 'general' && (c.key === 'suName' || c.key === 'refNumber')))
+      .map(c => {
+        if (c.key === 'category') return { ...c, optionCategory: undefined, allowQuickAdd: false, options: types };
+        if (uploadTarget.linkType !== 'general' && (c.key === 'site' || c.key === 'suName' || c.key === 'refNumber')) return { ...c, editable: false };
+        return c;
+      });
+  }, [columns, uploadTarget]);
+
   const handleCreateSubmit = (data: Partial<DocumentRecord>) => {
     let effectiveSite = data.site || (siteFilter !== 'all' ? siteFilter : allowedSites[0]);
     if (!canAccessAllSites()) {
@@ -153,16 +173,23 @@ export const DocumentsView: React.FC = () => {
       refNumber: data.refNumber || '',
       category: (data.category as any) || 'Risk Assessment',
       site: effectiveSite || '',
-      fileFormat: (data.fileFormat as any) || 'PDF',
-      fileSizeKb: Number(data.fileSizeKb) || 1420,
       confidentiality: (data.confidentiality as any) || 'Restricted',
-      uploadedBy: data.uploadedBy || 'Regional SG Officer',
       uploadDate: data.uploadDate || new Date().toISOString().slice(0, 10),
       notes: data.notes || '',
       ...data,
+      // The real file's size and format, and the person actually logged in
+      fileFormat: (describeFirstAttachment(data.attachments).fileFormat || data.fileFormat || 'PDF') as any,
+      fileSizeKb: describeFirstAttachment(data.attachments).fileSizeKb || Number(data.fileSizeKb) || 0,
+      uploadedBy: currentUserName || data.uploadedBy || 'Staff',
+      // What the document belongs to, so it also shows in that resident's / property's profile
+      linkType: uploadTarget?.linkType || 'general',
+      suId: uploadTarget?.suId,
+      propertyId: uploadTarget?.propertyId,
+      propertyName: uploadTarget?.propertyName,
       attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsUploadModalOpen(false);
+    setUploadTarget(null);
   };
 
   const handleEditSubmit = (data: Partial<DocumentRecord>) => {
@@ -342,7 +369,7 @@ export const DocumentsView: React.FC = () => {
 
             {canCreateRecord && canCreateRecord() && (
               <button
-                onClick={() => setIsUploadModalOpen(true)}
+                onClick={() => setIsWizardOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors"
               >
                 <Upload className="w-3.5 h-3.5" />
@@ -508,29 +535,41 @@ export const DocumentsView: React.FC = () => {
         />
       </div>
 
-      {/* Dynamic Create Modal */}
-      <DynamicRecordFormModal<DocumentRecord>
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        title="Upload & Index Document"
-        columns={columns}
-        initialValues={{
-          documentTitle: '',
-          suName: '',
-          refNumber: '',
-          category: 'Risk Assessment',
-          site: !canAccessAllSites() ? (siteFilter !== 'all' && allowedSites.includes(siteFilter) ? siteFilter : (allowedSites[0] || assignedSite)) : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
-          fileFormat: 'PDF',
-          fileSizeKb: 1420,
-          confidentiality: 'Restricted',
-          uploadedBy: 'Regional SG Officer',
-          uploadDate: new Date().toISOString().slice(0, 10),
-          notes: '',
-          attachments: []
-        }}
-        onSubmit={handleCreateSubmit}
-        submitLabel="Upload Document"
+      {/* Step 1: what is the document for? */}
+      <DocumentUploadWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onSelect={target => { setUploadTarget(target); setIsWizardOpen(false); setIsUploadModalOpen(true); }}
       />
+
+      {/* Step 2: the document form for that kind of document */}
+      {uploadTarget && (
+        <DynamicRecordFormModal<DocumentRecord>
+          isOpen={isUploadModalOpen}
+          onClose={() => { setIsUploadModalOpen(false); setUploadTarget(null); }}
+          title={
+            uploadTarget.linkType === 'service_user' ? `Upload Document - ${uploadTarget.suName}`
+              : uploadTarget.linkType === 'property' ? `Upload Document - ${uploadTarget.propertyName}`
+              : 'Upload & Index Document'
+          }
+          columns={uploadColumns}
+          initialValues={{
+            documentTitle: '',
+            suName: uploadTarget.suName || '',
+            refNumber: uploadTarget.refNumber || '',
+            category: uploadTarget.category as any,
+            site: uploadTarget.site,
+            fileFormat: 'PDF',
+            fileSizeKb: 0,
+            confidentiality: 'Restricted',
+            uploadDate: new Date().toISOString().slice(0, 10),
+            notes: '',
+            attachments: []
+          }}
+          onSubmit={handleCreateSubmit}
+          submitLabel="Upload Document"
+        />
+      )}
 
       {/* Dynamic Edit Modal */}
       {editingRecord && (

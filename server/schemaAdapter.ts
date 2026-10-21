@@ -2162,6 +2162,14 @@ export function toDatabaseRow(
     } else if (typeof record.attachments === 'string' && record.attachments.trim().startsWith('[')) {
       try { rawAtts = JSON.parse(record.attachments); } catch { rawAtts = []; }
     }
+    // A file attached in the browser carries the same base64 in both `dataUrl` and `url`; keep it once.
+    rawAtts = rawAtts.map((a: any) => {
+      if (a && typeof a === 'object' && typeof a.url === 'string' && a.url.startsWith('data:') && a.url === a.dataUrl) {
+        const { url: _dup, ...rest } = a;
+        return rest;
+      }
+      return a;
+    });
     dbRow.attachments = rawAtts;
     if (rawAtts.length > 0) {
       const primaryAtt = rawAtts[0];
@@ -2191,6 +2199,18 @@ export function toDatabaseRow(
   // Full-fidelity copy of the application record.
   if (DATA_TABLES.has(tableName)) {
     dbRow.data = sanitizeRecord(record);
+    // The file bytes live in the `attachments` column. Repeating them inside `data` doubles every upload
+    // (and pushes larger files over the request limit), so `data` keeps only the file details.
+    if (validCols?.has('attachments') && Array.isArray(dbRow.attachments) && Array.isArray(dbRow.data.attachments)) {
+      dbRow.data.attachments = dbRow.data.attachments.map((a: any) => {
+        if (!a || typeof a !== 'object') return a;
+        const { dataUrl: _d, url: _u, ...meta } = a;
+        return typeof _u === 'string' && !_u.startsWith('data:') ? { ...meta, url: _u } : meta;
+      });
+      for (const k of ['attachmentUrl', 'attachment_url', 'fileUrl', 'file_url']) {
+        if (typeof dbRow.data[k] === 'string' && dbRow.data[k].startsWith('data:')) dbRow.data[k] = '';
+      }
+    }
   }
 
   // Strict column whitelist filter: drop ANY column the table does not have.
@@ -2323,6 +2343,7 @@ export function fromDatabaseRow(tableName: string, row: any): any {
             }
           }
           let atts = typed.attachments !== undefined ? typed.attachments : fromData.attachments;
+          if (Array.isArray(row.attachments) && row.attachments.length > 0) atts = row.attachments;
         if (typeof atts === 'string' && atts.trim().startsWith('[')) {
           try { atts = JSON.parse(atts); } catch { atts = []; }
         }
@@ -2336,7 +2357,13 @@ export function fromDatabaseRow(tableName: string, row: any): any {
         };
         return sanitizeRowAttachments(combined);
       }
-      if (row.attachments && (!fromData.attachments || fromData.attachments.length === 0)) {
+      const rowAtts = typeof row.attachments === 'string' && row.attachments.trim().startsWith('[')
+        ? (() => { try { return JSON.parse(row.attachments); } catch { return []; } })()
+        : row.attachments;
+      if (Array.isArray(rowAtts) && rowAtts.length > 0) {
+        // The column holds the file bytes; `data` only holds their details.
+        fromData.attachments = rowAtts;
+      } else if (row.attachments && (!fromData.attachments || fromData.attachments.length === 0)) {
         try {
           fromData.attachments = typeof row.attachments === 'string' ? JSON.parse(row.attachments) : row.attachments;
         } catch {

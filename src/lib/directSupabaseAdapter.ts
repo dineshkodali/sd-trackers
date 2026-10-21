@@ -180,6 +180,10 @@ async function writeWithSchemaFallback<R extends { error: any }>(
     const err = result.error;
     const msg = String(err.message || '');
     const missing = err.code === 'PGRST204' ? msg.match(/the '([^']+)' column/i)?.[1] : undefined;
+    // Never drop the file store silently: a save without it would look successful but lose the upload.
+    if (missing === 'attachments') {
+      return { ...result, error: { ...err, message: `The ${table} table has no "attachments" column yet, so files cannot be saved. An admin must run db/migrations/002_add_attachments_columns.sql in Supabase.` } } as R;
+    }
     if (missing && missing in working) {
       console.warn(`[direct write] ${table}.${missing} does not exist in the live database - saving without it. Run the pending migration.`);
       delete working[missing];

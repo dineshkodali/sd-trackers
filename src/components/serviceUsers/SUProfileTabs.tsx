@@ -681,7 +681,8 @@ export const SUDocumentsTab: React.FC<SUDocumentsTabProps> = ({
                       <FileText className="w-4 h-4 text-[#0d9488] shrink-0" />
                       <div>
                         <span className="font-semibold text-[#242424] block">{d.documentName}</span>
-                        {d.notes && <span className="text-[10px] text-neutral-400">{d.notes}</span>}
+                        {d.source === 'repository' && <span className="text-[10px] font-semibold text-teal-700">From Document Repository</span>}
+                        {d.notes && <span className="text-[10px] text-neutral-400 block">{d.notes}</span>}
                       </div>
                     </div>
                   </td>
@@ -727,15 +728,15 @@ export const SUDocumentsTab: React.FC<SUDocumentsTabProps> = ({
                           </button>
                         </>
                       )}
-                      <button
+                      {d.source !== 'repository' && (<button
                         type="button"
                         onClick={() => onOpenUploadModal(d)}
                         className="p-1 text-[#605e5c] hover:text-[#242424] hover:bg-[#edebe9] rounded-xs transition-colors cursor-pointer"
                         title="Edit Document"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      {onDeleteDoc && (
+                      </button>)}
+                      {onDeleteDoc && d.source !== 'repository' && (
                         <button
                           type="button"
                           onClick={() => onDeleteDoc(d.id)}

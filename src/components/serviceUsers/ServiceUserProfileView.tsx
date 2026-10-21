@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { pickActivePlacement } from '../../utils/placementSelection';
+import { repositoryDocsForServiceUser } from '../../utils/repositoryDocuments';
 import { getServiceUserRecords } from '../../utils/serviceUserRecords';
 import { SUIncidentsTab, SUReferralsTab, SUGpTab, SUTransportTab, SUOtherWelfareTable } from './SURecordTabs';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
@@ -48,7 +49,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
   const {
     sites, welfareChecks, foodSurveys, roomChecks, canManageUsers, requestConfirmation,
     irRecords, challengingSUs, referrals, rfaWelfareRecords, mhComplaintWelfareRecords,
-    gpAppointmentRecords, publicTransportRecords
+    gpAppointmentRecords, publicTransportRecords, documents: repositoryDocuments
   } = useApp();
   const canCRUD = canManageUsers();
 
@@ -296,7 +297,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     { id: 'accommodation', label: 'Accommodation' },
     { id: 'household', label: `Household (${household.length})` },
     { id: 'support', label: `Support (${supportRecords.length})` },
-    { id: 'documents', label: `Documents (${documents.length})` },
+    { id: 'documents', label: `Documents (${documents.length + repositoryDocsForServiceUser(repositoryDocuments, serviceUser).length})` },
     { id: 'incidents', label: `Incident Reports (${suRecords.incidents.length})` },
     { id: 'referrals', label: `SG Referrals (${suRecords.referrals.length})` },
     { id: 'welfare', label: `Welfare Checks (${suWelfare.length + suRecords.otherWelfare.length})` },
@@ -513,7 +514,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
 
           {activeTab === 'documents' && (
             <SUDocumentsTab
-              documents={documents}
+              documents={[...documents, ...repositoryDocsForServiceUser(repositoryDocuments, serviceUser)]}
               onOpenUploadModal={(doc) => { setDocToEdit(doc); setIsDocModalOpen(true); }}
               onDeleteDoc={async (id) => {
                 if (typeof requestConfirmation !== 'undefined') {

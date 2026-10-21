@@ -420,8 +420,8 @@ export const VCS_AGENCIES_TABLE_COLUMNS: TableColumnConfig<SDVCSAgency>[] = [
 export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
   { key: 'documentTitle', label: 'Document Title', type: 'text', required: true, section: 'Document Info' },
   { key: 'site', label: 'Hotel / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Document Info' },
-  { key: 'suName', label: 'Resident Name', type: 'text', section: 'Resident Association' },
-  { key: 'refNumber', label: 'Port Ref', type: 'text', section: 'Resident Association' },
+  { key: 'suName', label: 'Resident / Property', type: 'text', section: 'Resident Association' },
+  { key: 'refNumber', label: 'Port Ref / Property Ref', type: 'text', section: 'Resident Association' },
   { 
     key: 'category', 
     label: 'Category', 

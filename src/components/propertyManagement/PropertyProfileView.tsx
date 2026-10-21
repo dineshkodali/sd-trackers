@@ -18,6 +18,7 @@ import { PropertyRoomsManager } from '../rooms/PropertyRoomsManager';
 import { AssetFormModal } from './AssetFormModal';
 import { propertyOccupancy, formatOccupancy } from '../../utils/roomManagementLogic';
 import { ComplianceFormModal } from './ComplianceFormModal';
+import { repositoryDocsForProperty } from '../../utils/repositoryDocuments';
 import { PropertyDocumentsSection } from './PropertyDocumentsSection';
 import { 
   PropertyOverviewTab, 
@@ -40,7 +41,7 @@ export const PropertyProfileView: React.FC<PropertyProfileViewProps> = ({
   onEditProperty,
   onRefreshData
 }) => {
-  const { sites, maintenanceRecords, canManageProperties, requestConfirmation } = useApp();
+  const { sites, maintenanceRecords, canManageProperties, requestConfirmation, documents: repositoryDocuments } = useApp();
   const canCRUD = canManageProperties();
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -171,7 +172,7 @@ export const PropertyProfileView: React.FC<PropertyProfileViewProps> = ({
     { id: 'rooms', label: `Rooms (${rooms.length})` },
     { id: 'serviceUsers', label: `Service Users (${occupants.length})` },
     { id: 'compliance', label: `Compliance (${complianceList.length})` },
-    { id: 'documents', label: `Documents (${documents.length})` },
+    { id: 'documents', label: `Documents (${documents.length + repositoryDocsForProperty(repositoryDocuments, property).length})` },
     { id: 'assets', label: `Assets / Inventory (${assets.length})` },
     { id: 'facilities', label: `Facilities (${facilities.length})` },
     { id: 'contacts', label: `Contacts (${contacts.length})` }
@@ -345,7 +346,7 @@ export const PropertyProfileView: React.FC<PropertyProfileViewProps> = ({
             <PropertyDocumentsSection
               propertyId={property.id}
               propertyName={property.propertyName}
-              documents={documents}
+              documents={[...documents, ...repositoryDocsForProperty(repositoryDocuments, property)]}
               onRefresh={() => {
                 loadPropertyData(property.id);
                 onRefreshData();

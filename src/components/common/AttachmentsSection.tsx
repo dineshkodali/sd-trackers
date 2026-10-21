@@ -47,7 +47,15 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
   const handleProcessFiles = (files: FileList | null) => {
     if (!files || files.length === 0 || !onChange) return;
 
-    const filesArr = Array.from(files);
+    // Files travel inside the saved record, so very large ones would make the save fail. Say so up front.
+    const MAX_FILE_BYTES = 8 * 1024 * 1024;
+    const allFiles = Array.from(files);
+    const tooBig = allFiles.filter(f => f.size > MAX_FILE_BYTES);
+    if (tooBig.length > 0) {
+      alert(`These files are over 8 MB and were not attached: ${tooBig.map(f => f.name).join(', ')}. Please compress them or split them into smaller files.`);
+    }
+    const filesArr = allFiles.filter(f => f.size <= MAX_FILE_BYTES);
+    if (filesArr.length === 0) return;
     let pendingCount = filesArr.length;
     const added: RecordAttachment[] = [];
 
@@ -61,7 +69,6 @@ export const AttachmentsSection: React.FC<AttachmentsSectionProps> = ({
           size: file.size,
           type: file.type || 'application/octet-stream',
           dataUrl: fileContent,
-          url: fileContent,
           uploadedBy: currentUserName || currentUserRole,
           uploadedAt: new Date().toISOString()
         });
