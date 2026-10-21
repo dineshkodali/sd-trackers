@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Search, RefreshCw, AlertCircle, Pencil, Eye, ArrowUpDown, X, Lock, Trash2, Stethoscope } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type GpRegistration, type SuDirectoryRow } from '../../services/suTrackerService';
@@ -277,10 +277,13 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
     return (q ? directory.filter(r => `${r.su.firstName} ${r.su.lastName} ${r.su.suReference} ${r.su.externalReference || ''}`.toLowerCase().includes(q)) : directory).slice(0, 200);
   }, [directory, search]);
 
-  // A fresh read whenever the Service User changes, so nothing from the previous selection stays in the form
+  // A fresh read whenever the Service User changes. Values loaded for the previous resident are cleared, but anything
+  // typed before choosing a resident is kept (the form is open from the start).
+  const prefilled = useRef(false);
   useEffect(() => {
     let alive = true;
-    setExisting(null); setGp(''); setPharmacy(''); setNhs(''); setNotes(''); setError('');
+    setExisting(null); setError('');
+    if (prefilled.current) { setGp(''); setPharmacy(''); setNhs(''); setNotes(''); prefilled.current = false; }
     if (!suId) return;
     setLoadingReg(true);
     suTrackerService.getGpRegistrationForSu(suId).then(res => {
@@ -289,7 +292,7 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
       if (!res.success) { setError(res.error || 'Could not load the registration.'); return; }
       const reg = res.data;
       setExisting(reg);
-      setGp(reg?.gpPractice || ''); setPharmacy(reg?.pharmacy || ''); setNhs(reg?.nhsNumber || ''); setNotes(reg?.notes || '');
+      if (reg) { setGp(reg.gpPractice || ''); setPharmacy(reg.pharmacy || ''); setNhs(reg.nhsNumber || ''); setNotes(reg.notes || ''); prefilled.current = true; }
     });
     return () => { alive = false; };
   }, [suId]);
@@ -334,20 +337,20 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
             </div>
           )}
 
-          {selected && (
             <>
               <div>
                 <div className="flex items-center gap-1.5 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5"><Lock className="w-3 h-3" /> From the Service User profile</div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-neutral-600 mb-1">Port reference</label><div className={lockedCls}>{selected.su.externalReference || selected.su.suReference || '—'}</div></div>
-                  <div><label className="block text-neutral-600 mb-1">Date of birth</label><div className={lockedCls}>{formatUkDate(selected.su.dateOfBirth) || '—'}</div></div>
-                  <div className="col-span-2"><label className="block text-neutral-600 mb-1">Name</label><div className={lockedCls}>{selected.su.firstName} {selected.su.lastName}</div></div>
+                  <div><label className="block text-neutral-600 mb-1">Port reference</label><div className={lockedCls}>{selected?.su.externalReference || selected?.su.suReference || '—'}</div></div>
+                  <div><label className="block text-neutral-600 mb-1">Date of birth</label><div className={lockedCls}>{formatUkDate(selected?.su.dateOfBirth) || '—'}</div></div>
+                  <div className="col-span-2"><label className="block text-neutral-600 mb-1">Name</label><div className={lockedCls}>{selected?.su.firstName} {selected?.su.lastName}</div></div>
                 </div>
               </div>
 
               <div>
                 <div className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">GP registration details {loadingReg && <span className="normal-case font-normal">(loading...)</span>}</div>
-                {!loadingReg && !existing && !readOnly && <p className="mb-2 text-[11px] text-amber-700">No GP registration exists yet for this Service User. Fill in what is known; blank fields stay blank.</p>}
+                {!suId && !readOnly && <p className="mb-2 text-[11px] text-neutral-500">Choose the Service User above; their details and any existing GP registration fill in here.</p>}
+                {!loadingReg && !!suId && !existing && !readOnly && <p className="mb-2 text-[11px] text-amber-700">No GP registration exists yet for this Service User. Fill in what is known; blank fields stay blank.</p>}
                 <div className="space-y-3">
                   <div><label className="block text-neutral-600 mb-1">GP practice</label><input className={inputCls} value={gp} onChange={e => setGp(e.target.value)} disabled={readOnly || loadingReg} /></div>
                   <div><label className="block text-neutral-600 mb-1">Pharmacy</label><input className={inputCls} value={pharmacy} onChange={e => setPharmacy(e.target.value)} disabled={readOnly || loadingReg} /></div>
@@ -363,12 +366,11 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
                 </div>
               </div>
             </>
-          )}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-[#e5e5e5]">
             <button type="button" onClick={onClose} className="px-3.5 py-1.5 border border-[#e5e5e5] rounded-xs text-neutral-700 hover:bg-neutral-100 cursor-pointer">{readOnly ? 'Close' : 'Cancel'}</button>
             {!readOnly && (
-              <button type="button" onClick={save} disabled={saving || loadingReg || !suId} className="px-4 py-1.5 bg-[#0d9488] hover:bg-teal-700 text-white rounded-xs font-semibold disabled:opacity-50 cursor-pointer">
+              <button type="button" onClick={save} disabled={saving || loadingReg} className="px-4 py-1.5 bg-[#0d9488] hover:bg-teal-700 text-white rounded-xs font-semibold disabled:opacity-50 cursor-pointer">
                 {saving ? 'Saving...' : existing ? 'Save Changes' : 'Save Registration'}
               </button>
             )}

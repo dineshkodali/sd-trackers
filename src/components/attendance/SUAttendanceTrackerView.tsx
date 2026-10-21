@@ -428,7 +428,13 @@ const AttendanceForm: React.FC<{
   const existing = records.find(r => r.suId === suId && r.attendanceDate === date);
 
   // Picking another resident or date loads that day's existing record (or clears the form): nothing carries over
-  useEffect(() => { setStatus(existing?.attendanceStatus || ''); setNotes(existing?.additionalNotes || ''); setError(''); }, [suId, date, existing?.id, existing?.attendanceStatus, existing?.additionalNotes]);
+  // A day that already has a record loads it; otherwise what was typed so far is kept (the form is open from the start)
+  const hadRecord = React.useRef(false);
+  useEffect(() => {
+    setError('');
+    if (existing) { setStatus(existing.attendanceStatus); setNotes(existing.additionalNotes || ''); hadRecord.current = true; }
+    else if (hadRecord.current) { setStatus(''); setNotes(''); hadRecord.current = false; }
+  }, [suId, date, existing?.id, existing?.attendanceStatus, existing?.additionalNotes]);
 
   const matches = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -457,17 +463,15 @@ const AttendanceForm: React.FC<{
           </select>
         </div>
       )}
-      {selected && (
-        <div>
+      <div>
           <div className="flex items-center gap-1.5 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5"><Lock className="w-3 h-3" /> From the Service User profile</div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div><label className="block text-neutral-600 mb-1">Port reference</label><div className={lockedCls}>{selected.su.externalReference || selected.su.suReference}</div></div>
-            <div><label className="block text-neutral-600 mb-1">Name</label><div className={lockedCls}>{selected.su.firstName} {selected.su.lastName}</div></div>
-            <div><label className="block text-neutral-600 mb-1">DOB</label><div className={lockedCls}>{formatUkDate(selected.su.dateOfBirth) || '—'}</div></div>
-            <div><label className="block text-neutral-600 mb-1">Room No</label><div className={lockedCls}>{selected.roomNo || 'Not placed'}</div></div>
+            <div><label className="block text-neutral-600 mb-1">Port reference</label><div className={lockedCls}>{selected?.su.externalReference || selected?.su.suReference}</div></div>
+            <div><label className="block text-neutral-600 mb-1">Name</label><div className={lockedCls}>{selected?.su.firstName} {selected?.su.lastName}</div></div>
+            <div><label className="block text-neutral-600 mb-1">DOB</label><div className={lockedCls}>{formatUkDate(selected?.su.dateOfBirth) || '—'}</div></div>
+            <div><label className="block text-neutral-600 mb-1">Room No</label><div className={lockedCls}>{selected?.roomNo || 'Not placed'}</div></div>
           </div>
         </div>
-      )}
       <div className="grid grid-cols-2 gap-3">
         <div><label className="block text-neutral-600 mb-1">Date <span className="text-red-500">*</span></label><input type="date" className={inputCls} value={date} max={todayIso()} onChange={e => setDate(e.target.value)} /></div>
         <div><label className="block text-neutral-600 mb-1">Attendance <span className="text-red-500">*</span></label>

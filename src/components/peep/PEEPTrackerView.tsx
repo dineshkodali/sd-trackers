@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Search, RefreshCw, AlertCircle, Pencil, Eye, X, Lock, ClipboardCheck, History, Archive, Accessibility, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -354,9 +354,11 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const hadPlan = useRef(false);
   useEffect(() => {
     setError('');
     if (existing) {
+      hadPlan.current = true;
       setForm({
         mobilityType: existing.mobilityType || '', riskLevel: existing.riskLevel, companion: existing.companion || '', emergencyAlarm: existing.emergencyAlarm || '',
         assistance: existing.assistance || '', evacuationProcedure: existing.evacuationProcedure || '', safeExitRoutes: existing.safeExitRoutes || '',
@@ -366,7 +368,10 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
       });
       suTrackerService.listPeepHistory(existing.id).then(r => setHistory(r.success ? r.data : []));
     } else {
-      setForm(blank); setHistory([]);
+      // Values typed before a resident was chosen are kept; only a previous resident's plan is cleared
+      if (hadPlan.current) setForm(blank);
+      hadPlan.current = false;
+      setHistory([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [suId, existing?.id, mode]);
@@ -418,15 +423,14 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
             </div>
           )}
 
-          {selected && (
             <>
               <div>
                 <div className="flex items-center gap-1.5 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5"><Lock className="w-3 h-3" /> From the Service User profile</div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div><label className="block text-neutral-600 mb-1">Port reference</label><div className={lockedCls}>{selected.su.externalReference || selected.su.suReference}</div></div>
-                  <div><label className="block text-neutral-600 mb-1">Name</label><div className={lockedCls}>{selected.su.firstName} {selected.su.lastName}</div></div>
-                  <div><label className="block text-neutral-600 mb-1">DOB</label><div className={lockedCls}>{formatUkDate(selected.su.dateOfBirth) || '—'}</div></div>
-                  <div><label className="block text-neutral-600 mb-1">Room No</label><div className={lockedCls}>{selected.roomNo || 'Not placed'}</div></div>
+                  <div><label className="block text-neutral-600 mb-1">Port reference</label><div className={lockedCls}>{selected?.su.externalReference || selected?.su.suReference}</div></div>
+                  <div><label className="block text-neutral-600 mb-1">Name</label><div className={lockedCls}>{selected?.su.firstName} {selected?.su.lastName}</div></div>
+                  <div><label className="block text-neutral-600 mb-1">DOB</label><div className={lockedCls}>{formatUkDate(selected?.su.dateOfBirth) || '—'}</div></div>
+                  <div><label className="block text-neutral-600 mb-1">Room No</label><div className={lockedCls}>{selected?.roomNo || 'Not placed'}</div></div>
                 </div>
               </div>
 
@@ -478,11 +482,10 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
                 </div>
               )}
             </>
-          )}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-[#e5e5e5]">
             <button type="button" onClick={onClose} className="px-3.5 py-1.5 border border-[#e5e5e5] rounded-xs text-neutral-700 hover:bg-neutral-100 cursor-pointer">{readOnly ? 'Close' : 'Cancel'}</button>
-            {!readOnly && <button type="button" onClick={save} disabled={saving || !suId} className="px-4 py-1.5 bg-[#0d9488] hover:bg-teal-700 text-white rounded-xs font-semibold disabled:opacity-50 cursor-pointer">{saving ? 'Saving...' : mode === 'review' ? 'Save Review' : 'Save Plan'}</button>}
+            {!readOnly && <button type="button" onClick={save} disabled={saving} className="px-4 py-1.5 bg-[#0d9488] hover:bg-teal-700 text-white rounded-xs font-semibold disabled:opacity-50 cursor-pointer">{saving ? 'Saving...' : mode === 'review' ? 'Save Review' : 'Save Plan'}</button>}
           </div>
         </div>
       </div>
