@@ -11,7 +11,7 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
-import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
+import { evaluateRegisterAllocation, roomKey, roomOccupants, usableCapacity } from '../../utils/roomAllocation';
 import { syncArrivalToServiceUser } from '../../utils/arrivalServiceUserSync';
 
 interface NewArrivalsSectionProps {
@@ -134,6 +134,40 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       setSortOrder('asc');
     }
   };
+
+  // Room is a dropdown limited to the selected hotel's rooms that still have a free bed, so a room
+  // from another property can never be typed in. The room being edited stays selectable.
+  const formColumns = useMemo<TableColumnConfig<NewArrivalRecord>[]>(() => columns.map(col => {
+    if (col.key === 'hotel') {
+      return { ...col, onValueChange: () => ({ room: '' }) };
+    }
+    if (col.key !== 'room') return col;
+    return {
+      ...col,
+      type: 'select',
+      placeholder: 'Select a room',
+      helperText: 'Only rooms in the selected hotel with a free bed are listed.',
+      options: (ctx?: any) => {
+        const form = ctx?.formData || {};
+        const hotel = String(form.hotel || '');
+        if (!hotel) return [];
+        const hotelKey = roomKey(hotel, '');
+        const current = String(form.room || '').trim();
+        return dailyRegisterRooms
+          .filter(r => roomKey(r.hotel, '') === hotelKey)
+          .map(r => {
+            const free = usableCapacity(r) - roomOccupants(dailyRegisterRecords, r.hotel, r.roomNo).length;
+            return { room: r, free };
+          })
+          .filter(({ room, free }) => free > 0 || room.roomNo === current)
+          .sort((a, b) => String(a.room.roomNo).localeCompare(String(b.room.roomNo), undefined, { numeric: true }))
+          .map(({ room, free }) => ({
+            label: `Room ${room.roomNo}${room.floor ? ` · Floor ${room.floor}` : ''} · ${Math.max(0, free)} bed${free === 1 ? '' : 's'} free`,
+            value: room.roomNo
+          }));
+      }
+    };
+  }), [columns, dailyRegisterRooms, dailyRegisterRecords]);
 
   const handleCreateSubmit = async (data: Partial<NewArrivalRecord>) => {
     const finalHotel = (data.hotel && data.hotel !== 'All Sites' && data.hotel !== 'all')
@@ -477,7 +511,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Record New Arrival"
-        columns={columns}
+        columns={formColumns}
         initialValues={{
           hotel: defaultSite,
           portReference: '',
@@ -494,7 +528,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
           isOpen={Boolean(editingRecord)}
           onClose={() => setEditingRecord(null)}
           title={`Edit Arrival: ${editingRecord.name}`}
-          columns={columns}
+          columns={formColumns}
           initialValues={editingRecord}
           onSubmit={handleEditSubmit}
           submitLabel="Save Changes"
