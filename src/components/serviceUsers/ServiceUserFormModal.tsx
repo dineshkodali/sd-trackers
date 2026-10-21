@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, AlertCircle, PlaneTakeoff } from 'lucide-react';
+import { X, User, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
@@ -7,10 +7,8 @@ import { ServiceUserMaster, PropertyMaster, PropertyRoom, ServiceUserDocument } 
 import { PersonalSection, ContactSection } from './ServiceUserPersonalContactSections';
 import { HouseholdSection, AccommodationSection } from './ServiceUserPlacementHouseholdSections';
 import { ServiceUserFormHeader, SUTabType } from './ServiceUserFormHeader';
-import { ServiceUserArrivalSection } from './ServiceUserArrivalSection';
 import { ServiceUserFormFooter } from './ServiceUserFormFooter';
 import { pickActivePlacement, activePlacementBySu } from '../../utils/placementSelection';
-import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
 import { 
   SUSupportNeedsSection, 
   SUDocumentsUploadSection, 
@@ -30,17 +28,13 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
   serviceUserToEdit,
   onSuccess
 }) => {
-  const {
-    sites, canAccessAllSites, allowedSites, isSitePermitted,
-    addNewArrivalRecord, addDailyRegisterRecord, dailyRegisterRooms, dailyRegisterRecords
-  } = useApp();
+  const { sites, canAccessAllSites, allowedSites, isSitePermitted } = useApp();
 
   const permittedSites = React.useMemo(() => {
     if (canAccessAllSites()) return sites;
     return sites.filter(s => isSitePermitted(s.name, 'all') || isSitePermitted(s.id, 'all'));
   }, [sites, canAccessAllSites, isSitePermitted]);
 
-  const [formMode, setFormMode] = useState<'standard' | 'arrival'>('standard');
   const [roomOccupancy, setRoomOccupancy] = useState<Record<string, number>>({});
   const [originalRoomId, setOriginalRoomId] = useState('');
   const [activeTab, setActiveTab] = useState<SUTabType>('personal');
@@ -79,15 +73,11 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
   const [householdMembers, setHouseholdMembers] = useState<Array<{ name: string; dateOfBirth?: string; relationship: string; gender?: string; contact?: string }>>([]);
 
   // Accommodation
-  const [includeAccommodation, setIncludeAccommodation] = useState(true);
   const [siteId, setSiteId] = useState('');
   const [properties, setProperties] = useState<PropertyMaster[]>([]);
   const [propertyId, setPropertyId] = useState('');
   const [rooms, setRooms] = useState<PropertyRoom[]>([]);
   const [roomId, setRoomId] = useState('');
-  const [placementStartDate, setPlacementStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [placementType, setPlacementType] = useState('Standard');
-  const [accommodationNotes, setAccommodationNotes] = useState('');
 
   // Support & Needs
   const [vulnerabilityFlags, setVulnerabilityFlags] = useState('');
@@ -101,13 +91,6 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
   const [existingDocuments, setExistingDocuments] = useState<ServiceUserDocument[]>([]);
   const [newDocs, setNewDocs] = useState<Array<{ type: string; name: string; fileUrl: string; fileName: string }>>([]);
 
-  // Arrival specific state
-  const [arrivalDateTime, setArrivalDateTime] = useState(new Date().toISOString().slice(0, 16));
-  const [luggageChecked, setLuggageChecked] = useState(true);
-  const [arrivalNotes, setArrivalNotes] = useState('');
-  const [arrivalDocFile, setArrivalDocFile] = useState<File | null>(null);
-  const [arrivalDocName, setArrivalDocName] = useState('');
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -119,13 +102,10 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
     setReferralDate(today); setArrivalDate(today);
     setMobile(''); setAlternativePhone(''); setEmail(''); setPreferredContactMethod('Mobile');
     setEmergencyName(''); setEmergencyRelationship(''); setEmergencyPhone(''); setEmergencyEmail('');
-    setHouseholdMembers([]); setIncludeAccommodation(true); setSiteId(permittedSites[0]?.id || sites[0]?.id || '');
-    setPlacementStartDate(today); setPlacementType('Standard'); setAccommodationNotes('');
+    setHouseholdMembers([]); setSiteId(permittedSites[0]?.id || sites[0]?.id || '');
     setVulnerabilityFlags(''); setDietaryNeeds(''); setMedicalConditions(''); setMobilityNeeds('');
     setSupportPriority('Medium'); setAssignedStaff('');
     setExistingDocuments([]); setNewDocs([]);
-    setArrivalDateTime(new Date().toISOString().slice(0, 16)); setLuggageChecked(true); setArrivalNotes('');
-    setArrivalDocFile(null); setArrivalDocName('');
   };
 
   useEffect(() => {
@@ -173,11 +153,6 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
             setSiteId(plc.siteId || serviceUserToEdit.siteId || '');
             setPropertyId(plc.propertyId);
             setRoomId(plc.roomId);
-            setPlacementStartDate(plc.startDate ? plc.startDate.split('T')[0] : '');
-            setAccommodationNotes(plc.notes || '');
-            setIncludeAccommodation(true);
-          } else {
-            setIncludeAccommodation(false);
           }
           if (spRes && spRes.length > 0) {
             const sp = spRes[0];
@@ -206,8 +181,8 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
         if (res.data.length > 0 && !propertyId) setPropertyId(res.data[0].id);
       }
     }
-    if (includeAccommodation || formMode === 'arrival') loadProps();
-  }, [siteId, includeAccommodation, formMode]);
+    loadProps();
+  }, [siteId]);
 
   useEffect(() => {
     async function loadRooms() {
@@ -229,8 +204,8 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
         setRoomId(prev => (prev && res.data.some(r => r.id === prev) ? prev : ''));
       }
     }
-    if (includeAccommodation || formMode === 'arrival') loadRooms();
-  }, [propertyId, includeAccommodation, formMode, serviceUserToEdit]);
+    loadRooms();
+  }, [propertyId, serviceUserToEdit]);
 
   if (!isOpen) return null;
 
@@ -238,12 +213,7 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim()) {
       setErrorMsg('First name and last name are required.');
-      if (formMode === 'standard') setActiveTab('personal');
-      return;
-    }
-
-    if (formMode === 'arrival' && (!siteId || !propertyId || !roomId)) {
-      setErrorMsg('Please select Site, Property, and Room to complete arrival allocation.');
+      setActiveTab('personal');
       return;
     }
 
@@ -270,71 +240,26 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
       let targetSuId = serviceUserToEdit?.id;
 
       if (serviceUserToEdit) {
-        const placementOptions = {
-          includeAccommodation,
-          siteId: includeAccommodation ? siteId : undefined,
-          propertyId: includeAccommodation ? propertyId : undefined,
-          roomId: includeAccommodation ? roomId : '',
-          startDate: placementStartDate || undefined,
-          notes: accommodationNotes || undefined
-        };
-
+        // The room chosen here is the resident's room. Empty means "leave the room as it is".
         const res = await suPropertyService.updateServiceUser(serviceUserToEdit.id, {
           firstName: firstName.trim(), middleName: middleName.trim(), lastName: lastName.trim(),
           preferredName: preferredName.trim(), dateOfBirth, gender, nationality,
           preferredLanguage, interpreterRequired, status,
           externalReference: externalReference.trim(), caseReference: caseReference.trim(),
           referralDate, arrivalDate, siteId
-        }, placementOptions);
+        }, { siteId, propertyId, roomId });
         if (!res.success) throw new Error(res.error || 'Failed to update Service User.');
       } else {
-        const initialPlacement = (formMode === 'arrival' || includeAccommodation) && siteId && propertyId && roomId ? {
-          siteId, propertyId, roomId,
-          startDate: formMode === 'arrival' ? new Date(arrivalDateTime).toISOString() : new Date(placementStartDate).toISOString(),
-          notes: formMode === 'arrival' ? `Arrival intake. Notes: ${arrivalNotes || 'None'}. Luggage: ${luggageChecked ? 'Checked' : 'Pending'}` : accommodationNotes
-        } : undefined;
-
-        const finalArrivalDate = formMode === 'arrival' ? arrivalDateTime.split('T')[0] : arrivalDate;
         const res = await suPropertyService.createServiceUser({
           firstName: firstName.trim(), middleName: middleName.trim(), lastName: lastName.trim(),
           preferredName: preferredName.trim(), dateOfBirth, gender, nationality, preferredLanguage,
           interpreterRequired, status: 'Active', externalReference: externalReference.trim(),
-          caseReference: caseReference.trim(), referralDate: referralDate || finalArrivalDate,
-          arrivalDate: finalArrivalDate, siteId
-        }, contactData, householdMembers, initialPlacement);
+          caseReference: caseReference.trim(), referralDate: referralDate || arrivalDate,
+          arrivalDate, siteId
+        }, contactData, householdMembers, siteId && propertyId && roomId ? { siteId, propertyId, roomId } : undefined);
 
         if (!res.success || !res.record) throw new Error(res.error || 'Failed to create Service User.');
         targetSuId = res.record.id;
-
-        // Line the arrival up with the live registers: New Arrivals queue, and the Daily Register when the room exists there.
-        if (formMode === 'arrival') {
-          const siteName = sites.find(s => s.id === siteId)?.name || siteId;
-          const roomNumber = rooms.find(r => r.id === roomId)?.roomNumber || '';
-          const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
-          const checkInDate = arrivalDateTime.split('T')[0];
-          const check = evaluateRegisterAllocation({
-            rooms: dailyRegisterRooms, records: dailyRegisterRecords, hotel: siteName,
-            roomNo: roomNumber, portRef: externalReference.trim()
-          });
-          addNewArrivalRecord({
-            portReference: externalReference.trim(), name: fullName, dob: dateOfBirth, country: nationality,
-            language: preferredLanguage, contactNumber: mobile.trim(), email: email.trim(),
-            hotel: siteName, room: check.ok ? check.room!.roomNo : roomNumber, checkInDate,
-            status: check.ok ? 'Checked In' : 'Arrived', attachments: []
-          } as any);
-          if (check.ok) {
-            const room = check.room!;
-            addDailyRegisterRecord({
-              hotel: room.hotel, roomNo: room.roomNo, floor: room.floor || undefined,
-              singleBed: 1, doubleBed: 0, singleBunk: 0, doubleBunk: 0, cot: 0,
-              portRef: externalReference.trim(), name: fullName, checkInDate,
-              contactNo: mobile.trim(), email: email.trim(), dob: dateOfBirth,
-              nationality, language: preferredLanguage, gender,
-              occupied: 'Yes', isVoid: 'No', availableToBook: 'No',
-              registerDate: checkInDate, dailyOccupancy: { [checkInDate]: 'Occupied' }
-            });
-          }
-        }
       }
 
       if (targetSuId) {
@@ -369,12 +294,10 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
         <div className="px-6 py-4 border-b border-[#e5e5e5] bg-[#faf9f8] flex items-center justify-between shrink-0">
           <div>
             <h3 className="font-bold text-sm text-[#242424] flex items-center gap-2">
-              {formMode === 'arrival' ? <PlaneTakeoff className="w-4 h-4 text-amber-600" /> : <User className="w-4 h-4 text-[#0d9488]" />}
+              <User className="w-4 h-4 text-[#0d9488]" />
               <span>
                 {serviceUserToEdit
                   ? `Edit Service User — ${serviceUserToEdit.suReference}`
-                  : formMode === 'arrival'
-                  ? 'Quick Arrival Intake & Room Allocation'
                   : 'Register New Service User Master'}
               </span>
             </h3>
@@ -391,8 +314,6 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
 
         <ServiceUserFormHeader
           serviceUserToEdit={serviceUserToEdit}
-          formMode={formMode}
-          setFormMode={setFormMode}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           householdCount={householdMembers.length}
@@ -408,29 +329,7 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
             </div>
           )}
 
-          {formMode === 'arrival' ? (
-            <ServiceUserArrivalSection
-              arrivalDateTime={arrivalDateTime} setArrivalDateTime={setArrivalDateTime}
-              portReference={externalReference} setPortReference={setExternalReference}
-              caseReference={caseReference} setCaseReference={setCaseReference}
-              firstName={firstName} setFirstName={setFirstName}
-              lastName={lastName} setLastName={setLastName}
-              dateOfBirth={dateOfBirth} setDateOfBirth={setDateOfBirth}
-              gender={gender} setGender={setGender}
-              nationality={nationality} setNationality={setNationality}
-              preferredLanguage={preferredLanguage} setPreferredLanguage={setPreferredLanguage}
-              interpreterRequired={interpreterRequired} setInterpreterRequired={setInterpreterRequired}
-              siteId={siteId} setSiteId={setSiteId} sites={permittedSites}
-              propertyId={propertyId} setPropertyId={setPropertyId} properties={properties}
-              roomId={roomId} setRoomId={setRoomId} rooms={rooms}
-              luggageChecked={luggageChecked} setLuggageChecked={setLuggageChecked}
-              vulnerabilityFlags={vulnerabilityFlags} setVulnerabilityFlags={setVulnerabilityFlags}
-              dietaryNeeds={dietaryNeeds} setDietaryNeeds={setDietaryNeeds}
-              arrivalNotes={arrivalNotes} setArrivalNotes={setArrivalNotes}
-              arrivalDocFile={arrivalDocFile} setArrivalDocFile={setArrivalDocFile}
-              arrivalDocName={arrivalDocName} setArrivalDocName={setArrivalDocName}
-            />
-          ) : (
+          {(
             <>
               {activeTab === 'personal' && (
                 <PersonalSection
@@ -466,14 +365,11 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
 
               {activeTab === 'accommodation' && (
                 <AccommodationSection
-                  includeAccommodation={includeAccommodation} setIncludeAccommodation={setIncludeAccommodation}
                   siteId={siteId} setSiteId={setSiteId} sites={permittedSites}
                   propertyId={propertyId} setPropertyId={setPropertyId} properties={properties}
                   roomId={roomId} setRoomId={setRoomId} rooms={rooms}
                   roomOccupancy={roomOccupancy} originalRoomId={originalRoomId}
-                  placementStartDate={placementStartDate} setPlacementStartDate={setPlacementStartDate}
-                  placementType={placementType} setPlacementType={setPlacementType}
-                  accommodationNotes={accommodationNotes} setAccommodationNotes={setAccommodationNotes}
+                  isEditing={Boolean(serviceUserToEdit)}
                 />
               )}
 
@@ -516,7 +412,6 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
             onClose={onClose}
             isSubmitting={isSubmitting}
             serviceUserToEdit={serviceUserToEdit}
-            formMode={formMode}
           />
         </form>
       </div>

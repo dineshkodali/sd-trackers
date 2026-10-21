@@ -217,7 +217,7 @@ export const suPropertyService = {
         propertyId: initialPlacement.propertyId,
         roomId: initialPlacement.roomId,
         startDate: initialPlacement.startDate || new Date().toISOString(),
-        notes: initialPlacement.notes || 'Initial accommodation placement',
+        notes: initialPlacement.notes || 'Room assigned at registration',
         status: 'Active'
       });
       if (!plcRes.success) {
@@ -236,7 +236,6 @@ export const suPropertyService = {
     id: string, 
     data: Partial<ServiceUserMaster>,
     placementOptions?: {
-      includeAccommodation: boolean;
       siteId?: string;
       propertyId?: string;
       roomId?: string;
@@ -274,12 +273,7 @@ export const suPropertyService = {
       const activePlcRes = await this.getPlacements({ suId: id, status: 'Active' });
       const currentPlc = activePlcRes.success && activePlcRes.data ? pickActivePlacement(activePlcRes.data) : null;
 
-      if (!placementOptions.includeAccommodation) {
-        // User deselected accommodation -> release current room if placed
-        if (currentPlc) {
-          await this.endPlacement(currentPlc.id, 'Accommodation removed by administrator');
-        }
-      } else if (placementOptions.siteId && placementOptions.propertyId && placementOptions.roomId) {
+      if (placementOptions.siteId && placementOptions.propertyId && placementOptions.roomId) {
         if (currentPlc) {
           // If room or property changed, transfer to the new room
           if (currentPlc.roomId !== placementOptions.roomId || currentPlc.propertyId !== placementOptions.propertyId) {

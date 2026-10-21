@@ -1,12 +1,9 @@
 import React from 'react';
-import { PlaneTakeoff, UserPlus } from 'lucide-react';
 
 export type SUTabType = 'personal' | 'contact' | 'household' | 'accommodation' | 'support' | 'documents';
 
 interface ServiceUserFormHeaderProps {
   serviceUserToEdit?: any;
-  formMode: 'standard' | 'arrival';
-  setFormMode: (mode: 'standard' | 'arrival') => void;
   activeTab: SUTabType;
   setActiveTab: (tab: SUTabType) => void;
   householdCount: number;
@@ -15,8 +12,6 @@ interface ServiceUserFormHeaderProps {
 
 export const ServiceUserFormHeader: React.FC<ServiceUserFormHeaderProps> = ({
   serviceUserToEdit,
-  formMode,
-  setFormMode,
   activeTab,
   setActiveTab,
   householdCount,
@@ -24,39 +19,8 @@ export const ServiceUserFormHeader: React.FC<ServiceUserFormHeaderProps> = ({
 }) => {
   return (
     <>
-      {/* Mode Switcher for New Users */}
-      {!serviceUserToEdit && (
-        <div className="px-6 py-2 bg-neutral-50 border-b border-[#e5e5e5] flex items-center gap-2 shrink-0">
-          <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mr-2">Form Mode:</span>
-          <button
-            type="button"
-            onClick={() => setFormMode('standard')}
-            className={`px-3 py-1 text-xs font-semibold rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
-              formMode === 'standard'
-                ? 'bg-white text-teal-800 border border-[#0d9488] shadow-xs'
-                : 'text-neutral-600 hover:bg-neutral-200/60 border border-transparent'
-            }`}
-          >
-            <UserPlus className="w-3.5 h-3.5 text-[#0d9488]" />
-            <span>Full Registration</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setFormMode('arrival')}
-            className={`px-3 py-1 text-xs font-semibold rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
-              formMode === 'arrival'
-                ? 'bg-white text-teal-800 border border-[#0d9488] shadow-xs'
-                : 'text-neutral-600 hover:bg-neutral-200/60 border border-transparent'
-            }`}
-          >
-            <PlaneTakeoff className="w-3.5 h-3.5 text-amber-600" />
-            <span>Quick Arrival Logging</span>
-          </button>
-        </div>
-      )}
-
-      {/* Tab Navigation for Standard Mode */}
-      {formMode === 'standard' && (
+      {/* Tab Navigation */}
+      {(
         <div className="flex items-center gap-1 px-6 pt-2 border-b border-[#e5e5e5] bg-white text-xs shrink-0 overflow-x-auto">
           <button
             type="button"
@@ -83,7 +47,7 @@ export const ServiceUserFormHeader: React.FC<ServiceUserFormHeaderProps> = ({
               activeTab === 'accommodation' ? 'border-[#0d9488] text-teal-800' : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
           >
-            {serviceUserToEdit ? 'Accommodation & Room' : 'Initial Accommodation'}
+            Accommodation &amp; Room
           </button>
           <button
             type="button"

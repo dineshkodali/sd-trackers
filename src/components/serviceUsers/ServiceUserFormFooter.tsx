@@ -1,19 +1,17 @@
 import React from 'react';
-import { ShieldCheck, PlaneTakeoff } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { ServiceUserMaster } from '../../types/masterData';
 
 interface ServiceUserFormFooterProps {
   onClose: () => void;
   isSubmitting: boolean;
   serviceUserToEdit?: ServiceUserMaster | null;
-  formMode: 'standard' | 'arrival';
 }
 
 export const ServiceUserFormFooter: React.FC<ServiceUserFormFooterProps> = ({
   onClose,
   isSubmitting,
-  serviceUserToEdit,
-  formMode
+  serviceUserToEdit
 }) => {
   return (
     <div className="flex items-center justify-between pt-4 border-t border-[#e5e5e5]">
@@ -38,11 +36,6 @@ export const ServiceUserFormFooter: React.FC<ServiceUserFormFooterProps> = ({
             'Saving...'
           ) : serviceUserToEdit ? (
             'Save Changes'
-          ) : formMode === 'arrival' ? (
-            <>
-              <PlaneTakeoff className="w-3.5 h-3.5" />
-              <span>Complete Arrival &amp; Allocation</span>
-            </>
           ) : (
             'Create Service User'
           )}

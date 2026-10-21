@@ -1,4 +1,5 @@
 import { suPropertyService } from '../services/suPropertyService';
+import { pickActivePlacement } from './placementSelection';
 import type { ServiceUserMaster } from '../types/masterData';
 
 export interface ArrivalSyncInput {
@@ -108,15 +109,22 @@ export async function syncArrivalToServiceUser(
     return { serviceUser: su, created, placed: !!placementData, warnings };
   }
 
-  // Existing Service User: place them only if they have no active placement yet
+  // Existing Service User: the room chosen on the arrival is their room. No placement yet -> place them;
+  // placed elsewhere -> move them; already in that room -> nothing to do.
   if (placementData) {
     const active = await suPropertyService.getPlacements({ suId: su.id, status: 'Active' });
-    if ((active.data || []).length === 0) {
+    const current = pickActivePlacement(active.data || []);
+    if (!current) {
       const res = await suPropertyService.createPlacement({ suId: su.id, ...placementData, reason: 'New arrival check-in' });
       if (!res.success) { warnings.push(res.error || 'Room placement failed.'); return { serviceUser: su, created, placed: false, warnings }; }
       return { serviceUser: su, created, placed: true, warnings };
     }
-    warnings.push(`${arrival.name} is already registered and already has an active room placement.`);
+    if (current.roomId !== roomId) {
+      const res = await suPropertyService.moveServiceUser(su.id, siteId, propertyId, roomId, new Date().toISOString(), 'New arrival: room chosen at intake');
+      if (!res.success) { warnings.push(res.error || 'Room change failed.'); return { serviceUser: su, created, placed: false, warnings }; }
+      return { serviceUser: su, created, placed: true, warnings };
+    }
+    return { serviceUser: su, created, placed: true, warnings };
   }
   return { serviceUser: su, created, placed: false, warnings };
 }

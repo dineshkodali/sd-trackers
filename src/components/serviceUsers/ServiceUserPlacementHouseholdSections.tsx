@@ -105,8 +105,6 @@ export const HouseholdSection: React.FC<HouseholdSectionProps> = ({
 );
 
 export interface AccommodationSectionProps {
-  includeAccommodation: boolean;
-  setIncludeAccommodation: (val: boolean) => void;
   siteId: string;
   setSiteId: (val: string) => void;
   sites: Array<{ id: string; name: string }>;
@@ -120,146 +118,83 @@ export interface AccommodationSectionProps {
   roomOccupancy?: Record<string, number>;
   /** The room the resident is in right now (it stays selectable even when full). */
   originalRoomId?: string;
-  placementStartDate: string;
-  setPlacementStartDate: (val: string) => void;
-  placementType: string;
-  setPlacementType: (val: string) => void;
-  accommodationNotes: string;
-  setAccommodationNotes: (val: string) => void;
+  /** Existing resident: the room currently held, shown so a change is deliberate. */
+  isEditing?: boolean;
 }
 
+/**
+ * Where the resident lives. Whatever room is chosen here is the resident's room everywhere (list, profile,
+ * Rooms, Daily Register). Leaving the room empty changes nothing.
+ */
 export const AccommodationSection: React.FC<AccommodationSectionProps> = ({
-  includeAccommodation, setIncludeAccommodation, siteId, setSiteId, sites,
-  propertyId, setPropertyId, properties, roomId, setRoomId, rooms, roomOccupancy = {}, originalRoomId = '',
-  placementStartDate, setPlacementStartDate, placementType, setPlacementType,
-  accommodationNotes, setAccommodationNotes
+  siteId, setSiteId, sites, propertyId, setPropertyId, properties, roomId, setRoomId, rooms,
+  roomOccupancy = {}, originalRoomId = '', isEditing = false
 }) => (
   <div className="space-y-4">
-    <div className="flex items-center gap-2 p-3 bg-[#f0fdfa] border border-[#ccfbf1] rounded-xs">
-      <input
-        type="checkbox"
-        id="chk-placement"
-        checked={includeAccommodation}
-        onChange={e => setIncludeAccommodation(e.target.checked)}
-        className="rounded-xs text-[#0d9488] focus:ring-0 cursor-pointer"
-      />
-      <label htmlFor="chk-placement" className="text-xs font-semibold text-neutral-800 select-none cursor-pointer">
-        Assign Initial Accommodation Placement Now
-      </label>
-    </div>
+    <div className="space-y-3.5 p-4 bg-[#faf9f8] rounded-xs border border-[#e5e5e5]">
+      <div>
+        <label className="block text-neutral-600 font-medium mb-1">Site</label>
+        <select
+          value={siteId}
+          onChange={e => setSiteId(e.target.value)}
+          className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
+        >
+          <option value="">-- Select Site --</option>
+          {sites.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-    {includeAccommodation && (
-      <div className="space-y-3.5 p-4 bg-[#faf9f8] rounded-xs border border-[#e5e5e5]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <div>
-          <label className="block text-neutral-600 font-medium mb-1">
-            Target Site <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-neutral-600 font-medium mb-1">Property</label>
           <select
-            value={siteId}
-            onChange={e => setSiteId(e.target.value)}
-            required
-            className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
+            value={propertyId}
+            onChange={e => setPropertyId(e.target.value)}
+            disabled={properties.length === 0}
+            className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] disabled:bg-neutral-100"
           >
-            <option value="">-- Select Site --</option>
-            {sites.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.name}
+            <option value="">-- Select Property --</option>
+            {properties.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.propertyReference} - {p.propertyName}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div>
-            <label className="block text-neutral-600 font-medium mb-1">
-              Property <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={propertyId}
-              onChange={e => setPropertyId(e.target.value)}
-              required
-              disabled={properties.length === 0}
-              className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] disabled:bg-neutral-100"
-            >
-              <option value="">-- Select Property --</option>
-              {properties.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.propertyReference} - {p.propertyName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-neutral-600 font-medium mb-1">
-              Room <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={roomId}
-              onChange={e => setRoomId(e.target.value)}
-              required
-              disabled={rooms.length === 0}
-              className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] disabled:bg-neutral-100"
-            >
-              <option value="">-- Select Room --</option>
-              {rooms.map(r => {
-                const cap = Math.max(1, Number(r.capacity) || 1);
-                const occ = roomOccupancy[r.id] || 0;
-                const others = occ - (r.id === originalRoomId ? 1 : 0);
-                const outOfUse = isOutOfUse(r.status);
-                const state = outOfUse
-                  ? `Unavailable (${r.status})`
-                  : occ === 0 ? `Empty 0/${cap}`
-                  : occ >= cap ? `Full ${occ}/${cap}`
-                  : `${occ}/${cap} occupied`;
-                const blocked = (outOfUse || others >= cap) && r.id !== roomId;
-                return (
-                  <option key={r.id} value={r.id} disabled={blocked}>
-                    Room {r.roomNumber} ({r.roomType}) - {state}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div>
-            <label className="block text-neutral-600 font-medium mb-1">Placement Start Date</label>
-            <input
-              type="date"
-              value={placementStartDate}
-              onChange={e => setPlacementStartDate(e.target.value)}
-              required
-              className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
-            />
-          </div>
-          <div>
-            <label className="block text-neutral-600 font-medium mb-1">Placement Type</label>
-            <select
-              value={placementType}
-              onChange={e => setPlacementType(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
-            >
-              <option value="Standard">Standard</option>
-              <option value="Emergency">Emergency</option>
-              <option value="Temporary">Temporary</option>
-              <option value="Respite">Respite</option>
-            </select>
-          </div>
-        </div>
-
         <div>
-          <label className="block text-neutral-600 font-medium mb-1">Placement Notes</label>
-          <textarea
-            value={accommodationNotes}
-            onChange={e => setAccommodationNotes(e.target.value)}
-            rows={2}
-            placeholder="Special requirements, accessibility, room keys issued..."
-            className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
-          />
+          <label className="block text-neutral-600 font-medium mb-1">Room</label>
+          <select
+            value={roomId}
+            onChange={e => setRoomId(e.target.value)}
+            disabled={rooms.length === 0}
+            className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] disabled:bg-neutral-100"
+          >
+            <option value="">{isEditing && originalRoomId ? '-- Keep current room --' : '-- No room yet --'}</option>
+            {rooms.map(r => {
+              const cap = Math.max(1, Number(r.capacity) || 1);
+              const occ = roomOccupancy[r.id] || 0;
+              const others = occ - (r.id === originalRoomId ? 1 : 0);
+              const outOfUse = isOutOfUse(r.status);
+              const state = outOfUse
+                ? `Unavailable (${r.status})`
+                : occ === 0 ? `Empty 0/${cap}`
+                : occ >= cap ? `Full ${occ}/${cap}`
+                : `${occ}/${cap} occupied`;
+              const blocked = (outOfUse || others >= cap) && r.id !== roomId;
+              return (
+                <option key={r.id} value={r.id} disabled={blocked}>
+                  Room {r.roomNumber} ({r.roomType}) - {state}
+                </option>
+              );
+            })}
+          </select>
         </div>
       </div>
-    )}
+    </div>
   </div>
 );
