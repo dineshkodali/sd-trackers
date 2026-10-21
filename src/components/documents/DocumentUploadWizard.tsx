@@ -152,9 +152,8 @@ export const DocumentUploadWizard: React.FC<Props> = ({ isOpen, onClose, onSelec
             {linkType === 'service_user' && (
               <div>
                 <label className="block text-neutral-600 font-medium mb-1">Service User <span className="text-red-500">*</span></label>
-                <input className={`${inputCls} mb-1.5`} placeholder="Search by name, SU ID or Port Ref..." value={search} onChange={e => setSearch(e.target.value)} />
                 <select className={inputCls} value={suId} onChange={e => { setSuId(e.target.value); setError(''); }}>
-                  <option value="">{loading ? 'Loading Service Users...' : filteredUsers.length === 0 ? 'No Service Users found' : `-- Select Service User (${filteredUsers.length}) --`}</option>
+                  <option value="">{loading ? 'Loading Service Users...' : filteredUsers.length === 0 ? 'No Service Users found' : 'Select Service User...'}</option>
                   {filteredUsers.map(u => (
                     <option key={u.id} value={u.id}>
                       {u.firstName} {u.lastName} - {u.suReference}{u.externalReference ? ` - ${u.externalReference}` : ''} - {siteName(u.siteId) || 'No site'}
@@ -168,7 +167,7 @@ export const DocumentUploadWizard: React.FC<Props> = ({ isOpen, onClose, onSelec
               <div>
                 <label className="block text-neutral-600 font-medium mb-1">Property <span className="text-red-500">*</span></label>
                 <select className={inputCls} value={propertyId} onChange={e => { setPropertyId(e.target.value); setError(''); }}>
-                  <option value="">{loading ? 'Loading properties...' : '-- Select Property --'}</option>
+                  <option value="">{loading ? 'Loading properties...' : 'Select Property...'}</option>
                   {properties.map(p => (
                     <option key={p.id} value={p.id}>{p.propertyReference} - {p.propertyName}</option>
                   ))}

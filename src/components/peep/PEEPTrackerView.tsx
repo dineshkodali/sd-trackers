@@ -326,9 +326,8 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
           {mode === 'create' && !initialSuId && (
             <div>
               <label className="block text-neutral-600 font-medium mb-1">Service User <span className="text-red-500">*</span> <span className="font-normal text-neutral-400">(residents without an active plan)</span></label>
-              <input className={`${inputCls} mb-1.5`} placeholder="Search by name, SU ID or port reference..." value={search} onChange={e => setSearch(e.target.value)} />
               <select className={inputCls} value={suId} onChange={e => setSuId(e.target.value)}>
-                <option value="">-- Select Service User ({candidates.length}) --</option>
+                <option value="">Select Service User...</option>
                 {candidates.map(r => <option key={r.su.id} value={r.su.id}>{r.su.firstName} {r.su.lastName} - {r.su.externalReference || r.su.suReference}{r.roomNo ? ` - Room ${r.roomNo}` : ''}</option>)}
               </select>
             </div>

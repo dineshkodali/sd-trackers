@@ -406,9 +406,8 @@ const AttendanceForm: React.FC<{
       {!initial.suId && (
         <div>
           <label className="block text-neutral-600 font-medium mb-1">Service User <span className="text-red-500">*</span></label>
-          <input className={`${inputCls} mb-1.5`} placeholder="Search by name, SU ID or port reference..." value={search} onChange={e => setSearch(e.target.value)} />
           <select className={inputCls} value={suId} onChange={e => setSuId(e.target.value)}>
-            <option value="">-- Select Service User ({matches.length}) --</option>
+            <option value="">Select Service User...</option>
             {matches.map(d => <option key={d.su.id} value={d.su.id}>{d.su.firstName} {d.su.lastName} - {d.su.externalReference || d.su.suReference}{d.roomNo ? ` - Room ${d.roomNo}` : ''}</option>)}
           </select>
         </div>

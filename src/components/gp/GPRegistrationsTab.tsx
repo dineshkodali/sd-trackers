@@ -266,9 +266,8 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
           {!initialSuId && (
             <div>
               <label className="block text-neutral-600 font-medium mb-1">Service User <span className="text-red-500">*</span></label>
-              <input className={`${inputCls} mb-1.5`} placeholder="Search by name, SU ID or port reference..." value={search} onChange={e => setSearch(e.target.value)} />
               <select className={inputCls} value={suId} onChange={e => setSuId(e.target.value)}>
-                <option value="">-- Select Service User ({matches.length}) --</option>
+                <option value="">Select Service User...</option>
                 {matches.map(r => <option key={r.su.id} value={r.su.id}>{r.su.firstName} {r.su.lastName} - {r.su.externalReference || r.su.suReference}</option>)}
               </select>
             </div>
