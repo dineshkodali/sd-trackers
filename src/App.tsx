@@ -31,6 +31,8 @@ import { IRTrackerView } from './components/ir/IRTrackerView';
 import { FoodWastageView } from './components/food/FoodWastageView';
 import { LiveDailyRegistersView } from './components/registers/LiveDailyRegistersView';
 import { GPAppointmentsView } from './components/gp/GPAppointmentsView';
+import { PEEPTrackerView } from './components/peep/PEEPTrackerView';
+import { SUAttendanceTrackerView } from './components/attendance/SUAttendanceTrackerView';
 import { RFAWelfareChecksView } from './components/welfare/RFAWelfareChecksView';
 import { DispersalSheetView } from './components/dispersal/DispersalSheetView';
 import { BookletCollectionView } from './components/booklets/BookletCollectionView';
@@ -242,6 +244,10 @@ function AppLayout() {
         return <MHComplaintWelfareChecksView />;
       case 'gpAppointments':
         return <GPAppointmentsView />;
+      case 'peepTracker':
+        return <PEEPTrackerView />;
+      case 'suAttendance':
+        return <SUAttendanceTrackerView />;
       case 'maintenance':
         return <MaintenanceTrackerView />;
       case 'spcd':

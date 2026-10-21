@@ -745,6 +745,67 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['patNextDue', 'pat_next_due', 'text'],
     ['locationDetail', 'location_detail', 'text'],
   ],
+  gp_registrations: [
+    ['suId', 'su_id', 'text'],
+    ['gpPractice', 'gp_practice', 'text'],
+    ['pharmacy', 'pharmacy', 'text'],
+    ['nhsNumber', 'nhs_number', 'text'],
+    ['notes', 'notes', 'text'],
+    ['createdBy', 'created_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  peep_plans: [
+    ['suId', 'su_id', 'text'],
+    ['mobilityType', 'mobility_type', 'text'],
+    ['riskLevel', 'risk_level', 'text'],
+    ['companion', 'companion', 'text'],
+    ['emergencyAlarm', 'emergency_alarm', 'text'],
+    ['assistance', 'assistance', 'text'],
+    ['evacuationProcedure', 'evacuation_procedure', 'text'],
+    ['safeExitRoutes', 'safe_exit_routes', 'text'],
+    ['developedBy', 'developed_by', 'text'],
+    ['planDate', 'plan_date', 'text'],
+    ['reviewDate', 'review_date', 'text'],
+    ['lastReviewedAt', 'last_reviewed_at', 'text'],
+    ['status', 'status', 'text'],
+    ['version', 'version', 'int'],
+    ['createdBy', 'created_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  peep_plan_history: [
+    ['planId', 'plan_id', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['version', 'version', 'int'],
+    ['changeType', 'change_type', 'text'],
+    ['snapshot', 'snapshot', 'json'],
+    ['changedFields', 'changed_fields', 'text'],
+    ['changedBy', 'changed_by', 'text'],
+    ['changedAt', 'changed_at', 'text'],
+  ],
+  su_attendance_records: [
+    ['suId', 'su_id', 'text'],
+    ['attendanceDate', 'attendance_date', 'text'],
+    ['attendanceStatus', 'attendance_status', 'text'],
+    ['additionalNotes', 'additional_notes', 'text'],
+    ['recordedBy', 'recorded_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  absence_followups: [
+    ['suId', 'su_id', 'text'],
+    ['absenceStartDate', 'absence_start_date', 'text'],
+    ['thresholdDays', 'threshold_days', 'int'],
+    ['thresholdReachedAt', 'threshold_reached_at', 'text'],
+    ['consecutiveDays', 'consecutive_days', 'int'],
+    ['status', 'status', 'text'],
+    ['assignedTo', 'assigned_to', 'text'],
+    ['followUpNotes', 'follow_up_notes', 'text'],
+    ['actionHistory', 'action_history', 'json'],
+    ['dueDate', 'due_date', 'text'],
+    ['lastActionAt', 'last_action_at', 'text'],
+    ['resolvedAt', 'resolved_at', 'text'],
+    ['createdBy', 'created_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
   room_beds: [
     ['bedReference', 'bed_reference', 'text'],
     ['propertyId', 'property_id', 'text'],
@@ -1281,6 +1342,24 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'next_inspection_due', 'key_reference', 'blocked_reason', 'blocked_until',
     'void_since', 'fire_safety_notes', 'kit_template_id'
   ]),
+  gp_registrations: new Set([
+    'id', 'su_id', 'gp_practice', 'pharmacy', 'nhs_number', 'notes', 'created_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
+  peep_plans: new Set([
+    'id', 'su_id', 'mobility_type', 'risk_level', 'companion', 'emergency_alarm', 'assistance', 'evacuation_procedure',
+    'safe_exit_routes', 'developed_by', 'plan_date', 'review_date', 'last_reviewed_at', 'status', 'version',
+    'created_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
+  peep_plan_history: new Set([
+    'id', 'plan_id', 'su_id', 'version', 'change_type', 'snapshot', 'changed_fields', 'changed_by', 'changed_at'
+  ]),
+  su_attendance_records: new Set([
+    'id', 'su_id', 'attendance_date', 'attendance_status', 'additional_notes', 'recorded_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
+  absence_followups: new Set([
+    'id', 'su_id', 'absence_start_date', 'threshold_days', 'threshold_reached_at', 'consecutive_days', 'status', 'assigned_to',
+    'follow_up_notes', 'action_history', 'due_date', 'last_action_at', 'resolved_at', 'created_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
   room_beds: new Set([
     'id', 'bed_reference', 'property_id', 'room_id', 'bed_label', 'bed_type', 'status',
     'mattress_condition', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
@@ -1412,6 +1491,10 @@ export const ENTITY_MODULE_LABELS: Record<string, string> = {
   propertyDocuments: 'Property Management', property_documents: 'Property Management',
   propertyContacts: 'Property Management', property_contacts: 'Property Management',
   placements: 'Placements',
+  gpRegistrations: 'GP Registrations', gp_registrations: 'GP Registrations',
+  peepPlans: 'PEEP Tracker', peep_plans: 'PEEP Tracker', peepPlanHistory: 'PEEP Tracker', peep_plan_history: 'PEEP Tracker',
+  suAttendance: 'SU Attendance', su_attendance_records: 'SU Attendance',
+  absenceFollowups: 'SU Attendance', absence_followups: 'SU Attendance',
   roomBeds: 'Room Management', room_beds: 'Room Management',
   inventoryItems: 'Room Management', inventory_items: 'Room Management',
   propertyInventoryStock: 'Room Management', property_inventory_stock: 'Room Management',

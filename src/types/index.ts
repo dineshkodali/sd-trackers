@@ -587,6 +587,8 @@ export interface GPAppointmentRecord {
   status: 'Scheduled' | 'Attended' | 'Did Not Attend (DNA)' | 'Cancelled' | 'Rescheduled'; // Status
   siteName?: string;
   suName?: string;
+  /** Canonical Service User id the appointment was booked for (set when the resident is picked from the list). */
+  suId?: string;
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
   attachment_url?: string;

@@ -61,7 +61,9 @@ export const Header: React.FC = () => {
       case 'challenging': return 'Challenging SUs';
       case 'challengingArchive': return 'Archived Challenging SUs';
       case 'rfaWelfare': return 'RFA Welfare Checks';
-      case 'gpAppointments': return 'GP Appointments Register';
+      case 'gpAppointments': return 'GP Appointments & Registrations';
+      case 'peepTracker': return 'PEEP Tracker';
+      case 'suAttendance': return 'SU Attendance Tracker';
       case 'maintenance': return 'Maintenance & Defect Tracker';
       case 'spcd': return 'SPCD Case Tracker';
       case 'publicTransport': return 'Public Transport Tracker';

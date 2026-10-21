@@ -168,6 +168,18 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   propertyContacts: { page: 'Property Contacts', table: 'property_contacts' },
   property_contacts: { page: 'Property Contacts', table: 'property_contacts', alias: true },
 
+  // GP registrations, PEEP plans, attendance and absence follow-ups (migration 020)
+  gpRegistrations: { page: 'GP Registrations', table: 'gp_registrations' },
+  gp_registrations: { page: 'GP Registrations', table: 'gp_registrations', alias: true },
+  peepPlans: { page: 'PEEP Tracker', table: 'peep_plans' },
+  peep_plans: { page: 'PEEP Tracker', table: 'peep_plans', alias: true },
+  peepPlanHistory: { page: 'PEEP Tracker', table: 'peep_plan_history' },
+  peep_plan_history: { page: 'PEEP Tracker', table: 'peep_plan_history', alias: true },
+  suAttendance: { page: 'SU Attendance', table: 'su_attendance_records' },
+  su_attendance_records: { page: 'SU Attendance', table: 'su_attendance_records', alias: true },
+  absenceFollowups: { page: 'SU Attendance', table: 'absence_followups' },
+  absence_followups: { page: 'SU Attendance', table: 'absence_followups', alias: true },
+
   // Room Management: beds, items in rooms, common stock, ledger, kits, issues, timeline
   roomBeds: { page: 'Room Beds', table: 'room_beds' },
   room_beds: { page: 'Room Beds', table: 'room_beds', alias: true },
@@ -623,6 +635,11 @@ export const TABLE_PARENT_SCOPE: Record<string, { linkColumn: string; linkField:
   service_user_household: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
   service_user_support: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
   service_user_documents: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  gp_registrations: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  peep_plans: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  peep_plan_history: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  su_attendance_records: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  absence_followups: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
   property_rooms: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
   property_facilities: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
   property_assets: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },

@@ -21,6 +21,8 @@ import { useTableSchema } from '../../hooks/useTableSchema';
 import { GP_APPOINTMENTS_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
+import { GPRegistrationsTab } from './GPRegistrationsTab';
+import { GpBookingInfoCard } from './GpBookingInfoCard';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -35,7 +37,7 @@ const gpExportColumns: ExportColumnOption[] = [
   { id: 'comments', label: 'Clinical / Case Comments' }
 ];
 
-export const GPAppointmentsView: React.FC = () => {
+const GPAppointmentsTab: React.FC = () => {
   const {
     defaultSiteFilter,
     gpAppointmentRecords,
@@ -90,6 +92,7 @@ export const GPAppointmentsView: React.FC = () => {
   // Modals
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [bookingSu, setBookingSu] = useState<{ id: string; firstName: string; lastName: string } | null>(null);
   const [editingRecord, setEditingRecord] = useState<GPAppointmentRecord | null>(null);
   const [viewingRecord, setViewingRecord] = useState<GPAppointmentRecord | null>(null);
 
@@ -159,6 +162,7 @@ export const GPAppointmentsView: React.FC = () => {
       siteName: effectiveSite || '',
       suName: data.suName || '',
       ...data,
+      suId: (data as any).suId || bookingSu?.id || undefined,
       attachments: Array.isArray(data.attachments) ? data.attachments : []
     } as any);
     setIsCreateModalOpen(false);
@@ -489,8 +493,10 @@ export const GPAppointmentsView: React.FC = () => {
       {/* Dynamic Create Modal */}
       <DynamicRecordFormModal<GPAppointmentRecord>
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => { setIsCreateModalOpen(false); setBookingSu(null); }}
         title="Book GP Appointment"
+        onServiceUserChange={setBookingSu}
+        slotAfterFields={<GpBookingInfoCard suId={bookingSu?.id || ''} />}
         columns={columns}
         initialValues={{
           roomNo: '',
@@ -548,6 +554,32 @@ export const GPAppointmentsView: React.FC = () => {
         onResetToDefault={resetToDefault}
         currentUserRole={currentUserRole}
       />
+    </div>
+  );
+};
+
+/** GP Appointments page: the appointments register and the GP registrations, on two tabs. */
+export const GPAppointmentsView: React.FC = () => {
+  const [tab, setTab] = useState<'appointments' | 'registrations'>('appointments');
+  const tabBtn = (id: 'appointments' | 'registrations', label: string) => (
+    <button
+      key={id}
+      type="button"
+      role="tab"
+      aria-selected={tab === id}
+      onClick={() => setTab(id)}
+      className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${tab === id ? 'border-[#0d9488] text-teal-800' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="space-y-3.5">
+      <div role="tablist" aria-label="GP sections" className="flex items-center gap-1 border-b border-[#e5e5e5] bg-white px-2 rounded-xs">
+        {tabBtn('appointments', 'GP Appointments')}
+        {tabBtn('registrations', 'GP Registrations')}
+      </div>
+      {tab === 'appointments' ? <GPAppointmentsTab /> : <GPRegistrationsTab />}
     </div>
   );
 };

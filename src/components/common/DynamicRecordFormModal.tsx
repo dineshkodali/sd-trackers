@@ -24,6 +24,10 @@ interface DynamicRecordFormModalProps<T = any> {
   isEdit?: boolean;
   submitLabel?: string;
   contextData?: Record<string, any>;
+  /** Called when a Service User is picked from the list (or cleared by typing a custom name). */
+  onServiceUserChange?: (su: { id: string; firstName: string; lastName: string } | null) => void;
+  /** Extra content shown between the fields and the attachments (e.g. details fetched for the chosen resident). */
+  slotAfterFields?: React.ReactNode;
 }
 
 export function DynamicRecordFormModal<T = any>({
@@ -37,7 +41,9 @@ export function DynamicRecordFormModal<T = any>({
   onAttachmentRemoved,
   isEdit = false,
   submitLabel,
-  contextData = {}
+  contextData = {},
+  onServiceUserChange,
+  slotAfterFields
 }: DynamicRecordFormModalProps<T>) {
   const {
     assignedSite,
@@ -1042,6 +1048,9 @@ export function DynamicRecordFormModal<T = any>({
                           hasError={!!errors[key]}
                           onChange={(val, extra) => {
                             handleChange(key, val);
+                            // Remember which Service User this record belongs to (by id, not by name)
+                            handleChange('suId', extra?.su?.id || '');
+                            onServiceUserChange?.(extra?.su ? { id: extra.su.id, firstName: extra.su.firstName, lastName: extra.su.lastName } : null);
                             if (extra) {
                               if (extra.portRef) {
                                 formColumns.forEach(c => {
@@ -1208,6 +1217,8 @@ export function DynamicRecordFormModal<T = any>({
               </div>
             </div>
           ))}
+
+          {slotAfterFields}
 
           {/* Universal Proof & Document Attachments Section */}
           <AttachmentsSection

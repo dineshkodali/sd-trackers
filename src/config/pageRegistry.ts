@@ -82,6 +82,18 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     description: 'Medical appointment attendance tracking, scheduled bookings, and DNA logs.'
   },
   {
+    id: 'peepTracker',
+    title: 'PEEP Tracker',
+    category: 'Safeguarding',
+    description: 'Personal Emergency Evacuation Plans: mobility, risk level, assistance and review dates.'
+  },
+  {
+    id: 'suAttendance',
+    title: 'SU Attendance Tracker',
+    category: 'Safeguarding',
+    description: 'Daily attendance, absence monitoring and 3 / 7 day follow-up.'
+  },
+  {
     id: 'documentBuilder',
     title: 'HO Report Generator',
     category: 'Safeguarding',
