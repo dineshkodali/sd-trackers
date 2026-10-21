@@ -1,7 +1,10 @@
 import { isOutOfUse } from '../utils/roomManagementLogic';
+import { pickActivePlacement, supersededActivePlacements } from '../utils/placementSelection';
 import { apiService, WriteResult } from './apiService';
 import { INITIAL_SITES } from '../data/initialData';
 import { ServiceUserMaster, ServiceUserContact, ServiceUserHouseholdMember, PropertyMaster, PropertyRoom, Placement, MasterAuditLog } from '../types/masterData';
+
+let repairInFlight: Promise<{ closed: number; roomsSynced: number }> | null = null;
 
 export const suPropertyService = {
   // ---------------------------------------------------------------------------
@@ -269,7 +272,7 @@ export const suPropertyService = {
     // Handle accommodation updates from form if placementOptions is provided
     if (placementOptions) {
       const activePlcRes = await this.getPlacements({ suId: id, status: 'Active' });
-      const currentPlc = activePlcRes.success && activePlcRes.data && activePlcRes.data.length > 0 ? activePlcRes.data[0] : null;
+      const currentPlc = activePlcRes.success && activePlcRes.data ? pickActivePlacement(activePlcRes.data) : null;
 
       if (!placementOptions.includeAccommodation) {
         // User deselected accommodation -> release current room if placed
@@ -744,6 +747,56 @@ export const suPropertyService = {
     }
 
     return { success: createRes.success, error: createRes.error };
+  },
+
+  /**
+   * Repairs old data so every screen shows the same room: a resident with more than one Active placement keeps
+   * only the newest (the others are closed), and each room's stored status is brought in line with its real
+   * active occupants. Safe to run repeatedly; does nothing when the data is already consistent.
+   */
+  async repairPlacements(): Promise<{ closed: number; roomsSynced: number }> {
+    if (repairInFlight) return repairInFlight;
+    repairInFlight = (async () => {
+      let closed = 0;
+      let roomsSynced = 0;
+      const plcsRes = await this.getPlacements({ status: 'Active' });
+      const active = plcsRes.success ? plcsRes.data || [] : [];
+      if (!plcsRes.success) return { closed, roomsSynced };
+
+      const touchedRooms = new Set<string>();
+      for (const old of supersededActivePlacements(active)) {
+        const newest = pickActivePlacement(active.filter(p => p.suId === old.suId));
+        const res = await apiService.updateEntityRecord<Placement>('placements', old.id, {
+          status: 'Completed',
+          endDate: newest?.startDate || new Date().toISOString(),
+          notes: `${old.notes || ''} [Closed: superseded by a newer placement]`.trim()
+        });
+        if (res.success) { closed++; if (old.roomId) touchedRooms.add(old.roomId); }
+      }
+
+      const remaining = active.filter(p => !supersededActivePlacements(active).some(s => s.id === p.id));
+      const occupants = new Map<string, number>();
+      remaining.forEach(p => occupants.set(p.roomId, (occupants.get(p.roomId) || 0) + 1));
+      const roomsRes = await this.getRooms();
+      for (const room of roomsRes.data || []) {
+        if (isOutOfUse(room.status)) continue;
+        const n = occupants.get(room.id) || 0;
+        const cap = Math.max(1, Number(room.capacity) || 1);
+        const expected = n === 0 ? 'Available' : n >= cap ? 'Occupied' : 'Partially Occupied';
+        if (touchedRooms.has(room.id) || room.status !== expected) {
+          await this.syncRoomOccupancy(room.id);
+          roomsSynced++;
+        }
+      }
+
+      if (closed > 0 || roomsSynced > 0) this.notifyMasterChange('placements');
+      return { closed, roomsSynced };
+    })();
+    try {
+      return await repairInFlight;
+    } finally {
+      repairInFlight = null;
+    }
   },
 
   async endPlacement(placementId: string, reason = 'Placement ended', endDate?: string): Promise<WriteResult> {

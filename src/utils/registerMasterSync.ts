@@ -1,7 +1,8 @@
 import { suPropertyService } from '../services/suPropertyService';
 import { isOutOfUse, isPlaceholderRoom } from './roomManagementLogic';
 import { roomKey } from './roomAllocation';
-import type { DailyRegisterRoom, DailyRegisterRecord } from '../types';
+import { activePlacementBySu } from './placementSelection';
+import type { DailyRegisterRoom, DailyRegisterRecord, NewArrivalRecord } from '../types';
 
 type NewRoom = Omit<DailyRegisterRoom, 'id' | 'createdAt' | 'updatedAt'>;
 type NewRecord = Omit<DailyRegisterRecord, 'id' | 'createdAt' | 'updatedAt'>;
@@ -9,6 +10,10 @@ type NewRecord = Omit<DailyRegisterRecord, 'id' | 'createdAt' | 'updatedAt'>;
 export interface RegisterSyncPlan {
   rooms: NewRoom[];
   records: NewRecord[];
+  /** Register entries whose room differs from the resident's active placement. */
+  recordUpdates: Array<{ id: string; changes: { hotel: string; roomNo: string; floor?: string } }>;
+  /** New Arrivals whose room differs from the resident's active placement. */
+  arrivalUpdates: Array<{ id: string; changes: { hotel: string; room: string } }>;
 }
 
 const norm = (s?: string | null) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -20,7 +25,8 @@ const norm = (s?: string | null) => (s || '').trim().toLowerCase().replace(/\s+/
 export async function buildRegisterSyncPlan(
   sites: { id: string; name: string }[],
   registerRooms: DailyRegisterRoom[],
-  registerRecords: DailyRegisterRecord[]
+  registerRecords: DailyRegisterRecord[],
+  arrivals: NewArrivalRecord[] = []
 ): Promise<RegisterSyncPlan> {
   const [propsRes, roomsRes, plcRes, suRes] = await Promise.all([
     suPropertyService.getProperties(),
@@ -32,7 +38,8 @@ export async function buildRegisterSyncPlan(
   const properties = propsRes.data || [];
   // Auto-generated demo rooms are not real accommodation, so they never reach the register.
   const masterRooms = (roomsRes.data || []).filter(r => !isPlaceholderRoom(r as any));
-  const placements = plcRes.data || [];
+  // One current placement per resident: the same one every other screen shows.
+  const placements = Array.from(activePlacementBySu(plcRes.data || []).values());
   const serviceUsers = suRes.data || [];
 
   const hotelOf = (propertyId: string, siteId?: string) => {
@@ -73,40 +80,63 @@ export async function buildRegisterSyncPlan(
     });
   });
 
-  // Active placements with no matching register entry (by Port Ref, or by name when there is none)
-  const refs = new Set(registerRecords.filter(r => r.occupied !== 'No').map(r => norm(r.portRef)).filter(Boolean));
-  const names = new Set(registerRecords.filter(r => r.occupied !== 'No').map(r => norm(r.name)).filter(Boolean));
+  // Register entries follow the placement: add a missing one, or move one that sits in another room
+  const activeRecords = registerRecords.filter(r => r.occupied !== 'No');
+  const byRef = new Map<string, DailyRegisterRecord>();
+  const byName = new Map<string, DailyRegisterRecord>();
+  activeRecords.forEach(r => {
+    if (norm(r.portRef)) byRef.set(norm(r.portRef), r);
+    if (norm(r.name)) byName.set(norm(r.name), r);
+  });
   const records: NewRecord[] = [];
+  const recordUpdates: RegisterSyncPlan['recordUpdates'] = [];
+  const arrivalUpdates: RegisterSyncPlan['arrivalUpdates'] = [];
+  const seen = new Set<string>();
   placements.forEach(p => {
     const su = serviceUsers.find(u => u.id === p.suId);
     const loc = hotelByRoomId.get(p.roomId);
     if (!su || !loc) return;
     const name = `${su.firstName} ${su.lastName}`.trim();
     const ref = su.externalReference || su.suReference || '';
-    if ((ref && refs.has(norm(ref))) || names.has(norm(name))) return;
-    refs.add(norm(ref));
-    names.add(norm(name));
+    const key = norm(ref) || norm(name);
+    if (seen.has(key)) return;
+    seen.add(key);
 
-    const checkIn = (p.startDate || su.arrivalDate || new Date().toISOString()).slice(0, 10);
-    records.push({
-      hotel: loc.hotel,
-      roomNo: loc.roomNo,
-      floor: loc.floor || undefined,
-      singleBed: 1, doubleBed: 0, singleBunk: 0, doubleBunk: 0, cot: 0,
-      portRef: ref,
-      name,
-      checkInDate: checkIn,
-      dob: su.dateOfBirth,
-      nationality: su.nationality,
-      language: su.preferredLanguage,
-      gender: su.gender,
-      occupied: 'Yes',
-      isVoid: 'No',
-      availableToBook: 'No',
-      registerDate: checkIn,
-      dailyOccupancy: { [checkIn]: 'Occupied' }
-    });
+    const existing = (norm(ref) && byRef.get(norm(ref))) || byName.get(norm(name));
+    if (existing) {
+      if (roomKey(existing.hotel, existing.roomNo) !== roomKey(loc.hotel, loc.roomNo)) {
+        recordUpdates.push({ id: existing.id, changes: { hotel: loc.hotel, roomNo: loc.roomNo, floor: loc.floor || undefined } });
+      }
+    } else {
+      const checkIn = (p.startDate || su.arrivalDate || new Date().toISOString()).slice(0, 10);
+      records.push({
+        hotel: loc.hotel,
+        roomNo: loc.roomNo,
+        floor: loc.floor || undefined,
+        singleBed: 1, doubleBed: 0, singleBunk: 0, doubleBunk: 0, cot: 0,
+        portRef: ref,
+        name,
+        checkInDate: checkIn,
+        dob: su.dateOfBirth,
+        nationality: su.nationality,
+        language: su.preferredLanguage,
+        gender: su.gender,
+        occupied: 'Yes',
+        isVoid: 'No',
+        availableToBook: 'No',
+        registerDate: checkIn,
+        dailyOccupancy: { [checkIn]: 'Occupied' }
+      });
+    }
+
+    arrivals
+      .filter(a => (norm(a.portReference) && norm(a.portReference) === norm(ref)) || (!norm(a.portReference) && norm(a.name) === norm(name)))
+      .forEach(a => {
+        if (roomKey(a.hotel, a.room) !== roomKey(loc.hotel, loc.roomNo)) {
+          arrivalUpdates.push({ id: a.id, changes: { hotel: loc.hotel, room: loc.roomNo } });
+        }
+      });
   });
 
-  return { rooms, records };
+  return { rooms, records, recordUpdates, arrivalUpdates };
 }

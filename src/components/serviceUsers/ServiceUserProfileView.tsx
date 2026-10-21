@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { pickActivePlacement } from '../../utils/placementSelection';
 import { getServiceUserRecords } from '../../utils/serviceUserRecords';
 import { SUIncidentsTab, SUReferralsTab, SUGpTab, SUTransportTab, SUOtherWelfareTable } from './SURecordTabs';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
@@ -91,7 +92,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
       if (Array.isArray(docRes)) setDocuments(docRes);
       if (Array.isArray(actRes)) setActivityItems(actRes);
 
-      const active = plcs.find(p => p.status === 'Active') || null;
+      const active = pickActivePlacement(plcs);
       setActivePlacement(active);
 
       if (active?.propertyId) {

@@ -9,6 +9,7 @@ import { HouseholdSection, AccommodationSection } from './ServiceUserPlacementHo
 import { ServiceUserFormHeader, SUTabType } from './ServiceUserFormHeader';
 import { ServiceUserArrivalSection } from './ServiceUserArrivalSection';
 import { ServiceUserFormFooter } from './ServiceUserFormFooter';
+import { pickActivePlacement, activePlacementBySu } from '../../utils/placementSelection';
 import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
 import { 
   SUSupportNeedsSection, 
@@ -40,6 +41,8 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
   }, [sites, canAccessAllSites, isSitePermitted]);
 
   const [formMode, setFormMode] = useState<'standard' | 'arrival'>('standard');
+  const [roomOccupancy, setRoomOccupancy] = useState<Record<string, number>>({});
+  const [originalRoomId, setOriginalRoomId] = useState('');
   const [activeTab, setActiveTab] = useState<SUTabType>('personal');
 
   // Personal Information
@@ -165,7 +168,8 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
             })));
           }
           if (plcRes.success && plcRes.data && plcRes.data.length > 0) {
-            const plc = plcRes.data[0];
+            const plc = pickActivePlacement(plcRes.data) || plcRes.data[0];
+            setOriginalRoomId(plc.roomId || '');
             setSiteId(plc.siteId || serviceUserToEdit.siteId || '');
             setPropertyId(plc.propertyId);
             setRoomId(plc.roomId);
@@ -214,25 +218,15 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
       ]);
       if (res.success && res.data) {
         const activePlcs = plcsRes.success && plcsRes.data ? plcsRes.data : [];
-        const occMap = new Map<string, number>();
-        activePlcs.forEach(p => {
-          if (serviceUserToEdit && p.suId === serviceUserToEdit.id) return;
-          occMap.set(p.roomId, (occMap.get(p.roomId) || 0) + 1);
-        });
+        const occ: Record<string, number> = {};
+        // Count each resident once, in their newest placement only
+        activePlacementBySu(activePlcs).forEach(p => { occ[p.roomId] = (occ[p.roomId] || 0) + 1; });
+        setRoomOccupancy(occ);
 
-        const selectable = res.data.filter(r => {
-          if (r.id === roomId) return true;
-          if (r.status === 'Under Maintenance' || r.status === 'Blocked') return false;
-          const currentOccupancy = occMap.get(r.id) || 0;
-          return currentOccupancy < (r.capacity || 1);
-        });
-
-        setRooms(selectable);
-        if (selectable.length > 0 && (!roomId || !selectable.some(r => r.id === roomId))) {
-          setRoomId(selectable[0].id);
-        } else if (selectable.length === 0) {
-          setRoomId('');
-        }
+        // Every room of the property is listed (full ones are shown but cannot be chosen). A room is never
+        // picked for the user: a previously chosen room that belongs to another property is simply cleared.
+        setRooms(res.data);
+        setRoomId(prev => (prev && res.data.some(r => r.id === prev) ? prev : ''));
       }
     }
     if (includeAccommodation || formMode === 'arrival') loadRooms();
@@ -476,6 +470,7 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
                   siteId={siteId} setSiteId={setSiteId} sites={permittedSites}
                   propertyId={propertyId} setPropertyId={setPropertyId} properties={properties}
                   roomId={roomId} setRoomId={setRoomId} rooms={rooms}
+                  roomOccupancy={roomOccupancy} originalRoomId={originalRoomId}
                   placementStartDate={placementStartDate} setPlacementStartDate={setPlacementStartDate}
                   placementType={placementType} setPlacementType={setPlacementType}
                   accommodationNotes={accommodationNotes} setAccommodationNotes={setAccommodationNotes}

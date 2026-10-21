@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Building2, Search, Plus, SlidersHorizontal, Lock, RefreshCw } from 'lucide-react';
+import { suPropertyService } from '../../services/suPropertyService';
 import { buildRegisterSyncPlan } from '../../utils/registerMasterSync';
 import { useApp } from '../../context/AppContext';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -61,32 +62,39 @@ export const LiveDailyRegistersView: React.FC = () => {
     defaultSiteFilter,
     liveDataStatus,
     addDailyRegisterRoom,
-    addDailyRegisterRecord
+    addDailyRegisterRecord,
+    updateDailyRegisterRecord,
+    updateNewArrivalRecord
   } = useApp();
 
   // Keep the register in line with the Rooms / Service User master data: missing rooms and
   // active placements are added, existing register rows are never touched.
-  const latest = React.useRef({ sites, dailyRegisterRooms, dailyRegisterRecords });
-  latest.current = { sites, dailyRegisterRooms, dailyRegisterRecords };
+  const latest = React.useRef({ sites, dailyRegisterRooms, dailyRegisterRecords, newArrivalsRecords });
+  latest.current = { sites, dailyRegisterRooms, dailyRegisterRecords, newArrivalsRecords };
   const syncing = React.useRef(false);
   const runMasterSync = React.useCallback(async () => {
     if (syncing.current) return;
     syncing.current = true;
     try {
-      const { sites: s, dailyRegisterRooms: rooms, dailyRegisterRecords: records } = latest.current;
+      // Old data first: one current placement per resident, so the register follows a single room.
+      await suPropertyService.repairPlacements();
+      const { sites: s, dailyRegisterRooms: rooms, dailyRegisterRecords: records, newArrivalsRecords: arrivals } = latest.current;
       const plan = await buildRegisterSyncPlan(
         (s || []).map((x: any) => typeof x === 'string' ? { id: x, name: x } : { id: x.id, name: x.name }),
         rooms,
-        records
+        records,
+        arrivals
       );
       plan.rooms.forEach(r => addDailyRegisterRoom(r));
       plan.records.forEach(r => addDailyRegisterRecord(r));
+      plan.recordUpdates.forEach(u => updateDailyRegisterRecord(u.id, u.changes));
+      plan.arrivalUpdates.forEach(u => updateNewArrivalRecord(u.id, u.changes));
     } catch (err) {
       console.error('Register sync with Rooms / Service Users failed:', err);
     } finally {
       syncing.current = false;
     }
-  }, [addDailyRegisterRoom, addDailyRegisterRecord]);
+  }, [addDailyRegisterRoom, addDailyRegisterRecord, updateDailyRegisterRecord, updateNewArrivalRecord]);
 
   const dataReady = liveDataStatus.state === 'live' || liveDataStatus.state === 'degraded';
   useEffect(() => {

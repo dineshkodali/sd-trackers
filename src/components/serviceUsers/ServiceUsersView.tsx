@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';
 import { ServiceUserFormModal } from './ServiceUserFormModal';
+import { activePlacementBySu } from '../../utils/placementSelection';
 import { getServiceUserRecords, countServiceUserRecords } from '../../utils/serviceUserRecords';
 import { ServiceUserProfileView } from './ServiceUserProfileView';
 import { MoveAccommodationModal } from './MoveAccommodationModal';
@@ -57,6 +58,12 @@ export const ServiceUsersView: React.FC = () => {
   useEffect(() => {
     setSiteFilter(initialSiteFilter);
   }, [initialSiteFilter]);
+
+  // Old data: close superseded duplicate placements and re-sync room status once when the page opens,
+  // so the list, the profile and Rooms all show the same room. (It announces itself, so the list reloads.)
+  useEffect(() => {
+    suPropertyService.repairPlacements().catch(err => console.warn('Placement repair skipped:', err));
+  }, []);
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [placementFilter, setPlacementFilter] = useState<'all' | 'placed' | 'unplaced'>('all');
@@ -210,21 +217,7 @@ export const ServiceUsersView: React.FC = () => {
 
   const propMap = useMemo(() => new Map(properties.map(p => [p.id, p])), [properties]);
   const roomMap = useMemo(() => new Map(rooms.map(r => [r.id, r])), [rooms]);
-  const activePlacementMap = useMemo(() => {
-    const map = new Map<string, Placement>();
-    // A resident can briefly have more than one Active placement (e.g. a move that did not close the
-    // old one). Always show the most recent one, the same placement the profile shows.
-    const stamp = (p: Placement) => Date.parse(p.startDate || '') || Date.parse(p.createdAt || '') || 0;
-    placements
-      .filter(p => p.status === 'Active')
-      .forEach(p => {
-        const prev = map.get(p.suId);
-        if (!prev || stamp(p) > stamp(prev) || (stamp(p) === stamp(prev) && (p.updatedAt || '') > (prev.updatedAt || ''))) {
-          map.set(p.suId, p);
-        }
-      });
-    return map;
-  }, [placements]);
+  const activePlacementMap = useMemo(() => activePlacementBySu(placements), [placements]);
 
   // Strict Site Isolation - users only see records from permitted sites
   const accessibleUsers = useMemo(() => {

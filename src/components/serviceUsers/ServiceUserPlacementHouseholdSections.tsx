@@ -1,3 +1,4 @@
+import { isOutOfUse } from '../../utils/roomManagementLogic';
 import React from 'react';
 import { Plus, Trash2, Users } from 'lucide-react';
 import { PropertyMaster, PropertyRoom } from '../../types/masterData';
@@ -115,6 +116,10 @@ export interface AccommodationSectionProps {
   roomId: string;
   setRoomId: (val: string) => void;
   rooms: PropertyRoom[];
+  /** Active residents per room id, so every room can show how full it is. */
+  roomOccupancy?: Record<string, number>;
+  /** The room the resident is in right now (it stays selectable even when full). */
+  originalRoomId?: string;
   placementStartDate: string;
   setPlacementStartDate: (val: string) => void;
   placementType: string;
@@ -125,7 +130,7 @@ export interface AccommodationSectionProps {
 
 export const AccommodationSection: React.FC<AccommodationSectionProps> = ({
   includeAccommodation, setIncludeAccommodation, siteId, setSiteId, sites,
-  propertyId, setPropertyId, properties, roomId, setRoomId, rooms,
+  propertyId, setPropertyId, properties, roomId, setRoomId, rooms, roomOccupancy = {}, originalRoomId = '',
   placementStartDate, setPlacementStartDate, placementType, setPlacementType,
   accommodationNotes, setAccommodationNotes
 }) => (
@@ -197,11 +202,23 @@ export const AccommodationSection: React.FC<AccommodationSectionProps> = ({
               className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] disabled:bg-neutral-100"
             >
               <option value="">-- Select Room --</option>
-              {rooms.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.roomReference} - Room {r.roomNumber} ({r.roomType})
-                </option>
-              ))}
+              {rooms.map(r => {
+                const cap = Math.max(1, Number(r.capacity) || 1);
+                const occ = roomOccupancy[r.id] || 0;
+                const others = occ - (r.id === originalRoomId ? 1 : 0);
+                const outOfUse = isOutOfUse(r.status);
+                const state = outOfUse
+                  ? `Unavailable (${r.status})`
+                  : occ === 0 ? `Empty 0/${cap}`
+                  : occ >= cap ? `Full ${occ}/${cap}`
+                  : `${occ}/${cap} occupied`;
+                const blocked = (outOfUse || others >= cap) && r.id !== roomId;
+                return (
+                  <option key={r.id} value={r.id} disabled={blocked}>
+                    Room {r.roomNumber} ({r.roomType}) - {state}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
