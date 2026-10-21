@@ -404,8 +404,9 @@ export function DynamicRecordFormModal<T = any>({
       if (!map.has(secName)) map.set(secName, []);
       map.get(secName)!.push(col);
     });
-    return Array.from(map.entries());
-  }, [formColumns]);
+    const rank = (c: TableColumnConfig<T>) => !hasSingleSu ? 3 : isSiteColumn(c) ? 0 : isServiceUserColumn(c) ? 1 : isSuProfileColumn(c) ? 2 : 3;
+    return Array.from(map.entries()).map(([name, cols]) => [name, [...cols].sort((a, b) => rank(a) - rank(b))] as [string, TableColumnConfig<T>[]]);
+  }, [formColumns, hasSingleSu]);
 
   // Initialize form data only when modal opens or target record changes
   useEffect(() => {
@@ -621,6 +622,12 @@ export function DynamicRecordFormModal<T = any>({
       const col = formColumns.find(c => String(c.key) === key);
       if (col?.onValueChange) {
         Object.assign(next, col.onValueChange(value, next) || {});
+      }
+      if (col && isSiteColumn(col) && hasSingleSu && prev[key] !== undefined && prev[key] !== value) {
+        formColumns.forEach(c => {
+          if (isServiceUserColumn(c) || isSuProfileColumn(c)) next[String(c.key)] = '';
+        });
+        next.suId = '';
       }
       if (col && isSiteColumn(col)) {
         const mgr = resolveSiteManager(value);

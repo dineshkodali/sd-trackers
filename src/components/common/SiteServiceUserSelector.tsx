@@ -210,19 +210,18 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
     onSelect?.(selectedSummary);
   };
 
-  // Filter SUs by active placement at current property, with graceful fallback to site or all SUs
+  // Residents of the chosen property (active placement), or of the chosen site. Never anyone else.
   const propertySUs = useMemo(() => {
-    if (!currentPropertyId) {
-      const siteMatches = currentSiteId ? serviceUsers.filter(u => u.siteId === currentSiteId) : [];
-      return siteMatches.length > 0 ? siteMatches : serviceUsers;
+    if (!currentSiteId) return [];
+    if (currentPropertyId) {
+      const validSuIds = new Set(placements.filter(p => p.propertyId === currentPropertyId && p.status === 'Active').map(p => p.suId));
+      return serviceUsers.filter(u => validSuIds.has(u.id));
     }
-    const validPlacements = placements.filter(p => p.propertyId === currentPropertyId && p.status === 'Active');
-    const validSuIds = new Set(validPlacements.map(p => p.suId));
-    const placed = serviceUsers.filter(u => validSuIds.has(u.id));
-    if (placed.length > 0) return placed;
-    const siteMatches = currentSiteId ? serviceUsers.filter(u => u.siteId === currentSiteId) : [];
-    return siteMatches.length > 0 ? siteMatches : serviceUsers;
-  }, [currentPropertyId, currentSiteId, placements, serviceUsers]);
+    const siteName = (sites.find(s => s.id === currentSiteId)?.name || '').toLowerCase();
+    const placedAtSite = new Set(placements.filter(p => p.status === 'Active' && (!p.siteId || p.siteId === currentSiteId)).map(p => p.suId));
+    return serviceUsers.filter(u =>
+      u.siteId === currentSiteId || (siteName && String(u.siteId || '').toLowerCase() === siteName) || placedAtSite.has(u.id));
+  }, [currentPropertyId, currentSiteId, placements, serviceUsers, sites]);
 
   const filteredSUs = useMemo(() => {
     if (!searchTerm.trim()) return propertySUs;
