@@ -279,16 +279,19 @@ export const Sidebar: React.FC = () => {
         {/* Navigation List - Old Menu Model with Flat Sections */}
         <nav className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto custom-scrollbar text-xs">
           
-          {/* Section: Overview */}
+          {/* 1. Dashboard & Daily Operations */}
           <div className="space-y-1">
+            <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
+              Dashboard &amp; Daily Operations
+            </div>
             <NavItem id="nav-dashboard" page="dashboard" label="Dashboard" icon={Compass} iconColor="text-[#0d9488]" badge={isNavActive('dashboard') ? 'ACTIVE' : null} badgeClass="bg-white/20 text-white text-[9px] font-semibold" active={isNavActive('dashboard')} onClick={handleNavClick} />
             <NavItem id="nav-daily-registers" page="dailyRegisters" label="Live Daily Registers" icon={Building2} iconColor="text-blue-600" badge={scopedDailyRegisters.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('dailyRegisters')} onClick={handleNavClick} />
           </div>
 
-          {/* Section: Master Data */}
+          {/* 2. Service Users & Properties */}
           <div className="space-y-1">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-              Master Data
+              Service Users &amp; Properties
             </div>
             <NavItem 
               id="nav-su-users" 
@@ -310,10 +313,10 @@ export const Sidebar: React.FC = () => {
             />
           </div>
 
-          {/* Section: Safeguarding Records */}
+          {/* 3. Safeguarding & Welfare */}
           <div className="space-y-1">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-              Safeguarding
+              Safeguarding &amp; Welfare
             </div>
 
             {/* SG Referrals with Drawer */}
@@ -428,36 +431,36 @@ export const Sidebar: React.FC = () => {
             <NavItem id="nav-rfa-welfare" page="rfaWelfare" label="RFA Welfare Checks" icon={UserCheck} iconColor="text-rose-600" badge={scopedRfaWelfare.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('rfaWelfare')} onClick={handleNavClick} />
             <NavItem id="nav-mh-complaint" page="mhComplaintWelfare" label="MH-Complaint Welfare" icon={ShieldAlert} iconColor="text-rose-600" badge={scopedMhComplaint.length || null} badgeClass="bg-rose-50 text-rose-800 font-semibold" active={isNavActive('mhComplaintWelfare')} onClick={handleNavClick} />
             <NavItem id="nav-gp-appointments" page="gpAppointments" label="GP Appointments" icon={Stethoscope} iconColor="text-blue-600" badge={scopedGpAppointments.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('gpAppointments')} onClick={handleNavClick} />
-            <NavItem id="nav-document-builder" page="documentBuilder" label="HO Report Generator" icon={FilePlus} iconColor="text-[#0d9488]" active={isNavActive('documentBuilder')} onClick={handleNavClick} />
+            <NavItem id="nav-escalations" page="escalations" label="Escalations Log" icon={Siren} iconColor="text-red-600" badge={activeEscalations || null} badgeClass="bg-red-100 text-red-800 font-bold" active={isNavActive('escalations')} onClick={handleNavClick} />
           </div>
 
-          {/* Section: Facilities & Welfare */}
+          {/* 4. Facilities & Site Services */}
           <div className="space-y-1">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-              Facilities & Welfare
+              Facilities &amp; Site Services
             </div>
 
             <NavItem id="nav-maintenance" page="maintenance" label="Maintenance Tracker" icon={HardHat} iconColor="text-amber-700" extraBadge={cat1Count > 0 ? (<span className="text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded animate-pulse">{cat1Count} CAT 1</span>) : null} badge={openMaintenance || null} badgeClass="bg-amber-50 text-amber-900 border border-amber-200" active={isNavActive('maintenance')} onClick={handleNavClick} />
+            <NavItem id="nav-room-checks" page="roomChecks" label="Room Checks" icon={Building2} iconColor="text-cyan-700" badge={scopedRoomChecks.length || null} badgeClass="bg-cyan-50 text-cyan-800" active={isNavActive('roomChecks')} onClick={handleNavClick} />
+            <NavItem id="nav-housekeeping" page="housekeeping" label="Housekeeping Log" icon={Sparkles} iconColor="text-emerald-700" badge={scopedHousekeeping.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('housekeeping')} onClick={handleNavClick} />
             <NavItem id="nav-spcd" page="spcd" label="SPCD Tracker" icon={ScrollText} iconColor="text-emerald-700" badge={spcdCount || null} badgeClass="bg-emerald-50 text-emerald-900 border border-emerald-200" active={isNavActive('spcd')} onClick={handleNavClick} />
             <NavItem id="nav-ir-tracker" page="irTracker" label="IR Tracker" icon={ClipboardList} iconColor="text-teal-700" badge={scopedIrRecords.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('irTracker')} onClick={handleNavClick} />
             <NavItem id="nav-transport" page="publicTransport" label="Public Transport" icon={Bus} iconColor="text-teal-700" badge={scopedTransport.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('publicTransport')} onClick={handleNavClick} />
             <NavItem id="nav-dispersal" page="dispersal" label="Dispersal Sheet" icon={PlaneTakeoff} iconColor="text-indigo-700" badge={(scopedDispersal.length + scopedEvictions.length) || null} badgeClass="bg-indigo-50 text-indigo-800" active={isNavActive('dispersal')} onClick={handleNavClick} />
             <NavItem id="nav-booklets" page="booklets" label="Booklet Inventory" icon={BookOpen} iconColor="text-amber-700" badge={scopedBooklets.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('booklets')} onClick={handleNavClick} />
             <NavItem id="nav-laundry" page="laundry" label="Laundry Support" icon={Waves} iconColor="text-cyan-700" active={isNavActive('laundry')} onClick={handleNavClick} />
-            <NavItem id="nav-housekeeping" page="housekeeping" label="Housekeeping Log" icon={Sparkles} iconColor="text-emerald-700" badge={scopedHousekeeping.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('housekeeping')} onClick={handleNavClick} />
             <NavItem id="nav-food" page="food" label="Hot Meals Tracker" icon={Soup} iconColor="text-emerald-600" active={isNavActive('food')} onClick={handleNavClick} />
             <NavItem id="nav-food-consumption" page="foodConsumption" label="Food Consumption Log" icon={Utensils} iconColor="text-amber-700" badge={scopedFoodConsumption.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodConsumption')} onClick={handleNavClick} />
             <NavItem id="nav-food-surveys" page="foodSurveys" label="Food Surveys" icon={Soup} iconColor="text-emerald-600" badge={scopedFoodSurveys.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('foodSurveys')} onClick={handleNavClick} />
             <NavItem id="nav-food-wastage" page="foodWastage" label="Food Wastage Tracker" icon={Trash2} iconColor="text-amber-700" badge={scopedFoodWastage.length || null} badgeClass="bg-amber-50 text-amber-800" active={isNavActive('foodWastage')} onClick={handleNavClick} />
-            <NavItem id="nav-room-checks" page="roomChecks" label="Room Checks" icon={Building2} iconColor="text-cyan-700" badge={scopedRoomChecks.length || null} badgeClass="bg-cyan-50 text-cyan-800" active={isNavActive('roomChecks')} onClick={handleNavClick} />
-            <NavItem id="nav-escalations" page="escalations" label="Escalations Log" icon={Siren} iconColor="text-red-600" badge={activeEscalations || null} badgeClass="bg-red-100 text-red-800 font-bold" active={isNavActive('escalations')} onClick={handleNavClick} />
             <NavItem id="nav-documents" page="documents" label="Proof Documents" icon={FolderLock} iconColor="text-slate-600" active={isNavActive('documents')} onClick={handleNavClick} />
           </div>
 
+          {/* 5. Finance & Procurement */}
           {/* Section: Finance Management */}
           <div className="space-y-1">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider flex items-center justify-between">
-              <span>Finance</span>
+              <span>Finance &amp; Procurement</span>
               {isFinanceUser() && (
                 <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">
                   CENTRAL
@@ -471,22 +474,39 @@ export const Sidebar: React.FC = () => {
             <NavItem id="nav-finance-approvals" page="financeApprovals" label="Finance Approvals" icon={Scale} iconColor="text-teal-700" badge={financeApprovalsCount || null} badgeClass="bg-amber-100 text-amber-800 font-bold" active={isNavActive('financeApprovals')} onClick={handleNavClick} />
           </div>
 
-          {/* Section: Compliance & Community */}
+          {/* 6. Compliance & Quality Assurance */}
           <div className="space-y-1">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
-              Compliance &amp; Community
+              Compliance &amp; Quality Assurance
             </div>
 
             <NavItem id="nav-compliance" page="compliance" label="SD-Compliance Tracker" icon={ShieldCheck} iconColor="text-emerald-700" badge={scopedCompliance.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('compliance')} onClick={handleNavClick} />
-            <NavItem id="nav-vcs" page="vcsDirectory" label="SD VCS Directory" icon={HandHeart} iconColor="text-teal-700" badge={scopedVcsAgencies.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('vcsDirectory')} onClick={handleNavClick} />
+            <NavItem id="nav-document-builder" page="documentBuilder" label="HO Report Generator" icon={FilePlus} iconColor="text-[#0d9488]" active={isNavActive('documentBuilder')} onClick={handleNavClick} />
             {(rolePermissions[currentUserRole]?.canExportData || canManageSettings()) && (
               <NavItem id="nav-reports" page="reports" label="Reports & SharePoint" icon={CloudUpload} iconColor="text-[#0d9488]" active={isNavActive('reports')} onClick={handleNavClick} />
             )}
-            {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && (
-              <NavItem id="nav-audit" page="audit" label="Audit Security Trail" icon={Fingerprint} iconColor="text-amber-700" active={isNavActive('audit')} onClick={handleNavClick} />
-            )}
+          </div>
+
+          {/* 7. Requests & Community */}
+          <div className="space-y-1">
+            <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
+              Requests &amp; Community
+            </div>
+
+            <NavItem id="nav-vcs" page="vcsDirectory" label="SD VCS Directory" icon={HandHeart} iconColor="text-teal-700" badge={scopedVcsAgencies.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('vcsDirectory')} onClick={handleNavClick} />
             <NavItem id="nav-requests" page="requests" label="Requests & Approvals" icon={MessageSquareQuote} iconColor="text-blue-600" badge={scopedChangeRequests.filter(r => r.status === 'Pending').length || null} badgeClass="bg-amber-100 text-amber-800 font-bold" active={isNavActive('requests')} onClick={handleNavClick} />
           </div>
+
+          {/* 8. Security & Audit (Super Admin & Admin only) */}
+          {isAdminOrSuperAdmin && (
+            <div className="space-y-1">
+              <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
+                Security &amp; Audit
+              </div>
+
+              <NavItem id="nav-audit" page="audit" label="Audit Security Trail" icon={Fingerprint} iconColor="text-amber-700" active={isNavActive('audit')} onClick={handleNavClick} />
+            </div>
+          )}
 
           {/* Section: Admin & Governance (Super Admin & Admin Only) */}
           {isAdminOrSuperAdmin && (
