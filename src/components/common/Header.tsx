@@ -723,23 +723,7 @@ export const Header: React.FC = () => {
                     ))}
                   </select>
                 </div>
-              ) : (
-                <div className="mb-2.5 bg-[#f8f9fa] p-2.5 rounded-xs border border-[#edebe9] space-y-1">
-                  <div className="flex items-center justify-between text-[10px] font-bold text-[#605e5c] uppercase">
-                    <span>Assigned Hotel:</span>
-                    <span className="flex items-center gap-1 text-amber-700 font-semibold normal-case text-[10px] bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                      <Lock className="w-2.5 h-2.5 text-amber-700" /> Locked
-                    </span>
-                  </div>
-                  <div className="text-xs font-semibold text-[#1e293b] flex items-center gap-1.5 bg-white p-1.5 rounded border border-[#e2e8f0]">
-                    <Building2 className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
-                    <span className="truncate">{assignedSite || ((allowedSites && allowedSites[0]) || 'Assigned Hotel')}</span>
-                  </div>
-                  <p className="text-[10px] text-[#64748b] leading-tight pt-0.5">
-                    Property assignment is locked to your frontline staff account.
-                  </p>
-                </div>
-              )}
+              ) : null}
 
               {/* Quick Admin Navigation for Authorized Roles Only */}
               {(canManageRoles() || canManageSettings()) ? (
@@ -794,23 +778,7 @@ export const Header: React.FC = () => {
                     <ExternalLink className="w-3 h-3 text-[#0d9488]" />
                   </a>
                 </div>
-              ) : (
-                <div className="pt-2 border-t border-[#edebe9] mt-2 text-[11px] text-[#605e5c]">
-                  <span>Operational Role: <strong className="text-neutral-800">{currentUserRole}</strong></span>
-                  <p className="text-[10px] text-neutral-500 mt-0.5">Admin & property management is restricted to Super Admins and Admins.</p>
-                  <a
-                    href="/docs/index.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setShowProfile(false)}
-                    className="w-full mt-2 text-left p-1.5 rounded hover:bg-[#edebe9] text-[#323130] flex items-center justify-between text-xs cursor-pointer no-underline"
-                    title="Open SDTracker Support, SLA & Brand Kit Portal in a new window"
-                  >
-                    <span className="font-semibold text-[#0d9488]">Support &amp; Brand Kit</span>
-                    <ExternalLink className="w-3 h-3 text-[#0d9488]" />
-                  </a>
-                </div>
-              )}
+              ) : null}
 
               {/* Sign Out Action */}
               <div className="pt-2.5 border-t border-[#edebe9] mt-2">
