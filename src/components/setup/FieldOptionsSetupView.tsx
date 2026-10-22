@@ -286,7 +286,7 @@ export const FieldOptionsSetupView: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#edebe9] rounded-xs hover:bg-[#f3f2f1] text-[#242424] text-xs font-semibold transition-colors"
             >
               {copySuccess ? <Check className="w-3.5 h-3.5 text-[#107c10]" /> : <Download className="w-3.5 h-3.5 text-[#0d9488]" />}
-              <span>{copySuccess ? 'Schema Copied!' : 'Export Schema JSON'}</span>
+              <span>{copySuccess ? 'Schema copied' : 'Export Schema JSON'}</span>
             </button>
 
             {canManage && (

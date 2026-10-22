@@ -112,7 +112,7 @@ export const MonthlyIncidentsTable: React.FC<MonthlyIncidentsTableProps> = ({
             {copied ? (
               <>
                 <Check className="w-3.5 h-3.5 text-[#107c10]" />
-                <span className="text-[#107c10]">Copied for Excel!</span>
+                <span className="text-[#107c10]">Copied</span>
               </>
             ) : (
               <>

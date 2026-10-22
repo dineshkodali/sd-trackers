@@ -421,7 +421,7 @@ export const RoomChecksView: React.FC = () => {
             </div>
             <div>
               <h1 className="text-base font-bold text-[#242424] tracking-tight">Room Checks &amp; Property Inspections</h1>
-              <p className="text-xs text-neutral-500">Conduct comprehensive 30-point room audits, safety checks and housekeeping verifications.</p>
+              <p className="text-xs text-neutral-500">Carry out 30-point room checks, safety checks and housekeeping verifications.</p>
             </div>
           </div>
 

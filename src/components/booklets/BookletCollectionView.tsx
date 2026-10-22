@@ -30,7 +30,7 @@ import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from
 
 const bookletExportColumns: ExportColumnOption[] = [
   { id: 'hotelName', label: 'Hotel / Site' },
-  { id: 'agentName', label: 'Agent / Organization' },
+  { id: 'agentName', label: 'Agent / Organisation' },
   { id: 'bookletType', label: 'Booklet Title / Type' },
   { id: 'language', label: 'Language / Translation' },
   { id: 'numberForCollection', label: 'Target Stock' },
@@ -444,7 +444,7 @@ export const BookletCollectionView: React.FC = () => {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              <strong>New Booklet Consignment Added!</strong> Record has been pinned to the top of the table and highlighted for instant access.
+              <strong>Booklet consignment added.</strong> Record has been pinned to the top of the table and highlighted for instant access.
             </span>
           </div>
           <button

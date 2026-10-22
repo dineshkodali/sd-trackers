@@ -593,7 +593,7 @@ export const PropertiesView: React.FC = () => {
               {syncSuccess ? (
                 <>
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700">Synchronized!</span>
+                  <span className="text-emerald-700">Synced</span>
                 </>
               ) : (
                 <>

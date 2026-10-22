@@ -708,7 +708,7 @@ export const CreditCardBillsView: React.FC = () => {
                           type="button"
                           onClick={() => handleCopyRef(bill.billNumber)}
                           className="p-1 text-[#605e5c] hover:text-[#242424] hover:bg-[#edebe9] rounded-xs transition-colors cursor-pointer"
-                          title={copiedId === bill.billNumber ? 'Copied Reference!' : 'Copy Reference #'}
+                          title={copiedId === bill.billNumber ? 'Copied' : 'Copy Reference #'}
                         >
                           {copiedId === bill.billNumber ? (
                             <Check className="w-3.5 h-3.5 text-emerald-600" />

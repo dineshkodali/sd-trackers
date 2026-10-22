@@ -426,7 +426,7 @@ export const SupabaseBackendCard: React.FC = () => {
                     title="Copy 007_ir_food_and_registers.sql to clipboard"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>{copiedSql === 'registers' ? 'Copied Registers SQL!' : 'Copy Registers & IR SQL'}</span>
+                    <span>{copiedSql === 'registers' ? 'Copied' : 'Copy Registers & IR SQL'}</span>
                   </button>
                   <button
                     type="button"
@@ -435,7 +435,7 @@ export const SupabaseBackendCard: React.FC = () => {
                     title="Copy 009_ho_report_generator.sql to clipboard"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>{copiedSql === 'horeports' ? 'Copied HO Reports SQL!' : 'Copy HO Reports SQL'}</span>
+                    <span>{copiedSql === 'horeports' ? 'Copied' : 'Copy HO Reports SQL'}</span>
                   </button>
                   <button
                     type="button"
@@ -444,7 +444,7 @@ export const SupabaseBackendCard: React.FC = () => {
                     title="Copy 014_public_transport_enhancements.sql to clipboard"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>{copiedSql === 'transport' ? 'Copied Transport SQL!' : 'Copy Public Transport SQL'}</span>
+                    <span>{copiedSql === 'transport' ? 'Copied' : 'Copy Public Transport SQL'}</span>
                   </button>
                   <button
                     type="button"
@@ -453,7 +453,7 @@ export const SupabaseBackendCard: React.FC = () => {
                     title="Copy 018_crm_updates_and_new_modules.sql (5 New Modules & Updates) to clipboard"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>{copiedSql === 'crm_updates' ? 'Copied CRM Updates SQL (018)!' : 'Copy CRM Updates SQL (018)'}</span>
+                    <span>{copiedSql === 'crm_updates' ? 'Copied' : 'Copy CRM Updates SQL (018)'}</span>
                   </button>
                   <a
                     href="https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new"

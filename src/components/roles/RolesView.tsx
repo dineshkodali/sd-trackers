@@ -453,7 +453,7 @@ export const RolesView: React.FC = () => {
         {saveSuccess && (
           <div className="p-3 bg-[#f1faf0] border border-[#cbe8cb] text-[#107c10] rounded-xs text-xs flex items-center gap-2 animate-fade-in">
             <ShieldCheck className="w-4 h-4 shrink-0" />
-            <span className="font-semibold">Security permissions successfully updated and enforced across all active sessions.</span>
+            <span className="font-semibold">Permissions updated.</span>
           </div>
         )}
 

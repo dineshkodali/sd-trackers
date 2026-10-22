@@ -146,7 +146,7 @@ export const PageMaintenanceSection: React.FC = () => {
             onClick={handleSaveMessage}
             className="mt-5 px-3 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white font-medium text-xs rounded-xs transition-colors shrink-0 shadow-2xs cursor-pointer"
           >
-            {msgSaved ? 'Notice Saved!' : 'Save Notice'}
+            {msgSaved ? 'Notice saved' : 'Save Notice'}
           </button>
         </div>
       </div>

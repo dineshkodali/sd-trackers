@@ -46,7 +46,7 @@ export const PropertyFormHeader: React.FC<PropertyFormHeaderProps> = ({
             </span>
           </h3>
           <p className="text-[11px] text-neutral-500 mt-0.5">
-            Comprehensive property registration, capacity setup, statutory safety compliance, and facility management.
+            Property registration, capacity, statutory safety compliance and facilities.
           </p>
         </div>
         <button

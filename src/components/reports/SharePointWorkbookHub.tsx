@@ -350,7 +350,7 @@ export const SharePointWorkbookHub: React.FC<SharePointWorkbookHubProps> = ({
             {copiedCurrent ? (
               <>
                 <Check className="w-3.5 h-3.5 text-[#107c10]" />
-                <span className="text-[#107c10]">Table Copied to Clipboard!</span>
+                <span className="text-[#107c10]">Table copied</span>
               </>
             ) : (
               <>
@@ -385,7 +385,7 @@ export const SharePointWorkbookHub: React.FC<SharePointWorkbookHubProps> = ({
             {copiedAll ? (
               <>
                 <Check className="w-3.5 h-3.5" />
-                <span>{totalRecordsCount} Records Copied!</span>
+                <span>{totalRecordsCount} records copied</span>
               </>
             ) : (
               <>
@@ -428,7 +428,7 @@ export const SharePointWorkbookHub: React.FC<SharePointWorkbookHubProps> = ({
         <div className="p-2.5 bg-emerald-50 border border-[#cbe8cb] rounded-xs text-xs text-emerald-900 flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
           <CheckCircle2 className="w-4 h-4 text-[#107c10] shrink-0" />
           <span>
-            <strong>Data ready on clipboard!</strong> You can now switch to your SharePoint Excel workbook (or click "Open SharePoint Workbook" above) and press <kbd className="bg-white px-1.5 py-0.5 rounded border border-emerald-300 font-mono font-bold">Ctrl + V</kbd> to paste records directly into your worksheet.
+            <strong>Data copied.</strong> You can now switch to your SharePoint Excel workbook (or click "Open SharePoint Workbook" above) and press <kbd className="bg-white px-1.5 py-0.5 rounded border border-emerald-300 font-mono font-bold">Ctrl + V</kbd> to paste records directly into your worksheet.
           </span>
         </div>
       )}

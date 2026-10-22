@@ -433,7 +433,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">Password Successfully Updated!</h3>
+                  <h3 className="text-lg font-bold text-white">Password updated</h3>
                   <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                     Your password has been changed. You can now sign in to your SD Operations portal account with your new credentials.
                   </p>

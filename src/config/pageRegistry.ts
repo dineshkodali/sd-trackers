@@ -11,7 +11,7 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     id: 'dashboard',
     title: 'Executive Dashboard',
     category: 'Overview',
-    description: 'High-level operational metrics, risk distribution, and property occupancy overview.'
+    description: 'Site activity, risk levels and property occupancy.'
   },
   {
     id: 'dailyRegisters',
@@ -67,7 +67,7 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     id: 'rfaWelfare',
     title: 'RFA Welfare Checks',
     category: 'Safeguarding',
-    description: 'Room and flat welfare checks register with vulnerability categorizations.'
+    description: 'Room and flat welfare checks, with vulnerability categories.'
   },
   {
     id: 'mhComplaintWelfare',
@@ -117,7 +117,7 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     id: 'irTracker',
     title: 'IR Tracker (Incidents)',
     category: 'Facilities & Welfare',
-    description: 'Comprehensive property incident logging, witness accounts, and police logs.'
+    description: 'Property incidents, witness accounts and police logs.'
   },
   {
     id: 'publicTransport',
@@ -215,7 +215,7 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     id: 'financeApprovals',
     title: 'Finance Approvals',
     category: 'Finance',
-    description: 'Multi-tier financial authorization workflow and payment release approvals.'
+    description: 'Financial approval steps and payment release approvals.'
   },
 
   // Compliance & Community
@@ -235,7 +235,7 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     id: 'reports',
     title: 'Reports & SharePoint Hub',
     category: 'Compliance & Community',
-    description: 'Comprehensive operational reports, data exports, and live Excel workbook sync.'
+    description: 'Reports, data exports and live Excel workbook sync.'
   },
   {
     id: 'audit',
@@ -247,7 +247,7 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     id: 'requests',
     title: 'Data Change Requests',
     category: 'Compliance & Community',
-    description: 'Formal user requests to alter locked records, require managerial sign-off.'
+    description: 'Requests to change locked records. A manager must sign them off.'
   },
 
   // Admin & Governance

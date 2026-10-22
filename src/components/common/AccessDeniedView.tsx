@@ -37,7 +37,7 @@ export const AccessDeniedView: React.FC<AccessDeniedViewProps> = ({
             </span>
           </div>
           <div className="flex items-center justify-between pb-2 border-b border-[#edebe9]">
-            <span className="text-[#605e5c]">Required Authorization:</span>
+            <span className="text-[#605e5c]">Required authorisation:</span>
             <span className="font-semibold text-amber-800 flex items-center gap-1 text-[11px]">
               <Lock className="w-3 h-3 text-amber-700" />
               {requiredRole}

@@ -563,7 +563,7 @@ export const Header: React.FC = () => {
               <div className="max-h-80 overflow-y-auto divide-y divide-[#f3f2f1] text-xs">
                 {tabFilteredNotifications.length === 0 ? (
                   <div className="p-8 text-center text-xs text-[#605e5c] space-y-1">
-                    <p className="font-semibold text-neutral-700">All caught up!</p>
+                    <p className="font-semibold text-neutral-700">No new notifications</p>
                     <p className="text-[11px] text-neutral-400">
                       {notifTab === 'site' 
                         ? `No recent activity recorded for ${assignedSite && assignedSite !== 'All Sites' ? assignedSite : 'your site'}.`

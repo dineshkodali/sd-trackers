@@ -134,7 +134,7 @@ export const RegisterSummarySection: React.FC<RegisterSummarySectionProps> = ({
           </div>
           <div className="text-2xl font-bold text-emerald-700 mt-1.5">{currentOccupancy}</div>
           <p className="text-[10px] text-[#605e5c] mt-0.5">
-            {totalBedspaces > 0 ? ((currentOccupancy / totalBedspaces) * 100).toFixed(1) : 0}% utilization
+            {totalBedspaces > 0 ? ((currentOccupancy / totalBedspaces) * 100).toFixed(1) : 0}% occupied
           </p>
         </div>
 

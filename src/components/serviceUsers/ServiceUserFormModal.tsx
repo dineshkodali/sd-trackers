@@ -304,7 +304,7 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
             <p className="text-[11px] text-neutral-500 mt-0.5">
               {serviceUserToEdit 
                 ? 'Update resident identity, contact, room placement, vulnerabilities, and files'
-                : 'Centralized master record for identity, contact, household, and accommodation history'}
+                : 'Master record for identity, contact, household and accommodation history'}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-xs text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer">

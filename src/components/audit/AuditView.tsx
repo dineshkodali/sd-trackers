@@ -932,7 +932,7 @@ export const AuditView: React.FC = () => {
 
               {selectedLog.module === 'Users' && (
                 <div className="p-3 bg-purple-50 border border-purple-200 rounded-xs flex items-center justify-between text-xs text-purple-900">
-                  <span>Manage staff accounts and authorization roles.</span>
+                  <span>Manage staff accounts and authorisation roles.</span>
                   <button
                     onClick={() => {
                       setSelectedLog(null);
