@@ -31,8 +31,8 @@ export function buildContentSecurityPolicy(allowInlineScripts = false): string {
   return [
     "default-src 'self'",
     allowInlineScripts ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
     "img-src 'self' data: blob: https:",
     `connect-src ${Array.from(connect).join(' ')}`,
     "frame-src 'self' blob: data: https://*.sharepoint.com",
