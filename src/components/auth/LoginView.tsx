@@ -247,214 +247,112 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden select-none">
-
-      {/* Main Authentication Card */}
-      <div className="w-full max-w-4xl relative z-10 bg-[#1e293b] border border-slate-700/70 rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-        
-        {/* Left Side: Brand Identity & Compliance Overview (5 cols) */}
-        <div className="lg:col-span-5 bg-[#0f172a] p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-700/60">
-          <div>
-            <div className="mb-6">
-              <Logo size="lg" />
-            </div>
-
-            <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 border border-teal-500/30 px-3 py-1 text-xs font-semibold text-teal-300 mb-4">
-              <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-              <span>Secure Enterprise Authentication</span>
-            </div>
-
-            <h1 className="text-2xl font-bold text-white tracking-tight leading-snug">
-              SD Commercial Operations Portal
-            </h1>
-            <p className="text-xs text-slate-400 mt-2.5 leading-relaxed">
-              Unified compliance and management system for housing operations, safeguarding referrals, resident welfare, and maintenance workflows.
-            </p>
-
-            <div className="mt-8 space-y-3 text-xs">
-              <div className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/50">
-                <div className="w-8 h-8 rounded-md bg-teal-500/20 text-teal-300 flex items-center justify-center shrink-0">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-semibold text-slate-200">Multi-Site Accommodation</div>
-                  <div className="text-[11px] text-slate-400">Hotel &amp; property operation tracking</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/60 border border-slate-700/50">
-                <div className="w-8 h-8 rounded-md bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-semibold text-slate-200">Role-Based Access Control</div>
-                  <div className="text-[11px] text-slate-400">Governed strictly by Role-Based Access Control</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 mt-6 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${statusChecking ? 'bg-amber-400 animate-pulse' : authConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
-              <span>{statusChecking ? 'Checking Auth Status...' : authConfigured ? 'Cloud Authentication Active' : 'Fallback Local Standby'}</span>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-6">
+          <Logo size="lg" />
         </div>
 
-        {/* Right Side: Enhanced Sign In Form (7 cols) */}
-        <div className="lg:col-span-7 p-8 sm:p-10 flex flex-col justify-between bg-[#1e293b]/70">
-          <div>
-            <div className="mb-6">
-              <div className="text-xs uppercase tracking-wider font-bold text-teal-400">
-                Staff Authentication
-              </div>
-              <h2 className="text-xl font-bold text-white mt-1">
-                Sign in to your account
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Enter your registered credentials to access your designated properties.
-              </p>
+        <div className="bg-[#1e293b] border border-slate-700 rounded-md p-6 sm:p-7">
+          <h1 className="text-lg font-semibold text-white">Sign in</h1>
+
+          {(localError || authError) && (
+            <div role="alert" className="mt-4 p-3 bg-red-950/40 border border-red-500/40 rounded-sm text-xs text-red-200">
+              <div>{localError || authError}</div>
+              {(authError?.toLowerCase().includes('expired') || authError?.toLowerCase().includes('invalid')) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResetModalOpen(true);
+                    setResetEmail(email || '');
+                  }}
+                  className="mt-2 text-teal-400 hover:text-teal-300 underline cursor-pointer"
+                >
+                  Request a new password reset link
+                </button>
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+            <div>
+              <label htmlFor="login-email" className="block text-xs font-medium text-slate-300 mb-1.5">Email</label>
+              <input
+                id="login-email"
+                type="email"
+                required
+                autoFocus
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+              />
             </div>
 
-            {/* Error Banner */}
-            {(localError || authError) && (
-              <div className="mb-6 p-3.5 bg-red-950/50 border border-red-500/50 rounded-lg flex items-start gap-3 text-xs text-red-200 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <div className="flex-1 font-medium leading-relaxed">
-                  <div>{localError || authError}</div>
-                  {(authError?.toLowerCase().includes('expired') || authError?.toLowerCase().includes('invalid')) && (
-                    <div className="mt-2 pt-2 border-t border-red-500/30">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsResetModalOpen(true);
-                          setResetEmail(email || '');
-                        }}
-                        className="text-teal-400 hover:text-teal-300 font-semibold underline cursor-pointer"
-                      >
-                        Click here to request a fresh password reset link →
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Address */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Staff Email Address
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. staff@sdcommercial.co.uk"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-900/80 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-300">
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onNavigateToResetPassword) {
-                        onNavigateToResetPassword();
-                      } else {
-                        setResetEmail(email);
-                        setIsResetModalOpen(true);
-                      }
-                    }}
-                    className="text-[11px] text-teal-400 hover:text-teal-300 transition-colors font-medium cursor-pointer"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-900/80 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 transition-colors"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember Me */}
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded-sm border-slate-700 bg-slate-900 text-teal-600 focus:ring-teal-500 focus:ring-offset-0"
-                  />
-                  <span className="text-xs text-slate-400">Remember this device</span>
-                </label>
-              </div>
-
-              {/* Submit Button */}
-              <div className="pt-2">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="login-password" className="block text-xs font-medium text-slate-300">Password</label>
                 <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    if (onNavigateToResetPassword) {
+                      onNavigateToResetPassword();
+                    } else {
+                      setResetEmail(email);
+                      setIsResetModalOpen(true);
+                    }
+                  }}
+                  className="text-xs text-teal-400 hover:text-teal-300 cursor-pointer"
                 >
-                  {authLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                      <span>Authenticating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Sign In to Portal</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
+                  Forgot password?
                 </button>
               </div>
-            </form>
-          </div>
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-3 pr-16 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 px-3 text-xs text-slate-400 hover:text-slate-200 cursor-pointer"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
 
-          {/* Footer Security Notice */}
-          <div className="pt-6 mt-6 border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-              <span>TLS 256-bit Encrypted</span>
-            </span>
-            <span>SD Commercial UK LTD</span>
-          </div>
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded-sm border-slate-600 bg-slate-900 text-teal-600 focus:ring-teal-500 focus:ring-offset-0"
+              />
+              <span>Keep me signed in on this device</span>
+            </label>
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-sm text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {authLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+          <span>SD Commercial UK Ltd</span>
+          {!statusChecking && !authConfigured && <span className="text-amber-400">Local sign-in only</span>}
         </div>
       </div>
+
 
       {/* PASSWORD RESET MODAL */}
       {isResetModalOpen && (
@@ -478,7 +376,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
 
             <form onSubmit={handlePasswordReset} className="p-6 space-y-4 text-xs">
               <p className="text-slate-400 leading-relaxed">
-                Enter your registered staff email address. We will dispatch secure password recovery instructions.
+                Enter your staff email address and we will send you a link to reset your password.
               </p>
 
               <div>
