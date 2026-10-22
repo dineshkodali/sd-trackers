@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { pickActivePlacement } from '../../utils/placementSelection';
 import { repositoryDocsForServiceUser } from '../../utils/repositoryDocuments';
 import { getServiceUserRecords } from '../../utils/serviceUserRecords';
+import { SUPeepTab } from './SUPeepTab';
 import { SUIncidentsTab, SUReferralsTab, SUGpTab, SUTransportTab, SUOtherWelfareTable } from './SURecordTabs';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { ArrowLeft, ChevronRight, Building2, DoorOpen, Edit3, ArrowRightLeft, FileText, UserMinus, Trash2 } from 'lucide-react';
@@ -303,6 +304,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     { id: 'welfare', label: `Welfare Checks (${suWelfare.length + suRecords.otherWelfare.length})` },
     { id: 'gp', label: `GP Appointments (${suRecords.gp.length})` },
     { id: 'transport', label: `Public Transport (${suRecords.transport.length})` },
+    { id: 'peep', label: 'PEEP' },
     { id: 'foodSurveys', label: `Food Surveys (${suFood.length})` },
     { id: 'roomChecks', label: `Room Checks (${suRooms.length})` },
     { id: 'activity', label: 'Activity' }
@@ -538,6 +540,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
           {activeTab === 'incidents' && <SUIncidentsTab rows={suRecords.incidents} />}
           {activeTab === 'referrals' && <SUReferralsTab rows={suRecords.referrals} />}
           {activeTab === 'gp' && <SUGpTab rows={suRecords.gp} />}
+          {activeTab === 'peep' && <SUPeepTab suId={serviceUser.id} searchText={serviceUser.externalReference || serviceUser.suReference} />}
           {activeTab === 'transport' && <SUTransportTab rows={suRecords.transport} />}
 
           {activeTab === 'welfare' && (
