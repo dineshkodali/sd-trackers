@@ -616,7 +616,7 @@ export const FoodSurveysView: React.FC = () => {
                           suId: sel.suId,
                           propertyId: sel.propertyId,
                           roomId: sel.roomId,
-                          portReference: sel.externalReference || sel.suReference || ''
+                          portReference: sel.externalReference || ''
                         }));
                       }}
                     />

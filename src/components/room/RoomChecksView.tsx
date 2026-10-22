@@ -655,7 +655,7 @@ export const RoomChecksView: React.FC = () => {
                     propertyId: sel.propertyId,
                     roomId: sel.roomId,
                     roomNumber: sel.roomNumber && sel.roomNumber !== 'Unassigned Room' ? sel.roomNumber : '',
-                    aicReference: sel.externalReference || sel.suReference || ''
+                    aicReference: sel.externalReference || ''
                   }));
                 }}
               />

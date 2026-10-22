@@ -568,7 +568,7 @@ export const WelfareChecksView: React.FC = () => {
                             suId: sel.suId,
                             propertyId: sel.propertyId,
                             roomId: sel.roomId,
-                            portReference: sel.externalReference || sel.suReference || '',
+                            portReference: sel.externalReference || '',
                             flatNumber: sel.roomNumber && sel.roomNumber !== 'Unassigned Room' ? sel.roomNumber : ''
                           }));
                         }}
