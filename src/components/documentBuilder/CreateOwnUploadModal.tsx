@@ -13,7 +13,6 @@ import {
   X,
   UploadCloud,
   FileText,
-  Sparkles,
   Loader2,
   FileCheck,
   Layers,
@@ -488,7 +487,6 @@ export const CreateOwnUploadModal: React.FC<CreateOwnUploadModalProps> = ({
               </>
             ) : (
               <>
-                <Sparkles className="w-3.5 h-3.5" />
                 <span>Open in Live Builder</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </>

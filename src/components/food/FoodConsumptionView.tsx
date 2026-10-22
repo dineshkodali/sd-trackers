@@ -904,7 +904,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xs shadow-2xl border border-[#cbd5e1] max-w-5xl w-full max-h-[94vh] flex flex-col">
             {/* Modal Header */}
-            <div className="px-5 py-3.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between">
+            <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300">
                   <Utensils className="w-4 h-4" />

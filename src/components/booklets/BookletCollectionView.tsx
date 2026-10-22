@@ -11,7 +11,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Sparkles,
   CheckCircle2,
   X,
   Lock
@@ -314,7 +313,6 @@ export const BookletCollectionView: React.FC = () => {
           <span>{value || '—'}</span>
           {record.id === lastCreatedId && (
             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse">
-              <Sparkles className="w-2.5 h-2.5" />
               NEW
             </span>
           )}

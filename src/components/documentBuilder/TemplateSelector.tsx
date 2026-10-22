@@ -15,7 +15,6 @@ import {
   Plus,
   UploadCloud,
   Search,
-  Sparkles,
   Trash2,
   Sliders,
 } from 'lucide-react';
@@ -92,10 +91,9 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
       {/* Header Notification and Quick Create Actions */}
       <div className="bg-[#f0fdfa] border border-[#99f6e4] rounded-xs px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#0d9488] shrink-0" />
           <div>
             <p className="text-xs font-bold text-[#0f766e]">
-              {isAdminOrManager ? 'HO Report Templates & Form Administration' : 'HO Report Generator — Choose a Report Type'}
+              {isAdminOrManager ? 'HO Report Templates & Form Administration' : 'HO Report Generator: choose a report type'}
             </p>
             <p className="text-[11px] text-[#0d9488]">
               {isAdminOrManager

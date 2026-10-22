@@ -14,8 +14,7 @@ import {
   Loader2,
   Eye,
   Sliders,
-  Sparkles,
-} from 'lucide-react';
+  } from 'lucide-react';
 import type {
   TemplateWithVersion,
   TemplateFieldDefinition,
@@ -384,7 +383,6 @@ export const DocumentImportModal: React.FC<DocumentImportModalProps> = ({
             {parsed && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-xs font-bold text-[#059669] bg-[#f0fdf4] border border-[#86efac] p-2.5 rounded-xs">
-                  <Sparkles className="w-4 h-4" />
                   Successfully extracted {sections.length} sections and {fieldDefinitions.length} modular fields!
                 </div>
 

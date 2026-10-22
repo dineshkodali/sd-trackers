@@ -298,8 +298,6 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden font-sans">
       {/* Background Ambience */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 w-full max-w-xl">
@@ -307,7 +305,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
         <div className="bg-[#1e293b]/90 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden">
           
           {/* Header */}
-          <div className="px-8 pt-8 pb-6 border-b border-slate-700/60 bg-gradient-to-b from-slate-800/50 to-transparent">
+          <div className="px-8 pt-8 pb-6 border-b border-slate-700/60 bg-slate-800/40">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shadow-inner">
@@ -444,7 +442,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
                   <button
                     type="button"
                     onClick={handleReturnToLogin}
-                    className="w-full py-2.5 px-4 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-xl text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Proceed to Sign In</span>
                     <ArrowRight className="w-4 h-4" />
@@ -482,7 +480,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
                   <button
                     type="submit"
                     disabled={loading || cooldownSeconds > 0}
-                    className="w-full py-2.5 px-4 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-xl text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {loading ? (
                       <>
@@ -663,7 +661,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
                   <button
                     type="submit"
                     disabled={loading || !isFormValid}
-                    className="w-full py-2.5 px-4 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-xl text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {loading ? (
                       <>

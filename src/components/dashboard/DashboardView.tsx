@@ -456,7 +456,7 @@ export const DashboardView: React.FC = () => {
           </div>
           <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
             <span>Manage Referrals</span>
-            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            <ArrowUpRight className="w-3.5 h-3.5 transition-transform" />
           </div>
         </div>
 
@@ -484,7 +484,7 @@ export const DashboardView: React.FC = () => {
           </div>
           <div className="mt-3 pt-2 border-t border-red-100 flex items-center justify-between text-xs text-[#a4262c] font-semibold">
             <span>Review Escalations</span>
-            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            <ArrowUpRight className="w-3.5 h-3.5 transition-transform" />
           </div>
         </div>
 
@@ -513,7 +513,7 @@ export const DashboardView: React.FC = () => {
             </div>
             <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
               <span>View Properties Directory</span>
-              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <ArrowUpRight className="w-3.5 h-3.5 transition-transform" />
             </div>
           </div>
         ) : (
@@ -540,7 +540,7 @@ export const DashboardView: React.FC = () => {
             </div>
             <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
               <span>Open Maintenance Tracker</span>
-              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <ArrowUpRight className="w-3.5 h-3.5 transition-transform" />
             </div>
           </div>
         )}

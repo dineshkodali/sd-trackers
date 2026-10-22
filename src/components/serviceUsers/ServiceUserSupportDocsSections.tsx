@@ -52,10 +52,10 @@ export const SUSupportNeedsSection: React.FC<SUSupportNeedsSectionProps> = ({
               onChange={e => setSupportPriority(e.target.value as any)}
               className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] font-semibold"
             >
-              <option value="Low">Low — Standard Support</option>
-              <option value="Medium">Medium — Regular Monitoring</option>
-              <option value="High">High — Vulnerable / Active Welfare Checks</option>
-              <option value="Critical">Critical — Immediate Safeguarding Required</option>
+              <option value="Low">Low: Standard Support</option>
+              <option value="Medium">Medium: Regular Monitoring</option>
+              <option value="High">High: Vulnerable / Active Welfare Checks</option>
+              <option value="Critical">Critical: Immediate Safeguarding Required</option>
             </select>
           </div>
           <div>

@@ -25,7 +25,7 @@ export const PageMaintenanceView: React.FC<PageMaintenanceViewProps> = ({
     <div className="min-h-[75vh] flex items-center justify-center p-4">
       <div className="max-w-lg w-full bg-white border border-[#e1dfdd] rounded-xs shadow-xl p-6 sm:p-8 text-center space-y-6 animate-fade-in relative overflow-hidden">
         {/* Subtle accent border on top */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
 
         {/* Animated Badge Icon */}
         <div className="relative mx-auto w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-xs">
@@ -67,7 +67,7 @@ export const PageMaintenanceView: React.FC<PageMaintenanceViewProps> = ({
           <div className="flex items-center justify-between pb-2 border-b border-[#edebe9]">
             <span className="text-[#605e5c]">Access Status:</span>
             <span className="font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
               Restricted to Super Admin
             </span>
           </div>

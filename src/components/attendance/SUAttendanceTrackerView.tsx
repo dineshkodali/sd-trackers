@@ -576,7 +576,7 @@ const HistoryDialog: React.FC<{ row: SuDirectoryRow; records: AttendanceRecord[]
         {episode ? (
           <>
             <b>{episode.days}</b> consecutive recorded absent day{episode.days === 1 ? '' : 's'} since <b>{formatUkDate(episode.startDate)}</b>
-            {episode.thresholdsReached.length > 0 && <> — threshold reached: <b>{episode.thresholdsReached.join(', ')} days</b></>}
+            {episode.thresholdsReached.length > 0 && <>, threshold reached: <b>{episode.thresholdsReached.join(', ')} days</b></>}
             {episode.nextThreshold && <> (next: {episode.nextThreshold} days)</>}
             {!episode.isCurrent && <div className="text-[11px] text-neutral-600 mt-1">Days after {formatUkDate(episode.endDate)} are not recorded, so the run is not confirmed beyond that date.</div>}
           </>

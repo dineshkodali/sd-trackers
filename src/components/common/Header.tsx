@@ -15,8 +15,7 @@ import {
   CheckCheck,
   ShieldAlert,
   UserCheck,
-  ArrowRight,
-  Sparkles
+  ArrowRight
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
@@ -564,7 +563,6 @@ export const Header: React.FC = () => {
               <div className="max-h-80 overflow-y-auto divide-y divide-[#f3f2f1] text-xs">
                 {tabFilteredNotifications.length === 0 ? (
                   <div className="p-8 text-center text-xs text-[#605e5c] space-y-1">
-                    <Sparkles className="w-5 h-5 mx-auto text-neutral-300" />
                     <p className="font-semibold text-neutral-700">All caught up!</p>
                     <p className="text-[11px] text-neutral-400">
                       {notifTab === 'site' 

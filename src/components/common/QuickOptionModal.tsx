@@ -9,7 +9,6 @@ import {
   Trash2, 
   ToggleLeft, 
   ToggleRight,
-  Sparkles,
   ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -272,7 +271,6 @@ export const QuickOptionModal: React.FC<QuickOptionModalProps> = ({
 
               <div className="pt-2 border-t border-neutral-200 flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   <span>Will be immediately selected in your active form</span>
                 </div>
                 <div className="flex items-center gap-2">

@@ -94,9 +94,8 @@ export const PropertyOverviewTab: React.FC<PropertyOverviewTabProps> = ({
           return (
             <div 
               key={r.id} 
-              className={`p-4 border rounded-xl shadow-xs hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 ${statusColor} relative overflow-hidden group`}
+              className={`p-4 border rounded-xl shadow-xs transition-colors ${statusColor} relative overflow-hidden group`}
             >
-              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
               
               <div className="flex items-center justify-between mb-3 relative z-10">
                 <span className="font-mono text-[11px] font-bold opacity-80">{r.roomReference}</span>

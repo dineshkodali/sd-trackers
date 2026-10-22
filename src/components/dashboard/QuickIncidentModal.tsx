@@ -373,7 +373,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-red-700 via-red-800 to-neutral-900 text-white px-4 py-3 flex items-center justify-between shrink-0">
+        <div className="bg-red-800 text-white px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-red-600 text-white rounded-xs shadow-xs animate-pulse">
               <Siren className="w-5 h-5" />

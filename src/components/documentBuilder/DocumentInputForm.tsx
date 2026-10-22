@@ -375,7 +375,7 @@ export const DocumentInputForm: React.FC<DocumentInputFormProps> = ({
             required={field.required}
             className={inputClass}
           >
-            <option value="">— Select —</option>
+            <option value="">Select...</option>
             {(field.options || []).map(opt => (
               <option key={opt} value={opt}>{opt}</option>
             ))}

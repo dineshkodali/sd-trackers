@@ -685,7 +685,7 @@ export const RolesView: React.FC = () => {
                                           ? 'bg-[#f0fdfa] text-[#0d9488] border border-[#5eead4] hover:bg-[#d0e5fb]' 
                                           : 'bg-[#f3f2f1] text-[#8a8886] border border-[#edebe9] hover:bg-[#e1dfdd]'
                                       } ${
-                                        !canEditRBAC ? 'cursor-default' : 'cursor-pointer hover:scale-105 shadow-2xs'
+                                        !canEditRBAC ? 'cursor-default' : 'cursor-pointer shadow-2xs'
                                       } ${
                                         isModified ? 'ring-2 ring-amber-400' : ''
                                       }`}

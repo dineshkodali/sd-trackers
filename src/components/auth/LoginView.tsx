@@ -248,16 +248,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden select-none">
-      {/* Dynamic Ambient Background Glows */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#0d9488]/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#0284c7]/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-slate-800/30 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Authentication Card */}
-      <div className="w-full max-w-4xl relative z-10 bg-[#1e293b]/90 backdrop-blur-xl border border-slate-700/70 rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+      <div className="w-full max-w-4xl relative z-10 bg-[#1e293b] border border-slate-700/70 rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
         
         {/* Left Side: Brand Identity & Compliance Overview (5 cols) */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f766e]/30 p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-700/60">
+        <div className="lg:col-span-5 bg-[#0f172a] p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-700/60">
           <div>
             <div className="mb-6">
               <Logo size="lg" />
@@ -431,7 +427,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-2.5 px-4 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white font-semibold rounded-lg text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg text-xs shadow-lg shadow-teal-900/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
                 >
                   {authLoading ? (
                     <>
@@ -441,7 +437,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                   ) : (
                     <>
                       <span>Sign In to Portal</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>

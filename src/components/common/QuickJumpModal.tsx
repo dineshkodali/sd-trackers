@@ -175,7 +175,7 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
                       <div className="text-[11px] text-[#605e5c]">{mod.desc}</div>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-[#8a8886] group-hover:text-[#0078d4] group-hover:translate-x-0.5 transition-all" />
+                  <ArrowRight className="w-4 h-4 text-[#8a8886] group-hover:text-[#0078d4] transition-all" />
                 </button>
               );
             })

@@ -13,7 +13,7 @@ export const SuperAdminMaintenanceBanner: React.FC<SuperAdminMaintenanceBannerPr
   onTurnOff
 }) => {
   return (
-    <div className="mb-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-400/80 rounded-xs p-3.5 shadow-sm text-neutral-800">
+    <div className="mb-4 bg-amber-50 border-2 border-amber-400/80 rounded-xs p-3.5 shadow-sm text-neutral-800">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
