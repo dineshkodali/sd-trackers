@@ -131,9 +131,6 @@ export const FinanceVendorModal: React.FC<FinanceVendorModalProps> = ({
               <Building2 className="w-4 h-4 text-[#0d9488]" />
               <span>{vendorToEdit ? 'Edit Vendor / Supplier' : 'Add New Vendor'}</span>
             </h3>
-            <p className="text-[11px] text-neutral-500 mt-0.5">
-              Register supplier profile, billing reference, and remittance details.
-            </p>
           </div>
           <button
             type="button"

@@ -144,9 +144,6 @@ export const FinanceSupplierModal: React.FC<FinanceSupplierModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-[#242424]">Manage Suppliers</h2>
-              <p className="text-xs text-[#605e5c]">
-                Add, manage, and select approved goods suppliers, couriers, and contractors
-              </p>
             </div>
           </div>
           <button

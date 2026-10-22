@@ -1,5 +1,4 @@
 import React from 'react';
-import { ShieldCheck } from 'lucide-react';
 import { ServiceUserMaster } from '../../types/masterData';
 
 interface ServiceUserFormFooterProps {
@@ -14,11 +13,7 @@ export const ServiceUserFormFooter: React.FC<ServiceUserFormFooterProps> = ({
   serviceUserToEdit
 }) => {
   return (
-    <div className="flex items-center justify-between pt-4 border-t border-[#e5e5e5]">
-      <div className="text-[11px] text-neutral-400 flex items-center gap-1.5">
-        <ShieldCheck className="w-3.5 h-3.5 text-[#0d9488]" />
-        <span>Immutable cryptographic audit logging active</span>
-      </div>
+    <div className="flex items-center justify-end pt-4 border-t border-[#e5e5e5]">
       <div className="flex items-center gap-2">
         <button
           type="button"

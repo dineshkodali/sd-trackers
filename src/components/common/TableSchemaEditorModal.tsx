@@ -267,7 +267,6 @@ export function TableSchemaEditorModal<T = any>({
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-200">
               <div>
                 <h4 className="font-bold text-neutral-800 text-sm">Configured Columns ({nonSystemCols.length})</h4>
-                <p className="text-[11px] text-neutral-500">Reorder columns, toggle table visibility, or adjust field rules.</p>
               </div>
               <button
                 type="button"

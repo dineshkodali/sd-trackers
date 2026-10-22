@@ -466,13 +466,6 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                   {resolvedTitle}
                 </h3>
               </div>
-              <p className="text-[11px] text-[#605e5c] mt-0.5 ml-7">
-                {billType === 'delivery_note' 
-                  ? 'Record goods arrival at site and attach the signed courier/supplier docket'
-                  : billType === 'credit_card_expense'
-                  ? 'Log direct card transactions, purchases, and attach photographic proof of receipt'
-                  : 'Submit official supplier invoices for review, site sign-off, and payout authorization'}
-              </p>
             </div>
             <button
               type="button"

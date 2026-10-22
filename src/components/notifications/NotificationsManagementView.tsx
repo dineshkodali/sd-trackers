@@ -745,9 +745,6 @@ export const NotificationsManagementView: React.FC = () => {
                 <Send className="w-4 h-4 text-[#0d9488]" />
                 <h3 className="font-bold text-sm text-[#242424]">Verify Live Dispatch Connection</h3>
               </div>
-              <p className="text-[11px] text-[#605e5c] mt-0.5">
-                Send a real-time probe notification to verify that the server connects to the mail relay.
-              </p>
             </div>
 
             <div className="space-y-3">

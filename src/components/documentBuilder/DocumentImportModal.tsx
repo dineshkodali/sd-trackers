@@ -318,9 +318,6 @@ export const DocumentImportModal: React.FC<DocumentImportModalProps> = ({
               <h2 className="text-lg font-bold text-[#1e293b]">
                 Import Template from DOCX or PDF
               </h2>
-              <p className="text-xs text-[#64748b]">
-                Upload existing forms to automatically generate modular templates with live preview
-              </p>
             </div>
           </div>
 

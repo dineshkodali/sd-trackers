@@ -643,9 +643,6 @@ export const ReportsView: React.FC = () => {
               <FileSpreadsheet className="w-4 h-4 text-[#0d9488]" />
               <span>Report Generator &amp; Dossier Customizer</span>
             </h3>
-            <p className="text-[11px] text-[#605e5c] mt-0.5">
-              Select a module template below and adjust filters to preview, print, or export custom data.
-            </p>
           </div>
         </div>
 

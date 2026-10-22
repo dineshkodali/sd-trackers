@@ -462,11 +462,7 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
           )}
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-between pt-3 border-t border-[#f0f0f0]">
-            <div className="text-[11px] text-neutral-400 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Property master data (8 sections)</span>
-            </div>
+          <div className="flex items-center justify-end pt-3 border-t border-[#f0f0f0]">
             <div className="flex items-center gap-2">
               <button
                 type="button"

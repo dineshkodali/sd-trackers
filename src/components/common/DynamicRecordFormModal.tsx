@@ -891,9 +891,6 @@ export function DynamicRecordFormModal<T = any>({
             <h3 className="text-base font-semibold text-[#242424]">
               {title}
             </h3>
-            <p className="text-[11px] text-neutral-500 mt-0.5">
-              {isEdit ? 'Modify the record details below and click Save Changes.' : 'Fill in the configured fields below to create a new record.'}
-            </p>
           </div>
           <button 
             onClick={onClose}

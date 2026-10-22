@@ -1185,9 +1185,6 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                       <h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
                         Queries &amp; Two-Way Clarifications
                       </h4>
-                      <p className="text-[11px] text-neutral-500 mt-0.5">
-                        Ask questions or request clarifications on invoice line items, proofs of delivery, or variances.
-                      </p>
                     </div>
                     <button
                       type="button"
@@ -1333,9 +1330,6 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                       <h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
                         Manual 3-Way Reconciliation Worksheet
                       </h4>
-                      <p className="text-[11px] text-neutral-500 mt-0.5">
-                        Compare vendor invoice amounts against delivery notes and purchase records.
-                      </p>
                     </div>
                     {isFinanceUser() && (
                       <button
@@ -1488,9 +1482,6 @@ export const FinanceBillDetailModal: React.FC<FinanceBillDetailModalProps> = ({
                       <h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
                         Payment &amp; Disbursal Records
                       </h4>
-                      <p className="text-[11px] text-neutral-500 mt-0.5">
-                        Tracks payment reference numbers, dates, and amounts disbursed for this bill.
-                      </p>
                     </div>
                     {isFinanceUser() && (
                       <button

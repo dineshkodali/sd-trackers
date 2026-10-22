@@ -114,9 +114,6 @@ ${events.slice(0, 15).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] [
                   LIVE STREAM
                 </span>
               </h2>
-              <p className="text-xs text-[#605e5c]">
-                Real-time tracking of session status, JWT token expiration, and database profile retrieval
-              </p>
             </div>
           </div>
           <button
@@ -300,8 +297,7 @@ ${events.slice(0, 15).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] [
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 bg-[#f8f9fa] border-t border-[#edebe9] flex items-center justify-between text-xs text-[#605e5c]">
-          <span>Diagnostic events automatically capture all database profile retrievals, token lifespans, and audit middleware dispatches.</span>
+        <div className="px-6 py-3 bg-[#f8f9fa] border-t border-[#edebe9] flex items-center justify-end text-xs text-[#605e5c]">
           <button
             type="button"
             onClick={onClose}

@@ -481,7 +481,7 @@ const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; c
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true" aria-label={title}>
     <div className={`bg-white rounded-xs border border-[#e5e5e5] shadow-2xl w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} max-h-[90vh] flex flex-col overflow-hidden`}>
       <div className="px-5 py-3.5 border-b border-[#e5e5e5] bg-[#faf9f8] flex items-center justify-between">
-        <div><h3 className="font-bold text-sm text-[#242424]">{title}</h3>{subtitle && <p className="text-[11px] text-neutral-500">{subtitle}</p>}</div>
+        <div><h3 className="font-bold text-sm text-[#242424]">{title}</h3></div>
         <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 text-neutral-400 hover:text-neutral-700 cursor-pointer"><X className="w-4 h-4" /></button>
       </div>
       <div className="p-5 space-y-3.5 overflow-y-auto text-xs">{children}</div>

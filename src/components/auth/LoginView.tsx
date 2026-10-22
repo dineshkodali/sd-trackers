@@ -565,7 +565,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Set New Password</h3>
-                  <p className="text-[11px] text-teal-400 font-medium">Secure Password Recovery</p>
                 </div>
               </div>
               <button 

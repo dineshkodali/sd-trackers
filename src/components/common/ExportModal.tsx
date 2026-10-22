@@ -227,9 +227,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <h3 id="export-dialog-title" className="text-sm font-bold text-[#242424]">
                 {title || `Export ${moduleName} Records`}
               </h3>
-              <p className="text-[11px] text-[#605e5c]">
-                Configure layout orientation, data fields, density, and preview before downloading.
-              </p>
             </div>
           </div>
           <button

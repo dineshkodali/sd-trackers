@@ -560,7 +560,6 @@ export const FoodSurveysView: React.FC = () => {
                 <Soup className="w-5 h-5 text-emerald-600" />
                 <div>
                   <h2 className="text-sm font-bold text-[#242424]">{isEditing ? 'Edit Food Survey' : 'Record Weekly Food Survey'}</h2>
-                  <p className="text-[11px] text-neutral-500">Log resident feedback and rating across all 21 weekly meal slots.</p>
                 </div>
               </div>
               <button

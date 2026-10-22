@@ -69,9 +69,6 @@ export const PropertyDocumentsSection: React.FC<PropertyDocumentsSectionProps> =
       <div className="flex items-center justify-between">
         <div>
           <h4 className="font-bold text-xs text-[#242424]">Property Certificates &amp; Documents</h4>
-          <p className="text-[11px] text-neutral-500">
-            Attached leases, gas safety, electrical, EPC, and insurance documents.
-          </p>
         </div>
         <button
           type="button"

@@ -158,9 +158,6 @@ export const QuickOptionModal: React.FC<QuickOptionModalProps> = ({
               <h3 className="text-sm font-bold text-neutral-900 leading-tight">
                 {displayTitle}
               </h3>
-              <p className="text-[11px] text-neutral-500">
-                Quick-add or manage available choices for this form field
-              </p>
             </div>
           </div>
           <button
@@ -269,10 +266,7 @@ export const QuickOptionModal: React.FC<QuickOptionModalProps> = ({
                 />
               </div>
 
-              <div className="pt-2 border-t border-neutral-200 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
-                  <span>Will be immediately selected in your active form</span>
-                </div>
+              <div className="pt-2 border-t border-neutral-200 flex items-center justify-end">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

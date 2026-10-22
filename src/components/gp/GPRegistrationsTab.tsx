@@ -331,7 +331,6 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
         <div className="px-5 py-3.5 border-b border-[#e5e5e5] bg-[#faf9f8] flex items-center justify-between">
           <div>
             <h3 className="font-bold text-sm text-[#242424]">{readOnly ? 'GP Registration' : existing ? 'Edit GP Registration' : 'Add GP Registration'}</h3>
-            <p className="text-[11px] text-neutral-500">One registration per Service User.</p>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 text-neutral-400 hover:text-neutral-700 cursor-pointer"><X className="w-4 h-4" /></button>
         </div>

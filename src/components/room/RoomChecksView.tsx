@@ -620,7 +620,6 @@ export const RoomChecksView: React.FC = () => {
                 <Building2 className="w-5 h-5 text-[#0d9488]" />
                 <div>
                   <h2 className="text-sm font-bold text-[#242424]">{isEditing ? 'Edit Room Check' : '30-Point Room Inspection'}</h2>
-                  <p className="text-[11px] text-neutral-500">Document individual questions with Yes / No / N/A and optional comments.</p>
                 </div>
               </div>
 

@@ -26,7 +26,6 @@ export const TrackerDossier: React.FC<{
           <div className="p-1.5 bg-[#e0f2fe] text-[#0284c7] rounded"><ShieldCheck className="w-5 h-5" /></div>
           <div>
             <h3 className="text-base font-semibold text-[#0f766e]">{title}</h3>
-            <p className="text-[11px] text-neutral-500">Complete operational business record dossier</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

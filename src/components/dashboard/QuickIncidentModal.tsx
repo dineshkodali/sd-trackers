@@ -732,7 +732,6 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                   <Save className="w-3 h-3 text-emerald-600" />
                   {lastSavedTime ? `Auto-saved at ${lastSavedTime}` : 'Auto-save active'}
                 </span>
-                <span className="hidden sm:inline">• Immutable audit trail</span>
               </div>
 
               <div className="flex items-center gap-2">

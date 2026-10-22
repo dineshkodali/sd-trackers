@@ -149,9 +149,6 @@ export const MoveAccommodationModal: React.FC<MoveAccommodationModalProps> = ({
               <DoorOpen className="w-4 h-4 text-[#0d9488]" />
               <span>Move Accommodation</span>
             </h3>
-            <p className="text-[11px] text-neutral-500 mt-0.5">
-              Transfer {serviceUser.firstName} {serviceUser.lastName} ({serviceUser.suReference}) to a new room
-            </p>
           </div>
           <button
             onClick={onClose}

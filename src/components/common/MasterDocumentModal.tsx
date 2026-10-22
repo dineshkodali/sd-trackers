@@ -200,9 +200,6 @@ export const MasterDocumentModal: React.FC<MasterDocumentModalProps> = ({
               <UploadCloud className="w-4 h-4 text-[#0d9488]" />
               <span>{docToEdit ? 'Edit Document' : 'Attach & Upload Document'}</span>
             </h3>
-            <p className="text-[11px] text-neutral-500 mt-0.5">
-              {docToEdit ? `Editing file for ${entityName}` : `Attaching file for ${entityName}`}
-            </p>
           </div>
           <button
             onClick={onClose}

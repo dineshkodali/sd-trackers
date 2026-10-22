@@ -913,9 +913,6 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                   <h2 className="text-sm font-bold text-white">
                     {editingReport ? 'Edit Daily Food Consumption Report' : 'New Daily Food Consumption Report (In & Out)'}
                   </h2>
-                  <p className="text-[11px] text-slate-300">
-                    Dropdown dish selections with dynamic DB presets, quick consumption sync, and custom item options.
-                  </p>
                 </div>
               </div>
 
@@ -1430,7 +1427,6 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                 <Database className="w-5 h-5 text-teal-600" />
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">Food Dishes Database Library</h3>
-                  <p className="text-[11px] text-slate-500">Add or manage standard dishes in the Supabase field_options table.</p>
                 </div>
               </div>
               <button onClick={() => setIsManagePresetsOpen(false)} className="font-bold text-slate-400 hover:text-slate-800">✕</button>

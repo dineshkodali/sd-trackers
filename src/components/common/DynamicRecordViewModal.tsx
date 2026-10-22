@@ -162,9 +162,6 @@ export function DynamicRecordViewModal<T = any>({
               <h3 className="text-base font-semibold text-[#0f766e]">
                 {title}
               </h3>
-              <p className="text-[11px] text-neutral-500">
-                Complete operational business record dossier
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">

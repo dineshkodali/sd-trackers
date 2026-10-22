@@ -65,9 +65,6 @@ export const ConfirmationModal: React.FC = () => {
               <h3 id="confirm-dialog-title" className="text-base font-semibold tracking-tight">
                 {title}
               </h3>
-              <p className="text-xs text-neutral-500 font-normal mt-0.5">
-                {isDanger ? 'Strict audit confirmation required' : 'Review & confirm submission'}
-              </p>
             </div>
           </div>
           <button 
