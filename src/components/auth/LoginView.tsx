@@ -250,7 +250,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
     <div className="min-h-screen bg-[#0f172a] text-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6">
-          <Logo size="lg" />
+          <Logo size="lg" onDark />
         </div>
 
         <div className="bg-[#1e293b] border border-slate-700 rounded-md p-6 sm:p-7">
