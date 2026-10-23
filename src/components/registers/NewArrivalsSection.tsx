@@ -540,7 +540,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         <DynamicRecordViewModal<NewArrivalRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`New Arrival Dossier: ${viewingRecord.name} (${viewingRecord.portReference})`}
+          title={`New Arrival Details: ${viewingRecord.name} (${viewingRecord.portReference})`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

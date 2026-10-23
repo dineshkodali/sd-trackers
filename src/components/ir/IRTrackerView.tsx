@@ -379,7 +379,7 @@ export const IRTrackerView: React.FC = () => {
                         <button
                           onClick={() => setViewingRecord(record)}
                           className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
-                          title="View Details Dossier"
+                          title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -457,12 +457,12 @@ export const IRTrackerView: React.FC = () => {
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewingRecord && (
         <DynamicRecordViewModal<IRRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Incident Report Dossier - ${viewingRecord.suName || viewingRecord.id}`}
+          title={`Incident Report Details - ${viewingRecord.suName || viewingRecord.id}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

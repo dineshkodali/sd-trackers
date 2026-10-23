@@ -1,17 +1,17 @@
 import React from 'react';
 import { ShieldCheck, X, Edit3 } from 'lucide-react';
 
-export interface DossierField { label: string; value: React.ReactNode; full?: boolean }
-export interface DossierSection { title: string; fields: DossierField[] }
+export interface DetailsField { label: string; value: React.ReactNode; full?: boolean }
+export interface DetailsSection { title: string; fields: DetailsField[] }
 
 /**
- * The read-only "dossier" window, built exactly like the view window every other tracker uses: tinted header with
+ * The read-only "details" window, built exactly like the view window every other tracker uses: tinted header with
  * the title, uppercase section headings with an underline, label / value pairs in two columns, and a footer with the
  * record id and a Close button.
  */
-export const TrackerDossier: React.FC<{
+export const TrackerDetails: React.FC<{
   title: string;
-  sections: DossierSection[];
+  sections: DetailsSection[];
   recordId?: string;
   onClose: () => void;
   onEdit?: () => void;

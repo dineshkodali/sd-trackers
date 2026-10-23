@@ -110,7 +110,7 @@ export const Header: React.FC = () => {
     switch (role) {
       case 'Super Admin': return 'Enterprise System Feed';
       case 'Admin': return 'Operations Activity Stream';
-      case 'Regional Manager': return 'Regional Multi-Site Oversight';
+      case 'Regional Manager': return 'Regional Multi-Site Management';
       case 'Area Manager':
       case 'General Manager': return 'Site Operations & Defect Feed';
       default: return 'Frontline Property Feed';

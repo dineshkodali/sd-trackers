@@ -382,7 +382,7 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
         <DynamicRecordViewModal<DailyRegisterRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Resident Register Dossier: ${viewingRecord.name} (${viewingRecord.portRef})`}
+          title={`Resident Register Details: ${viewingRecord.name} (${viewingRecord.portRef})`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

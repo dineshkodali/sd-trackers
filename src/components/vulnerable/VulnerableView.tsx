@@ -808,7 +808,7 @@ export const VulnerableView: React.FC<VulnerableViewProps> = ({ isArchive = fals
       <DynamicRecordViewModal<VulnerableSU>
         isOpen={Boolean(viewRecord)}
         onClose={() => setViewRecord(null)}
-        title={`Vulnerable Service User Dossier: ${viewRecord?.suName || ''}`}
+        title={`Vulnerable Service User Details: ${viewRecord?.suName || ''}`}
         columns={vulnerableColumns}
         record={viewRecord}
         onEdit={viewRecord && canEditRecord(viewRecord.site) && !isArchive ? () => {

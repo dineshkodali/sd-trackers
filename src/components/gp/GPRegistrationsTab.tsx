@@ -10,7 +10,7 @@ import {
 } from '../common/TrackerLayout';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { OptionSelect } from '../common/OptionSelect';
-import { TrackerDossier } from '../common/TrackerDossier';
+import { TrackerDetails } from '../common/TrackerDetails';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
 
@@ -298,8 +298,8 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
 
   if (readOnly && selected && existing) {
     return (
-      <TrackerDossier
-        title={`GP Registration Dossier: ${selected.su.firstName} ${selected.su.lastName}`}
+      <TrackerDetails
+        title={`GP Registration Details: ${selected.su.firstName} ${selected.su.lastName}`}
         recordId={existing.id}
         onClose={onClose}
         sections={[

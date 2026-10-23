@@ -886,7 +886,7 @@ export const FoodWastageView: React.FC = () => {
                             type="button"
                             onClick={() => setViewingRecord(record)}
                             className="p-1 hover:bg-[#f3f2f1] text-[#605e5c] hover:text-[#242424] rounded"
-                            title="View Record Dossier"
+                            title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -1254,7 +1254,7 @@ export const FoodWastageView: React.FC = () => {
         <DynamicRecordViewModal<FoodWastageRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Food Wastage Dossier - ${viewingRecord.foodWastage || viewingRecord.id}`}
+          title={`Food Wastage Details - ${viewingRecord.foodWastage || viewingRecord.id}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

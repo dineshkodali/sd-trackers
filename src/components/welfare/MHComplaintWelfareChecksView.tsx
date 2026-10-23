@@ -189,7 +189,7 @@ export const MHComplaintWelfareChecksView: React.FC = () => {
       });
     } else {
       exportTableToPdf({
-        title: 'MH-Complaint Welfare Checks Dossier',
+        title: 'MH-Complaint Welfare Checks Details',
         headers,
         rows,
         filename: `mh_complaint_welfare_checks_${new Date().toISOString().slice(0, 10)}.pdf`,
@@ -396,7 +396,7 @@ export const MHComplaintWelfareChecksView: React.FC = () => {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => setViewingRecord(rec)}
-                            title="View record dossier"
+                            title="View Details"
                             className="p-1 text-[#64748b] hover:text-[#0d9488] hover:bg-slate-100 rounded"
                           >
                             <Eye className="w-4 h-4" />
@@ -498,7 +498,7 @@ export const MHComplaintWelfareChecksView: React.FC = () => {
       <DynamicRecordViewModal<MHComplaintWelfareRecord>
         isOpen={Boolean(viewingRecord)}
         onClose={() => setViewingRecord(null)}
-        title={`MH Complaint Dossier: ${viewingRecord?.name || ''}`}
+        title={`MH Complaint Details: ${viewingRecord?.name || ''}`}
         columns={columns}
         record={viewingRecord}
         onEdit={viewingRecord && canEditRecord(viewingRecord.siteName) ? () => {

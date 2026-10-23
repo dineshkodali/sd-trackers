@@ -993,7 +993,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                         <button
                           onClick={() => setViewRecord(log)}
                           className="p-1 hover:bg-white text-[#605e5c] hover:text-[#242424] rounded border border-transparent hover:border-[#5eead4]"
-                          title="View Log Dossier"
+                          title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -1210,7 +1210,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
                           <button
                             onClick={() => setViewRecord(log)}
                             className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded"
-                            title="View Log Dossier"
+                            title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -1526,7 +1526,7 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
         isOpen={!!viewRecord}
         record={viewRecord}
         columns={columns}
-        title="Hot Food Buffet Log Dossier"
+        title="Hot Food Buffet Log Details"
         onClose={() => setViewRecord(null)}
       />
 

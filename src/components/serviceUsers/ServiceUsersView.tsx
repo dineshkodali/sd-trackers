@@ -625,7 +625,7 @@ export const ServiceUsersView: React.FC = () => {
                             type="button"
                             onClick={() => { setProfileInitialTab(undefined); setSelectedSUForProfile(u); }}
                             className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                            title="View SU Profile & Dossier"
+                            title="View SU Profile & Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>

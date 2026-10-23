@@ -697,7 +697,7 @@ export function exportDashboardSummaryPdf(data: DashboardReportData): void {
   doc.setFillColor(120, 120, 120);
   const timestamp = new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString('en-GB');
   doc.text(
-    `Official Briefing • Generated: ${timestamp} • Strict Home Office & GDPR Safeguarding Compliance`,
+    `Report • Generated: ${timestamp} • Strict Home Office & GDPR Safeguarding Compliance`,
     margin,
     footerY,
     'F1',

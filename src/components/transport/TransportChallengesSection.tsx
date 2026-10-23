@@ -489,7 +489,7 @@ export const TransportChallengesSection: React.FC = () => {
                             type="button"
                             onClick={() => setViewingItem(item)}
                             className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded cursor-pointer"
-                            title="View Summary Dossier"
+                            title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -876,14 +876,14 @@ export const TransportChallengesSection: React.FC = () => {
         </div>
       )}
 
-      {/* VIEW DOSSIER MODAL */}
+      {/* VIEW DETAILS MODAL */}
       {viewingItem && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 my-6">
             <div className="px-4 py-3 bg-[#f3f2f1] border-b border-[#e1dfdd] flex items-center justify-between">
               <div>
                 <h3 className="font-semibold text-sm text-[#242424]">
-                  Site Transport Operations Dossier
+                  Site Transport Operations Details
                 </h3>
                 <span className="text-xs text-neutral-500">{viewingItem.siteName} • {viewingItem.reportingPeriod}</span>
               </div>

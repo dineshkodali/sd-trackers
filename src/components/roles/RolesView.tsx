@@ -90,7 +90,7 @@ export const RolesView: React.FC = () => {
       role: 'Admin', 
       title: 'Admin', 
       subtitle: 'Operational Manager',
-      desc: 'Multi-site operations, accommodation properties, staff accounts provisioning, and compliance dossiers.',
+      desc: 'Multi-site operations, accommodation properties, staff accounts provisioning, and compliance reports.',
       badgeColor: 'bg-[#f0fdfa] text-[#0f766e] border-[#5eead4]',
       scope: 'Multi-Site Scope'
     },
@@ -164,7 +164,7 @@ export const RolesView: React.FC = () => {
     { 
       key: 'canExportData', 
       label: 'Export Compliance Reports', 
-      desc: 'Generate official CSV dossiers and PDF reports for audit oversight',
+      desc: 'Generate CSV and PDF reports for audits',
       category: 'Visibility & Compliance'
     },
     { 
@@ -358,7 +358,7 @@ export const RolesView: React.FC = () => {
     ]);
     exportTableToPdf({
       title: 'Role-Based Access Control (RBAC) Matrix',
-      subtitle: 'Official Security Permissions and Authority Governance Dossier',
+      subtitle: 'Security permissions and access levels',
       filename: `rbac_permissions_matrix_${new Date().toISOString().split('T')[0]}`,
       headers,
       rows,
@@ -407,7 +407,7 @@ export const RolesView: React.FC = () => {
             <button
               onClick={handleExportPdf}
               className="px-3 py-1.5 bg-white border border-[#edebe9] text-[#323130] hover:bg-[#faf9f8] text-xs font-semibold rounded-xs flex items-center gap-1.5 transition-colors shadow-2xs"
-              title="Export official printable PDF security dossier"
+              title="Export official printable PDF security details"
             >
               <Printer className="w-3.5 h-3.5 text-[#d83b01]" />
               <span>Export PDF</span>

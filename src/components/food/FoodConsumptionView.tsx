@@ -684,7 +684,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                         onClick={() => setViewingReport(report)}
                         className="px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xs border border-slate-300 flex items-center gap-1 transition-colors"
                       >
-                        <Eye className="w-3.5 h-3.5" /> View Dossier
+                        <Eye className="w-3.5 h-3.5" /> View Details
                       </button>
 
                       {canEdit && (
@@ -1511,7 +1511,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
         </div>
       )}
 
-      {/* VIEW FULL REPORT DOSSIER MODAL */}
+      {/* VIEW FULL REPORT DETAILS MODAL */}
       {viewingReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xs shadow-xl border border-[#cbd5e1] max-w-4xl w-full p-5 space-y-4 max-h-[92vh] flex flex-col">

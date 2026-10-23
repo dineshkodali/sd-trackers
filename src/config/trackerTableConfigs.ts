@@ -48,7 +48,7 @@ export const resolveConfigSiteDefault = (ctx: any): string => {
 
 /**
  * 1. MAINTENANCE & DEFECTS TRACKER CONFIGURATION
- * Single source of truth for table headers, Add form, View dossier, and Edit form.
+ * Single source of truth for table headers, Add form, View details, and Edit form.
  */
 export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
   {

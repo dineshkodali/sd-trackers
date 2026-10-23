@@ -546,7 +546,7 @@ export const SDVCSDirectoryView: React.FC = () => {
                           <button
                             onClick={() => setViewDetailAgency(agency)}
                             className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
-                            title="View Agency Dossier"
+                            title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -672,12 +672,12 @@ export const SDVCSDirectoryView: React.FC = () => {
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewDetailAgency && (
         <DynamicRecordViewModal<SDVCSAgency>
           isOpen={Boolean(viewDetailAgency)}
           onClose={() => setViewDetailAgency(null)}
-          title={`Agency Dossier - ${viewDetailAgency.agencyName}`}
+          title={`Agency Details - ${viewDetailAgency.agencyName}`}
           columns={columns}
           record={viewDetailAgency}
           onEdit={() => {

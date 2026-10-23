@@ -402,7 +402,7 @@ export const DailyLaundryLogSection: React.FC = () => {
       <DynamicRecordViewModal<DailyLaundryRecord>
         isOpen={Boolean(viewingRecord)}
         onClose={() => setViewingRecord(null)}
-        title={`Daily Laundry Dossier: Room ${viewingRecord?.roomNo || ''}`}
+        title={`Daily Laundry Details: Room ${viewingRecord?.roomNo || ''}`}
         columns={columns}
         record={viewingRecord}
         onEdit={viewingRecord && canEditRecord(viewingRecord.site) ? () => {

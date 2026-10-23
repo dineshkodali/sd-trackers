@@ -357,7 +357,7 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
         <DynamicRecordViewModal<DailyRegisterRoom>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Room Inventory Dossier - Room ${viewingRecord.roomNo}`}
+          title={`Room Inventory Details - Room ${viewingRecord.roomNo}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

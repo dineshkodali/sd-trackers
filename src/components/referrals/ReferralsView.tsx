@@ -853,7 +853,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
       <DynamicRecordFormModal<SGReferral>
         isOpen={Boolean(editingRecord)}
         onClose={() => setEditingRecord(null)}
-        title={`Edit SG Referral Dossier: ${editingRecord?.suName || ''}`}
+        title={`Edit SG Referral Details: ${editingRecord?.suName || ''}`}
         columns={referralsColumns}
         initialValues={editingRecord || undefined}
         isEdit={true}
@@ -874,7 +874,7 @@ export const ReferralsView: React.FC<ReferralsViewProps> = ({ isArchive = false 
       <DynamicRecordViewModal<SGReferral>
         isOpen={Boolean(viewRecord)}
         onClose={() => setViewRecord(null)}
-        title={`Safeguarding Referral Dossier: ${viewRecord?.suName || ''}`}
+        title={`Safeguarding Referral Details: ${viewRecord?.suName || ''}`}
         columns={referralsColumns}
         record={viewRecord}
         onEdit={viewRecord && canEditRecord(viewRecord.site) && !isArchive ? () => {

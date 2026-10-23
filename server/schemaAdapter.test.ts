@@ -646,7 +646,7 @@ test('universal attachments with multiple formats and loggedBy persist and round
     { id: 'a1', name: 'incident_photo.jpeg', size: 50000, type: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,abc', uploadedBy: 'Officer', uploadedAt: '2026-09-12' },
     { id: 'a2', name: 'report.docx', size: 85000, type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', dataUrl: 'data:application/docx;base64,def', uploadedBy: 'Officer', uploadedAt: '2026-09-12' },
     { id: 'a3', name: 'counts.xlsx', size: 34000, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', dataUrl: 'data:application/xlsx;base64,ghi', uploadedBy: 'Officer', uploadedAt: '2026-09-12' },
-    { id: 'a4', name: 'signed_dossier.pdf', size: 120000, type: 'application/pdf', dataUrl: 'data:application/pdf;base64,jkl', uploadedBy: 'Officer', uploadedAt: '2026-09-12' }
+    { id: 'a4', name: 'signed_details.pdf', size: 120000, type: 'application/pdf', dataUrl: 'data:application/pdf;base64,jkl', uploadedBy: 'Officer', uploadedAt: '2026-09-12' }
   ];
 
   const rec = {
@@ -673,7 +673,7 @@ test('universal attachments with multiple formats and loggedBy persist and round
   assert.equal(back.attachments[0].name, 'incident_photo.jpeg');
   assert.equal(back.attachments[1].name, 'report.docx');
   assert.equal(back.attachments[2].name, 'counts.xlsx');
-  assert.equal(back.attachments[3].name, 'signed_dossier.pdf');
+  assert.equal(back.attachments[3].name, 'signed_details.pdf');
   assert.equal(back.loggedBy, 'Lead Officer John Doe');
 });
 

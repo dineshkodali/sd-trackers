@@ -101,7 +101,7 @@ export const performIRExport = ({
   } else {
     exportTableToPdf({
       filename: 'IR_Tracker_Incident_Reports.pdf',
-      title: 'Incident Report (IR) Tracker Dossier',
+      title: 'Incident Report (IR) Tracker Details',
       headers,
       rows,
       orientation

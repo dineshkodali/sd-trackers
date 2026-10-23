@@ -250,7 +250,7 @@ export function TableSchemaEditorModal<T = any>({
                 </span>
               </div>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Module: <strong>{moduleTitle}</strong>. Changes made here automatically update the Table Headers, Add Form, View Dossier, and Edit Form.
+                Module: <strong>{moduleTitle}</strong>. Changes made here automatically update the Table Headers, Add Form, View Details, and Edit Form.
               </p>
             </div>
           </div>

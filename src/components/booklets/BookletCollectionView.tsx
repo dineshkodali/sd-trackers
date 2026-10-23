@@ -515,7 +515,7 @@ export const BookletCollectionView: React.FC = () => {
                         <button
                           onClick={() => setViewingRecord(record)}
                           className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
-                          title="View Details Dossier"
+                          title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -586,12 +586,12 @@ export const BookletCollectionView: React.FC = () => {
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewingRecord && (
         <DynamicRecordViewModal<BookletCollectionRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Booklet Stock Dossier - ${viewingRecord.bookletType}`}
+          title={`Booklet Stock Details - ${viewingRecord.bookletType}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

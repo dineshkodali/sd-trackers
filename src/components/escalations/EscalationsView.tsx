@@ -592,7 +592,7 @@ export const EscalationsView: React.FC = () => {
                           <button
                             onClick={() => setViewRecord(item)}
                             className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
-                            title="View Escalation Dossier"
+                            title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -689,12 +689,12 @@ export const EscalationsView: React.FC = () => {
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewRecord && (
         <DynamicRecordViewModal<EscalationRecord>
           isOpen={Boolean(viewRecord)}
           onClose={() => setViewRecord(null)}
-          title={`Safeguarding Escalation Dossier - ${getSuName(viewRecord)}`}
+          title={`Safeguarding Escalation Details - ${getSuName(viewRecord)}`}
           columns={columns}
           record={{
             ...viewRecord,

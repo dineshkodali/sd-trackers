@@ -16,7 +16,7 @@ import { useTableSchema } from '../../hooks/useTableSchema';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
 import { OptionSelect } from '../common/OptionSelect';
-import { TrackerDossier } from '../common/TrackerDossier';
+import { TrackerDetails } from '../common/TrackerDetails';
 
 const PEEP_MOBILITY_DEFAULTS = ['Independent', 'Walking aid / stick', 'Wheelchair user', 'Limited mobility', 'Visual impairment', 'Hearing impairment'];
 
@@ -383,8 +383,8 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
   if (readOnly && existing && selected) {
     const su = selected.su;
     return (
-      <TrackerDossier
-        title={`PEEP Plan Dossier: ${su.firstName} ${su.lastName}`}
+      <TrackerDetails
+        title={`PEEP Plan Details: ${su.firstName} ${su.lastName}`}
         recordId={existing.id}
         onClose={onClose}
         sections={[
@@ -430,7 +430,7 @@ const PeepDialog: React.FC<DialogProps> = ({ mode, directory, plans, suId: initi
             </ul>
           </div>
         )}
-      </TrackerDossier>
+      </TrackerDetails>
     );
   }
 

@@ -265,7 +265,7 @@ export const SDComplianceTrackerView: React.FC = () => {
     } else {
       exportTableToPdf({
         filename: 'SD_Compliance_Register.pdf',
-        title: 'Statutory Compliance & Contractor Certification Dossier',
+        title: 'Statutory Compliance & Contractor Certification Details',
         headers,
         rows,
         orientation
@@ -480,7 +480,7 @@ export const SDComplianceTrackerView: React.FC = () => {
                         <button
                           onClick={() => setViewingRecord(record)}
                           className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
-                          title="View Details Dossier"
+                          title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -561,12 +561,12 @@ export const SDComplianceTrackerView: React.FC = () => {
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewingRecord && (
         <DynamicRecordViewModal<SDComplianceRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Compliance Audit Dossier - ${viewingRecord.complianceType}`}
+          title={`Compliance Audit Details - ${viewingRecord.complianceType}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

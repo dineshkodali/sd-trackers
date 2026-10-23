@@ -450,7 +450,7 @@ const GPAppointmentsTab: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwi
                         <button
                           onClick={() => setViewingRecord(record)}
                           className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
-                          title="View Details Dossier"
+                          title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -530,12 +530,12 @@ const GPAppointmentsTab: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwi
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewingRecord && (
         <DynamicRecordViewModal<GPAppointmentRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`GP Consultation Dossier - Room ${viewingRecord.roomNo}`}
+          title={`GP Consultation Details - Room ${viewingRecord.roomNo}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

@@ -432,7 +432,7 @@ export const DOCUMENTS_TABLE_COLUMNS: TableColumnConfig<DocumentRecord>[] = [
       'Risk Assessment',
       'Incident Report',
       'Medical Assessment',
-      'Safeguarding Dossier',
+      'Safeguarding Details',
       'Police Report',
       'Compliance Certificate',
       'Legal Notice'

@@ -492,7 +492,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
                         <button
                           onClick={() => setViewingRecord(record)}
                           className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors cursor-pointer"
-                          title="View Details Dossier"
+                          title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -576,12 +576,12 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewingRecord && (
         <DynamicRecordViewModal<DispersalRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Dispersal Case Dossier - ${viewingRecord.suPortNassRef}`}
+          title={`Dispersal Case Details - ${viewingRecord.suPortNassRef}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

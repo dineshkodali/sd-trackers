@@ -328,7 +328,7 @@ export const RegisterEvictionSection: React.FC<RegisterEvictionSectionProps> = (
         <DynamicRecordViewModal<EvictionRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Eviction Dossier: ${viewingRecord.suName} (${viewingRecord.portRef})`}
+          title={`Eviction Details: ${viewingRecord.suName} (${viewingRecord.portRef})`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

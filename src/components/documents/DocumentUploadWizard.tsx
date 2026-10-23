@@ -17,7 +17,7 @@ export interface DocumentUploadTarget {
 }
 
 export const SU_DOCUMENT_TYPES = [
-  'Identity / ARC Card', 'Proof of Address', 'Immigration / Asylum Paper', 'Medical Assessment', 'Safeguarding Dossier',
+  'Identity / ARC Card', 'Proof of Address', 'Immigration / Asylum Paper', 'Medical Assessment', 'Safeguarding Details',
   'Risk Assessment', 'Consent Form', 'Incident Report', 'Support Plan', 'Other'
 ];
 export const PROPERTY_DOCUMENT_TYPES = [
@@ -25,7 +25,7 @@ export const PROPERTY_DOCUMENT_TYPES = [
   'EPC', 'Inspection Report', 'Compliance Certificate', 'Other'
 ];
 export const GENERAL_DOCUMENT_TYPES = [
-  'Risk Assessment', 'Incident Report', 'Medical Assessment', 'Safeguarding Dossier', 'Police Report',
+  'Risk Assessment', 'Incident Report', 'Medical Assessment', 'Safeguarding Details', 'Police Report',
   'Compliance Certificate', 'Legal Notice'
 ];
 

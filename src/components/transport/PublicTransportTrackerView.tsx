@@ -558,7 +558,7 @@ export const PublicTransportTrackerView: React.FC = () => {
                         <button
                           onClick={() => setViewingRecord(record)}
                           className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs transition-colors"
-                          title="View Details Dossier"
+                          title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -649,12 +649,12 @@ export const PublicTransportTrackerView: React.FC = () => {
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewingRecord && (
         <DynamicRecordViewModal<PublicTransportRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Transport Authorization Dossier - ${viewingRecord.approvalUrn}`}
+          title={`Transport Authorization Details - ${viewingRecord.approvalUrn}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

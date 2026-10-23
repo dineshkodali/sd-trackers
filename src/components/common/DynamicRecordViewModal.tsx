@@ -214,7 +214,7 @@ export function DynamicRecordViewModal<T = any>({
             </div>
           ))}
 
-          {/* Universal Proof & Document Attachments Dossier */}
+          {/* Universal Proof & Document Attachments Details */}
           {(() => {
             let rawAttachments: any[] = [];
             const hasExplicitArray = Array.isArray((record as any)?.attachments);

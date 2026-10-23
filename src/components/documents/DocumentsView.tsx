@@ -584,12 +584,12 @@ export const DocumentsView: React.FC = () => {
         />
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewingRecord && (
         <DynamicRecordViewModal<DocumentRecord>
           isOpen={Boolean(viewingRecord)}
           onClose={() => setViewingRecord(null)}
-          title={`Document Dossier - ${viewingRecord.documentTitle}`}
+          title={`Document Details - ${viewingRecord.documentTitle}`}
           columns={columns}
           record={viewingRecord}
           onEdit={() => {

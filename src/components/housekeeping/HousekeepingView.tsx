@@ -128,7 +128,7 @@ export const HousekeepingView: React.FC = () => {
       });
     } else {
       exportTableToPdf({
-        title: `Housekeeping Log Dossier – ${selectedDate || 'All Dates'}`,
+        title: `Housekeeping Log Details – ${selectedDate || 'All Dates'}`,
         headers,
         rows,
         filename: `housekeeping_log_${selectedDate || 'all'}.pdf`,
@@ -343,7 +343,7 @@ export const HousekeepingView: React.FC = () => {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => setViewingRecord(rec)}
-                            title="View full inspection dossier"
+                            title="View Details"
                             className="p-1 text-[#64748b] hover:text-[#0d9488] hover:bg-slate-100 rounded"
                           >
                             <Eye className="w-4 h-4" />
@@ -669,12 +669,12 @@ export const HousekeepingView: React.FC = () => {
         </div>
       )}
 
-      {/* VIEW DOSSIER MODAL */}
+      {/* VIEW DETAILS MODAL */}
       {viewingRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xs shadow-xl border border-[#cbd5e1] max-w-3xl w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
-              <h2 className="text-base font-bold text-[#1e293b]">Housekeeping Inspection Dossier</h2>
+              <h2 className="text-base font-bold text-[#1e293b]">Housekeeping Inspection Details</h2>
               <button onClick={() => setViewingRecord(null)} className="font-bold text-[#64748b]">✕</button>
             </div>
 

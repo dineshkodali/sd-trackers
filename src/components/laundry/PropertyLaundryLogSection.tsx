@@ -981,7 +981,7 @@ export const PropertyLaundryLogSection: React.FC = () => {
                         <button
                           onClick={() => setViewRecord(log)}
                           className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded"
-                          title="View Log Dossier"
+                          title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -1268,12 +1268,12 @@ export const PropertyLaundryLogSection: React.FC = () => {
         </div>
       )}
 
-      {/* Dynamic View Dossier Modal */}
+      {/* Dynamic View Details Modal */}
       {viewRecord && (
         <DynamicRecordViewModal<PropertyLaundryLog>
           isOpen={Boolean(viewRecord)}
           onClose={() => setViewRecord(null)}
-          title={`Property Laundry Log Dossier - ${viewRecord.site} (${viewRecord.periodLabel})`}
+          title={`Property Laundry Log Details - ${viewRecord.site} (${viewRecord.periodLabel})`}
           columns={columns}
           record={viewRecord}
           onEdit={() => {

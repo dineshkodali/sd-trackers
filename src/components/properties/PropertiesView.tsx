@@ -1017,7 +1017,7 @@ export const PropertiesView: React.FC = () => {
         onSave={handleSaveEdit}
       />
 
-      {/* VIEW PROPERTY DOSSIER MODAL */}
+      {/* VIEW PROPERTY DETAILS MODAL */}
       <DynamicRecordViewModal<PropertyInfo>
         isOpen={Boolean(viewingProperty)}
         title={viewingProperty ? `Property Record: ${viewingProperty.name}` : 'Property Details'}

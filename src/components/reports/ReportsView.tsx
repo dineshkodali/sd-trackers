@@ -109,7 +109,7 @@ export const ReportsView: React.FC = () => {
   const REPORT_TYPES = [
     {
       id: 'safeguarding',
-      title: 'Safeguarding Referrals Dossier',
+      title: 'Safeguarding Referrals Details',
       desc: 'All resident safeguarding intake records, council allocations, and review notes.',
       icon: ShieldCheck,
       badgeColor: 'bg-[#f0fdfa] text-[#0f766e] border-[#5eead4]',
@@ -534,7 +534,7 @@ export const ReportsView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-[#605e5c] mt-0.5">
-            Generate safeguarding audit dossiers, export Excel-ready CSV sheets for council partners, and synchronize cloud archives.
+            Generate safeguarding audit reports, export Excel-ready CSV sheets for council partners, and save copies to the cloud.
           </p>
         </div>
 
@@ -564,7 +564,7 @@ export const ReportsView: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#edebe9] text-[#323130] border border-[#8a8886] rounded-xs transition-colors"
           >
             <Printer className="w-3.5 h-3.5 text-[#0d9488]" />
-            <span>Print Dossier</span>
+            <span>Print Report</span>
           </button>
 
           <button
@@ -641,7 +641,7 @@ export const ReportsView: React.FC = () => {
           <div>
             <h3 className="text-xs font-bold text-[#242424] uppercase tracking-wider flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-[#0d9488]" />
-              <span>Report Generator &amp; Dossier Customizer</span>
+              <span>Report Generator &amp; Customiser</span>
             </h3>
           </div>
         </div>
@@ -903,7 +903,7 @@ export const ReportsView: React.FC = () => {
         />
       </div>
 
-      {/* Printable / PDF Dossier Modal */}
+      {/* Printable / PDF Details Modal */}
       {isPrintModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-xs shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-[#edebe9]">
@@ -911,7 +911,7 @@ export const ReportsView: React.FC = () => {
             <div className="p-3.5 border-b border-[#edebe9] bg-[#faf9f8] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Printer className="w-4 h-4 text-[#0d9488]" />
-                <h3 className="font-semibold text-sm text-[#242424]">Official Safeguarding Audit Dossier (Print View)</h3>
+                <h3 className="font-semibold text-sm text-[#242424]">Safeguarding Audit Report (Print View)</h3>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -939,7 +939,7 @@ export const ReportsView: React.FC = () => {
                     Safeguarding Accommodation Support Audit
                   </h1>
                   <p className="text-xs text-[#605e5c]">
-                    Dossier Type: {REPORT_TYPES.find(r => r.id === selectedReportType)?.title}
+                    Report Type: {REPORT_TYPES.find(r => r.id === selectedReportType)?.title}
                   </p>
                   <p className="text-xs text-[#605e5c]">
                     Scope: {selectedSite === 'all' ? 'All Contracted Accommodation Facilities' : selectedSite}
@@ -952,7 +952,7 @@ export const ReportsView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Summary Stats in Dossier */}
+              {/* Summary Stats in Details */}
               <div className="grid grid-cols-3 gap-4 bg-[#faf9f8] p-4 rounded-xs border border-[#edebe9]">
                 <div>
                   <div className="text-[10px] text-[#605e5c] uppercase font-bold">Total Included Records</div>
@@ -968,7 +968,7 @@ export const ReportsView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Records Table in Dossier */}
+              {/* Records Table in Details */}
               <div>
                 <h4 className="font-bold text-xs uppercase mb-2 text-[#242424]">Detailed Record Schedule</h4>
                 <table className="w-full text-left text-[11px] border border-[#edebe9] divide-y divide-[#edebe9]">

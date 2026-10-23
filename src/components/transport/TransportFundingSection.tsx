@@ -1133,7 +1133,7 @@ export const TransportFundingSection: React.FC = () => {
               {wizardStep === 6 && (
                 <div className="space-y-3">
                   <h4 className="font-bold text-xs text-[#242424]">
-                    Step 6: Review Application Dossier
+                    Step 6: Review Application Details
                   </h4>
                   <div className="p-3 bg-[#faf9f8] rounded-xs border border-[#e1dfdd] space-y-2">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1387,14 +1387,14 @@ export const TransportFundingSection: React.FC = () => {
         </div>
       )}
 
-      {/* VIEW APPLICATION DOSSIER */}
+      {/* VIEW APPLICATION DETAILS */}
       {viewingItem && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 my-6">
             <div className="px-4 py-3 bg-[#f3f2f1] border-b border-[#e1dfdd] flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm text-[#242424]">
-                  Funding Application Dossier
+                  Funding Application Details
                 </h3>
                 <span className="text-xs font-mono text-[#0078d4]">{viewingItem.mainAppRef} • {viewingItem.mainAppInitials}</span>
               </div>
@@ -1460,7 +1460,7 @@ export const TransportFundingSection: React.FC = () => {
                 </div>
               )}
 
-              {/* Restricted Management Section in Dossier (Only visible to Management) */}
+              {/* Restricted Management Section in Details (Only visible to Management) */}
               {isManagementOrHo && (
                 <div className="p-3 bg-purple-50/50 rounded-xs border border-purple-200 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-[#8764b8] font-semibold">

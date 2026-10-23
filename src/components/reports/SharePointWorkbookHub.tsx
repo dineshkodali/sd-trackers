@@ -168,7 +168,7 @@ export const SharePointWorkbookHub: React.FC<SharePointWorkbookHubProps> = ({
               </span>
             </div>
             <p className="text-xs text-[#605e5c] mt-0.5 max-w-3xl leading-relaxed">
-              <strong>Purpose:</strong> Synchronize and copy tabular records from this web app directly into your designated 
+              <strong>Purpose:</strong> Copy tabular records from this web app directly into your designated 
               SharePoint / OneDrive Excel Workbook. Configure your workbook link below to open the workbook or copy records with zero friction.
             </p>
           </div>

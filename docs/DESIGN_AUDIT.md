@@ -26,7 +26,7 @@ Where the skills and the project disagree, the project wins. Poppins is the prod
 
 - **Lucide icons** are imported in 158 files. Most label navigation, actions and statuses, which is a real use. Bulk removal would hurt recognition, so icons were only removed where they were pure decoration.
 - **Card and container density** and **dashboard metric cards** need a page-by-page design decision with the product owner, not a code sweep.
-- **Spacing and component tokens** are already largely shared through Tailwind and the tracker layout components (`TrackerLayout`, `TrackerToolbar`, `TrackerDossier`). A separate token file was not added to avoid a second competing system.
+- **Spacing and component tokens** are already largely shared through Tailwind and the tracker layout components (`TrackerLayout`, `TrackerToolbar`, `TrackerDetails`). A separate token file was not added to avoid a second competing system.
 
 ## Not verified
 
