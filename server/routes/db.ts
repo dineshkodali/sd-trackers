@@ -12,8 +12,39 @@ import { getLiveSchema, getLiveColumns, invalidateLiveSchema } from '../liveSche
 import { seedReferenceData } from '../seed.js';
 import { INITIAL_ROLE_PERMISSIONS } from '../../src/data/initialData.js';
 import { masterDataStore } from '../masterDataStore.js';
+import { cacheKey, readThrough, invalidateGroups, getCacheStats } from '../cache/redisCache.js';
 
 const router = Router();
+
+/**
+ * Entities served through the Redis read-through cache. Only reference data that
+ * is identical for every signed-in user belongs here: not site-scoped, not
+ * parent-scoped, readable by any authenticated user. Personal, financial and
+ * accommodation records must not be added without a documented security review
+ * (docs/REDIS_CACHING.md).
+ */
+const CACHEABLE_ENTITIES = new Set(['fieldOptions', 'tableSchemas']);
+const CACHE_TTL_SECONDS = Math.max(5, Math.min(300, Number(process.env.CACHE_TTL_SECONDS) || 60));
+
+function cacheableTables(): string[] {
+  return Array.from(CACHEABLE_ENTITIES).map(e => ENTITY_REGISTRY[e].table);
+}
+
+/**
+ * After any successful non-read request, drop the cache of the table(s) it
+ * touched. Runs on 'finish', i.e. after the database write has completed.
+ */
+router.use((req: Request, res: Response, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.path === '/batch-read') return next();
+  res.on('finish', () => {
+    if (res.statusCode >= 400) return;
+    const def = ENTITY_REGISTRY[req.path.split('/').filter(Boolean)[0] || ''];
+    // Named entity: just its table. Anything else (sync/push, seed, migrate) may touch any of them.
+    const groups = (def ? [def.table] : cacheableTables()).filter(t => cacheableTables().includes(t));
+    if (groups.length > 0) void invalidateGroups(groups);
+  });
+  next();
+});
 
 /**
  * Who may perform an operation on an entity:
@@ -689,6 +720,27 @@ async function readEntity(client: SupabaseClient, def: EntityDef, opts: ListOpti
   return { ...result, data, total: data.length };
 }
 
+/**
+ * readEntity behind the cache for allow-listed reference entities. Fails closed:
+ * anything site-scoped, parent-scoped or admin-only bypasses the cache. Callers
+ * have already authenticated the user and checked def.read.
+ */
+async function readEntityCached(client: SupabaseClient, entity: string, def: EntityDef, opts: ListOptions, user?: Express.Request['user']) {
+  const shared = CACHEABLE_ENTITIES.has(entity)
+    && def.read !== 'admin'
+    && !TABLE_SITE_COLUMN[def.table]
+    && !TABLE_PARENT_SCOPE[def.table];
+  if (!shared) return readEntity(client, def, opts, user);
+  const digest = crypto.createHash('sha256').update(JSON.stringify(opts)).digest('hex').slice(0, 16);
+  return readThrough(
+    def.table,
+    cacheKey(def.table, `${entity}:${digest}`),
+    CACHE_TTL_SECONDS,
+    () => readEntity(client, def, opts, user),
+    result => result.success === true && !result.truncated,
+  );
+}
+
 async function readEntityUnscopedChildren(client: SupabaseClient, def: EntityDef, opts: ListOptions, user?: Express.Request['user']) {
   if (masterDataStore.isMasterTable(def.table)) {
     const liveCols = await getLiveColumns(def.table);
@@ -856,6 +908,10 @@ async function migrateAndSeed() {
   return { migration, seed };
 }
 
+router.get('/cache-stats', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
+  res.json({ success: true, stats: getCacheStats(), ttlSeconds: CACHE_TTL_SECONDS, entities: Array.from(CACHEABLE_ENTITIES) });
+});
+
 router.post('/ensure', requireRole(...ADMIN_ROLES), async (_req: Request, res: Response) => {
   const { migration, seed } = await migrateAndSeed();
   res.status(migration.success ? 200 : 500).json({ ...migration, seed });
@@ -974,7 +1030,7 @@ router.post('/batch-read', async (req: Request, res: Response) => {
       return;
     }
     try {
-      results[key] = await readEntity(client, def, buildListOptions(r, def.table), req.user);
+      results[key] = await readEntityCached(client, String(r.entity), def, buildListOptions(r, def.table), req.user);
     } catch (err: any) {
       results[key] = { success: false, error: err.message, data: [] };
     }
@@ -1405,7 +1461,7 @@ router.get('/:entity', async (req: Request, res: Response) => {
   if (!client) return;
 
   try {
-    const result = await readEntity(client, def, parseListOptions(req, def.table), req.user);
+    const result = await readEntityCached(client, String(req.params.entity), def, parseListOptions(req, def.table), req.user);
     if (!result.success) {
       if (result.tableMissing) return tableMissing(res, def.table);
       return res.status(500).json({ success: false, error: result.error });

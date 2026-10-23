@@ -50,3 +50,24 @@ frontend:
           value: 'nosniff'
         - key: 'Referrer-Policy'
           value: 'strict-origin-when-cross-origin'
+    # Vite emits content-hashed bundles under /assets (the name changes whenever the
+    # content does), so they can be cached for a year. /assets/aistudio is copied from
+    # public/ unhashed and is deliberately not matched.
+    - pattern: '/assets/*.js'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+    - pattern: '/assets/*.css'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+    - pattern: '/assets/*.woff2'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+    # The HTML shell references the hashed bundles, so it must always be revalidated
+    # or a deploy would not reach returning users.
+    - pattern: '/index.html'
+      headers:
+        - key: 'Cache-Control'
+          value: 'no-cache'
