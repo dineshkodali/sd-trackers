@@ -1561,19 +1561,19 @@ class FinanceService {
     approverName?: string,
     notes?: string
   ): Promise<{ success: boolean; error?: string }> {
-    try {
-      const res = await fetch(getApiUrl(`/api/finance/bills/${billId}/request-approval`), {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approverId, approverName, notes })
-      });
-      const json = await res.json().catch(() => null);
-      if (res.ok && json?.success) return { success: true };
-      // The server's answer is final when it refuses (never fall through to a direct database write)
-      if (res.status >= 400 && res.status < 500 && json?.error) return { success: false, error: json.error };
-    } catch {}
-
-    return { success: false, error: 'Could not reach the server to send this bill for confirmation. Please try again.' };
+    // API only: the server checks who may route the bill and who the approver is, so there is no direct database path.
+    const api = await this.callFinanceApi(`/api/finance/bills/${billId}/request-approval`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approverId, approverName, notes })
+    });
+    if (api.json?.success) return { success: true };
+    // The server's answer is final when it refuses
+    if (api.reachable) return { success: false, error: api.error || 'The finance server could not send this bill for confirmation.' };
+    return {
+      success: false,
+      error: 'The finance server is not reachable, so this bill was not sent. Ask an administrator to check that the API server is running and that VITE_API_URL points to it.'
+    };
   }
 
   // ==========================================
