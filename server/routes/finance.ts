@@ -2140,6 +2140,16 @@ router.delete('/bills/:id', requireAuth, requireRole('Super Admin', 'Admin'), as
     const store = await getUnifiedStore(supabase);
     const existing = store.bills.find(b => b.id === id);
 
+    // Delete the database row first and treat a failure as a failure. The page views (vendor_invoices
+    // etc.) are views over finance_bills, so the base table is the one place to delete from. Previously
+    // the store was rewritten first and a failed row delete was swallowed, so the record came back.
+    if (supabase) {
+      const { error: deleteError } = await supabase.from("finance_bills").delete().eq("id", id);
+      if (deleteError) {
+        return res.status(500).json({ success: false, error: `Could not delete the record: ${deleteError.message}` });
+      }
+    }
+
     store.bills = store.bills.filter(b => b.id !== id);
     store.items = store.items.filter(i => i.bill_id !== id);
     store.attachments = store.attachments.filter(a => a.bill_id !== id);
@@ -2162,19 +2172,6 @@ router.delete('/bills/:id', requireAuth, requireRole('Super Admin', 'Admin'), as
           entity_type: 'finance_bills',
           entity_id: id
         }]);
-
-        const targetTable = existing?.bill_type === 'vendor_invoice'
-          ? 'vendor_invoices'
-          : existing?.bill_type === 'credit_card_expense'
-          ? 'credit_card_bills'
-          : existing?.bill_type === 'delivery_note'
-          ? 'delivery_notes'
-          : 'finance_bills';
-
-        const { error } = await supabase.from(targetTable).delete().eq('id', id);
-        if (error && targetTable !== 'finance_bills') {
-          await supabase.from('finance_bills').delete().eq('id', id);
-        }
       } catch (e) {
         console.warn('[FinanceRoute] Supabase delete error:', e);
       }

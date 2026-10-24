@@ -100,7 +100,18 @@ export const DeliveryNotesView: React.FC = () => {
       onConfirm: async () => {
         closeConfirmation();
         try {
-          await financeService.deleteBill(bill.id, bill.billType || 'delivery_note');
+          const deleteResult = await financeService.deleteBill(bill.id, bill.billType || 'delivery_note');
+          if (!deleteResult.success) {
+            requestConfirmation({
+              title: "Could not delete",
+              message: deleteResult.error || "The record was not deleted.",
+              confirmLabel: "OK",
+              cancelLabel: "Close",
+              isDanger: true,
+              onConfirm: closeConfirmation
+            });
+            return;
+          }
           await loadData();
         } catch (err) {
           console.error('Failed to delete delivery note:', err);

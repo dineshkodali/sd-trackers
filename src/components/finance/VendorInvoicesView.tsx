@@ -103,7 +103,18 @@ export const VendorInvoicesView: React.FC = () => {
       onConfirm: async () => {
         closeConfirmation();
         try {
-          await financeService.deleteBill(bill.id, bill.billType || 'vendor_invoice');
+          const deleteResult = await financeService.deleteBill(bill.id, bill.billType || 'vendor_invoice');
+          if (!deleteResult.success) {
+            requestConfirmation({
+              title: "Could not delete",
+              message: deleteResult.error || "The record was not deleted.",
+              confirmLabel: "OK",
+              cancelLabel: "Close",
+              isDanger: true,
+              onConfirm: closeConfirmation
+            });
+            return;
+          }
           await loadData();
         } catch (err) {
           console.error('Failed to delete vendor invoice:', err);

@@ -33,6 +33,31 @@ class FinanceService {
     return getBrowserSupabaseClient();
   }
 
+  /**
+   * Call the finance API and report why it failed. Returns `json` for a 2xx JSON
+   * answer, otherwise `error` (the server's own message, or that it was unreachable).
+   * `reachable` is false only when no JSON answer came back at all (no backend, HTML
+   * from a static host, network error), as opposed to the server refusing the request.
+   */
+  private async callFinanceApi(path: string, init: RequestInit = {}): Promise<{ json?: any; error?: string; reachable: boolean }> {
+    try {
+      const res = await fetch(getApiUrl(path), init);
+      const type = res.headers.get('content-type') || '';
+      if (!type.includes('application/json')) {
+        return { reachable: false, error: `The finance server is not reachable (HTTP ${res.status}).` };
+      }
+      const json = await res.json();
+      if (res.ok && json?.success !== false) return { json, reachable: true };
+      return { reachable: true, error: json?.error || `The finance server refused the request (HTTP ${res.status}).` };
+    } catch (err: any) {
+      return { reachable: false, error: 'The finance server is not reachable.' };
+    }
+  }
+
+  private static readonly NO_BACKEND_HINT =
+    ' Direct database writes to finance records are blocked by security rules, so this change was not saved. ' +
+    'Ask an administrator to check that the API server is running and that VITE_API_URL points to it.';
+
   // ==========================================
   // LOCAL STORAGE CACHE HELPERS
   // ==========================================
@@ -442,27 +467,27 @@ class FinanceService {
       status: bill.status || 'submitted'
     };
 
-    // 1. Try Express backend route (/api/finance/bills)
-    try {
-      const res = await fetch(getApiUrl('/api/finance/bills'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ bill: billPayload, items })
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.billId) {
-          const createdBill = this.mapBillFromDb(json.record || json.data || { ...billPayload, id: json.billId });
-          createdBill.items = items as FinanceBillItem[];
-          const current = this.loadLocalBillsCache().filter(b => b.id !== json.billId);
-          this.saveLocalBillsCache([createdBill, ...current]);
-          return { success: true, billId: json.billId };
-        }
-      }
-    } catch {}
+    // 1. Express backend route (/api/finance/bills) - the only path allowed to write finance records
+    const api = await this.callFinanceApi('/api/finance/bills', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ bill: billPayload, items })
+    });
+    if (api.json?.success && api.json.billId) {
+      const createdBill = this.mapBillFromDb(api.json.record || api.json.data || { ...billPayload, id: api.json.billId });
+      createdBill.items = items as FinanceBillItem[];
+      const current = this.loadLocalBillsCache().filter(b => b.id !== api.json.billId);
+      this.saveLocalBillsCache([createdBill, ...current]);
+      return { success: true, billId: api.json.billId };
+    }
+    // The server answered and said no (validation, permission): report that, do not retry elsewhere.
+    if (api.reachable) {
+      return { success: false, error: api.error || 'The finance server could not save this record.' };
+    }
 
-    // 2. Direct Supabase Client
+    // 2. Direct Supabase client (only works where row-level security allows it)
     const client = this.supabase;
+    let directError = '';
     const dbPayload = {
       organization_id: billPayload.organizationId,
       site_id: billPayload.siteId,
@@ -507,38 +532,17 @@ class FinanceService {
           this.saveLocalBillsCache([mapped, ...current]);
           return { success: true, billId: createdBill.id };
         }
-      } catch {}
+        directError = billError?.message || '';
+      } catch (err: any) {
+        directError = err?.message || '';
+      }
     }
 
-    // 3. Fallback client-side cache so user submission NEVER fails
-    const fallbackId = `bill-${Date.now()}`;
-    const localBill: FinanceBill = {
-      id: fallbackId,
-      organizationId: billPayload.organizationId,
-      siteId: billPayload.siteId,
-      siteName: billPayload.siteName || undefined,
-      vendorId: billPayload.vendorId || undefined,
-      vendorName: billPayload.vendorName || undefined,
-      billNumber: billPayload.billNumber,
-      billType: billPayload.billType as FinanceBillType,
-      billDate: billPayload.billDate,
-      dueDate: billPayload.dueDate || undefined,
-      currency: billPayload.currency,
-      subtotal: billPayload.subtotal,
-      taxAmount: billPayload.taxAmount,
-      totalAmount: billPayload.totalAmount,
-      description: billPayload.description,
-      purchaseReference: billPayload.purchaseReference || undefined,
-      submittedBy: billPayload.submittedBy,
-      submittedAt: new Date().toISOString(),
-      status: 'submitted',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      items: items as FinanceBillItem[]
+    // Never pretend the record was saved: a browser-only copy disappears on refresh and other users never see it.
+    return {
+      success: false,
+      error: `Could not save the record. ${api.error || ''}${directError ? ` Database said: ${directError}.` : ''}${FinanceService.NO_BACKEND_HINT}`.trim()
     };
-    const current = this.loadLocalBillsCache().filter(b => b.id !== fallbackId);
-    this.saveLocalBillsCache([localBill, ...current]);
-    return { success: true, billId: fallbackId };
   }
 
   async updateBill(
@@ -546,25 +550,23 @@ class FinanceService {
     updates: Partial<FinanceBill>,
     items?: Partial<FinanceBillItem>[]
   ): Promise<{ success: boolean; data?: FinanceBill; error?: string }> {
-    // 1. Try Express backend route
-    try {
-      const res = await fetch(getApiUrl(`/api/finance/bills/${billId}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ bill: updates, items })
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && (json.record || json.data)) {
-          const mapped = this.mapBillFromDb(json.record || json.data);
-          const current = this.loadLocalBillsCache().filter(b => b.id !== billId);
-          this.saveLocalBillsCache([mapped, ...current]);
-          return { success: true, data: mapped };
-        }
-      }
-    } catch {}
+    // 1. Express backend route
+    const api = await this.callFinanceApi(`/api/finance/bills/${billId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ bill: updates, items })
+    });
+    if (api.json?.success && (api.json.record || api.json.data)) {
+      const mapped = this.mapBillFromDb(api.json.record || api.json.data);
+      const current = this.loadLocalBillsCache().filter(b => b.id !== billId);
+      this.saveLocalBillsCache([mapped, ...current]);
+      return { success: true, data: mapped };
+    }
+    if (api.reachable) {
+      return { success: false, error: api.error || 'The finance server could not update this record.' };
+    }
 
-    // 2. Direct Supabase
+    // 2. Direct Supabase (only works where row-level security allows it)
     const client = this.supabase;
     if (client) {
       try {
@@ -598,17 +600,8 @@ class FinanceService {
       } catch {}
     }
 
-    // 3. Fallback local cache update
-    const current = this.loadLocalBillsCache();
-    const idx = current.findIndex(b => b.id === billId);
-    if (idx !== -1) {
-      current[idx] = { ...current[idx], ...updates, updatedAt: new Date().toISOString() };
-      if (items) current[idx].items = items as FinanceBillItem[];
-      this.saveLocalBillsCache(current);
-      return { success: true, data: current[idx] };
-    }
-
-    return { success: false, error: 'Bill not found' };
+    // A browser-only edit would vanish on refresh and never reach other users, so report the failure.
+    return { success: false, error: `Could not update the record.${FinanceService.NO_BACKEND_HINT}` };
   }
 
   async deleteBill(billId: string, billType?: string): Promise<{ success: boolean; error?: string }> {
@@ -620,50 +613,39 @@ class FinanceService {
       ? 'delivery_notes'
       : 'finance_bills';
 
-    // 1. Try Express backend route (/api/finance/bills/:id)
-    try {
-      const res = await fetch(getApiUrl(`/api/finance/bills/${billId}`), {
-        method: 'DELETE',
-        headers: authHeaders()
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          const current = this.loadLocalBillsCache().filter(b => b.id !== billId);
-          this.saveLocalBillsCache(current);
-          return { success: true };
-        }
-      }
-    } catch {}
+    const forgetLocally = () => {
+      this.saveLocalBillsCache(this.loadLocalBillsCache().filter(b => b.id !== billId));
+    };
 
-    // 2. Direct Supabase
+    // 1. Express backend route (/api/finance/bills/:id)
+    const api = await this.callFinanceApi(`/api/finance/bills/${billId}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    if (api.json?.success) {
+      forgetLocally();
+      return { success: true };
+    }
+    if (api.reachable) {
+      return { success: false, error: api.error || 'The finance server could not delete this record.' };
+    }
+
+    // 2. Direct Supabase. Row-level security turns a refused delete into "0 rows, no error",
+    //    so success means a row actually came back, not that the request returned 204.
     const client = this.supabase;
     if (client) {
       try {
-        const { error } = await client.from(targetTable).delete().eq('id', billId);
-        if (!error) {
-          const current = this.loadLocalBillsCache().filter(b => b.id !== billId);
-          this.saveLocalBillsCache(current);
-          return { success: true };
-        }
-        if (targetTable !== 'finance_bills') {
-          const fallback = await client.from('finance_bills').delete().eq('id', billId);
-          if (!fallback.error) {
-            const current = this.loadLocalBillsCache().filter(b => b.id !== billId);
-            this.saveLocalBillsCache(current);
+        for (const table of targetTable === 'finance_bills' ? ['finance_bills'] : [targetTable, 'finance_bills']) {
+          const { data, error } = await client.from(table).delete().eq('id', billId).select('id');
+          if (!error && Array.isArray(data) && data.length > 0) {
+            forgetLocally();
             return { success: true };
           }
         }
       } catch {}
     }
 
-    // 3. Fallback entity delete
-    const res = await apiService.deleteEntityRecord(targetTable as any, billId);
-    if (res.success) {
-      const current = this.loadLocalBillsCache().filter(b => b.id !== billId);
-      this.saveLocalBillsCache(current);
-    }
-    return { success: res.success, error: res.error };
+    return { success: false, error: `Could not delete the record.${FinanceService.NO_BACKEND_HINT}` };
   }
 
   // ==========================================
