@@ -14,7 +14,10 @@ export interface ServiceUserMaster {
   nationality?: string;
   preferredLanguage?: string;
   interpreterRequired?: boolean;
-  status: 'Active' | 'Inactive' | 'Discharged' | 'Pending';
+  status: 'Active' | 'Inactive' | 'Discharged' | 'Pending' | 'Archived';
+  /** Archive workflow state; changes only through an approved request. */
+  archiveStatus?: 'Active' | 'Pending approval' | 'Archived' | 'Restoration pending';
+  archivedAt?: string;
   externalReference?: string; // Port Ref / Home Office Ref
   caseReference?: string;
   referralDate?: string;

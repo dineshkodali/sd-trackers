@@ -11,8 +11,14 @@ import {
   Key, 
   Shield
 } from 'lucide-react';
-import { apiService, SystemConfigStatus, DbStatusResponse } from '../../services/apiService';
+import { apiService, authHeaders, getApiUrl, SystemConfigStatus, DbStatusResponse } from '../../services/apiService';
 import { useApp } from '../../context/AppContext';
+
+/** Tables created by migrations 021-023, so the pending-migration hint can point at the right script. */
+const SU_ENHANCEMENT_TABLES = new Set([
+  'su_hc2_details', 'oyster_cards', 'oyster_card_events', 'oyster_card_transactions', 'su_meal_records', 'su_meal_record_history',
+  'su_education_details', 'family_groups', 'family_members', 'su_archive_requests', 'transport_funding_status_history'
+]);
 
 export const SupabaseBackendCard: React.FC = () => {
   const { liveDataStatus } = useApp();
@@ -124,6 +130,22 @@ export const SupabaseBackendCard: React.FC = () => {
         setTimeout(() => setCopiedSql(null), 4000);
       } else {
         alert('Could not retrieve Public Transport migration script from server.');
+      }
+    } catch (err: any) {
+      alert('Failed to copy migration script: ' + err.message);
+    }
+  };
+
+  const handleCopySuEnhancementsSql = async () => {
+    try {
+      const res = await fetch(getApiUrl('/api/db/su-enhancements-migration-sql'), { headers: authHeaders() });
+      const sqlText = res.ok ? await res.text() : '';
+      if (sqlText) {
+        await navigator.clipboard.writeText(sqlText);
+        setCopiedSql('su_enhancements');
+        setTimeout(() => setCopiedSql(null), 4000);
+      } else {
+        alert('Could not retrieve the Service User enhancements migration script from the server.');
       }
     } catch (err: any) {
       alert('Failed to copy migration script: ' + err.message);
@@ -455,6 +477,14 @@ export const SupabaseBackendCard: React.FC = () => {
                     <Copy className="w-3 h-3" />
                     <span>{copiedSql === 'crm_updates' ? 'Copied' : 'Copy CRM Updates SQL (018)'}</span>
                   </button>
+                  <button
+                    onClick={handleCopySuEnhancementsSql}
+                    className="px-2 py-1 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="HC2, Oyster cards, SU meals, education, family groups, archive approval, funding workflow (migrations 021, 022, 023)"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>{copiedSql === 'su_enhancements' ? 'Copied' : 'Copy SU Enhancements SQL (021-023)'}</span>
+                  </button>
                   <a
                     href="https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new"
                     target="_blank"
@@ -500,7 +530,7 @@ export const SupabaseBackendCard: React.FC = () => {
                             Connected
                           </span>
                         ) : (
-                          <span className="text-amber-700 font-semibold flex items-center gap-1" title="Table not found in Supabase schema cache. Run 004_finance_module.sql in Supabase SQL editor.">
+                          <span className="text-amber-700 font-semibold flex items-center gap-1" title={SU_ENHANCEMENT_TABLES.has(p.table) ? 'Table not found. Use "Copy SU Enhancements SQL (021-023)" above and run it in the Supabase SQL editor.' : 'Table not found in Supabase schema cache. Run the matching migration in the Supabase SQL editor.'}>
                             <AlertCircle className="w-3 h-3 text-amber-600" />
                             Pending Migration (Run SQL)
                           </span>

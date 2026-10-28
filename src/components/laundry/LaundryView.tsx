@@ -3,6 +3,7 @@ import { Calendar, Plus, Trash2, Edit3, Search, SlidersHorizontal, Eye, Shirt, L
 import { useApp } from '../../context/AppContext';
 import { DailyLaundryRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
+import { TabSwitcher } from '../common/TrackerLayout';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -25,7 +26,7 @@ const dailyLaundryExportColumns: ExportColumnOption[] = [
   { id: 'remarks', label: 'Remarks / Notes' }
 ];
 
-export const DailyLaundryLogSection: React.FC = () => {
+export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
     defaultSiteFilter,
     dailyLaundryRecords,
@@ -137,14 +138,19 @@ export const DailyLaundryLogSection: React.FC = () => {
       {/* Filters & Control bar */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-[#1e293b] flex items-center gap-2">
-              <Shirt className="w-4 h-4 text-[#0d9488]" />
-              Daily Resident Laundry Log (House, Room, Bags & Batches)
-            </h2>
-            <p className="text-xs text-[#64748b]">
-              Log and track daily linen & clothing washing cycles per resident room (e.g. Clacton Pier Avenue Daily Laundry Log).
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <Shirt className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Daily Resident Laundry Log</h1>
+                <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                  {filteredRecords.length} Daily Records
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Log and track daily linen &amp; clothing washing cycles per resident room (house, room, bags &amp; batches).</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -176,8 +182,10 @@ export const DailyLaundryLogSection: React.FC = () => {
           </div>
         </div>
 
+        {tabSwitcher}
+
         {/* Date and Property Selector */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4 pt-3 border-t border-[#f1f5f9]">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-[#f0f0f0]">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-[#94a3b8]" />
             <input
@@ -236,7 +244,7 @@ export const DailyLaundryLogSection: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[400px]">
+      <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
@@ -429,38 +437,17 @@ export const DailyLaundryLogSection: React.FC = () => {
 export const LaundryView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly_monthly'>('daily');
 
-  return (
-    <div className="space-y-4">
-      {/* Tab Switcher Header */}
-      <div className="bg-white border border-[#e5e5e5] rounded-xs p-3 shadow-2xs flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-1 bg-[#f1f5f9] p-1 rounded-xs border border-[#e2e8f0]">
-          <button
-            onClick={() => setActiveTab('daily')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xs text-xs font-semibold transition-all ${
-              activeTab === 'daily'
-                ? 'bg-white text-[#0d9488] shadow-2xs border border-[#cbd5e1]'
-                : 'text-[#64748b] hover:text-[#1e293b]'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            Daily Laundry Log (Room by Room)
-          </button>
-
-          <button
-            onClick={() => setActiveTab('weekly_monthly')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xs text-xs font-semibold transition-all ${
-              activeTab === 'weekly_monthly'
-                ? 'bg-white text-[#0d9488] shadow-2xs border border-[#cbd5e1]'
-                : 'text-[#64748b] hover:text-[#1e293b]'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            Weekly & Monthly Property Laundry Summaries
-          </button>
-        </div>
-      </div>
-
-      {activeTab === 'daily' ? <DailyLaundryLogSection /> : <PropertyLaundryLogSection />}
-    </div>
+  const tabSwitcher = (
+    <TabSwitcher
+      label="Laundry sections"
+      active={activeTab}
+      onChange={id => setActiveTab(id as 'daily' | 'weekly_monthly')}
+      tabs={[
+        { id: 'daily', label: 'Daily Laundry Log (Room by Room)' },
+        { id: 'weekly_monthly', label: 'Weekly & Monthly Property Laundry Summaries' }
+      ]}
+    />
   );
+
+  return activeTab === 'daily' ? <DailyLaundryLogSection tabSwitcher={tabSwitcher} /> : <PropertyLaundryLogSection tabSwitcher={tabSwitcher} />;
 };

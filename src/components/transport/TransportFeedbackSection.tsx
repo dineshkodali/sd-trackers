@@ -44,7 +44,7 @@ const feedbackExportColumns: ExportColumnOption[] = [
   { id: 'resolutionComments', label: 'Resolution Comments' }
 ];
 
-export const TransportFeedbackSection: React.FC = () => {
+export const TransportFeedbackSection: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
     defaultSiteFilter, 
     transportFeedbackRecords, 
@@ -302,9 +302,19 @@ export const TransportFeedbackSection: React.FC = () => {
       {/* Header, Actions & Filters Card */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-[#242424]">Transport Journey Feedback</h2>
-            <p className="text-xs text-neutral-500">Record, categorize, and resolve journey incidents across Aspen and OOH services.</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <MessageSquareWarning className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Transport Journey Feedback</h1>
+                <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                  {filteredRecords.length} Feedbacks
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Record, categorize, and resolve journey incidents across Aspen and OOH services.</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -338,6 +348,8 @@ export const TransportFeedbackSection: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {tabSwitcher}
 
         {/* Integrated Filter Row */}
         <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-5 gap-2.5">

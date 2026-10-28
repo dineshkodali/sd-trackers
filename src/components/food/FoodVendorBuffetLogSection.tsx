@@ -134,7 +134,7 @@ function formatWeekRangeFromDates(startDateStr: string, endDateStr: string): { w
   };
 }
 
-export const FoodVendorBuffetLogSection: React.FC = () => {
+export const FoodVendorBuffetLogSection: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
     defaultSiteFilter,
     foodVendorBuffetLogs,
@@ -822,6 +822,8 @@ export const FoodVendorBuffetLogSection: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {tabSwitcher}
 
         {/* Integrated Filter Row */}
         <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">

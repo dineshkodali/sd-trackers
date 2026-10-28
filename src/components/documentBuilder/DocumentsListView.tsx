@@ -41,7 +41,7 @@ interface DocumentsListViewProps {
 }
 
 export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditRecord }) => {
-  const { currentUserRole, canAccessAllSites, allowedSites , requestConfirmation } = useApp();
+  const { currentUserRole, canAccessAllSites, allowedSites, defaultSiteFilter, isSitePermitted, requestConfirmation } = useApp();
 
   const [records, setRecords] = useState<DocumentBuilderRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,9 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
     }
   };
 
-  const [selectedSite, setSelectedSite] = useState<string>('All Sites');
+  // Follows the property chosen in the top bar ('All Sites' when none is picked)
+  const [selectedSite, setSelectedSite] = useState<string>(defaultSiteFilter === 'all' ? 'All Sites' : defaultSiteFilter);
+  useEffect(() => { setSelectedSite(defaultSiteFilter === 'all' ? 'All Sites' : defaultSiteFilter); }, [defaultSiteFilter]);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   // Audit trail modal state
@@ -138,7 +140,7 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
   // Filter records
   const filteredRecords = records.filter(r => {
     // Site filter
-    if (selectedSite !== 'All Sites' && r.site !== selectedSite) return false;
+    if (!isSitePermitted(r.site, selectedSite === 'All Sites' ? 'all' : selectedSite)) return false;
     // Status filter
     if (selectedStatus !== 'all' && r.status !== selectedStatus) return false;
     // Search query

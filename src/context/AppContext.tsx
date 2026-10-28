@@ -2180,12 +2180,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (allowedSites || []).length > 1;
   }, [canAccessAllSites, allowedSites]);
 
-  // Admins, Super Admins, Regional Managers and anyone with several sites open every page on "all" (which
-  // isSitePermitted limits to the sites they may see); an account with exactly one site opens on that site.
+  // The property chosen in the top bar drives every page. Someone who can see several sites (admins, regional managers,
+  // multi-site staff) sees "all" of their permitted sites until they pick one hotel there; then every page narrows to that
+  // hotel. An account with exactly one site is always on that site. The choice must be a site the user may actually see.
   const defaultSiteFilter = useMemo(() => {
-    if (canAccessAllSites() || (allowedSites || []).length > 1) return 'all';
-    return (allowedSites && allowedSites[0]) || 'all';
-  }, [canAccessAllSites, allowedSites]);
+    const multiSite = canAccessAllSites() || (allowedSites || []).length > 1;
+    if (!multiSite) return (allowedSites && allowedSites[0]) || 'all';
+    const picked = (assignedSite || '').trim();
+    if (!picked || picked === 'All Sites' || picked === 'all' || picked === 'Pending Assignment' || picked.includes(',')) return 'all';
+    const known = (sites || []).some(s => s.name === picked) || (allowedSites || []).includes(picked);
+    const permitted = canAccessAllSites() || (allowedSites || []).includes(picked);
+    return known && permitted ? picked : 'all';
+  }, [canAccessAllSites, allowedSites, assignedSite, sites]);
 
   const isSitePermitted = useCallback((itemSite?: string | null, activeFilter?: string | null) => {
     // If an explicit filter is set and not 'all' / 'All Sites'

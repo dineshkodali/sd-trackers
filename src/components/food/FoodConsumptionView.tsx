@@ -63,6 +63,8 @@ const foodBoxExportColumns: ExportColumnOption[] = [
 export interface FoodConsumptionViewProps {
   initialTab?: 'daily_report' | 'box_requests';
   showInternalTabs?: boolean;
+  /** Page tabs from the parent, drawn inside this page's header card */
+  tabSwitcher?: React.ReactNode;
 }
 
 interface EditableFoodItem extends FoodConsumptionItem {
@@ -71,7 +73,8 @@ interface EditableFoodItem extends FoodConsumptionItem {
 
 export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
   initialTab = 'daily_report',
-  showInternalTabs = true
+  showInternalTabs = true,
+  tabSwitcher
 }) => {
   const {
     defaultSiteFilter,
@@ -388,19 +391,17 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xs bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-              <Utensils className="w-5 h-5" />
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              {activeTab === 'daily_report' ? <Utensils className="w-5 h-5" /> : <Inbox className="w-5 h-5" />}
             </div>
             <div>
-              <h1 className="text-base font-bold text-[#1e293b] flex items-center gap-2">
-                Food Consumption (In & Out) Log
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                  Pier Avenue Standard
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">{activeTab === 'daily_report' ? 'Food Consumption (In & Out) Log' : 'Food Box Requests & Special Diets'}</h1>
+                <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                  {activeTab === 'daily_report' ? `${foodConsumptionReports.length} Reports` : `${foodBoxRequests.length} Requests`}
                 </span>
-              </h1>
-              <p className="text-xs text-[#64748b]">
-                Record daily Breakfast, Lunch, and Dinner meal consumption, binned percentages, ratings, and manage special dietary food boxes.
-              </p>
+              </div>
+              <p className="text-xs text-neutral-500">{activeTab === 'daily_report' ? 'Record daily Breakfast, Lunch, and Dinner meal consumption, binned percentages, ratings and manage special dietary food boxes.' : 'Special diet food boxes, requests and complaints raised by residents and site staff.'}</p>
             </div>
           </div>
 
@@ -463,8 +464,10 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
           </div>
         </div>
 
+        {tabSwitcher}
+
         {/* Optional Internal Sub-Tabs if not rendered inside FoodView */}
-        {showInternalTabs && (
+        {showInternalTabs && !tabSwitcher && (
           <div className="flex items-center gap-1 bg-[#f1f5f9] p-1 rounded-xs border border-[#e2e8f0] mt-4">
             <button
               onClick={() => setActiveTab('daily_report')}
@@ -492,7 +495,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
         )}
 
         {/* Filter Toolbar */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4 pt-3 border-t border-[#f1f5f9] items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-[#f0f0f0] items-center">
           {activeTab === 'daily_report' ? (
             <>
               <div className="relative">
@@ -792,7 +795,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
 
       {/* TAB 2: FOOD BOX REQUESTS & COMPLAINTS */}
       {activeTab === 'box_requests' && (
-        <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[400px]">
+        <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#475569]">

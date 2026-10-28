@@ -31,7 +31,7 @@ const challengesExportColumns: ExportColumnOption[] = [
   { id: 'comments', label: 'Additional Comments' }
 ];
 
-export const TransportChallengesSection: React.FC = () => {
+export const TransportChallengesSection: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
     defaultSiteFilter,
     transportChallengeRecords,
@@ -275,9 +275,19 @@ export const TransportChallengesSection: React.FC = () => {
       {/* Header, Actions & Filters Card */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-[#242424]">Site Transport Operational Challenges</h2>
-            <p className="text-xs text-neutral-500">Track monthly operational challenges, public transport adoption, and safeguarding flags across sites.</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Site Transport Operational Challenges</h1>
+                <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                  {filteredRecords.length} Periods
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">Track monthly operational challenges, public transport adoption, and safeguarding flags across sites.</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -307,6 +317,8 @@ export const TransportChallengesSection: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {tabSwitcher}
 
         {/* Integrated Filter Row */}
         <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">

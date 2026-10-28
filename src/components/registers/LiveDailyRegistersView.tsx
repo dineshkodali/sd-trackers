@@ -13,6 +13,7 @@ import { DailyRegisterSection } from './DailyRegisterSection';
 import { RegisterValidationSection } from './RegisterValidationSection';
 import { LanguageSummarySection } from './LanguageSummarySection';
 import { NewArrivalsSection } from './NewArrivalsSection';
+import { FamilyGroupsSection } from './FamilyGroupsSection';
 import { RegisterSummarySection } from './RegisterSummarySection';
 import { LiveRegisterKpiCards } from './LiveRegisterKpiCards';
 
@@ -24,6 +25,7 @@ export type DailyRegisterTab =
   | 'validation'
   | 'languages'
   | 'newArrivals'
+  | 'families'
   | 'summary';
 
 interface SheetTabConfig {
@@ -41,6 +43,7 @@ const SHEET_TABS: SheetTabConfig[] = [
   { id: 'validation', label: 'Cross Checks & Validation', pillClass: 'bg-[#d1d5db] text-[#1f2937] hover:bg-[#9ca3af]' },
   { id: 'languages', label: 'Language Summary' },
   { id: 'newArrivals', label: 'New Arrivals' },
+  { id: 'families', label: 'Family Groups' },
   { id: 'summary', label: 'Summary', pillClass: 'bg-[#f59e0b] text-white hover:bg-[#d97706]' }
 ];
 
@@ -50,6 +53,7 @@ export const LiveDailyRegistersView: React.FC = () => {
     assignedSite,
     allowedSites,
     canAccessAllSites,
+    navigateToPageWithSearch,
     dailyRegisterRooms,
     dailyRegisterRecords,
     newArrivalsRecords,
@@ -311,7 +315,7 @@ export const LiveDailyRegistersView: React.FC = () => {
               </button>
             )}
 
-            <ExportDropdown
+            {activeTab !== 'families' && <ExportDropdown
               moduleName={exportConfig.moduleName}
               totalRecordCount={exportConfig.totalCount}
               filteredRecordCount={exportConfig.filteredCount}
@@ -320,7 +324,7 @@ export const LiveDailyRegistersView: React.FC = () => {
               getPreviewData={handleExportPreview}
               onExport={handlePerformExport}
               buttonVariant="toolbar"
-            />
+            />}
 
             {canCreateRecord() && createLabel && (
               <button
@@ -509,6 +513,10 @@ export const LiveDailyRegistersView: React.FC = () => {
           />
         )}
 
+
+        {activeTab === 'families' && (
+          <FamilyGroupsSection onOpenProfile={(_suId, reference) => navigateToPageWithSearch('suUsers', reference)} />
+        )}
 
         {activeTab === 'userGuide' && (
           <UserGuideSection />

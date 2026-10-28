@@ -3631,3 +3631,985 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =====================================================================
+-- (same as db/migrations/021_su_enhancements.sql)
+-- =====================================================================
+-- =====================================================================
+-- 021: HC2, Oyster cards, per-SU meals, education, family groups, SU archive approval
+--
+-- Design notes
+--  * service_users.id is TEXT, so every su_id is TEXT with a foreign key to public.service_users(id).
+--  * Additive only: new tables, new columns with defaults, new triggers/functions. No data is changed or deleted.
+--  * All new tables are reachable only by the server (service_role); the browser goes through /api, which enforces
+--    roles and site scope (same model as migration 013).
+--  * Archive approval is enforced IN THE DATABASE: a trigger on service_users refuses any change to status
+--    'Archived' / archive_status unless it is made by the request/decision functions below, and those functions
+--    refuse a decision by the requester. The functions run in one transaction and lock the rows they change.
+--  * Safe to re-run.
+--
+-- Rollback (only if nothing has been recorded yet):
+--   DROP FUNCTION IF EXISTS public.replace_oyster_card(TEXT,TEXT,TEXT,TEXT,TEXT);
+--   DROP FUNCTION IF EXISTS public.request_su_archive(TEXT,TEXT,TEXT,TEXT,TEXT);
+--   DROP FUNCTION IF EXISTS public.decide_su_archive_request(TEXT,TEXT,TEXT,TEXT,TEXT);
+--   DROP TRIGGER IF EXISTS trg_service_users_archive_guard ON public.service_users;
+--   DROP TABLE IF EXISTS public.su_archive_requests, public.family_members, public.family_groups,
+--     public.su_education_details, public.su_meal_record_history, public.su_meal_records,
+--     public.oyster_card_events, public.oyster_cards, public.su_hc2_details;
+--   ALTER TABLE public.service_users DROP COLUMN IF EXISTS archive_status, DROP COLUMN IF EXISTS archived_at,
+--     DROP COLUMN IF EXISTS archived_pre_status;
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- service_users: archive state, kept separate from the operational status
+-- ---------------------------------------------------------------------
+ALTER TABLE public.service_users ADD COLUMN IF NOT EXISTS archive_status TEXT NOT NULL DEFAULT 'Active';
+ALTER TABLE public.service_users ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+ALTER TABLE public.service_users ADD COLUMN IF NOT EXISTS archived_pre_status TEXT;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'service_users_archive_status_check') THEN
+    ALTER TABLE public.service_users ADD CONSTRAINT service_users_archive_status_check
+      CHECK (archive_status IN ('Active', 'Pending approval', 'Archived', 'Restoration pending'));
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_service_users_archive_status ON public.service_users(archive_status);
+
+-- ---------------------------------------------------------------------
+-- Feature 1: HC2 details (one current record per SU). Document lives in a private bucket.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.su_hc2_details (
+  id TEXT PRIMARY KEY,
+  su_id TEXT NOT NULL REFERENCES public.service_users(id) ON DELETE CASCADE,
+  reference_number TEXT,
+  issue_date DATE,
+  expiry_date DATE,
+  status TEXT NOT NULL DEFAULT 'Not applied',
+  notes TEXT,
+  document_path TEXT,
+  document_name TEXT,
+  document_uploaded_at TIMESTAMPTZ,
+  created_by TEXT,
+  updated_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT su_hc2_one_per_su UNIQUE (su_id),
+  CONSTRAINT su_hc2_status CHECK (status IN ('Not applied', 'Applied', 'Issued', 'Active', 'Expired', 'Rejected', 'Renewal due')),
+  CONSTRAINT su_hc2_dates CHECK (issue_date IS NULL OR expiry_date IS NULL OR expiry_date >= issue_date)
+);
+CREATE INDEX IF NOT EXISTS idx_su_hc2_expiry ON public.su_hc2_details(expiry_date);
+
+-- ---------------------------------------------------------------------
+-- Feature 2: Oyster cards. Every card issue is its own row; history is never overwritten.
+-- Balance is a manual record only (no integration exists to verify it).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.oyster_cards (
+  id TEXT PRIMARY KEY,
+  su_id TEXT NOT NULL REFERENCES public.service_users(id) ON DELETE CASCADE,
+  card_ref TEXT NOT NULL,
+  issued_date DATE NOT NULL,
+  issued_by TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Issued',
+  recorded_balance NUMERIC(8,2),
+  balance_recorded_at TIMESTAMPTZ,
+  notes TEXT,
+  replaces_card_id TEXT REFERENCES public.oyster_cards(id) ON DELETE SET NULL,
+  replacement_reason TEXT,
+  returned_date DATE,
+  return_notes TEXT,
+  created_by TEXT,
+  updated_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT oyster_status CHECK (status IN ('Issued', 'Active', 'Lost', 'Replaced', 'Returned', 'Deactivated')),
+  CONSTRAINT oyster_ref_not_blank CHECK (length(btrim(card_ref)) > 0),
+  CONSTRAINT oyster_balance_nonneg CHECK (recorded_balance IS NULL OR recorded_balance >= 0),
+  CONSTRAINT oyster_returned_needs_date CHECK (status <> 'Returned' OR returned_date IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS idx_oyster_cards_su ON public.oyster_cards(su_id, issued_date DESC);
+-- The same physical card cannot be live for two issues at once
+CREATE UNIQUE INDEX IF NOT EXISTS uq_oyster_live_card_ref ON public.oyster_cards(lower(btrim(card_ref))) WHERE status IN ('Issued', 'Active');
+
+CREATE TABLE IF NOT EXISTS public.oyster_card_events (
+  id TEXT PRIMARY KEY,
+  card_id TEXT NOT NULL REFERENCES public.oyster_cards(id) ON DELETE CASCADE,
+  su_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,           -- Issued | Status changed | Updated
+  from_status TEXT,
+  to_status TEXT,
+  details TEXT,
+  changed_by TEXT,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_oyster_events_card ON public.oyster_card_events(card_id, changed_at DESC);
+
+CREATE OR REPLACE FUNCTION public.oyster_card_event_trigger() RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.oyster_card_events (id, card_id, su_id, event_type, to_status, details, changed_by)
+    VALUES ('oce-' || gen_random_uuid()::text, NEW.id, NEW.su_id, 'Issued', NEW.status, NEW.notes, COALESCE(NEW.updated_by, NEW.created_by));
+  ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+    INSERT INTO public.oyster_card_events (id, card_id, su_id, event_type, from_status, to_status, details, changed_by)
+    VALUES ('oce-' || gen_random_uuid()::text, NEW.id, NEW.su_id, 'Status changed', OLD.status, NEW.status,
+            COALESCE(NULLIF(NEW.replacement_reason, ''), NULLIF(NEW.return_notes, ''), NEW.notes), NEW.updated_by);
+  ELSIF NEW.card_ref IS DISTINCT FROM OLD.card_ref OR NEW.recorded_balance IS DISTINCT FROM OLD.recorded_balance
+        OR NEW.notes IS DISTINCT FROM OLD.notes THEN
+    INSERT INTO public.oyster_card_events (id, card_id, su_id, event_type, from_status, to_status, details, changed_by)
+    VALUES ('oce-' || gen_random_uuid()::text, NEW.id, NEW.su_id, 'Updated', OLD.status, NEW.status,
+            CASE WHEN NEW.recorded_balance IS DISTINCT FROM OLD.recorded_balance
+                 THEN 'Recorded balance changed from ' || COALESCE(OLD.recorded_balance::text, 'none') || ' to ' || COALESCE(NEW.recorded_balance::text, 'none')
+                 ELSE 'Details updated' END, NEW.updated_by);
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_oyster_cards_events ON public.oyster_cards;
+CREATE TRIGGER trg_oyster_cards_events AFTER INSERT OR UPDATE ON public.oyster_cards FOR EACH ROW EXECUTE PROCEDURE public.oyster_card_event_trigger();
+
+-- Replace a card in one transaction: the old card is closed (Replaced or Lost) and the new one issued, linked to it.
+CREATE OR REPLACE FUNCTION public.replace_oyster_card(p_old_card_id TEXT, p_new_card_ref TEXT, p_reason TEXT, p_old_status TEXT, p_user TEXT)
+RETURNS public.oyster_cards AS $$
+DECLARE
+  old_card public.oyster_cards;
+  new_card public.oyster_cards;
+BEGIN
+  IF p_old_status NOT IN ('Replaced', 'Lost') THEN RAISE EXCEPTION 'The old card must be marked Replaced or Lost' USING ERRCODE = '22023'; END IF;
+  IF p_new_card_ref IS NULL OR length(btrim(p_new_card_ref)) = 0 THEN RAISE EXCEPTION 'The new card reference is required' USING ERRCODE = '22023'; END IF;
+  IF p_reason IS NULL OR length(btrim(p_reason)) < 3 THEN RAISE EXCEPTION 'A replacement reason is required' USING ERRCODE = '22023'; END IF;
+  SELECT * INTO old_card FROM public.oyster_cards WHERE id = p_old_card_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Card not found' USING ERRCODE = 'P0002'; END IF;
+  IF old_card.status NOT IN ('Issued', 'Active', 'Lost') THEN RAISE EXCEPTION 'Only a live or lost card can be replaced' USING ERRCODE = '23505'; END IF;
+  IF lower(btrim(p_new_card_ref)) = lower(btrim(old_card.card_ref)) THEN RAISE EXCEPTION 'The new card reference must be different from the old one' USING ERRCODE = '22023'; END IF;
+
+  UPDATE public.oyster_cards SET status = p_old_status, replacement_reason = btrim(p_reason), updated_by = p_user WHERE id = p_old_card_id;
+  INSERT INTO public.oyster_cards (id, su_id, card_ref, issued_date, issued_by, status, replaces_card_id, replacement_reason, created_by, updated_by)
+  VALUES ('oys-' || gen_random_uuid()::text, old_card.su_id, btrim(p_new_card_ref), CURRENT_DATE, p_user, 'Issued', p_old_card_id, btrim(p_reason), p_user, p_user)
+  RETURNING * INTO new_card;
+  RETURN new_card;
+END; $$ LANGUAGE plpgsql;
+REVOKE ALL ON FUNCTION public.replace_oyster_card(TEXT,TEXT,TEXT,TEXT,TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.replace_oyster_card(TEXT,TEXT,TEXT,TEXT,TEXT) TO service_role;
+
+-- ---------------------------------------------------------------------
+-- Feature 3: per-SU meals. One row per SU, date and meal. Provision and consumption are separate statuses.
+-- "No row" means not yet recorded; the UI shows it as Pending.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.su_meal_records (
+  id TEXT PRIMARY KEY,
+  su_id TEXT NOT NULL REFERENCES public.service_users(id) ON DELETE CASCADE,
+  meal_date DATE NOT NULL,
+  meal_period TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Pending',
+  notes TEXT,
+  recorded_by TEXT,
+  updated_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT su_meal_period CHECK (meal_period IN ('Breakfast', 'Lunch', 'Dinner')),
+  CONSTRAINT su_meal_status CHECK (status IN ('Pending', 'Provided', 'Accepted', 'Declined', 'Not available', 'Not applicable')),
+  CONSTRAINT su_meal_one_per_slot UNIQUE (su_id, meal_date, meal_period)
+);
+CREATE INDEX IF NOT EXISTS idx_su_meal_date ON public.su_meal_records(meal_date);
+
+CREATE TABLE IF NOT EXISTS public.su_meal_record_history (
+  id TEXT PRIMARY KEY,
+  record_id TEXT NOT NULL REFERENCES public.su_meal_records(id) ON DELETE CASCADE,
+  su_id TEXT NOT NULL,
+  meal_date DATE NOT NULL,
+  meal_period TEXT NOT NULL,
+  from_status TEXT,
+  to_status TEXT NOT NULL,
+  notes TEXT,
+  changed_by TEXT,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_su_meal_history_record ON public.su_meal_record_history(record_id, changed_at DESC);
+
+CREATE OR REPLACE FUNCTION public.su_meal_history_trigger() RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' OR NEW.status IS DISTINCT FROM OLD.status OR NEW.notes IS DISTINCT FROM OLD.notes THEN
+    INSERT INTO public.su_meal_record_history (id, record_id, su_id, meal_date, meal_period, from_status, to_status, notes, changed_by)
+    VALUES ('smh-' || gen_random_uuid()::text, NEW.id, NEW.su_id, NEW.meal_date, NEW.meal_period,
+            CASE WHEN TG_OP = 'UPDATE' THEN OLD.status END, NEW.status, NEW.notes, COALESCE(NEW.updated_by, NEW.recorded_by));
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_su_meal_history ON public.su_meal_records;
+CREATE TRIGGER trg_su_meal_history AFTER INSERT OR UPDATE ON public.su_meal_records FOR EACH ROW EXECUTE PROCEDURE public.su_meal_history_trigger();
+
+-- ---------------------------------------------------------------------
+-- Feature 4: education. One row per school placement, so a change of school keeps the old row (is_current = false).
+-- No row = not recorded. 'Not enrolled' is a confirmed status, distinct from missing information.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.su_education_details (
+  id TEXT PRIMARY KEY,
+  su_id TEXT NOT NULL REFERENCES public.service_users(id) ON DELETE CASCADE,
+  school_name TEXT,
+  school_address TEXT,
+  school_contact TEXT,
+  year_group TEXT,
+  education_status TEXT NOT NULL,
+  start_date DATE,
+  end_date DATE,
+  is_current BOOLEAN NOT NULL DEFAULT TRUE,
+  notes TEXT,
+  created_by TEXT,
+  updated_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT su_education_status CHECK (education_status IN ('Not enrolled', 'Application in progress', 'Enrolled', 'Details pending', 'No longer attending')),
+  CONSTRAINT su_education_dates CHECK (start_date IS NULL OR end_date IS NULL OR end_date >= start_date),
+  CONSTRAINT su_education_enrolled_needs_school CHECK (education_status <> 'Enrolled' OR length(btrim(COALESCE(school_name, ''))) > 0)
+);
+CREATE INDEX IF NOT EXISTS idx_su_education_su ON public.su_education_details(su_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_su_education_one_current ON public.su_education_details(su_id) WHERE is_current;
+
+-- ---------------------------------------------------------------------
+-- Feature 5: family groups link existing SUs. Removing a member keeps the row (status 'Removed') as history.
+-- An SU can be in only one active family, so an incorrect second link is refused by the database.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.family_groups (
+  id TEXT PRIMARY KEY,
+  family_ref TEXT,
+  display_name TEXT,
+  status TEXT NOT NULL DEFAULT 'Active',
+  notes TEXT,
+  created_by TEXT,
+  updated_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT family_groups_status CHECK (status IN ('Active', 'Closed'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_family_groups_ref ON public.family_groups(lower(btrim(family_ref))) WHERE family_ref IS NOT NULL AND btrim(family_ref) <> '';
+
+CREATE TABLE IF NOT EXISTS public.family_members (
+  id TEXT PRIMARY KEY,
+  family_id TEXT NOT NULL REFERENCES public.family_groups(id) ON DELETE CASCADE,
+  su_id TEXT NOT NULL REFERENCES public.service_users(id) ON DELETE CASCADE,
+  relationship TEXT,
+  status TEXT NOT NULL DEFAULT 'Active',
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  left_at TIMESTAMPTZ,
+  removal_reason TEXT,
+  added_by TEXT,
+  updated_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT family_members_status CHECK (status IN ('Active', 'Removed')),
+  CONSTRAINT family_members_removed_has_date CHECK (status <> 'Removed' OR left_at IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS idx_family_members_family ON public.family_members(family_id);
+CREATE INDEX IF NOT EXISTS idx_family_members_su ON public.family_members(su_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_family_members_one_active_family ON public.family_members(su_id) WHERE status = 'Active';
+
+-- ---------------------------------------------------------------------
+-- Feature 6: archive / restore requests
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.su_archive_requests (
+  id TEXT PRIMARY KEY,
+  su_id TEXT NOT NULL REFERENCES public.service_users(id) ON DELETE CASCADE,
+  request_type TEXT NOT NULL DEFAULT 'Archive',
+  status TEXT NOT NULL DEFAULT 'Pending',
+  reason TEXT NOT NULL,
+  requested_by_id TEXT NOT NULL,
+  requested_by TEXT NOT NULL,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decided_by_id TEXT,
+  decided_by TEXT,
+  decided_at TIMESTAMPTZ,
+  decision_reason TEXT,
+  prior_su_status TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT su_archive_type CHECK (request_type IN ('Archive', 'Restore')),
+  CONSTRAINT su_archive_status CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Cancelled')),
+  CONSTRAINT su_archive_reason CHECK (length(btrim(reason)) >= 3),
+  CONSTRAINT su_archive_decided_fields CHECK (status = 'Pending' OR (decided_by_id IS NOT NULL AND decided_at IS NOT NULL)),
+  CONSTRAINT su_archive_rejection_reason CHECK (status <> 'Rejected' OR length(btrim(COALESCE(decision_reason, ''))) >= 3),
+  -- Separation of duties: nobody approves or rejects their own request (cancelling their own is allowed)
+  CONSTRAINT su_archive_no_self_decision CHECK (status NOT IN ('Approved', 'Rejected') OR decided_by_id <> requested_by_id)
+);
+CREATE INDEX IF NOT EXISTS idx_su_archive_su ON public.su_archive_requests(su_id, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_su_archive_status ON public.su_archive_requests(status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_su_archive_one_pending ON public.su_archive_requests(su_id) WHERE status = 'Pending';
+
+-- Guard: the archive columns and the 'Archived' status can only be changed by the workflow functions below
+CREATE OR REPLACE FUNCTION public.service_users_archive_guard() RETURNS TRIGGER AS $$
+DECLARE
+  in_workflow BOOLEAN := COALESCE(current_setting('app.su_archive_workflow', true), '') = 'on';
+BEGIN
+  IF in_workflow THEN RETURN NEW; END IF;
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status = 'Archived' OR NEW.archive_status <> 'Active' THEN
+      RAISE EXCEPTION 'Service users cannot be created as archived' USING ERRCODE = '42501';
+    END IF;
+  ELSE
+    IF NEW.archive_status IS DISTINCT FROM OLD.archive_status
+       OR NEW.archived_at IS DISTINCT FROM OLD.archived_at
+       OR NEW.archived_pre_status IS DISTINCT FROM OLD.archived_pre_status
+       OR (NEW.status IS DISTINCT FROM OLD.status AND (NEW.status = 'Archived' OR OLD.status = 'Archived')) THEN
+      RAISE EXCEPTION 'Archiving and restoring a service user requires an approved request' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_service_users_archive_guard ON public.service_users;
+CREATE TRIGGER trg_service_users_archive_guard BEFORE INSERT OR UPDATE ON public.service_users
+  FOR EACH ROW EXECUTE PROCEDURE public.service_users_archive_guard();
+
+-- Raise an archive or restore request (atomic; locks the SU row so simultaneous requests are serialised)
+CREATE OR REPLACE FUNCTION public.request_su_archive(p_su_id TEXT, p_type TEXT, p_reason TEXT, p_user_id TEXT, p_user_name TEXT)
+RETURNS public.su_archive_requests AS $$
+DECLARE
+  su RECORD;
+  req public.su_archive_requests;
+BEGIN
+  IF p_type NOT IN ('Archive', 'Restore') THEN RAISE EXCEPTION 'Invalid request type' USING ERRCODE = '22023'; END IF;
+  IF p_reason IS NULL OR length(btrim(p_reason)) < 3 THEN RAISE EXCEPTION 'A reason is required' USING ERRCODE = '22023'; END IF;
+  SELECT id, status, archive_status INTO su FROM public.service_users WHERE id = p_su_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Service user not found' USING ERRCODE = 'P0002'; END IF;
+  IF su.archive_status IN ('Pending approval', 'Restoration pending') THEN
+    RAISE EXCEPTION 'A request is already pending for this service user' USING ERRCODE = '23505';
+  END IF;
+  IF p_type = 'Archive' AND su.archive_status <> 'Active' THEN RAISE EXCEPTION 'Service user is already archived' USING ERRCODE = '23505'; END IF;
+  IF p_type = 'Restore' AND su.archive_status <> 'Archived' THEN RAISE EXCEPTION 'Only an archived service user can be restored' USING ERRCODE = '23505'; END IF;
+
+  INSERT INTO public.su_archive_requests (id, su_id, request_type, status, reason, requested_by_id, requested_by, prior_su_status)
+  VALUES ('sar-' || gen_random_uuid()::text, p_su_id, p_type, 'Pending', btrim(p_reason), p_user_id, p_user_name, su.status)
+  RETURNING * INTO req;
+
+  PERFORM set_config('app.su_archive_workflow', 'on', true);
+  UPDATE public.service_users
+     SET archive_status = CASE WHEN p_type = 'Archive' THEN 'Pending approval' ELSE 'Restoration pending' END
+   WHERE id = p_su_id;
+  PERFORM set_config('app.su_archive_workflow', 'off', true);
+  RETURN req;
+END; $$ LANGUAGE plpgsql;
+
+-- Approve, reject or cancel a pending request (atomic; the request row is locked)
+CREATE OR REPLACE FUNCTION public.decide_su_archive_request(p_request_id TEXT, p_decision TEXT, p_decision_reason TEXT, p_user_id TEXT, p_user_name TEXT)
+RETURNS public.su_archive_requests AS $$
+DECLARE
+  req public.su_archive_requests;
+  su RECORD;
+BEGIN
+  IF p_decision NOT IN ('Approved', 'Rejected', 'Cancelled') THEN RAISE EXCEPTION 'Invalid decision' USING ERRCODE = '22023'; END IF;
+  SELECT * INTO req FROM public.su_archive_requests WHERE id = p_request_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Request not found' USING ERRCODE = 'P0002'; END IF;
+  IF req.status <> 'Pending' THEN RAISE EXCEPTION 'This request has already been decided' USING ERRCODE = '23505'; END IF;
+  IF p_decision IN ('Approved', 'Rejected') AND req.requested_by_id = p_user_id THEN
+    RAISE EXCEPTION 'You cannot approve or reject your own request' USING ERRCODE = '42501';
+  END IF;
+  IF p_decision = 'Cancelled' AND req.requested_by_id <> p_user_id THEN
+    RAISE EXCEPTION 'Only the requester can cancel a request' USING ERRCODE = '42501';
+  END IF;
+  IF p_decision = 'Rejected' AND (p_decision_reason IS NULL OR length(btrim(p_decision_reason)) < 3) THEN
+    RAISE EXCEPTION 'A reason is required to reject a request' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT id, status, archive_status, archived_pre_status INTO su FROM public.service_users WHERE id = req.su_id FOR UPDATE;
+  UPDATE public.su_archive_requests
+     SET status = p_decision, decided_by_id = p_user_id, decided_by = p_user_name, decided_at = NOW(),
+         decision_reason = NULLIF(btrim(COALESCE(p_decision_reason, '')), '')
+   WHERE id = p_request_id RETURNING * INTO req;
+
+  PERFORM set_config('app.su_archive_workflow', 'on', true);
+  IF p_decision = 'Approved' AND req.request_type = 'Archive' THEN
+    UPDATE public.service_users SET archived_pre_status = status, status = 'Archived', archive_status = 'Archived', archived_at = NOW() WHERE id = req.su_id;
+  ELSIF p_decision = 'Approved' THEN
+    UPDATE public.service_users
+       SET status = COALESCE(NULLIF(su.archived_pre_status, 'Archived'), 'Active'), archive_status = 'Active', archived_at = NULL, archived_pre_status = NULL
+     WHERE id = req.su_id;
+  ELSE
+    UPDATE public.service_users SET archive_status = CASE WHEN req.request_type = 'Archive' THEN 'Active' ELSE 'Archived' END WHERE id = req.su_id;
+  END IF;
+  PERFORM set_config('app.su_archive_workflow', 'off', true);
+  RETURN req;
+END; $$ LANGUAGE plpgsql;
+
+REVOKE ALL ON FUNCTION public.request_su_archive(TEXT,TEXT,TEXT,TEXT,TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.decide_su_archive_request(TEXT,TEXT,TEXT,TEXT,TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.request_su_archive(TEXT,TEXT,TEXT,TEXT,TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.decide_su_archive_request(TEXT,TEXT,TEXT,TEXT,TEXT) TO service_role;
+
+-- ---------------------------------------------------------------------
+-- updated_at triggers, RLS, and server-only access
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE
+  t TEXT;
+  tables TEXT[] := ARRAY['su_hc2_details', 'oyster_cards', 'oyster_card_events', 'su_meal_records', 'su_meal_record_history',
+                         'su_education_details', 'family_groups', 'family_members', 'su_archive_requests'];
+BEGIN
+  FOREACH t IN ARRAY tables LOOP
+    IF t NOT IN ('oyster_card_events', 'su_meal_record_history') THEN
+      EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I', 'trg_' || t || '_updated_at', t);
+      EXECUTE format('CREATE TRIGGER %I BEFORE UPDATE ON public.%I FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column()', 'trg_' || t || '_updated_at', t);
+    END IF;
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('REVOKE ALL ON public.%I FROM anon, authenticated', t);
+    EXECUTE format('GRANT ALL ON public.%I TO service_role', t);
+  END LOOP;
+END $$;
+
+-- Private bucket for HC2 documents: not public, and no storage policies, so only the server (signed URLs) can reach it
+DO $$ BEGIN
+  IF to_regclass('storage.buckets') IS NOT NULL THEN
+    INSERT INTO storage.buckets (id, name, public) VALUES ('su-health-documents', 'su-health-documents', false)
+    ON CONFLICT (id) DO UPDATE SET public = false;
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- =====================================================================
+-- (same as db/migrations/022_transport_funding_workflow.sql)
+-- =====================================================================
+-- =====================================================================
+-- 022: Transport funding requests - six-stage workflow, enforced in the database
+--
+--   1 Draft -> 2 Submitted -> 3 Under Review -> 4 Decision (Approved / Rejected / Clarification Required)
+--     -> 5 Issued -> 6 Completed          (Cancelled is an exit; Rejected and Completed are final)
+--
+--  * Status and every decision/issue/completion column can change only through transition_transport_funding():
+--    a trigger refuses any other change, including calls straight to the generic API.
+--  * The function checks the role, the move, required fields, and that nobody decides their own request.
+--  * Every status change is written to transport_funding_status_history by the function (append-only).
+--  * Once a request leaves Draft / Clarification Required its content is locked; only attachments and notes JSON can change.
+--  * Only Draft or Cancelled requests can be deleted.
+--  * Additive and safe to re-run. Existing rows are left as they are (the status check is NOT VALID, so old values do not block it).
+--
+-- Rollback (only if nothing has been recorded yet):
+--   DROP FUNCTION IF EXISTS public.transition_transport_funding(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,JSONB);
+--   DROP TRIGGER IF EXISTS trg_transport_funding_guard ON public.transport_funding_requests;
+--   DROP TRIGGER IF EXISTS trg_transport_funding_delete_guard ON public.transport_funding_requests;
+--   DROP TABLE IF EXISTS public.transport_funding_status_history;
+-- =====================================================================
+
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS requested_by_id TEXT;
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS requested_by TEXT;
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS issued_by TEXT;
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS issued_at TIMESTAMPTZ;
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS completion_notes TEXT;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'transport_funding_status_check') THEN
+    ALTER TABLE public.transport_funding_requests ADD CONSTRAINT transport_funding_status_check
+      CHECK (status IN ('Draft', 'Submitted', 'Under Review', 'Clarification Required', 'Approved', 'Rejected', 'Issued', 'Completed', 'Cancelled')) NOT VALID;
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.transport_funding_status_history (
+  id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL REFERENCES public.transport_funding_requests(id) ON DELETE CASCADE,
+  from_status TEXT,
+  to_status TEXT NOT NULL,
+  note TEXT,
+  changed_by_id TEXT,
+  changed_by TEXT,
+  changed_role TEXT,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_tf_history_request ON public.transport_funding_status_history(request_id, changed_at);
+
+-- Columns that only the workflow may change; the rest of the request is editable only while it is a draft or awaiting clarification
+CREATE OR REPLACE FUNCTION public.transport_funding_guard() RETURNS TRIGGER AS $$
+DECLARE
+  in_workflow BOOLEAN := COALESCE(current_setting('app.funding_workflow', true), '') = 'on';
+  open_keys TEXT[] := ARRAY['updated_at', 'attachments', 'attachment_url', 'file_url', 'data'];
+  locked_keys TEXT[] := ARRAY['status', 'ho_initials', 'decision', 'rejection_reason', 'approved_transport_method', 'payment_amount', 'journey_urn',
+    'approved_by', 'approval_date', 'internal_comments', 'requested_by_id', 'requested_by', 'submitted_at', 'reviewed_by', 'reviewed_at',
+    'issued_by', 'issued_at', 'completed_at', 'completion_notes'];
+  new_j JSONB; old_j JSONB;
+  locked_new JSONB; locked_old JSONB; content_new JSONB; content_old JSONB;
+BEGIN
+  IF in_workflow THEN RETURN NEW; END IF;
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status NOT IN ('Draft', 'Submitted') THEN
+      RAISE EXCEPTION 'A funding request can only be created as a draft or submitted' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.decision IS NOT NULL OR NEW.approved_by IS NOT NULL OR NEW.journey_urn IS NOT NULL OR NEW.payment_amount IS NOT NULL
+       OR NEW.rejection_reason IS NOT NULL OR NEW.approved_transport_method IS NOT NULL OR NEW.ho_initials IS NOT NULL
+       OR NEW.internal_comments IS NOT NULL OR NEW.issued_at IS NOT NULL OR NEW.completed_at IS NOT NULL THEN
+      RAISE EXCEPTION 'Decision details can only be set through the approval workflow' USING ERRCODE = '42501';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  new_j := to_jsonb(NEW); old_j := to_jsonb(OLD);
+  SELECT COALESCE(jsonb_object_agg(k, v), '{}'::jsonb) INTO locked_new FROM jsonb_each(new_j) e(k, v) WHERE k = ANY(locked_keys);
+  SELECT COALESCE(jsonb_object_agg(k, v), '{}'::jsonb) INTO locked_old FROM jsonb_each(old_j) e(k, v) WHERE k = ANY(locked_keys);
+  IF locked_new IS DISTINCT FROM locked_old THEN
+    RAISE EXCEPTION 'Status and decision details can only be changed through the approval workflow' USING ERRCODE = '42501';
+  END IF;
+
+  IF OLD.status NOT IN ('Draft', 'Clarification Required') THEN
+    SELECT COALESCE(jsonb_object_agg(k, v), '{}'::jsonb) INTO content_new FROM jsonb_each(new_j) e(k, v) WHERE k <> ALL(locked_keys) AND k <> ALL(open_keys);
+    SELECT COALESCE(jsonb_object_agg(k, v), '{}'::jsonb) INTO content_old FROM jsonb_each(old_j) e(k, v) WHERE k <> ALL(locked_keys) AND k <> ALL(open_keys);
+    IF content_new IS DISTINCT FROM content_old THEN
+      RAISE EXCEPTION 'This request can no longer be edited (status: %)', OLD.status USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_transport_funding_guard ON public.transport_funding_requests;
+CREATE TRIGGER trg_transport_funding_guard BEFORE INSERT OR UPDATE ON public.transport_funding_requests
+  FOR EACH ROW EXECUTE PROCEDURE public.transport_funding_guard();
+
+-- First history row when a request is created
+CREATE OR REPLACE FUNCTION public.transport_funding_created_history() RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.transport_funding_status_history (id, request_id, from_status, to_status, note, changed_by_id, changed_by)
+  VALUES ('tfh-' || gen_random_uuid()::text, NEW.id, NULL, NEW.status, 'Request created', NEW.requested_by_id, NEW.requested_by);
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_transport_funding_created_history ON public.transport_funding_requests;
+CREATE TRIGGER trg_transport_funding_created_history AFTER INSERT ON public.transport_funding_requests
+  FOR EACH ROW EXECUTE PROCEDURE public.transport_funding_created_history();
+
+CREATE OR REPLACE FUNCTION public.transport_funding_delete_guard() RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.status NOT IN ('Draft', 'Cancelled') THEN
+    RAISE EXCEPTION 'Only a draft or cancelled request can be deleted' USING ERRCODE = '42501';
+  END IF;
+  RETURN OLD;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_transport_funding_delete_guard ON public.transport_funding_requests;
+CREATE TRIGGER trg_transport_funding_delete_guard BEFORE DELETE ON public.transport_funding_requests
+  FOR EACH ROW EXECUTE PROCEDURE public.transport_funding_delete_guard();
+
+-- The single way to move a request between stages. p_fields: approvedTransportMethod, paymentAmount, journeyUrn, completionNotes.
+CREATE OR REPLACE FUNCTION public.transition_transport_funding(p_id TEXT, p_to TEXT, p_note TEXT, p_user_id TEXT, p_user_name TEXT, p_role TEXT, p_fields JSONB)
+RETURNS public.transport_funding_requests AS $$
+DECLARE
+  r public.transport_funding_requests;
+  deciders TEXT[] := ARRAY['Super Admin', 'Admin', 'Regional Manager'];
+  reviewers TEXT[] := ARRAY['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Area Manager'];
+  site_roles TEXT[] := ARRAY['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Area Manager', 'Staff'];
+  note TEXT := NULLIF(btrim(COALESCE(p_note, '')), '');
+  f JSONB := COALESCE(p_fields, '{}'::jsonb);
+  allowed BOOLEAN := FALSE;
+  by_requester BOOLEAN;
+  old_status TEXT;
+BEGIN
+  SELECT * INTO r FROM public.transport_funding_requests WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Funding request not found' USING ERRCODE = 'P0002'; END IF;
+  old_status := r.status;
+  by_requester := r.requested_by_id IS NOT NULL AND r.requested_by_id = p_user_id;
+
+  -- the move itself, and who may make it
+  IF r.status = 'Draft' AND p_to = 'Submitted' THEN allowed := p_role = ANY(site_roles);
+  ELSIF r.status = 'Clarification Required' AND p_to = 'Submitted' THEN allowed := p_role = ANY(site_roles);
+  ELSIF r.status = 'Submitted' AND p_to = 'Under Review' THEN allowed := p_role = ANY(reviewers);
+  ELSIF r.status = 'Under Review' AND p_to IN ('Approved', 'Rejected', 'Clarification Required') THEN
+    allowed := p_role = ANY(deciders);
+    IF allowed AND by_requester THEN RAISE EXCEPTION 'You cannot decide a request you raised yourself' USING ERRCODE = '42501'; END IF;
+  ELSIF r.status = 'Approved' AND p_to = 'Issued' THEN allowed := p_role = ANY(site_roles);
+  ELSIF r.status = 'Issued' AND p_to = 'Completed' THEN allowed := p_role = ANY(site_roles);
+  ELSIF r.status IN ('Draft', 'Submitted', 'Clarification Required') AND p_to = 'Cancelled' THEN allowed := by_requester OR p_role = ANY(deciders);
+  ELSIF r.status IN ('Approved', 'Issued') AND p_to = 'Cancelled' THEN allowed := p_role = ANY(deciders);
+  ELSE
+    RAISE EXCEPTION 'A % request cannot move to %', r.status, p_to USING ERRCODE = '23505';
+  END IF;
+  IF NOT allowed THEN RAISE EXCEPTION 'Your role cannot make this change' USING ERRCODE = '42501'; END IF;
+
+  -- required details
+  IF p_to IN ('Rejected', 'Clarification Required') AND (note IS NULL OR length(note) < 3) THEN RAISE EXCEPTION 'A reason is required' USING ERRCODE = '22023'; END IF;
+  IF r.status IN ('Approved', 'Issued') AND p_to = 'Cancelled' AND (note IS NULL OR length(note) < 3) THEN RAISE EXCEPTION 'A reason is required' USING ERRCODE = '22023'; END IF;
+  IF p_to = 'Approved' THEN
+    IF NULLIF(btrim(COALESCE(f ->> 'approvedTransportMethod', '')), '') IS NULL THEN RAISE EXCEPTION 'The approved transport method is required' USING ERRCODE = '22023'; END IF;
+    IF NOT (COALESCE(f ->> 'paymentAmount', '') ~ '^[0-9]+(\.[0-9]{1,2})?$') THEN RAISE EXCEPTION 'The approved amount must be a number of zero or more' USING ERRCODE = '22023'; END IF;
+  END IF;
+  IF p_to = 'Issued' AND NULLIF(btrim(COALESCE(f ->> 'journeyUrn', '')), '') IS NULL THEN RAISE EXCEPTION 'The travelcard or journey reference is required' USING ERRCODE = '22023'; END IF;
+
+  PERFORM set_config('app.funding_workflow', 'on', true);
+  UPDATE public.transport_funding_requests SET
+    status = p_to,
+    submitted_at = CASE WHEN p_to = 'Submitted' THEN NOW() ELSE submitted_at END,
+    reviewed_by = CASE WHEN p_to = 'Under Review' THEN p_user_name ELSE reviewed_by END,
+    reviewed_at = CASE WHEN p_to = 'Under Review' THEN NOW() ELSE reviewed_at END,
+    decision = CASE WHEN p_to IN ('Approved', 'Rejected', 'Clarification Required') THEN p_to ELSE decision END,
+    approved_by = CASE WHEN p_to = 'Approved' THEN p_user_name ELSE approved_by END,
+    approval_date = CASE WHEN p_to IN ('Approved', 'Rejected') THEN NOW() ELSE approval_date END,
+    approved_transport_method = CASE WHEN p_to = 'Approved' THEN btrim(f ->> 'approvedTransportMethod') ELSE approved_transport_method END,
+    payment_amount = CASE WHEN p_to = 'Approved' THEN (f ->> 'paymentAmount')::numeric ELSE payment_amount END,
+    rejection_reason = CASE WHEN p_to IN ('Rejected', 'Clarification Required') THEN note ELSE rejection_reason END,
+    journey_urn = CASE WHEN p_to = 'Issued' THEN btrim(f ->> 'journeyUrn') ELSE journey_urn END,
+    issued_by = CASE WHEN p_to = 'Issued' THEN p_user_name ELSE issued_by END,
+    issued_at = CASE WHEN p_to = 'Issued' THEN NOW() ELSE issued_at END,
+    completed_at = CASE WHEN p_to = 'Completed' THEN NOW() ELSE completed_at END,
+    completion_notes = CASE WHEN p_to = 'Completed' THEN NULLIF(btrim(COALESCE(f ->> 'completionNotes', '')), '') ELSE completion_notes END
+  WHERE id = p_id RETURNING * INTO r;
+  PERFORM set_config('app.funding_workflow', 'off', true);
+
+  INSERT INTO public.transport_funding_status_history (id, request_id, from_status, to_status, note, changed_by_id, changed_by, changed_role)
+  VALUES ('tfh-' || gen_random_uuid()::text, p_id, old_status, p_to, note, p_user_id, p_user_name, p_role);
+  RETURN r;
+END; $$ LANGUAGE plpgsql;
+
+REVOKE ALL ON FUNCTION public.transition_transport_funding(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.transition_transport_funding(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,JSONB) TO service_role;
+
+ALTER TABLE public.transport_funding_status_history ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.transport_funding_status_history FROM anon, authenticated;
+GRANT ALL ON public.transport_funding_status_history TO service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+-- =====================================================================
+-- (same as db/migrations/023_oyster_card_inventory.sql)
+-- =====================================================================
+-- =====================================================================
+-- 023: Oyster cards as property inventory, with issue / return transactions
+--
+--  * oyster_cards now describes a physical card held by a PROPERTY (site_name), with a card reference, a recorded balance
+--    and a status: Available, Issued, Lost, Damaged or Deactivated. su_id is the current holder and is set only while issued.
+--  * oyster_card_transactions is one row per loan: card, SU, property, linked funding request, balance at handover,
+--    return date, balance at return, condition. It is the single record the SU profile and the Funding page read from,
+--    so a loan is never counted twice. The card reference is copied onto the row so history survives later edits.
+--  * oyster_card_events (existing) becomes the card's history of registrations, balance changes, issues, returns and status changes.
+--  * Issuing and returning happen only through issue_oyster_card() / return_oyster_card(): one transaction that locks the card,
+--    checks it is available at the right property, writes the loan, the history and (when linked) moves the funding request on.
+--    A trigger refuses any other change to status, holder or issue details.
+--  * Balances are manual records. A balance difference is not treated as spending: the loan is flagged balance_adjusted if the
+--    balance was changed while the card was out, and the app only shows an "amount used" when the figures are reliable.
+--  * Additive. Existing rows are kept; new rules are NOT VALID so old data cannot block the migration. Safe to re-run.
+--
+-- Rollback (only if nothing has been recorded yet):
+--   DROP FUNCTION IF EXISTS public.issue_oyster_card(TEXT,TEXT,TEXT,NUMERIC,DATE,TEXT,TEXT,TEXT);
+--   DROP FUNCTION IF EXISTS public.return_oyster_card(TEXT,NUMERIC,TEXT,TEXT,DATE,TEXT,TEXT,TEXT);
+--   DROP FUNCTION IF EXISTS public.set_oyster_balance(TEXT,NUMERIC,TEXT,TEXT,TEXT);
+--   DROP TABLE IF EXISTS public.oyster_card_transactions;
+--   ALTER TABLE public.transport_funding_requests DROP COLUMN IF EXISTS oyster_card_id;
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- Cards belong to a property, not to a person
+-- ---------------------------------------------------------------------
+ALTER TABLE public.oyster_cards ALTER COLUMN su_id DROP NOT NULL;
+ALTER TABLE public.oyster_cards ALTER COLUMN issued_date DROP NOT NULL;
+ALTER TABLE public.oyster_cards ALTER COLUMN issued_by DROP NOT NULL;
+ALTER TABLE public.oyster_cards ALTER COLUMN status SET DEFAULT 'Available';
+ALTER TABLE public.oyster_cards ADD COLUMN IF NOT EXISTS site_name TEXT;
+ALTER TABLE public.oyster_cards ADD COLUMN IF NOT EXISTS current_balance NUMERIC(8,2);
+ALTER TABLE public.oyster_cards ADD COLUMN IF NOT EXISTS balance_updated_at TIMESTAMPTZ;
+ALTER TABLE public.oyster_cards ADD COLUMN IF NOT EXISTS balance_updated_by TEXT;
+
+-- Cards recorded under the first design keep their balance and take their holder's property
+UPDATE public.oyster_cards c
+   SET current_balance = COALESCE(c.current_balance, c.recorded_balance),
+       site_name = COALESCE(c.site_name, s.name)
+  FROM public.service_users u
+  JOIN public.sites s ON s.id = u.site_id
+ WHERE c.su_id = u.id AND (c.site_name IS NULL OR c.current_balance IS NULL);
+
+ALTER TABLE public.oyster_cards DROP CONSTRAINT IF EXISTS oyster_status;
+ALTER TABLE public.oyster_cards DROP CONSTRAINT IF EXISTS oyster_status_v2;
+ALTER TABLE public.oyster_cards ADD CONSTRAINT oyster_status_v2
+  CHECK (status IN ('Available', 'Issued', 'Lost', 'Damaged', 'Deactivated', 'Active', 'Replaced', 'Returned')) NOT VALID;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'oyster_property_required') THEN
+    ALTER TABLE public.oyster_cards ADD CONSTRAINT oyster_property_required CHECK (site_name IS NOT NULL AND btrim(site_name) <> '') NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'oyster_issued_has_holder') THEN
+    ALTER TABLE public.oyster_cards ADD CONSTRAINT oyster_issued_has_holder CHECK (status <> 'Issued' OR su_id IS NOT NULL) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'oyster_available_no_holder') THEN
+    ALTER TABLE public.oyster_cards ADD CONSTRAINT oyster_available_no_holder CHECK (status <> 'Available' OR su_id IS NULL) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'oyster_balance_recorded') THEN
+    ALTER TABLE public.oyster_cards ADD CONSTRAINT oyster_balance_recorded CHECK (status NOT IN ('Available', 'Issued') OR current_balance IS NOT NULL) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'oyster_current_balance_nonneg') THEN
+    ALTER TABLE public.oyster_cards ADD CONSTRAINT oyster_current_balance_nonneg CHECK (current_balance IS NULL OR current_balance >= 0) NOT VALID;
+  END IF;
+END $$;
+
+-- A physical card exists once; only a deactivated card frees its reference
+DROP INDEX IF EXISTS public.uq_oyster_live_card_ref;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_oyster_card_ref ON public.oyster_cards(lower(btrim(card_ref))) WHERE status <> 'Deactivated';
+CREATE INDEX IF NOT EXISTS idx_oyster_cards_site ON public.oyster_cards(site_name, status);
+
+-- ---------------------------------------------------------------------
+-- History
+-- ---------------------------------------------------------------------
+ALTER TABLE public.oyster_card_events ALTER COLUMN su_id DROP NOT NULL;
+ALTER TABLE public.oyster_card_events ADD COLUMN IF NOT EXISTS balance NUMERIC(8,2);
+ALTER TABLE public.oyster_card_events ADD COLUMN IF NOT EXISTS previous_balance NUMERIC(8,2);
+ALTER TABLE public.oyster_card_events ADD COLUMN IF NOT EXISTS transaction_id TEXT;
+
+-- ---------------------------------------------------------------------
+-- Loans: one row per issue, closed by the return. The only place issue/return facts live.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.oyster_card_transactions (
+  id TEXT PRIMARY KEY,
+  card_id TEXT NOT NULL REFERENCES public.oyster_cards(id) ON DELETE RESTRICT,
+  card_ref TEXT NOT NULL,
+  su_id TEXT NOT NULL REFERENCES public.service_users(id) ON DELETE CASCADE,
+  site_name TEXT NOT NULL,
+  funding_request_id TEXT REFERENCES public.transport_funding_requests(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'Issued',
+  issued_date DATE NOT NULL,
+  issued_by TEXT NOT NULL,
+  issued_by_id TEXT,
+  balance_at_issue NUMERIC(8,2) NOT NULL,
+  returned_date DATE,
+  returned_by TEXT,
+  balance_at_return NUMERIC(8,2),
+  return_condition TEXT,
+  return_notes TEXT,
+  balance_adjusted BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT oyster_txn_status CHECK (status IN ('Issued', 'Returned', 'Lost')),
+  CONSTRAINT oyster_txn_issue_balance CHECK (balance_at_issue >= 0),
+  CONSTRAINT oyster_txn_return_balance CHECK (balance_at_return IS NULL OR balance_at_return >= 0),
+  CONSTRAINT oyster_txn_condition CHECK (return_condition IS NULL OR return_condition IN ('Good', 'Damaged', 'Lost')),
+  CONSTRAINT oyster_txn_return_dates CHECK (returned_date IS NULL OR returned_date >= issued_date),
+  CONSTRAINT oyster_txn_returned_complete CHECK (status <> 'Returned' OR (returned_date IS NOT NULL AND balance_at_return IS NOT NULL AND return_condition IN ('Good', 'Damaged')))
+);
+CREATE INDEX IF NOT EXISTS idx_oyster_txn_su ON public.oyster_card_transactions(su_id, issued_date DESC);
+CREATE INDEX IF NOT EXISTS idx_oyster_txn_site ON public.oyster_card_transactions(site_name, issued_date DESC);
+CREATE INDEX IF NOT EXISTS idx_oyster_txn_card ON public.oyster_card_transactions(card_id, issued_date DESC);
+-- A card can be out with only one person at a time
+CREATE UNIQUE INDEX IF NOT EXISTS uq_oyster_txn_one_open_per_card ON public.oyster_card_transactions(card_id) WHERE status = 'Issued';
+-- One loan per funding request, so the request is never recorded twice
+CREATE UNIQUE INDEX IF NOT EXISTS uq_oyster_txn_one_per_request ON public.oyster_card_transactions(funding_request_id)
+  WHERE funding_request_id IS NOT NULL AND status IN ('Issued', 'Returned');
+
+-- The card the site chose on the request form (a choice, not a booking: the card is only held when it is issued)
+ALTER TABLE public.transport_funding_requests ADD COLUMN IF NOT EXISTS oyster_card_id TEXT REFERENCES public.oyster_cards(id) ON DELETE SET NULL;
+
+-- ---------------------------------------------------------------------
+-- Guard: status, holder and issue details change only through the issue / return functions
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.oyster_cards_guard() RETURNS TRIGGER AS $$
+DECLARE
+  in_workflow BOOLEAN := COALESCE(current_setting('app.oyster_workflow', true), '') = 'on';
+BEGIN
+  IF in_workflow THEN RETURN NEW; END IF;
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status <> 'Available' OR NEW.su_id IS NOT NULL OR NEW.issued_date IS NOT NULL THEN
+      RAISE EXCEPTION 'New cards are registered as available; issue them to a Service User from the Oyster Cards page' USING ERRCODE = '42501';
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF NEW.status IS DISTINCT FROM OLD.status AND (NEW.status = 'Issued' OR OLD.status = 'Issued') THEN
+    RAISE EXCEPTION 'A card is issued or returned only through the issue and return actions' USING ERRCODE = '42501';
+  END IF;
+  IF NEW.su_id IS DISTINCT FROM OLD.su_id OR NEW.issued_date IS DISTINCT FROM OLD.issued_date OR NEW.issued_by IS DISTINCT FROM OLD.issued_by THEN
+    RAISE EXCEPTION 'The holder of a card changes only through the issue and return actions' USING ERRCODE = '42501';
+  END IF;
+  IF OLD.status = 'Issued' AND (NEW.site_name IS DISTINCT FROM OLD.site_name OR NEW.card_ref IS DISTINCT FROM OLD.card_ref) THEN
+    RAISE EXCEPTION 'A card that is out on loan cannot change property or reference' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_oyster_cards_guard ON public.oyster_cards;
+CREATE TRIGGER trg_oyster_cards_guard BEFORE INSERT OR UPDATE ON public.oyster_cards
+  FOR EACH ROW EXECUTE PROCEDURE public.oyster_cards_guard();
+
+-- Loans are never edited or removed except by the return function
+CREATE OR REPLACE FUNCTION public.oyster_txn_guard() RETURNS TRIGGER AS $$
+BEGIN
+  IF COALESCE(current_setting('app.oyster_workflow', true), '') = 'on' THEN RETURN COALESCE(NEW, OLD); END IF;
+  IF TG_OP = 'DELETE' THEN RAISE EXCEPTION 'Oyster card history cannot be deleted' USING ERRCODE = '42501'; END IF;
+  IF TG_OP = 'INSERT' THEN RAISE EXCEPTION 'Cards are issued only through the issue action' USING ERRCODE = '42501'; END IF;
+  RAISE EXCEPTION 'Oyster card loans change only through the return action' USING ERRCODE = '42501';
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_oyster_txn_guard ON public.oyster_card_transactions;
+CREATE TRIGGER trg_oyster_txn_guard BEFORE INSERT OR UPDATE OR DELETE ON public.oyster_card_transactions
+  FOR EACH ROW EXECUTE PROCEDURE public.oyster_txn_guard();
+
+-- ---------------------------------------------------------------------
+-- History rows are written by the database itself
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.oyster_card_event_trigger() RETURNS TRIGGER AS $$
+DECLARE
+  ev TEXT := NULLIF(current_setting('app.oyster_event', true), '');
+  txn TEXT := NULLIF(current_setting('app.oyster_txn', true), '');
+  note TEXT := NULLIF(current_setting('app.oyster_note', true), '');
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.oyster_card_events (id, card_id, su_id, event_type, to_status, balance, details, changed_by)
+    VALUES ('oce-' || gen_random_uuid()::text, NEW.id, NEW.su_id, 'Registered', NEW.status, NEW.current_balance, NEW.notes, COALESCE(NEW.updated_by, NEW.created_by));
+  ELSIF NEW.status IS DISTINCT FROM OLD.status OR NEW.current_balance IS DISTINCT FROM OLD.current_balance THEN
+    INSERT INTO public.oyster_card_events (id, card_id, su_id, event_type, from_status, to_status, balance, previous_balance, transaction_id, details, changed_by)
+    VALUES ('oce-' || gen_random_uuid()::text, NEW.id, COALESCE(NEW.su_id, OLD.su_id),
+            COALESCE(ev, CASE WHEN NEW.status IS DISTINCT FROM OLD.status THEN 'Status changed' ELSE 'Balance updated' END),
+            OLD.status, NEW.status, NEW.current_balance, OLD.current_balance, txn, note, NEW.updated_by);
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_oyster_cards_events ON public.oyster_cards;
+CREATE TRIGGER trg_oyster_cards_events AFTER INSERT OR UPDATE ON public.oyster_cards FOR EACH ROW EXECUTE PROCEDURE public.oyster_card_event_trigger();
+
+-- ---------------------------------------------------------------------
+-- Issue a card to a Service User (one transaction)
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.issue_oyster_card(p_card_id TEXT, p_su_id TEXT, p_funding_request_id TEXT, p_balance NUMERIC, p_issued_date DATE, p_user_id TEXT, p_user_name TEXT, p_role TEXT)
+RETURNS public.oyster_card_transactions AS $$
+DECLARE
+  site_roles TEXT[] := ARRAY['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Area Manager', 'Staff'];
+  c public.oyster_cards;
+  su RECORD;
+  req RECORD;
+  txn public.oyster_card_transactions;
+  issue_day DATE := COALESCE(p_issued_date, CURRENT_DATE);
+  txn_id TEXT := 'otx-' || gen_random_uuid()::text;
+BEGIN
+  IF NOT (p_role = ANY(site_roles)) THEN RAISE EXCEPTION 'Your role cannot issue Oyster cards' USING ERRCODE = '42501'; END IF;
+  IF p_balance IS NULL OR p_balance < 0 THEN RAISE EXCEPTION 'The balance at handover is required' USING ERRCODE = '22023'; END IF;
+  IF issue_day > CURRENT_DATE THEN RAISE EXCEPTION 'The issue date cannot be in the future' USING ERRCODE = '22023'; END IF;
+
+  SELECT * INTO c FROM public.oyster_cards WHERE id = p_card_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Card not found' USING ERRCODE = 'P0002'; END IF;
+  IF c.status <> 'Available' THEN RAISE EXCEPTION 'This card is not available (it is %)', lower(c.status) USING ERRCODE = '23505'; END IF;
+
+  SELECT id, status, archive_status INTO su FROM public.service_users WHERE id = p_su_id FOR SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Service user not found' USING ERRCODE = 'P0002'; END IF;
+  IF su.archive_status <> 'Active' OR su.status IN ('Archived', 'Discharged') THEN RAISE EXCEPTION 'A card cannot be issued to an archived or discharged Service User' USING ERRCODE = '22023'; END IF;
+
+  IF p_funding_request_id IS NOT NULL THEN
+    SELECT id, site_name, status INTO req FROM public.transport_funding_requests WHERE id = p_funding_request_id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Funding request not found' USING ERRCODE = 'P0002'; END IF;
+    IF lower(btrim(req.site_name)) <> lower(btrim(c.site_name)) THEN RAISE EXCEPTION 'The card belongs to a different property from the request' USING ERRCODE = '22023'; END IF;
+    IF req.status <> 'Approved' THEN RAISE EXCEPTION 'The funding request must be approved before a card is issued (it is %)', lower(req.status) USING ERRCODE = '23505'; END IF;
+  END IF;
+
+  PERFORM set_config('app.oyster_workflow', 'on', true);
+  INSERT INTO public.oyster_card_transactions (id, card_id, card_ref, su_id, site_name, funding_request_id, status, issued_date, issued_by, issued_by_id, balance_at_issue)
+  VALUES (txn_id, c.id, c.card_ref, p_su_id, c.site_name, p_funding_request_id, 'Issued', issue_day, p_user_name, p_user_id, p_balance)
+  RETURNING * INTO txn;
+
+  PERFORM set_config('app.oyster_event', 'Issued', true);
+  PERFORM set_config('app.oyster_txn', txn_id, true);
+  PERFORM set_config('app.oyster_note', CASE WHEN c.current_balance IS DISTINCT FROM p_balance THEN 'Balance confirmed at handover' ELSE NULL END, true);
+  UPDATE public.oyster_cards
+     SET status = 'Issued', su_id = p_su_id, issued_date = issue_day, issued_by = p_user_name, current_balance = p_balance,
+         balance_updated_at = NOW(), balance_updated_by = p_user_name, updated_by = p_user_name
+   WHERE id = c.id;
+  PERFORM set_config('app.oyster_workflow', 'off', true);
+  PERFORM set_config('app.oyster_event', '', true);
+  PERFORM set_config('app.oyster_txn', '', true);
+  PERFORM set_config('app.oyster_note', '', true);
+
+  -- The request moves to Issued in the same transaction; its journey reference is the card reference
+  IF p_funding_request_id IS NOT NULL THEN
+    PERFORM public.transition_transport_funding(p_funding_request_id, 'Issued', NULL, p_user_id, p_user_name, p_role, jsonb_build_object('journeyUrn', c.card_ref));
+  END IF;
+  RETURN txn;
+END; $$ LANGUAGE plpgsql;
+
+-- ---------------------------------------------------------------------
+-- Return (or write off) a card. A returned card always records its actual remaining balance.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.return_oyster_card(p_txn_id TEXT, p_balance_at_return NUMERIC, p_condition TEXT, p_notes TEXT, p_returned_date DATE, p_user_id TEXT, p_user_name TEXT, p_role TEXT)
+RETURNS public.oyster_card_transactions AS $$
+DECLARE
+  site_roles TEXT[] := ARRAY['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Area Manager', 'Staff'];
+  t public.oyster_card_transactions;
+  c public.oyster_cards;
+  note TEXT := NULLIF(btrim(COALESCE(p_notes, '')), '');
+  return_day DATE := COALESCE(p_returned_date, CURRENT_DATE);
+  new_card_status TEXT;
+  req_status TEXT;
+BEGIN
+  IF NOT (p_role = ANY(site_roles)) THEN RAISE EXCEPTION 'Your role cannot return Oyster cards' USING ERRCODE = '42501'; END IF;
+  IF p_condition NOT IN ('Good', 'Damaged', 'Lost') THEN RAISE EXCEPTION 'Choose the condition of the card' USING ERRCODE = '22023'; END IF;
+  IF p_condition <> 'Lost' AND (p_balance_at_return IS NULL OR p_balance_at_return < 0) THEN RAISE EXCEPTION 'Enter the actual remaining balance on the card' USING ERRCODE = '22023'; END IF;
+  IF p_condition <> 'Good' AND note IS NULL THEN RAISE EXCEPTION 'Add a note describing the damage or loss' USING ERRCODE = '22023'; END IF;
+  IF return_day > CURRENT_DATE THEN RAISE EXCEPTION 'The return date cannot be in the future' USING ERRCODE = '22023'; END IF;
+
+  SELECT * INTO t FROM public.oyster_card_transactions WHERE id = p_txn_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Transaction not found' USING ERRCODE = 'P0002'; END IF;
+  IF t.status <> 'Issued' THEN RAISE EXCEPTION 'This card has already been returned' USING ERRCODE = '23505'; END IF;
+  IF return_day < t.issued_date THEN RAISE EXCEPTION 'The return date cannot be before the issue date' USING ERRCODE = '22023'; END IF;
+  SELECT * INTO c FROM public.oyster_cards WHERE id = t.card_id FOR UPDATE;
+
+  new_card_status := CASE p_condition WHEN 'Good' THEN 'Available' WHEN 'Damaged' THEN 'Damaged' ELSE 'Lost' END;
+
+  PERFORM set_config('app.oyster_workflow', 'on', true);
+  UPDATE public.oyster_card_transactions
+     SET status = CASE WHEN p_condition = 'Lost' THEN 'Lost' ELSE 'Returned' END,
+         returned_date = return_day, returned_by = p_user_name,
+         balance_at_return = CASE WHEN p_condition = 'Lost' THEN NULL ELSE p_balance_at_return END,
+         return_condition = p_condition, return_notes = note
+   WHERE id = p_txn_id RETURNING * INTO t;
+
+  PERFORM set_config('app.oyster_event', CASE WHEN p_condition = 'Lost' THEN 'Lost' ELSE 'Returned' END, true);
+  PERFORM set_config('app.oyster_txn', p_txn_id, true);
+  PERFORM set_config('app.oyster_note', COALESCE(note, ''), true);
+  UPDATE public.oyster_cards
+     SET status = new_card_status, su_id = NULL, issued_date = NULL, issued_by = NULL,
+         current_balance = CASE WHEN p_condition = 'Lost' THEN current_balance ELSE p_balance_at_return END,
+         balance_updated_at = CASE WHEN p_condition = 'Lost' THEN balance_updated_at ELSE NOW() END,
+         balance_updated_by = CASE WHEN p_condition = 'Lost' THEN balance_updated_by ELSE p_user_name END,
+         updated_by = p_user_name
+   WHERE id = t.card_id;
+  PERFORM set_config('app.oyster_workflow', 'off', true);
+  PERFORM set_config('app.oyster_event', '', true);
+  PERFORM set_config('app.oyster_txn', '', true);
+  PERFORM set_config('app.oyster_note', '', true);
+
+  -- A returned card completes its funding request; a lost one leaves the request open for follow-up
+  IF t.funding_request_id IS NOT NULL AND p_condition <> 'Lost' THEN
+    SELECT status INTO req_status FROM public.transport_funding_requests WHERE id = t.funding_request_id;
+    IF req_status = 'Issued' THEN
+      PERFORM public.transition_transport_funding(t.funding_request_id, 'Completed', NULL, p_user_id, p_user_name, p_role,
+        jsonb_build_object('completionNotes', 'Oyster card ' || t.card_ref || ' returned with a recorded balance of ' || p_balance_at_return::text));
+    END IF;
+  END IF;
+  RETURN t;
+END; $$ LANGUAGE plpgsql;
+
+-- ---------------------------------------------------------------------
+-- Update a recorded balance (top-up or correction). A change while the card is out is flagged on the loan.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.set_oyster_balance(p_card_id TEXT, p_balance NUMERIC, p_note TEXT, p_user_name TEXT, p_role TEXT)
+RETURNS public.oyster_cards AS $$
+DECLARE
+  site_roles TEXT[] := ARRAY['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Area Manager', 'Staff'];
+  c public.oyster_cards;
+BEGIN
+  IF NOT (p_role = ANY(site_roles)) THEN RAISE EXCEPTION 'Your role cannot update card balances' USING ERRCODE = '42501'; END IF;
+  IF p_balance IS NULL OR p_balance < 0 THEN RAISE EXCEPTION 'The balance must be zero or more' USING ERRCODE = '22023'; END IF;
+  SELECT * INTO c FROM public.oyster_cards WHERE id = p_card_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Card not found' USING ERRCODE = 'P0002'; END IF;
+  IF c.status = 'Deactivated' THEN RAISE EXCEPTION 'A deactivated card cannot be updated' USING ERRCODE = '23505'; END IF;
+  IF c.status = 'Issued' AND NULLIF(btrim(COALESCE(p_note, '')), '') IS NULL THEN RAISE EXCEPTION 'Say why the balance changed while the card is out (for example a top-up)' USING ERRCODE = '22023'; END IF;
+
+  PERFORM set_config('app.oyster_event', 'Balance updated', true);
+  PERFORM set_config('app.oyster_note', COALESCE(NULLIF(btrim(p_note), ''), ''), true);
+  UPDATE public.oyster_cards SET current_balance = p_balance, balance_updated_at = NOW(), balance_updated_by = p_user_name, updated_by = p_user_name
+   WHERE id = p_card_id RETURNING * INTO c;
+  PERFORM set_config('app.oyster_event', '', true);
+  PERFORM set_config('app.oyster_note', '', true);
+
+  IF c.status = 'Issued' THEN
+    PERFORM set_config('app.oyster_workflow', 'on', true);
+    UPDATE public.oyster_card_transactions SET balance_adjusted = TRUE WHERE card_id = p_card_id AND status = 'Issued';
+    PERFORM set_config('app.oyster_workflow', 'off', true);
+  END IF;
+  RETURN c;
+END; $$ LANGUAGE plpgsql;
+
+REVOKE ALL ON FUNCTION public.issue_oyster_card(TEXT,TEXT,TEXT,NUMERIC,DATE,TEXT,TEXT,TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.return_oyster_card(TEXT,NUMERIC,TEXT,TEXT,DATE,TEXT,TEXT,TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.set_oyster_balance(TEXT,NUMERIC,TEXT,TEXT,TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.issue_oyster_card(TEXT,TEXT,TEXT,NUMERIC,DATE,TEXT,TEXT,TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.return_oyster_card(TEXT,NUMERIC,TEXT,TEXT,DATE,TEXT,TEXT,TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.set_oyster_balance(TEXT,NUMERIC,TEXT,TEXT,TEXT) TO service_role;
+
+-- ---------------------------------------------------------------------
+-- updated_at, RLS and server-only access for the new table
+-- ---------------------------------------------------------------------
+DROP TRIGGER IF EXISTS trg_oyster_card_transactions_updated_at ON public.oyster_card_transactions;
+CREATE TRIGGER trg_oyster_card_transactions_updated_at BEFORE UPDATE ON public.oyster_card_transactions FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
+ALTER TABLE public.oyster_card_transactions ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.oyster_card_transactions FROM anon, authenticated;
+GRANT ALL ON public.oyster_card_transactions TO service_role;
+
+NOTIFY pgrst, 'reload schema';

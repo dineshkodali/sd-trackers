@@ -13,6 +13,7 @@ import { OptionSelect } from '../common/OptionSelect';
 import { TrackerDetails } from '../common/TrackerDetails';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
+import { Hc2Section } from '../su/Hc2Section';
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
@@ -321,7 +322,9 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
             { label: 'Last Updated', value: existing.updatedAt ? new Date(existing.updatedAt).toLocaleString('en-GB') : '' }
           ] }
         ]}
-      />
+      >
+        <Hc2Section suId={selected.su.id} readOnly />
+      </TrackerDetails>
     );
   }
 
@@ -376,6 +379,9 @@ const GPRegistrationForm: React.FC<FormProps> = ({ directory, initialSuId, readO
                 </div>
               </div>
             </>
+
+          {/* HC2 is managed here, inside the GP registration workflow, and saved on its own button */}
+          {!!suId && <Hc2Section suId={suId} readOnly={readOnly} />}
 
           <AuditAccountability userName={user} createdBy={existing?.createdBy} updatedBy={existing?.updatedBy} updatedAt={existing?.updatedAt} />
 

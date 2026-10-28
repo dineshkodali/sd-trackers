@@ -41,7 +41,7 @@ export const suPropertyService = {
     // Check duplicate external reference (Port / Home Office Ref)
     if (data.externalReference?.trim()) {
       const ext = data.externalReference.trim().toLowerCase();
-      const existingRes = await this.getServiceUsers();
+      const existingRes = await this.getServiceUsers(undefined, { includeArchived: true });
       if (existingRes.success && existingRes.data) {
         const dup = existingRes.data.find(u => 
           u.id !== existingId && 
@@ -62,7 +62,7 @@ export const suPropertyService = {
       const fName = data.firstName.trim().toLowerCase();
       const lName = data.lastName.trim().toLowerCase();
       const dob = data.dateOfBirth.trim();
-      const existingRes = await this.getServiceUsers();
+      const existingRes = await this.getServiceUsers(undefined, { includeArchived: true });
       if (existingRes.success && existingRes.data) {
         const dup = existingRes.data.find(u =>
           u.id !== existingId &&
@@ -85,17 +85,20 @@ export const suPropertyService = {
   // ---------------------------------------------------------------------------
   // Service User Master
   // ---------------------------------------------------------------------------
-  async getServiceUsers(siteId?: string): Promise<{ success: boolean; data: ServiceUserMaster[]; error?: string }> {
+  /** Archived Service Users are left out unless asked for: operational lists and trackers show only active people. */
+  async getServiceUsers(siteId?: string, opts: { includeArchived?: boolean } = {}): Promise<{ success: boolean; data: ServiceUserMaster[]; error?: string }> {
     let resolvedSiteId = siteId;
     if (resolvedSiteId && resolvedSiteId !== 'all' && resolvedSiteId !== 'All Sites') {
       const match = INITIAL_SITES.find(s => s.name === resolvedSiteId || s.id === resolvedSiteId);
       if (match) resolvedSiteId = match.id;
     }
     const eq = resolvedSiteId && resolvedSiteId !== 'all' && resolvedSiteId !== 'All Sites' ? { site_id: resolvedSiteId } : undefined;
-    return await apiService.fetchEntityRecords<ServiceUserMaster>('serviceUsers', {
+    const res = await apiService.fetchEntityRecords<ServiceUserMaster>('serviceUsers', {
       order: 'created_at.desc',
       eq
     });
+    if (!res.success || opts.includeArchived) return res;
+    return { ...res, data: res.data.filter(u => u.status !== 'Archived' && u.archiveStatus !== 'Archived') };
   },
 
   async getServiceUser(id: string): Promise<{ success: boolean; data?: ServiceUserMaster; error?: string }> {

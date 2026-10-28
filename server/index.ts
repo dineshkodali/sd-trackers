@@ -18,6 +18,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 import configRouter from './routes/config.js';
 import authRouter from './routes/auth.js';
 import dbRouter from './routes/db.js';
+import suEnhancementsRouter from './routes/suEnhancements.js';
+import transportFundingRouter from './routes/transportFunding.js';
+import oysterRouter from './routes/oyster.js';
 import smtpRouter from './routes/smtp.js';
 import statusRouter from './routes/status.js';
 import financeRouter from './routes/finance.js';
@@ -241,6 +244,12 @@ async function startServer() {
     }
     return requireAuth(req, res, next);
   }, smtpRouter);
+  // Service User archive approval and HC2 documents (role checks live in the router; archive rules also in the database)
+  app.use('/api/su', requireAuth, suEnhancementsRouter);
+  // Transport funding request workflow (stage changes are checked here and again in the database)
+  app.use('/api/transport-funding', requireAuth, transportFundingRouter);
+  // Oyster card issue, return and balance actions
+  app.use('/api/oyster', requireAuth, oysterRouter);
   // Mount Finance module router
   app.use('/api/finance', requireAuth, financeRouter);
   // Mount HO Report Generator module router (concurrently supporting /api/document-builder and /api/ho-reports)

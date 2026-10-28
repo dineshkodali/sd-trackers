@@ -8,6 +8,10 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { AttachmentsSection } from '../common/AttachmentsSection';
+import { FundingWorkflowModal } from './FundingWorkflowModal';
+import { OysterUsageView } from './OysterCardsSection';
+import { suEnhancementsService, type OysterCard, type OysterTransaction } from '../../services/suEnhancementsService';
+import { availableCardsFor, formatMoney, isOysterMethod } from '../../utils/oysterLogic';
 
 export const EXCEPTIONAL_CIRCUMSTANCE_OPTIONS = [
   'Serious medical condition or chronic illness',
@@ -24,7 +28,9 @@ export const FUNDING_STATUSES: FundingRequestStatus[] = [
   'Clarification Required',
   'Approved',
   'Rejected',
-  'Completed'
+  'Issued',
+  'Completed',
+  'Cancelled'
 ];
 
 const fundingExportColumns: ExportColumnOption[] = [
@@ -41,11 +47,18 @@ const fundingExportColumns: ExportColumnOption[] = [
   { id: 'transportMethod', label: 'Transport Method' },
   { id: 'totalCost', label: 'Total Cost (£)' },
   { id: 'status', label: 'Status' },
-  { id: 'journeyUrn', label: 'Journey URN' },
+  { id: 'journeyUrn', label: 'Journey URN / card reference' },
+  { id: 'approvedTransportMethod', label: 'Approved Transport' },
+  { id: 'paymentAmount', label: 'Approved Amount (£)' },
+  { id: 'requestedBy', label: 'Requested By' },
+  { id: 'approvedBy', label: 'Decided By' },
+  { id: 'issuedBy', label: 'Issued By' },
+  { id: 'oysterCard', label: 'Oyster Card' },
+  { id: 'oysterLoan', label: 'Oyster Handover / Return Balance' },
   { id: 'approvedBy', label: 'Approved By' }
 ];
 
-export const TransportFundingSection: React.FC = () => {
+export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
     defaultSiteFilter,
     transportFundingRequests,
@@ -62,7 +75,8 @@ export const TransportFundingSection: React.FC = () => {
     authProfile,
     sites,
     properties,
-    isSitePermitted
+    isSitePermitted,
+    syncFromDatabase
   } = useApp();
 
   const isManagementOrHo = ['Super Admin', 'Admin', 'Regional Manager'].includes(currentUserRole);
@@ -112,6 +126,26 @@ export const TransportFundingSection: React.FC = () => {
   const [viewingItem, setViewingItem] = useState<TransportFundingRequestRecord | null>(null);
   const [reviewModalItem, setReviewModalItem] = useState<TransportFundingRequestRecord | null>(null);
 
+  // Oyster cards and loans: the funding list reads the loan record, it never stores its own copy
+  const [view, setView] = useState<'requests' | 'oyster'>('requests');
+  const [oysterCards, setOysterCards] = useState<OysterCard[]>([]);
+  const [oysterTxns, setOysterTxns] = useState<OysterTransaction[]>([]);
+  const loadOyster = useCallback(async () => {
+    const [c, t] = await Promise.all([suEnhancementsService.listOysterCards(), suEnhancementsService.listOysterTransactions()]);
+    if (c.success) setOysterCards(c.data);
+    if (t.success) setOysterTxns(t.data);
+  }, []);
+  useEffect(() => { void loadOyster(); }, [loadOyster]);
+  const oysterInfo = (item: TransportFundingRequestRecord) => {
+    if (!isOysterMethod(item.transportMethod)) return null;
+    const loan = oysterTxns.find(t => t.fundingRequestId === item.id);
+    if (loan) {
+      return <span className="block text-[10px] text-[#005a9e] font-semibold">Card {loan.cardRef} · {loan.status === 'Issued' ? `out, ${formatMoney(loan.balanceAtIssue)} at handover` : loan.status === 'Returned' ? `returned, ${formatMoney(loan.balanceAtReturn)}` : 'lost'}</span>;
+    }
+    const chosen = oysterCards.find(c => c.id === item.oysterCardId);
+    return <span className="block text-[10px] text-neutral-500">{chosen ? `Card chosen: ${chosen.cardRef} (not yet issued)` : 'No card chosen yet'}</span>;
+  };
+
   // Initial Form Data for 6-step form
   const emptyFormData: Partial<TransportFundingRequestRecord> = useMemo(() => ({
     siteName: defaultSite,
@@ -147,27 +181,6 @@ export const TransportFundingSection: React.FC = () => {
   }), [defaultSite, resolveSiteManager, userStaffPlace, loggedInUserName, authProfile?.id]);
 
   const [formData, setFormData] = useState<Partial<TransportFundingRequestRecord>>(emptyFormData);
-
-  // HO / Review Drawer Form
-  const [reviewData, setReviewData] = useState<{
-    status: FundingRequestStatus;
-    decision: string;
-    rejectionReason: string;
-    approvedTransportMethod: string;
-    paymentAmount: number | string;
-    journeyUrn: string;
-    hoInitials: string;
-    internalComments: string;
-  }>({
-    status: 'Approved',
-    decision: 'Approved',
-    rejectionReason: '',
-    approvedTransportMethod: 'Public Transport Travelcard',
-    paymentAmount: '',
-    journeyUrn: '',
-    hoInitials: 'HO-REV',
-    internalComments: ''
-  });
 
   // Site Scoped
   const siteScopedRecords = useMemo(() => {
@@ -232,8 +245,9 @@ export const TransportFundingSection: React.FC = () => {
     const clarification = siteScopedRecords.filter(r => r.status === 'Clarification Required').length;
     const approved = siteScopedRecords.filter(r => r.status === 'Approved').length;
     const rejected = siteScopedRecords.filter(r => r.status === 'Rejected').length;
+    const issued = siteScopedRecords.filter(r => r.status === 'Issued').length;
     const completed = siteScopedRecords.filter(r => r.status === 'Completed').length;
-    return { total, draft, submitted, underReview, clarification, approved, rejected, completed };
+    return { total, draft, submitted, underReview, clarification, approved, rejected, issued, completed };
   }, [siteScopedRecords]);
 
   // Submit Wizard
@@ -244,6 +258,11 @@ export const TransportFundingSection: React.FC = () => {
     }
     if (formData.exceptionalCriteria && !formData.exceptionalDetails) {
       alert('Supporting details are required when an exceptional circumstance is selected.');
+      return;
+    }
+
+    if (statusToSave === 'Submitted' && isOysterMethod(formData.transportMethod) && !formData.oysterCardId) {
+      alert('Choose the Oyster card from this property before submitting.');
       return;
     }
 
@@ -267,24 +286,6 @@ export const TransportFundingSection: React.FC = () => {
     setFormData(emptyFormData);
   };
 
-  // Submit Management Review
-  const handleSaveReview = () => {
-    if (!reviewModalItem) return;
-    updateTransportFundingRequest(reviewModalItem.id, {
-      status: reviewData.status,
-      decision: reviewData.decision,
-      rejectionReason: reviewData.rejectionReason,
-      approvedTransportMethod: reviewData.approvedTransportMethod,
-      paymentAmount: reviewData.paymentAmount,
-      journeyUrn: reviewData.journeyUrn || (reviewData.status === 'Approved' ? `URN-${Date.now().toString().slice(-6)}` : ''),
-      hoInitials: reviewData.hoInitials,
-      internalComments: reviewData.internalComments,
-      approvedBy: currentUserName || 'HO Reviewer',
-      approvalDate: new Date().toISOString()
-    });
-    setReviewModalItem(null);
-  };
-
   // Export handlers
   const handleExport = ({
     format,
@@ -306,9 +307,12 @@ export const TransportFundingSection: React.FC = () => {
       : fundingExportColumns;
     const headers = activeCols.map(c => c.label);
     const rows = rawData.map(item => {
+      const loan = oysterTxns.find(t => t.fundingRequestId === item.id);
       const dataItem = {
         ...item,
-        totalCost: item.totalCost ? `£${item.totalCost}` : '—'
+        totalCost: item.totalCost ? `£${item.totalCost}` : '—',
+        oysterCard: loan?.cardRef || '',
+        oysterLoan: loan ? `${formatMoney(loan.balanceAtIssue)} / ${loan.status === 'Issued' ? 'still out' : formatMoney(loan.balanceAtReturn)}` : ''
       };
       return activeCols.map(c => String((dataItem as any)[c.id] ?? ''));
     });
@@ -333,50 +337,46 @@ export const TransportFundingSection: React.FC = () => {
     'Clarification Required': 'bg-[#fff8f0] text-[#d83b01] border-[#fed9cc]',
     Approved: 'bg-[#f1faf0] text-[#107c41] border-[#c4e8c1]',
     Rejected: 'bg-[#fde7e9] text-[#a4262c] border-[#f3b2b7]',
-    Completed: 'bg-[#e6f7f6] text-[#0d9488] border-[#a5eae6]'
+    Issued: 'bg-[#eef6ff] text-[#005a9e] border-[#b3d6f2]',
+    Completed: 'bg-[#e6f7f6] text-[#0d9488] border-[#a5eae6]',
+    Cancelled: 'bg-[#f3f2f1] text-[#8a8886] border-[#e1dfdd]'
   };
+
+  const viewSwitch = (
+    <div className="flex items-center gap-1 bg-[#f1f5f9] p-1 rounded-xs border border-[#e2e8f0] w-fit mt-3">
+      {([['requests', 'Funding requests'], ['oyster', 'Oyster card usage']] as const).map(([key, label]) => (
+        <button key={key} type="button" onClick={() => setView(key)}
+          className={`px-3 py-1.5 rounded-xs text-xs font-semibold cursor-pointer ${view === key ? 'bg-white text-[#8764b8] shadow-2xs border border-[#cbd5e1]' : 'text-[#64748b] hover:text-[#1e293b]'}`}>{label}</button>
+      ))}
+    </div>
+  );
+
+  if (view === 'oyster') {
+    return (
+      <div className="space-y-4">
+        <OysterUsageView tabs={<>{tabSwitcher}{viewSwitch}</>} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Top Status Filter Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-        {[
-          { label: 'All Requests', key: 'all', count: counts.total, color: 'text-[#242424]' },
-          { label: 'Draft', key: 'Draft', count: counts.draft, color: 'text-[#605e5c]' },
-          { label: 'Submitted', key: 'Submitted', count: counts.submitted, color: 'text-[#0078d4]' },
-          { label: 'Under Review', key: 'Under Review', count: counts.underReview, color: 'text-[#8764b8]' },
-          { label: 'Clarification', key: 'Clarification Required', count: counts.clarification, color: 'text-[#d83b01]' },
-          { label: 'Approved', key: 'Approved', count: counts.approved, color: 'text-[#107c41]' },
-          { label: 'Rejected', key: 'Rejected', count: counts.rejected, color: 'text-[#a4262c]' },
-          { label: 'Completed', key: 'Completed', count: counts.completed, color: 'text-[#0d9488]' }
-        ].map((item) => {
-          const isActive = statusFilter === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => { setStatusFilter(item.key); setCurrentPage(1); }}
-              className={`p-2.5 rounded-xs border text-left transition-all cursor-pointer ${
-                isActive
-                  ? 'bg-purple-50/70 border-[#8764b8] shadow-2xs ring-1 ring-[#8764b8]'
-                  : 'bg-white border-[#e5e5e5] hover:border-[#8764b8]/50 shadow-2xs'
-              }`}
-            >
-              <div className="text-[11px] font-semibold text-[#605e5c] truncate">{item.label}</div>
-              <div className={`text-base font-bold mt-0.5 ${isActive ? 'text-[#8764b8]' : item.color}`}>
-                {item.count}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
       {/* Header, Actions & Filters Card */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-[#242424]">Transport Funding Requests</h2>
-            <p className="text-xs text-neutral-500">6-stage digital travelcard & exceptional transport grant approval process.</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Transport Funding Requests</h1>
+                <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                  {filteredRecords.length} Requests
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500">6-stage digital travelcard &amp; exceptional transport request workflow.</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -411,6 +411,45 @@ export const TransportFundingSection: React.FC = () => {
               <span>+ New Funding Request</span>
             </button>
           </div>
+        </div>
+
+        {tabSwitcher}
+        {viewSwitch}
+
+        <div className="mt-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-2">
+        {[
+          { label: 'All Requests', key: 'all', count: counts.total, color: 'text-[#242424]' },
+          { label: 'Draft', key: 'Draft', count: counts.draft, color: 'text-[#605e5c]' },
+          { label: 'Submitted', key: 'Submitted', count: counts.submitted, color: 'text-[#0078d4]' },
+          { label: 'Under Review', key: 'Under Review', count: counts.underReview, color: 'text-[#8764b8]' },
+          { label: 'Clarification', key: 'Clarification Required', count: counts.clarification, color: 'text-[#d83b01]' },
+          { label: 'Approved', key: 'Approved', count: counts.approved, color: 'text-[#107c41]' },
+          { label: 'Rejected', key: 'Rejected', count: counts.rejected, color: 'text-[#a4262c]' },
+          { label: 'Issued', key: 'Issued', count: counts.issued, color: 'text-[#005a9e]' },
+          { label: 'Completed', key: 'Completed', count: counts.completed, color: 'text-[#0d9488]' }
+        ].map((item) => {
+          const isActive = statusFilter === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => { setStatusFilter(item.key); setCurrentPage(1); }}
+              className={`p-2.5 rounded-xs border text-left transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-purple-50/70 border-[#8764b8] shadow-2xs ring-1 ring-[#8764b8]'
+                  : 'bg-white border-[#e5e5e5] hover:border-[#8764b8]/50 shadow-2xs'
+              }`}
+            >
+              <div className="text-[11px] font-semibold text-[#605e5c] truncate">{item.label}</div>
+              <div className={`text-base font-bold mt-0.5 ${isActive ? 'text-[#8764b8]' : item.color}`}>
+                {item.count}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
         </div>
 
         {/* Integrated Filter Row */}
@@ -460,6 +499,7 @@ export const TransportFundingSection: React.FC = () => {
           >
             <option value="all">All Transport Methods</option>
             <option value="Public Transport">Public Transport</option>
+            <option value="Oyster Card">Oyster Card</option>
             <option value="Taxi Exception">Taxi Exception</option>
             <option value="Emergency OOH">Emergency OOH</option>
           </select>
@@ -548,6 +588,7 @@ export const TransportFundingSection: React.FC = () => {
                           £{item.totalCost || '0.00'}
                         </div>
                         <span className="text-neutral-500 text-[11px] block">{item.transportMethod}</span>
+                        {oysterInfo(item)}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[10px] font-semibold border ${badgeClass}`}>
@@ -578,30 +619,16 @@ export const TransportFundingSection: React.FC = () => {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          {/* HO / Management Review Action */}
-                          {isManagementOrHo && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setReviewModalItem(item);
-                                setReviewData({
-                                  status: item.status,
-                                  decision: item.decision || (item.status === 'Approved' ? 'Approved' : 'Approved'),
-                                  rejectionReason: item.rejectionReason || '',
-                                  approvedTransportMethod: item.approvedTransportMethod || item.transportMethod || 'Public Transport',
-                                  paymentAmount: item.paymentAmount || item.totalCost || '',
-                                  journeyUrn: item.journeyUrn || '',
-                                  hoInitials: item.hoInitials || 'HO-REV',
-                                  internalComments: item.internalComments || ''
-                                });
-                              }}
-                              className="p-1 hover:bg-[#edebe9] text-[#8764b8] rounded cursor-pointer"
-                              title="Review / Authorize (HO Action)"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {canDeleteRecord() && (
+                          {/* Six-stage workflow: shows only the moves this user may make */}
+                          <button
+                            type="button"
+                            onClick={() => setReviewModalItem(item)}
+                            className="p-1 hover:bg-[#edebe9] text-[#8764b8] rounded cursor-pointer"
+                            title="Workflow: review, decide, issue, complete"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                          </button>
+                          {canDeleteRecord() && (item.status === 'Draft' || item.status === 'Cancelled') && (
                             <button
                               type="button"
                               onClick={() => deleteTransportFundingRequest(item.id)}
@@ -1026,16 +1053,40 @@ export const TransportFundingSection: React.FC = () => {
                       </label>
                       <select
                         value={formData.transportMethod}
-                        onChange={(e) => setFormData(p => ({ ...p, transportMethod: e.target.value }))}
+                        onChange={(e) => setFormData(p => ({ ...p, transportMethod: e.target.value, oysterCardId: isOysterMethod(e.target.value) ? p.oysterCardId : undefined }))}
                         className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs font-medium focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden"
                       >
                         <option value="Public Transport (Train/Tube)">Public Transport (Train / Tube)</option>
                         <option value="Public Transport (Bus)">Public Transport (Bus)</option>
+                        <option value="Oyster Card">Oyster Card (from the property's stock)</option>
                         <option value="Taxi Exception (Medical)">Taxi Exception (Medical)</option>
                         <option value="Taxi Exception (Mobility / Accessibility)">Taxi Exception (Mobility / Accessibility)</option>
                         <option value="Emergency OOH Transport">Emergency OOH Transport</option>
                       </select>
                     </div>
+
+                    {isOysterMethod(formData.transportMethod) && (
+                      <div className="sm:col-span-2 p-3 bg-[#eef6ff] border border-[#b3d6f2] rounded-xs space-y-1.5">
+                        <label className="font-semibold text-[#005a9e] block">
+                          Oyster card from {formData.siteName || defaultSite || 'the selected property'} *
+                        </label>
+                        {availableCardsFor(oysterCards, formData.siteName || defaultSite).length === 0 ? (
+                          <p className="text-[#a4262c]">No Oyster cards are available at this property. Register a card on the Oyster Cards tab, or wait for one to be returned.</p>
+                        ) : (
+                          <select
+                            value={formData.oysterCardId || ''}
+                            onChange={(e) => setFormData(p => ({ ...p, oysterCardId: e.target.value || undefined }))}
+                            className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs font-medium"
+                          >
+                            <option value="">Select an available card...</option>
+                            {availableCardsFor(oysterCards, formData.siteName || defaultSite).map(c => (
+                              <option key={c.id} value={c.id}>{c.cardRef} · balance {formatMoney(c.currentBalance)}</option>
+                            ))}
+                          </select>
+                        )}
+                        <p className="text-[11px] text-[#605e5c]">Only cards held by this property are listed. The card is handed over, with its balance checked, when the request is issued.</p>
+                      </div>
+                    )}
 
                     <div>
                       <label className="font-semibold text-[#605e5c] block mb-1">
@@ -1235,156 +1286,15 @@ export const TransportFundingSection: React.FC = () => {
         </div>
       )}
 
-      {/* RESTRICTED HO / MANAGEMENT APPROVAL MODAL */}
+      {/* SIX-STAGE WORKFLOW */}
       {reviewModalItem && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100 my-6">
-            <div className="px-4 py-3 bg-[#f3f2f1] border-b border-[#e1dfdd] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#8764b8]" />
-                <h3 className="font-bold text-sm text-[#242424]">
-                  Home Office / Management Approval Review
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReviewModalItem(null)}
-                className="text-[#605e5c] hover:text-[#242424] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-3 text-xs">
-              <div className="p-2.5 bg-[#faf9f8] rounded-xs border border-[#e1dfdd] flex justify-between">
-                <div>
-                  <span className="text-neutral-500 block text-[11px]">Applicant Ref</span>
-                  <span className="font-bold text-[#242424] text-xs">{reviewModalItem.mainAppRef}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 block text-[11px]">Estimated Cost</span>
-                  <span className="font-bold text-[#242424] text-xs">£{reviewModalItem.totalCost}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 block text-[11px]">Site</span>
-                  <span className="font-semibold text-[#242424]">{reviewModalItem.siteName}</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">
-                  Approval Decision Status
-                </label>
-                <select
-                  value={reviewData.status}
-                  onChange={(e) => {
-                    const st = e.target.value as FundingRequestStatus;
-                    setReviewData(p => ({
-                      ...p,
-                      status: st,
-                      decision: st === 'Approved' ? 'Approved' : st === 'Rejected' ? 'Rejected' : st
-                    }));
-                  }}
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-semibold text-xs focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden"
-                >
-                  <option value="Approved">Approved</option>
-                  <option value="Clarification Required">Clarification Required</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="Under Review">Under Review</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
-
-              {reviewData.status === 'Approved' && (
-                <div className="space-y-2.5 p-3 bg-[#f1faf0] rounded-xs border border-[#c4e8c1]">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#107c41] mb-1">
-                        Generated Journey URN
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="URN-2026-..."
-                        value={reviewData.journeyUrn || `URN-${Date.now().toString().slice(-6)}`}
-                        onChange={(e) => setReviewData(p => ({ ...p, journeyUrn: e.target.value }))}
-                        className="w-full p-1.5 border border-[#c4e8c1] rounded-xs bg-white font-mono font-bold text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#107c41] mb-1">
-                        Approved Payment Amount (£)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={reviewData.paymentAmount || reviewModalItem.totalCost || ''}
-                        onChange={(e) => setReviewData(p => ({ ...p, paymentAmount: e.target.value }))}
-                        className="w-full p-1.5 border border-[#c4e8c1] rounded-xs bg-white font-bold text-xs"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#107c41] mb-1">
-                      Approved Transport Method
-                    </label>
-                    <input
-                      type="text"
-                      value={reviewData.approvedTransportMethod || reviewModalItem.transportMethod || ''}
-                      onChange={(e) => setReviewData(p => ({ ...p, approvedTransportMethod: e.target.value }))}
-                      className="w-full p-1.5 border border-[#c4e8c1] rounded-xs bg-white text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {(reviewData.status === 'Rejected' || reviewData.status === 'Clarification Required') && (
-                <div>
-                  <label className="font-semibold text-[#a4262c] block mb-1">
-                    Rejection / Clarification Reason *
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={reviewData.rejectionReason}
-                    onChange={(e) => setReviewData(p => ({ ...p, rejectionReason: e.target.value }))}
-                    placeholder="Provide specific feedback or missing documents required..."
-                    className="w-full p-2 border border-[#f3b2b7] bg-white rounded-xs text-[#323130] text-xs focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden"
-                    required
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="font-semibold text-[#605e5c] block mb-1">
-                  Internal / HO Comments (Confidential)
-                </label>
-                <textarea
-                  rows={2}
-                  value={reviewData.internalComments}
-                  onChange={(e) => setReviewData(p => ({ ...p, internalComments: e.target.value }))}
-                  placeholder="Confidential reviewer notes..."
-                  className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden"
-                />
-              </div>
-            </div>
-
-            <div className="px-4 py-3 bg-[#faf9f8] border-t border-[#edebe9] flex items-center justify-end gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setReviewModalItem(null)}
-                className="px-3 py-1.5 border border-[#8a8886] rounded-xs bg-white text-[#323130] hover:bg-[#f3f2f1] text-xs font-medium cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveReview}
-                className="px-3.5 py-1.5 bg-[#8764b8] hover:bg-[#744da9] text-white rounded-xs text-xs font-semibold shadow-2xs cursor-pointer"
-              >
-                Confirm Decision
-              </button>
-            </div>
-          </div>
-        </div>
+        <FundingWorkflowModal
+          item={reviewModalItem}
+          cards={oysterCards}
+          txns={oysterTxns}
+          onClose={() => setReviewModalItem(null)}
+          onChanged={() => { void syncFromDatabase(); void loadOyster(); }}
+        />
       )}
 
       {/* VIEW APPLICATION DETAILS */}

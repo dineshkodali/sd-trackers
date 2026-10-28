@@ -118,6 +118,27 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['attachments', 'attachments', 'json'],
     ['attachmentUrl', 'attachment_url', 'text'],
     ['fileUrl', 'file_url', 'text'],
+    ['oysterCardId', 'oyster_card_id', 'text'],
+    // workflow columns (migration 022): written only by the approval workflow
+    ['requestedById', 'requested_by_id', 'text'],
+    ['requestedBy', 'requested_by', 'text'],
+    ['submittedAt', 'submitted_at', 'text'],
+    ['reviewedBy', 'reviewed_by', 'text'],
+    ['reviewedAt', 'reviewed_at', 'text'],
+    ['issuedBy', 'issued_by', 'text'],
+    ['issuedAt', 'issued_at', 'text'],
+    ['completedAt', 'completed_at', 'text'],
+    ['completionNotes', 'completion_notes', 'text'],
+  ],
+  transport_funding_status_history: [
+    ['requestId', 'request_id', 'text'],
+    ['fromStatus', 'from_status', 'text'],
+    ['toStatus', 'to_status', 'text'],
+    ['note', 'note', 'text'],
+    ['changedById', 'changed_by_id', 'text'],
+    ['changedBy', 'changed_by', 'text'],
+    ['changedRole', 'changed_role', 'text'],
+    ['changedAt', 'changed_at', 'text'],
   ],
   transport_room_move_requests: [
     ['requestId', 'request_id', 'text'],
@@ -712,6 +733,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['referralDate', 'referral_date', 'text'],
     ['arrivalDate', 'arrival_date', 'text'],
     ['siteId', 'site_id', 'text'],
+    // Archive state is changed only by the approval workflow (database trigger refuses any other change)
+    ['archiveStatus', 'archive_status', 'text'],
+    ['archivedAt', 'archived_at', 'text'],
   ],
   property_facilities: [
     ['propertyId', 'property_id', 'text'],
@@ -805,6 +829,131 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['resolvedAt', 'resolved_at', 'text'],
     ['createdBy', 'created_by', 'text'],
     ['updatedBy', 'updated_by', 'text'],
+  ],
+  su_hc2_details: [
+    ['suId', 'su_id', 'text'],
+    ['referenceNumber', 'reference_number', 'text'],
+    ['issueDate', 'issue_date', 'text'],
+    ['expiryDate', 'expiry_date', 'text'],
+    ['status', 'status', 'text'],
+    ['notes', 'notes', 'text'],
+    ['documentPath', 'document_path', 'text'],
+    ['documentName', 'document_name', 'text'],
+    ['documentUploadedAt', 'document_uploaded_at', 'text'],
+    ['createdBy', 'created_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  oyster_cards: [
+    ['cardRef', 'card_ref', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['status', 'status', 'text'],
+    ['currentBalance', 'current_balance', 'num'],
+    ['balanceUpdatedAt', 'balance_updated_at', 'text'],
+    ['balanceUpdatedBy', 'balance_updated_by', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['issuedDate', 'issued_date', 'text'],
+    ['issuedBy', 'issued_by', 'text'],
+    ['notes', 'notes', 'text'],
+    ['createdBy', 'created_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  oyster_card_events: [
+    ['cardId', 'card_id', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['eventType', 'event_type', 'text'],
+    ['fromStatus', 'from_status', 'text'],
+    ['toStatus', 'to_status', 'text'],
+    ['balance', 'balance', 'num'],
+    ['previousBalance', 'previous_balance', 'num'],
+    ['transactionId', 'transaction_id', 'text'],
+    ['details', 'details', 'text'],
+    ['changedBy', 'changed_by', 'text'],
+    ['changedAt', 'changed_at', 'text'],
+  ],
+  oyster_card_transactions: [
+    ['cardId', 'card_id', 'text'],
+    ['cardRef', 'card_ref', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['siteName', 'site_name', 'text'],
+    ['fundingRequestId', 'funding_request_id', 'text'],
+    ['status', 'status', 'text'],
+    ['issuedDate', 'issued_date', 'text'],
+    ['issuedBy', 'issued_by', 'text'],
+    ['issuedById', 'issued_by_id', 'text'],
+    ['balanceAtIssue', 'balance_at_issue', 'num'],
+    ['returnedDate', 'returned_date', 'text'],
+    ['returnedBy', 'returned_by', 'text'],
+    ['balanceAtReturn', 'balance_at_return', 'num'],
+    ['returnCondition', 'return_condition', 'text'],
+    ['returnNotes', 'return_notes', 'text'],
+    ['balanceAdjusted', 'balance_adjusted', 'bool'],
+  ],
+  su_meal_records: [
+    ['suId', 'su_id', 'text'],
+    ['mealDate', 'meal_date', 'text'],
+    ['mealPeriod', 'meal_period', 'text'],
+    ['status', 'status', 'text'],
+    ['notes', 'notes', 'text'],
+    ['recordedBy', 'recorded_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  su_meal_record_history: [
+    ['recordId', 'record_id', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['mealDate', 'meal_date', 'text'],
+    ['mealPeriod', 'meal_period', 'text'],
+    ['fromStatus', 'from_status', 'text'],
+    ['toStatus', 'to_status', 'text'],
+    ['notes', 'notes', 'text'],
+    ['changedBy', 'changed_by', 'text'],
+    ['changedAt', 'changed_at', 'text'],
+  ],
+  su_education_details: [
+    ['suId', 'su_id', 'text'],
+    ['schoolName', 'school_name', 'text'],
+    ['schoolAddress', 'school_address', 'text'],
+    ['schoolContact', 'school_contact', 'text'],
+    ['yearGroup', 'year_group', 'text'],
+    ['educationStatus', 'education_status', 'text'],
+    ['startDate', 'start_date', 'text'],
+    ['endDate', 'end_date', 'text'],
+    ['isCurrent', 'is_current', 'bool'],
+    ['notes', 'notes', 'text'],
+    ['createdBy', 'created_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  family_groups: [
+    ['familyRef', 'family_ref', 'text'],
+    ['displayName', 'display_name', 'text'],
+    ['status', 'status', 'text'],
+    ['notes', 'notes', 'text'],
+    ['createdBy', 'created_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  family_members: [
+    ['familyId', 'family_id', 'text'],
+    ['suId', 'su_id', 'text'],
+    ['relationship', 'relationship', 'text'],
+    ['status', 'status', 'text'],
+    ['joinedAt', 'joined_at', 'text'],
+    ['leftAt', 'left_at', 'text'],
+    ['removalReason', 'removal_reason', 'text'],
+    ['addedBy', 'added_by', 'text'],
+    ['updatedBy', 'updated_by', 'text'],
+  ],
+  su_archive_requests: [
+    ['suId', 'su_id', 'text'],
+    ['requestType', 'request_type', 'text'],
+    ['status', 'status', 'text'],
+    ['reason', 'reason', 'text'],
+    ['requestedById', 'requested_by_id', 'text'],
+    ['requestedBy', 'requested_by', 'text'],
+    ['requestedAt', 'requested_at', 'text'],
+    ['decidedById', 'decided_by_id', 'text'],
+    ['decidedBy', 'decided_by', 'text'],
+    ['decidedAt', 'decided_at', 'text'],
+    ['decisionReason', 'decision_reason', 'text'],
+    ['priorSuStatus', 'prior_su_status', 'text'],
   ],
   room_beds: [
     ['bedReference', 'bed_reference', 'text'],
@@ -1360,6 +1509,45 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'id', 'su_id', 'absence_start_date', 'threshold_days', 'threshold_reached_at', 'consecutive_days', 'status', 'assigned_to',
     'follow_up_notes', 'action_history', 'due_date', 'last_action_at', 'resolved_at', 'created_by', 'updated_by', 'created_at', 'updated_at'
   ]),
+  transport_funding_status_history: new Set([
+    'id', 'request_id', 'from_status', 'to_status', 'note', 'changed_by_id', 'changed_by', 'changed_role', 'changed_at'
+  ]),
+  su_hc2_details: new Set([
+    'id', 'su_id', 'reference_number', 'issue_date', 'expiry_date', 'status', 'notes', 'document_path', 'document_name',
+    'document_uploaded_at', 'created_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
+  oyster_cards: new Set([
+    'id', 'card_ref', 'site_name', 'status', 'current_balance', 'balance_updated_at', 'balance_updated_by', 'su_id', 'issued_date', 'issued_by',
+    'notes', 'created_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
+  oyster_card_events: new Set([
+    'id', 'card_id', 'su_id', 'event_type', 'from_status', 'to_status', 'balance', 'previous_balance', 'transaction_id', 'details', 'changed_by', 'changed_at'
+  ]),
+  oyster_card_transactions: new Set([
+    'id', 'card_id', 'card_ref', 'su_id', 'site_name', 'funding_request_id', 'status', 'issued_date', 'issued_by', 'issued_by_id', 'balance_at_issue',
+    'returned_date', 'returned_by', 'balance_at_return', 'return_condition', 'return_notes', 'balance_adjusted', 'created_at', 'updated_at'
+  ]),
+  su_meal_records: new Set([
+    'id', 'su_id', 'meal_date', 'meal_period', 'status', 'notes', 'recorded_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
+  su_meal_record_history: new Set([
+    'id', 'record_id', 'su_id', 'meal_date', 'meal_period', 'from_status', 'to_status', 'notes', 'changed_by', 'changed_at'
+  ]),
+  su_education_details: new Set([
+    'id', 'su_id', 'school_name', 'school_address', 'school_contact', 'year_group', 'education_status', 'start_date', 'end_date',
+    'is_current', 'notes', 'created_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
+  family_groups: new Set([
+    'id', 'family_ref', 'display_name', 'status', 'notes', 'created_by', 'updated_by', 'created_at', 'updated_at'
+  ]),
+  family_members: new Set([
+    'id', 'family_id', 'su_id', 'relationship', 'status', 'joined_at', 'left_at', 'removal_reason', 'added_by', 'updated_by',
+    'created_at', 'updated_at'
+  ]),
+  su_archive_requests: new Set([
+    'id', 'su_id', 'request_type', 'status', 'reason', 'requested_by_id', 'requested_by', 'requested_at', 'decided_by_id', 'decided_by',
+    'decided_at', 'decision_reason', 'prior_su_status', 'created_at', 'updated_at'
+  ]),
   room_beds: new Set([
     'id', 'bed_reference', 'property_id', 'room_id', 'bed_label', 'bed_type', 'status',
     'mattress_condition', 'notes', 'data', 'created_by', 'created_at', 'updated_at'
@@ -1427,6 +1615,7 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'preferred_name', 'date_of_birth', 'gender', 'nationality',
     'preferred_language', 'interpreter_required', 'status', 'external_reference',
     'case_reference', 'referral_date', 'arrival_date', 'site_id',
+    'archive_status', 'archived_at', 'archived_pre_status',
     'data', 'created_by', 'created_at', 'updated_at'
   ]),
   service_user_contacts: new Set([
@@ -1495,6 +1684,15 @@ export const ENTITY_MODULE_LABELS: Record<string, string> = {
   peepPlans: 'PEEP Tracker', peep_plans: 'PEEP Tracker', peepPlanHistory: 'PEEP Tracker', peep_plan_history: 'PEEP Tracker',
   suAttendance: 'SU Attendance', su_attendance_records: 'SU Attendance',
   absenceFollowups: 'SU Attendance', absence_followups: 'SU Attendance',
+  transportFundingHistory: 'Transport Funding Requests', transport_funding_status_history: 'Transport Funding Requests',
+  suHc2: 'GP Registrations', su_hc2_details: 'GP Registrations',
+  oysterCards: 'Public Transport Tracker', oyster_cards: 'Public Transport Tracker',
+  oysterCardEvents: 'Public Transport Tracker', oyster_card_events: 'Public Transport Tracker',
+  oysterTransactions: 'Public Transport Tracker', oyster_card_transactions: 'Public Transport Tracker',
+  suMeals: 'SU Meal Tracker', su_meal_records: 'SU Meal Tracker', suMealHistory: 'SU Meal Tracker', su_meal_record_history: 'SU Meal Tracker',
+  suEducation: 'Service Users', su_education_details: 'Service Users',
+  familyGroups: 'Family Groups', family_groups: 'Family Groups', familyMembers: 'Family Groups', family_members: 'Family Groups',
+  suArchiveRequests: 'SU Archive', su_archive_requests: 'SU Archive',
   roomBeds: 'Room Management', room_beds: 'Room Management',
   inventoryItems: 'Room Management', inventory_items: 'Room Management',
   propertyInventoryStock: 'Room Management', property_inventory_stock: 'Room Management',

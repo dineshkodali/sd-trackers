@@ -15,6 +15,9 @@ const GLOBAL_TABLES = new Set([
   'table_schemas', 'user_groups',
   // Room Management reference data: the shared item catalogue and standard room kits (deletes are admin-only)
   'inventory_items', 'room_kit_templates',
+  // Family groups have no site of their own: readEntity (server/routes/db.ts) shows a restricted user only the groups
+  // that contain a Service User they may see, or that they created. Covered by tests/suEnhancements.test.ts.
+  'family_groups',
 ]);
 
 test('every entity exposed by /api/db is site-scoped, parent-scoped, admin-only or declared global', () => {

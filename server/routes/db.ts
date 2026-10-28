@@ -12,6 +12,7 @@ import { getLiveSchema, getLiveColumns, invalidateLiveSchema } from '../liveSche
 import { seedReferenceData } from '../seed.js';
 import { INITIAL_ROLE_PERMISSIONS } from '../../src/data/initialData.js';
 import { masterDataStore } from '../masterDataStore.js';
+import { SU_MANAGER_ROLES, SU_EDITOR_ROLES, redactSensitiveRows, stripSensitiveUpdateFields, sanitizeFundingBody, sanitizeOysterCardBody } from '../suAccess.js';
 
 const router = Router();
 
@@ -24,12 +25,13 @@ const router = Router();
  *   permission - governed by role_permissions.canDeleteRecords (deletes only)
  *   none       - not through this API
  */
-type Policy = 'any' | 'admin' | 'superadmin' | 'append' | 'permission' | 'none';
+type Policy = 'any' | 'admin' | 'superadmin' | 'append' | 'permission' | 'none' | 'manager' | 'suEditor';
 
 interface EntityDef {
   page: string;
   table: string;
-  read?: 'any' | 'admin';
+  /** 'manager' = SU manager roles, 'suEditor' = managers and front-line staff. */
+  read?: 'any' | 'admin' | 'manager' | 'suEditor';
   write?: Policy;
   remove?: Policy;
   /** Discriminator for entities sharing one table. */
@@ -62,8 +64,12 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   transport_feedback: { page: 'Transport Feedback', table: 'transport_feedback', alias: true },
   transportChallenges: { page: 'Transport Challenges', table: 'transport_challenges' },
   transport_challenges: { page: 'Transport Challenges', table: 'transport_challenges', alias: true },
-  transportFundingRequests: { page: 'Transport Funding Requests', table: 'transport_funding_requests' },
-  transport_funding_requests: { page: 'Transport Funding Requests', table: 'transport_funding_requests', alias: true },
+  // Raising a request is for site staff and managers; status and decisions change only through /api/transport-funding
+  transportFundingRequests: { page: 'Transport Funding Requests', table: 'transport_funding_requests', read: 'suEditor', write: 'suEditor', remove: 'suEditor' },
+  transport_funding_requests: { page: 'Transport Funding Requests', table: 'transport_funding_requests', read: 'suEditor', write: 'suEditor', remove: 'suEditor', alias: true },
+  // Status history is written only by the approval workflow (database function), never through this API
+  transportFundingHistory: { page: 'Transport Funding Requests', table: 'transport_funding_status_history', read: 'suEditor', write: 'none', remove: 'none' },
+  transport_funding_status_history: { page: 'Transport Funding Requests', table: 'transport_funding_status_history', read: 'suEditor', write: 'none', remove: 'none', alias: true },
   compliance: { page: 'SD-Compliance Tracker', table: 'compliance_records' },
   gpAppointments: { page: 'GP Appointments', table: 'gp_appointments' },
   rfaWelfare: { page: 'RFA Welfare Checks', table: 'rfa_welfare_checks' },
@@ -180,6 +186,30 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   absenceFollowups: { page: 'SU Attendance', table: 'absence_followups' },
   absence_followups: { page: 'SU Attendance', table: 'absence_followups', alias: true },
 
+  // HC2, Oyster cards, per-SU meals, education, family groups and archive requests (migration 021).
+  // Archive requests and the history tables are written only by dedicated routes / database triggers.
+  suHc2: { page: 'GP Registrations', table: 'su_hc2_details', read: 'suEditor', write: 'suEditor', remove: 'manager' },
+  su_hc2_details: { page: 'GP Registrations', table: 'su_hc2_details', read: 'suEditor', write: 'suEditor', remove: 'manager', alias: true },
+  oysterCards: { page: 'Public Transport Tracker', table: 'oyster_cards', read: 'suEditor', write: 'suEditor', remove: 'none' },
+  oyster_cards: { page: 'Public Transport Tracker', table: 'oyster_cards', read: 'suEditor', write: 'suEditor', remove: 'none', alias: true },
+  oysterCardEvents: { page: 'Public Transport Tracker', table: 'oyster_card_events', read: 'suEditor', write: 'none', remove: 'none' },
+  oyster_card_events: { page: 'Public Transport Tracker', table: 'oyster_card_events', read: 'suEditor', write: 'none', remove: 'none', alias: true },
+  // Loans are created and closed only by the issue / return actions (/api/oyster), never through this API
+  oysterTransactions: { page: 'Public Transport Tracker', table: 'oyster_card_transactions', read: 'suEditor', write: 'none', remove: 'none' },
+  oyster_card_transactions: { page: 'Public Transport Tracker', table: 'oyster_card_transactions', read: 'suEditor', write: 'none', remove: 'none', alias: true },
+  suMeals: { page: 'SU Meal Tracker', table: 'su_meal_records', read: 'suEditor', write: 'suEditor', remove: 'none' },
+  su_meal_records: { page: 'SU Meal Tracker', table: 'su_meal_records', read: 'suEditor', write: 'suEditor', remove: 'none', alias: true },
+  suMealHistory: { page: 'SU Meal Tracker', table: 'su_meal_record_history', read: 'suEditor', write: 'none', remove: 'none' },
+  su_meal_record_history: { page: 'SU Meal Tracker', table: 'su_meal_record_history', read: 'suEditor', write: 'none', remove: 'none', alias: true },
+  suEducation: { page: 'Service Users - Education', table: 'su_education_details', read: 'suEditor', write: 'suEditor', remove: 'none' },
+  su_education_details: { page: 'Service Users - Education', table: 'su_education_details', read: 'suEditor', write: 'suEditor', remove: 'none', alias: true },
+  familyGroups: { page: 'Family Groups', table: 'family_groups', read: 'suEditor', write: 'manager', remove: 'none' },
+  family_groups: { page: 'Family Groups', table: 'family_groups', read: 'suEditor', write: 'manager', remove: 'none', alias: true },
+  familyMembers: { page: 'Family Groups', table: 'family_members', read: 'suEditor', write: 'manager', remove: 'none' },
+  family_members: { page: 'Family Groups', table: 'family_members', read: 'suEditor', write: 'manager', remove: 'none', alias: true },
+  suArchiveRequests: { page: 'SU Archive', table: 'su_archive_requests', read: 'manager', write: 'none', remove: 'none' },
+  su_archive_requests: { page: 'SU Archive', table: 'su_archive_requests', read: 'manager', write: 'none', remove: 'none', alias: true },
+
   // Room Management: beds, items in rooms, common stock, ledger, kits, issues, timeline
   roomBeds: { page: 'Room Beds', table: 'room_beds' },
   room_beds: { page: 'Room Beds', table: 'room_beds', alias: true },
@@ -228,6 +258,33 @@ const ADMIN_ROLES = ['Super Admin', 'Admin'];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isValidUuid = (val: any) => typeof val === 'string' && UUID_REGEX.test(val.trim());
 const isMissingTableError = (error: any) => error?.code === '42P01' || error?.code === 'PGRST205';
+
+/** Whether a role may read an entity (default: any signed-in user). */
+function readAllowed(def: EntityDef, role: string): boolean {
+  switch (def.read) {
+    case 'admin': return ADMIN_ROLES.includes(role);
+    case 'manager': return SU_MANAGER_ROLES.includes(role);
+    case 'suEditor': return SU_EDITOR_ROLES.includes(role);
+    default: return true;
+  }
+}
+
+/**
+ * Fields a client may not set through the generic API:
+ *  - archive state of a Service User (changed only by the approval workflow; the database enforces this too);
+ *  - for non-managers on update, identifiers they only see redacted (so a redacted value can never be written back).
+ */
+function sanitizeWriteBody(req: Request, def: EntityDef, isUpdate: boolean) {
+  let body = req.body;
+  if (def.table === 'service_users') {
+    const { archiveStatus, archivedAt, archivedPreStatus, archive_status, archived_at, archived_pre_status, ...rest } = body;
+    body = rest;
+  }
+  if (def.table === 'transport_funding_requests') body = sanitizeFundingBody(body, isUpdate, req.user);
+  if (def.table === 'oyster_cards') body = sanitizeOysterCardBody(body, isUpdate, req.user);
+  if (isUpdate) body = stripSensitiveUpdateFields(def.table, body, req.user?.role);
+  req.body = body;
+}
 
 function resolveEntity(req: Request, res: Response): EntityDef | null {
   const def = ENTITY_REGISTRY[req.params.entity];
@@ -294,6 +351,8 @@ async function authorize(req: Request, res: Response, policy: Policy, operation:
     case 'append': allowed = operation === 'create'; break;
     case 'permission': allowed = operation === 'delete' ? await roleMayDelete(role) : true; break;
     case 'none': allowed = false; break;
+    case 'manager': allowed = SU_MANAGER_ROLES.includes(role); break;
+    case 'suEditor': allowed = SU_EDITOR_ROLES.includes(role); break;
   }
   if (!allowed) {
     res.status(403).json({ success: false, error: 'Insufficient privileges for this operation' });
@@ -343,8 +402,8 @@ function callerIdentity(req: Request) {
   };
 }
 
-async function recordAuditTrailEntry(req: Request, params: {
-  defaultAction: 'CREATE' | 'UPDATE' | 'DELETE';
+export async function recordAuditTrailEntry(req: Request, params: {
+  defaultAction: 'CREATE' | 'UPDATE' | 'DELETE' | 'ARCHIVE' | 'RESTORE';
   entity: string;
   entityId?: string;
   site?: string;
@@ -435,6 +494,9 @@ export const TABLE_SITE_COLUMN: Record<string, string> = {
   transport_feedback: 'site_name',
   transport_challenges: 'site_name',
   transport_funding_requests: 'site_name',
+  // Oyster cards belong to a property; loans carry the property of the card
+  oyster_cards: 'site_name',
+  oyster_card_transactions: 'site_name',
   transport_room_move_requests: 'site_name',
   compliance_records: 'site_name',
   gp_appointments: 'site_name',
@@ -640,6 +702,14 @@ export const TABLE_PARENT_SCOPE: Record<string, { linkColumn: string; linkField:
   peep_plan_history: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
   su_attendance_records: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
   absence_followups: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  su_hc2_details: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  transport_funding_status_history: { linkColumn: 'request_id', linkField: 'requestId', parentTable: 'transport_funding_requests' },
+  oyster_card_events: { linkColumn: 'card_id', linkField: 'cardId', parentTable: 'oyster_cards' },
+  su_meal_records: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  su_meal_record_history: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  su_education_details: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  family_members: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
+  su_archive_requests: { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' },
   property_rooms: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
   property_facilities: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
   property_assets: { linkColumn: 'property_id', linkField: 'propertyId', parentTable: 'properties' },
@@ -678,8 +748,28 @@ async function allowedParentIds(client: SupabaseClient, table: string, user: Exp
 }
 
 async function readEntity(client: SupabaseClient, def: EntityDef, opts: ListOptions, user?: Express.Request['user']) {
+  const result = await readEntityScoped(client, def, opts, user);
+  if (!result.success || !result.data) return result;
+  // Identifiers and documents are blanked for roles that may only see that the record exists
+  return { ...result, data: redactSensitiveRows(def.table, result.data as any[], user?.role) };
+}
+
+async function readEntityScoped(client: SupabaseClient, def: EntityDef, opts: ListOptions, user?: Express.Request['user']) {
   const result = await readEntityUnscopedChildren(client, def, opts, user);
-  if (!result.success || !needsParentScope(def.table, user)) return result;
+  if (!result.success) return result;
+
+  // A family group has no site of its own: restricted users see only families with a member they may see,
+  // plus families they created themselves (so a new, still-empty group does not vanish after saving).
+  if (def.table === 'family_groups' && user && !userCanAccessAllSites(user)) {
+    const allowed = await allowedParentIds(client, 'family_members', user);
+    const { data: members } = await client.from('family_members').select('family_id, su_id');
+    const visible = new Set((members || []).filter((m: any) => allowed.has(String(m.su_id))).map((m: any) => String(m.family_id)));
+    const me = new Set([user.name, user.email].filter(Boolean));
+    const data = (result.data || []).filter((f: any) => visible.has(String(f.id)) || me.has(f.createdBy));
+    return { ...result, data, total: data.length };
+  }
+
+  if (!needsParentScope(def.table, user)) return result;
   const allowed = await allowedParentIds(client, def.table, user!);
   const scope = TABLE_PARENT_SCOPE[def.table];
   const data = (result.data || []).filter((r: any) => {
@@ -938,6 +1028,19 @@ router.get('/crm-updates-migration-sql', requireRole(...ADMIN_ROLES), (_req: Req
   res.type('text/plain').send(sql);
 });
 
+// GET /api/db/su-enhancements-migration-sql - migrations 021, 022 and 023 in order, for the Supabase SQL editor.
+// They need migrations 012 (service users) and 014 (public transport) to be applied first.
+router.get('/su-enhancements-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
+  const files = ['021_su_enhancements.sql', '022_transport_funding_workflow.sql', '023_oyster_card_inventory.sql'];
+  const parts: string[] = [];
+  for (const f of files) {
+    const migPath = path.join(process.cwd(), 'db', 'migrations', f);
+    if (!fs.existsSync(migPath)) return res.status(404).json({ success: false, error: `Migration script db/migrations/${f} not found` });
+    parts.push(fs.readFileSync(migPath, 'utf8').replace(/^﻿/, ''));
+  }
+  res.type('text/plain').send(parts.join('\n\n'));
+});
+
 router.get('/migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
   const sql = loadSchemaSql();
   if (!sql) return res.status(404).json({ success: false, error: 'db/schema.sql not found' });
@@ -969,7 +1072,7 @@ router.post('/batch-read', async (req: Request, res: Response) => {
       results[key] = { success: false, error: `Unknown entity: ${r?.entity}`, data: [] };
       return;
     }
-    if (def.read === 'admin' && !ADMIN_ROLES.includes(role)) {
+    if (!readAllowed(def, role)) {
       results[key] = { success: false, error: 'Insufficient privileges for this operation', data: [] };
       return;
     }
@@ -1398,7 +1501,7 @@ router.post('/sync/push', async (req: Request, res: Response) => {
 router.get('/:entity', async (req: Request, res: Response) => {
   const def = resolveEntity(req, res);
   if (!def) return;
-  if (def.read === 'admin' && !ADMIN_ROLES.includes(req.user?.role || '')) {
+  if (!readAllowed(def, req.user?.role || '')) {
     return res.status(403).json({ success: false, error: 'Insufficient privileges for this operation' });
   }
   const client = requireDatabase(res);
@@ -1523,6 +1626,7 @@ router.post('/:entity', async (req: Request, res: Response) => {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
     return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
   }
+  sanitizeWriteBody(req, def, false);
   req.body = freshIdIfAppendOnly(def, req.body);
   const createScopeError = await writeScopeError(client, req, def, [req.body]);
   if (createScopeError) return res.status(403).json({ success: false, error: createScopeError });
@@ -1637,6 +1741,10 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
     return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
   }
+  sanitizeWriteBody(req, def, true);
+  const redactedRole = req.user?.role;
+  const sendJson = res.json.bind(res);
+  res.json = ((payload: any) => sendJson(payload && payload.record ? { ...payload, record: redactSensitiveRows(def.table, [payload.record], redactedRole)[0] } : payload)) as typeof res.json;
   const updateScopeError = await writeScopeError(client, req, def, [{ ...req.body, id }]);
   if (updateScopeError) return res.status(403).json({ success: false, error: updateScopeError });
 

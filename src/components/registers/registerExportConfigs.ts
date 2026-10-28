@@ -17,6 +17,7 @@ export type DailyRegisterTab =
   | 'validation'
   | 'languages'
   | 'newArrivals'
+  | 'families'
   | 'summary';
 
 export const DAILY_REGISTER_EXPORT_COLUMNS: ExportColumnOption[] = [

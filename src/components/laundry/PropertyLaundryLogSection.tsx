@@ -143,7 +143,7 @@ function formatPeriodFromDates(
   };
 }
 
-export const PropertyLaundryLogSection: React.FC = () => {
+export const PropertyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
     defaultSiteFilter,propertyLaundryLogs,
     allowedSites,
@@ -848,6 +848,8 @@ export const PropertyLaundryLogSection: React.FC = () => {
             )}
           </div>
         </div>
+
+        {tabSwitcher}
 
         {/* Integrated Filter Row */}
         <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">

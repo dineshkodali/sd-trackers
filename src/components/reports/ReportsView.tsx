@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { FileSpreadsheet, Download, RefreshCw, ShieldCheck, AlertTriangle, Cloud, Printer, HardHat, ScrollText, Soup, Siren, X, ArrowUpDown, ArrowUp, ArrowDown, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -51,12 +51,16 @@ export const ReportsView: React.FC = () => {
     users,
     allowedSites,
     settings,
-    syncSharePointNow
+    syncSharePointNow,
+    defaultSiteFilter,
+    isSitePermitted
   , requestConfirmation } = useApp();
 
   // Selected report template
   const [selectedReportType, setSelectedReportType] = useState<string>('safeguarding');
-  const [selectedSite, setSelectedSite] = useState<string>('all');
+  // Follows the property chosen in the top bar
+  const [selectedSite, setSelectedSite] = useState<string>(defaultSiteFilter);
+  useEffect(() => { setSelectedSite(defaultSiteFilter); }, [defaultSiteFilter]);
   const [dateRange, setDateRange] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -316,7 +320,8 @@ export const ReportsView: React.FC = () => {
   const filteredData = useMemo(() => {
     return rawDataset.filter(item => {
       // Site filter
-      if (selectedSite !== 'all' && item.site !== selectedSite) return false;
+      // Only properties the user may see, narrowed to the chosen one
+      if (!isSitePermitted(item.site, selectedSite)) return false;
       // Date filter
       if (!isWithinDateRange(item.date)) return false;
       // Status filter
@@ -333,7 +338,7 @@ export const ReportsView: React.FC = () => {
       }
       return true;
     });
-  }, [rawDataset, selectedSite, dateRange, statusFilter, searchQuery]);
+  }, [rawDataset, selectedSite, dateRange, statusFilter, searchQuery, isSitePermitted]);
 
   // Sorted dataset
   const sortedData = useMemo(() => {

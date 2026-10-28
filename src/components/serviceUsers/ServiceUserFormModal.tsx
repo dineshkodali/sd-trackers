@@ -120,7 +120,7 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
         setNationality(serviceUserToEdit.nationality || '');
         setPreferredLanguage(serviceUserToEdit.preferredLanguage || 'English');
         setInterpreterRequired(!!serviceUserToEdit.interpreterRequired);
-        setStatus(serviceUserToEdit.status || 'Active');
+        setStatus(serviceUserToEdit.status === 'Archived' ? 'Inactive' : (serviceUserToEdit.status || 'Active'));
         setExternalReference(serviceUserToEdit.externalReference || '');
         setCaseReference(serviceUserToEdit.caseReference || '');
         setReferralDate(serviceUserToEdit.referralDate || '');
@@ -244,7 +244,9 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
         const res = await suPropertyService.updateServiceUser(serviceUserToEdit.id, {
           firstName: firstName.trim(), middleName: middleName.trim(), lastName: lastName.trim(),
           preferredName: preferredName.trim(), dateOfBirth, gender, nationality,
-          preferredLanguage, interpreterRequired, status,
+          preferredLanguage, interpreterRequired,
+          // An archived Service User keeps their status: it changes only through an approved restore request
+          status: serviceUserToEdit.status === 'Archived' ? 'Archived' : status,
           externalReference: externalReference.trim(), caseReference: caseReference.trim(),
           referralDate, arrivalDate, siteId
         }, { siteId, propertyId, roomId });

@@ -21,6 +21,11 @@ import {
   UnifiedActivityItem 
 } from '../../types/masterData';
 import { SUActivityTimeline } from './SUActivityTimeline';
+import { SUArchivePanel } from './SUArchivePanel';
+import { SUEducationTab } from './SUEducationTab';
+import { SuFamilyPanel } from '../registers/FamilyGroupsSection';
+import { SuOysterUsage } from '../transport/OysterCardsSection';
+import { isChildByDob } from '../../utils/suEnhancementsLogic';
 import { MoveAccommodationModal } from './MoveAccommodationModal';
 import { MasterDocumentModal } from '../common/MasterDocumentModal';
 import { 
@@ -35,6 +40,8 @@ import {
 interface ServiceUserProfileViewProps {
   serviceUser: ServiceUserMaster;
   initialTab?: string;
+  /** Open another Service User's profile (used by the family group links). */
+  onOpenServiceUser?: (suId: string) => void;
   onBack: () => void;
   onEditSU: (su: ServiceUserMaster) => void;
   onRefreshData: () => void;
@@ -43,6 +50,7 @@ interface ServiceUserProfileViewProps {
 export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
   serviceUser,
   initialTab,
+  onOpenServiceUser,
   onBack,
   onEditSU,
   onRefreshData
@@ -52,7 +60,9 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     irRecords, challengingSUs, referrals, rfaWelfareRecords, mhComplaintWelfareRecords,
     gpAppointmentRecords, publicTransportRecords, documents: repositoryDocuments
   } = useApp();
-  const canCRUD = canManageUsers();
+  // An archived record is read-only for routine edits; it changes only through an approved restore request
+  const isArchived = serviceUser.status === 'Archived' || serviceUser.archiveStatus === 'Archived';
+  const canCRUD = canManageUsers() && !isArchived;
 
   const [activeTab, setActiveTab] = useState<string>(initialTab || 'overview');
   const [contact, setContact] = useState<ServiceUserContact | null>(null);
@@ -305,6 +315,8 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     { id: 'gp', label: `GP Appointments (${suRecords.gp.length})` },
     { id: 'transport', label: `Public Transport (${suRecords.transport.length})` },
     { id: 'peep', label: 'PEEP' },
+    // Shown only when the date of birth says the person is under 18
+    ...(isChildByDob(serviceUser.dateOfBirth) ? [{ id: 'education', label: 'Education' }] : []),
     { id: 'foodSurveys', label: `Food Surveys (${suFood.length})` },
     { id: 'roomChecks', label: `Room Checks (${suRooms.length})` },
     { id: 'activity', label: 'Activity' }
@@ -438,6 +450,12 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
           </div>
         </div>
 
+        {/* Archive workflow and family grouping */}
+        <div className="px-4 py-3 border-b border-[#e5e5e5] space-y-2">
+          <SUArchivePanel serviceUser={serviceUser} onChanged={onRefreshData} />
+          <SuFamilyPanel suId={serviceUser.id} onOpenProfile={onOpenServiceUser} />
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 px-4 border-b border-[#e5e5e5] bg-[#faf9f8] overflow-x-auto">
           {tabs.map(tab => (
@@ -541,7 +559,13 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
           {activeTab === 'referrals' && <SUReferralsTab rows={suRecords.referrals} />}
           {activeTab === 'gp' && <SUGpTab rows={suRecords.gp} />}
           {activeTab === 'peep' && <SUPeepTab suId={serviceUser.id} searchText={serviceUser.externalReference || serviceUser.suReference} />}
-          {activeTab === 'transport' && <SUTransportTab rows={suRecords.transport} />}
+          {activeTab === 'transport' && (
+            <div className="space-y-3">
+              <SuOysterUsage suId={serviceUser.id} suName={`${serviceUser.firstName} ${serviceUser.lastName}`} />
+              <SUTransportTab rows={suRecords.transport} />
+            </div>
+          )}
+          {activeTab === 'education' && <SUEducationTab suId={serviceUser.id} suName={`${serviceUser.firstName} ${serviceUser.lastName}`} />}
 
           {activeTab === 'welfare' && (
             <div className="space-y-3">

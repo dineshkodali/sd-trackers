@@ -14,6 +14,7 @@ import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption } from '../common/ExportModal';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
+import { ArchiveRequestsQueue } from './SUArchivePanel';
 
 const suExportColumns: ExportColumnOption[] = [
   { id: 'suReference', label: 'SU ID', defaultSelected: true },
@@ -32,7 +33,7 @@ export const ServiceUsersView: React.FC = () => {
   const {
     irRecords, challengingSUs, referrals, welfareChecks, rfaWelfareRecords, mhComplaintWelfareRecords,
     gpAppointmentRecords, publicTransportRecords,
-    sites, canAccessAllSites, assignedSite, allowedSites, isSitePermitted, canManageUsers, requestConfirmation } = useApp();
+    sites, canAccessAllSites, assignedSite, allowedSites, defaultSiteFilter, isSitePermitted, canManageUsers, requestConfirmation } = useApp();
   const canCRUD = canManageUsers();
   const [profileInitialTab, setProfileInitialTab] = useState<string | undefined>(undefined);
 
@@ -43,12 +44,12 @@ export const ServiceUsersView: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // Initial site filter based on permissions (maps assigned site name to site id if needed)
+  // Follows the property chosen in the top bar (defaultSiteFilter already honours the user's permitted sites)
   const initialSiteFilter = useMemo(() => {
-    if (canAccessAllSites() || (allowedSites || []).length > 1) return 'all';
-    if (!assignedSite || assignedSite === 'All Sites' || assignedSite === 'all') return 'all';
-    const found = sites.find(s => s.name === assignedSite || s.id === assignedSite);
-    return found ? found.id : assignedSite;
-  }, [sites, assignedSite, canAccessAllSites, allowedSites]);
+    if (!defaultSiteFilter || defaultSiteFilter === 'all' || defaultSiteFilter === 'All Sites') return 'all';
+    const found = sites.find(s => s.name === defaultSiteFilter || s.id === defaultSiteFilter);
+    return found ? found.id : defaultSiteFilter;
+  }, [sites, defaultSiteFilter]);
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -162,7 +163,8 @@ export const ServiceUsersView: React.FC = () => {
     try {
       const activeSiteId = siteFilter !== 'all' && siteFilter !== 'All Sites' ? siteFilter : undefined;
       const [suRes, propRes, plcRes] = await Promise.all([
-        suPropertyService.getServiceUsers(activeSiteId),
+        // Archived people are loaded only when the Archived filter is chosen
+        suPropertyService.getServiceUsers(activeSiteId, { includeArchived: statusFilter === 'Archived' }),
         suPropertyService.getProperties(activeSiteId),
         suPropertyService.getPlacements({ siteId: activeSiteId })
       ]);
@@ -207,7 +209,7 @@ export const ServiceUsersView: React.FC = () => {
 
   useEffect(() => {
     loadMasterData();
-  }, [siteFilter]);
+  }, [siteFilter, statusFilter === 'Archived']);
 
   useEffect(() => {
     const handleUpdate = () => { loadMasterData(); };
@@ -300,7 +302,16 @@ export const ServiceUsersView: React.FC = () => {
             setSelectedSUForEdit(su);
             setIsCreateModalOpen(true);
           }}
-          onRefreshData={loadMasterData}
+          onRefreshData={async () => {
+            await loadMasterData();
+            // The open profile keeps its own copy of the record: refresh it so a new archive status shows at once
+            const fresh = await suPropertyService.getServiceUser(selectedSUForProfile.id);
+            if (fresh.success && fresh.data) setSelectedSUForProfile(fresh.data);
+          }}
+          onOpenServiceUser={async (suId) => {
+            const next = await suPropertyService.getServiceUser(suId);
+            if (next.success && next.data) { setProfileInitialTab(undefined); setSelectedSUForProfile(next.data); }
+          }}
         />
 
         <ServiceUserFormModal
@@ -327,6 +338,10 @@ export const ServiceUsersView: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full animate-fade-in">
+      <ArchiveRequestsQueue
+        nameOf={id => { const u = serviceUsers.find(x => x.id === id); return u ? `${u.firstName} ${u.lastName}` : 'Service User'; }}
+        onChanged={loadMasterData}
+      />
       {loadError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-xs flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-2">
@@ -446,6 +461,7 @@ export const ServiceUsersView: React.FC = () => {
               <option value="Pending">Pending</option>
               <option value="Inactive">Inactive</option>
               <option value="Discharged">Discharged</option>
+              <option value="Archived">Archived</option>
             </select>
           </div>
 

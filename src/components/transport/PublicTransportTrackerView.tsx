@@ -18,8 +18,10 @@ import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from
 import { TransportFeedbackSection } from './TransportFeedbackSection';
 import { TransportChallengesSection } from './TransportChallengesSection';
 import { TransportFundingSection } from './TransportFundingSection';
+import { OysterCardsSection } from './OysterCardsSection';
+import { TabSwitcher } from '../common/TrackerLayout';
 
-export type TransportTab = 'overview' | 'feedback' | 'challenges' | 'funding';
+export type TransportTab = 'overview' | 'feedback' | 'challenges' | 'funding' | 'oyster';
 
 const transportExportColumns: ExportColumnOption[] = [
   { id: 'approvalUrn', label: 'Approval URN' },
@@ -310,126 +312,42 @@ export const PublicTransportTrackerView: React.FC = () => {
     return String(value);
   };
 
+  const tabSwitcher = (
+    <TabSwitcher
+      label="Public transport sections"
+      active={activeTab}
+      onChange={id => setActiveTab(id as TransportTab)}
+      tabs={[
+        { id: 'overview', label: `Transport Authorizations (${publicTransportRecords.length})` },
+        { id: 'feedback', label: `Journey Feedback (${transportFeedbackRecords.length})` },
+        { id: 'challenges', label: `Site Challenges (${transportChallengeRecords.length})` },
+        { id: 'funding', label: `Funding Requests (${transportFundingRequests.length})` },
+        { id: 'oyster', label: 'Oyster Cards' }
+      ]}
+    />
+  );
+
   return (
     <div className="space-y-4">
-      {/* Unified Top Banner with Tab Switcher */}
-      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-purple-50 border border-purple-200 text-[#8764b8] rounded-xs">
-              <Bus className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-[#242424] tracking-tight">Public Transport</h1>
-                <span className="text-xs bg-purple-50 text-[#8764b8] font-semibold px-2 py-0.5 rounded-xs border border-purple-200">
-                  {activeTab === 'overview' ? `${filteredRecords.length} Authorizations` :
-                   activeTab === 'feedback' ? `${transportFeedbackRecords.length} Feedbacks` :
-                   activeTab === 'challenges' ? `${transportChallengeRecords.length} Periods` :
-                   `${transportFundingRequests.length} Requests`}
-                </span>
-              </div>
-              <p className="text-xs text-neutral-500">
-                Single operational location for journey authorizations, feedback, site challenges, and funding requests.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Tab Switcher Pills */}
-            <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-xs border border-[#e5e5e5]">
-              <button
-                type="button"
-                onClick={() => setActiveTab('overview')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer ${
-                  activeTab === 'overview'
-                    ? 'bg-white text-[#8764b8] shadow-2xs'
-                    : 'text-[#605e5c] hover:text-[#242424]'
-                }`}
-              >
-                <Bus className="w-3.5 h-3.5" />
-                <span>Overview</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  activeTab === 'overview' ? 'bg-purple-100 text-[#8764b8]' : 'bg-[#e1dfdd] text-[#605e5c]'
-                }`}>
-                  {filteredRecords.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('feedback')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer ${
-                  activeTab === 'feedback'
-                    ? 'bg-white text-[#8764b8] shadow-2xs'
-                    : 'text-[#605e5c] hover:text-[#242424]'
-                }`}
-              >
-                <MessageSquareWarning className="w-3.5 h-3.5" />
-                <span>Feedback</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  activeTab === 'feedback' ? 'bg-purple-100 text-[#8764b8]' : 'bg-[#e1dfdd] text-[#605e5c]'
-                }`}>
-                  {transportFeedbackRecords.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('challenges')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer ${
-                  activeTab === 'challenges'
-                    ? 'bg-white text-[#8764b8] shadow-2xs'
-                    : 'text-[#605e5c] hover:text-[#242424]'
-                }`}
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>Challenges</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  activeTab === 'challenges' ? 'bg-purple-100 text-[#8764b8]' : 'bg-[#e1dfdd] text-[#605e5c]'
-                }`}>
-                  {transportChallengeRecords.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('funding')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer ${
-                  activeTab === 'funding'
-                    ? 'bg-white text-[#8764b8] shadow-2xs'
-                    : 'text-[#605e5c] hover:text-[#242424]'
-                }`}
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span>Funding Requests</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  activeTab === 'funding' ? 'bg-purple-100 text-[#8764b8]' : 'bg-[#e1dfdd] text-[#605e5c]'
-                }`}>
-                  {transportFundingRequests.length}
-                </span>
-              </button>
-            </div>
-
-            {!canAccessAllSites() && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xs bg-slate-50 text-xs text-slate-700 border border-slate-200">
-                <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                <span className="font-semibold">{assignedSite || 'Assigned Hotel'}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* 1. OVERVIEW TAB: Transport Authorizations (Filters + Table only) */}
       {activeTab === 'overview' && (
         <>
           {/* Header, Actions & Filters card */}
           <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-bold text-[#242424]">Transport Authorizations</h2>
-                <p className="text-xs text-neutral-500">Record, verify, and audit public transport allowances and exceptional travel authorizations.</p>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
+                  <Bus className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-base font-bold text-[#242424] tracking-tight">Public Transport</h1>
+                    <span className="text-xs bg-[#f0fdfa] text-[#0f766e] font-semibold px-2 py-0.5 rounded-xs border border-[#99f6e4]">
+                      {filteredRecords.length} Authorizations
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-500">Journey authorizations, feedback, site challenges, funding requests and Oyster cards in one place.</p>
+                </div>
               </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -468,6 +386,8 @@ export const PublicTransportTrackerView: React.FC = () => {
             )}
           </div>
         </div>
+
+        {tabSwitcher}
 
         {/* Integrated Filter Row */}
         <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -604,13 +524,16 @@ export const PublicTransportTrackerView: React.FC = () => {
     )}
 
     {/* 2. TRANSPORT FEEDBACK TAB */}
-    {activeTab === 'feedback' && <TransportFeedbackSection />}
+    {activeTab === 'feedback' && <TransportFeedbackSection tabSwitcher={tabSwitcher} />}
 
     {/* 3. TRANSPORT CHALLENGES TAB */}
-    {activeTab === 'challenges' && <TransportChallengesSection />}
+    {activeTab === 'challenges' && <TransportChallengesSection tabSwitcher={tabSwitcher} />}
 
     {/* 4. FUNDING REQUESTS TAB */}
-    {activeTab === 'funding' && <TransportFundingSection />}
+    {activeTab === 'funding' && <TransportFundingSection tabSwitcher={tabSwitcher} />}
+
+    {/* 5. OYSTER CARDS TAB */}
+    {activeTab === 'oyster' && <OysterCardsSection tabSwitcher={tabSwitcher} />}
 
       {/* Dynamic Create Modal */}
       <DynamicRecordFormModal<PublicTransportRecord>

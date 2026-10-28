@@ -1166,7 +1166,9 @@ export type FundingRequestStatus =
   | 'Clarification Required'
   | 'Approved'
   | 'Rejected'
-  | 'Completed';
+  | 'Issued'
+  | 'Completed'
+  | 'Cancelled';
 
 export interface TransportFundingRequestRecord {
   id: string;
@@ -1211,6 +1213,20 @@ export interface TransportFundingRequestRecord {
   approvedBy?: string;
   approvalDate?: string;
   internalComments?: string;
+
+  /** The Oyster card the site chose on the form (a choice only: the card is held when it is issued) */
+  oysterCardId?: string;
+
+  // Workflow trail (set only by the approval workflow)
+  requestedById?: string;
+  requestedBy?: string;
+  submittedAt?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  issuedBy?: string;
+  issuedAt?: string;
+  completedAt?: string;
+  completionNotes?: string;
 
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
