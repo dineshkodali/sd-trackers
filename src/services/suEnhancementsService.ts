@@ -1,4 +1,5 @@
-import { apiService, authHeaders, getApiUrl } from './apiService';
+import { apiService } from './apiService';
+import { callWorkflow } from './workflowClient';
 import {
   validateHc2, validateMealEntry, validateEducation, mealRecordId
 } from '../utils/suEnhancementsLogic';
@@ -95,13 +96,7 @@ async function update<T>(entity: string, id: string, patch: any, audit: { module
 }
 
 async function postJson<T = any>(path: string, body: unknown, method: 'POST' | 'DELETE' = 'POST'): Promise<{ ok: boolean; status: number; json: any }> {
-  try {
-    const res = await fetch(getApiUrl(path), { method, headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: method === 'POST' ? JSON.stringify(body) : undefined });
-    const json = await res.json().catch(() => ({}));
-    return { ok: res.ok && json?.success !== false, status: res.status, json };
-  } catch (err: any) {
-    return { ok: false, status: 0, json: { error: `Network error: ${err.message}` } };
-  }
+  return callWorkflow(path, body, method);
 }
 
 export const suEnhancementsService = {
@@ -145,11 +140,8 @@ export const suEnhancementsService = {
 
   /** A short-lived link; opened straight away, never stored. */
   async getHc2DocumentUrl(suId: string): Promise<Result<string>> {
-    try {
-      const res = await fetch(getApiUrl(`/api/su/hc2/${encodeURIComponent(suId)}/document`), { headers: authHeaders() });
-      const json = await res.json().catch(() => ({}));
-      return res.ok && json?.url ? ok(json.url as string) : fail(json?.error);
-    } catch (err: any) { return fail(`Network error: ${err.message}`); }
+    const r = await callWorkflow(`/api/su/hc2/${encodeURIComponent(suId)}/document`, undefined, 'GET');
+    return r.ok && r.json?.url ? ok(r.json.url as string) : fail(r.json?.error);
   },
 
   async removeHc2Document(suId: string): Promise<Result<null>> {

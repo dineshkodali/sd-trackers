@@ -13,7 +13,7 @@ This directory contains technical and design documentation for the **SD Operatio
 - [**Interactive UI Kit Preview**](./ui-kit.html): Standalone HTML preview to inspect interactive components, badges, buttons, and test states.
 
 ## Operations & Support Manuals
-- [**Documentation & Operational Pack**](./documentation-pack/index.html): Standard operating procedures, SLA & incident remediation framework, change management, and executive checklists.
+- [**Documentation & Operational Pack**](../.document-pack/index.html): Standard operating procedures, SLA & incident remediation framework, change management, and executive checklists.
 
 ## Testing & Quality Assurance
 - [**QA Remediation Guide**](./qa-remediation.md): Test execution, failure report remediation workflows, and verification procedures.

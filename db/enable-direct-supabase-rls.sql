@@ -77,7 +77,35 @@ DECLARE
     'inventory_movements',
     'room_kit_templates',
     'room_issues',
-    'room_activity_log'
+    'room_activity_log',
+    -- CRM updates & new modules (migration 018)
+    'mh_complaint_welfare_checks',
+    'daily_laundry_logs',
+    'housekeeping_logs',
+    'housekeeping_room_logs',
+    'food_consumption_reports',
+    'food_box_requests',
+    -- GP, PEEP & attendance (migration 020)
+    'gp_registrations',
+    'peep_plans',
+    'peep_plan_history',
+    'su_attendance_records',
+    'absence_followups',
+    -- Service User enhancements (migration 021)
+    'su_hc2_details',
+    'oyster_cards',
+    'oyster_card_events',
+    'su_meal_records',
+    'su_meal_record_history',
+    'su_education_details',
+    'family_groups',
+    'family_members',
+    'su_archive_requests',
+    -- Transport funding workflow (migration 022)
+    'transport_funding_requests',
+    'transport_funding_status_history',
+    -- Oyster card inventory (migration 023)
+    'oyster_card_transactions'
   ];
   t TEXT;
 BEGIN
@@ -134,5 +162,38 @@ BEGIN
 END $$;
 
 
+-- Allow authenticated & anon to run workflow RPCs
+DO $$
+BEGIN
+  IF to_regprocedure('public.request_su_archive(TEXT,TEXT,TEXT,TEXT,TEXT)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.request_su_archive(TEXT,TEXT,TEXT,TEXT,TEXT) TO authenticated, anon;
+  END IF;
+  IF to_regprocedure('public.decide_su_archive_request(TEXT,TEXT,TEXT,TEXT,TEXT)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.decide_su_archive_request(TEXT,TEXT,TEXT,TEXT,TEXT) TO authenticated, anon;
+  END IF;
+  IF to_regprocedure('public.add_household_member(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.add_household_member(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT) TO authenticated, anon;
+  END IF;
+  IF to_regprocedure('public.remove_household_member(TEXT,TEXT,TEXT,TEXT,TEXT)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.remove_household_member(TEXT,TEXT,TEXT,TEXT,TEXT) TO authenticated, anon;
+  END IF;
+  IF to_regprocedure('public.set_household_relationship(TEXT,TEXT,TEXT,TEXT,TEXT)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.set_household_relationship(TEXT,TEXT,TEXT,TEXT,TEXT) TO authenticated, anon;
+  END IF;
+  IF to_regprocedure('public.transition_transport_funding(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,JSONB)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.transition_transport_funding(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,JSONB) TO authenticated, anon;
+  END IF;
+  IF to_regprocedure('public.issue_oyster_card(TEXT,TEXT,TEXT,NUMERIC,DATE,TEXT,TEXT,TEXT)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.issue_oyster_card(TEXT,TEXT,TEXT,NUMERIC,DATE,TEXT,TEXT,TEXT) TO authenticated, anon;
+  END IF;
+  IF to_regprocedure('public.return_oyster_card(TEXT,NUMERIC,TEXT,TEXT,DATE,TEXT,TEXT,TEXT)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.return_oyster_card(TEXT,NUMERIC,TEXT,TEXT,DATE,TEXT,TEXT,TEXT) TO authenticated, anon;
+  END IF;
+  IF to_regprocedure('public.set_oyster_balance(TEXT,NUMERIC,TEXT,TEXT,TEXT)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.set_oyster_balance(TEXT,NUMERIC,TEXT,TEXT,TEXT) TO authenticated, anon;
+  END IF;
+END $$;
+
 -- Refresh PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
+

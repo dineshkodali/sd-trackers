@@ -138,6 +138,11 @@ export function setAuditUserContext(ctx: AuditUserContext | null): void {
   activeAuditContext = ctx;
 }
 
+/** The signed-in user the direct (browser to database) workflows act as. */
+export function getAuditUserContext(): AuditUserContext | null {
+  return activeAuditContext;
+}
+
 export function isDirectSupabaseActive(): boolean {
   return directFallbackActive || shouldPreferDirectSupabase();
 }
@@ -152,6 +157,28 @@ export function enableDirectSupabaseFallback(): void {
 }
 
 export function shouldPreferDirectSupabase(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      if (sessionStorage.getItem('sd_direct_supabase') === 'true') {
+        directFallbackActive = true;
+        return true;
+      }
+    } catch {}
+    const override = localStorage.getItem('sd_api_url');
+    if (override) return false;
+    const envVal = (import.meta as any).env?.VITE_API_URL || '';
+    if (!envVal) {
+      const host = window.location.hostname;
+      if (
+        host.endsWith('amplifyapp.com') ||
+        host.includes('amplify') ||
+        host.endsWith('sdcdms.co.uk') ||
+        host.includes('sdcdms')
+      ) {
+        return true;
+      }
+    }
+  }
   return false;
 }
 

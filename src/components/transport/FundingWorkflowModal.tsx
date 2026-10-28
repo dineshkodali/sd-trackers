@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ShieldCheck } from 'lucide-react';
-import { apiService, authHeaders, getApiUrl } from '../../services/apiService';
+import { apiService } from '../../services/apiService';
+import { callWorkflow } from '../../services/workflowClient';
 import { useApp } from '../../context/AppContext';
 import type { TransportFundingRequestRecord } from '../../types';
 import {
@@ -58,11 +59,8 @@ export const FundingWorkflowModal: React.FC<{ item: TransportFundingRequestRecor
     if (invalid) { setError(invalid); return; }
     lock.current = true; setBusy(true); setError('');
     try {
-      const res = await fetch(getApiUrl(`/api/transport-funding/${encodeURIComponent(item.id)}/transition`), {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ to: edge.to, ...input })
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json?.success === false) { setError(json?.error || `The change was not saved (HTTP ${res.status}).`); return; }
+      const res = await callWorkflow(`/api/transport-funding/${encodeURIComponent(item.id)}/transition`, { to: edge.to, ...input });
+      if (!res.ok) { setError(res.json?.error || `The change was not saved (HTTP ${res.status}).`); return; }
       onChanged();
       onClose();
     } catch (err: any) {

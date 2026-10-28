@@ -159,6 +159,32 @@ export const ENTITY_TABLE_MAP: Record<string, EntityMapping> = {
   service_user_documents: { table: 'service_user_documents' },
   placements: { table: 'placements' },
 
+  // Service User enhancements (migrations 021-024); reachable from the browser through migration 025
+  suHc2: { table: 'su_hc2_details' },
+  su_hc2_details: { table: 'su_hc2_details' },
+  oysterCards: { table: 'oyster_cards' },
+  oyster_cards: { table: 'oyster_cards' },
+  oysterCardEvents: { table: 'oyster_card_events' },
+  oyster_card_events: { table: 'oyster_card_events' },
+  oysterTransactions: { table: 'oyster_card_transactions' },
+  oyster_card_transactions: { table: 'oyster_card_transactions' },
+  suMeals: { table: 'su_meal_records' },
+  su_meal_records: { table: 'su_meal_records' },
+  suMealHistory: { table: 'su_meal_record_history' },
+  su_meal_record_history: { table: 'su_meal_record_history' },
+  suEducation: { table: 'su_education_details' },
+  su_education_details: { table: 'su_education_details' },
+  familyGroups: { table: 'family_groups' },
+  family_groups: { table: 'family_groups' },
+  familyMembers: { table: 'family_members' },
+  family_members: { table: 'family_members' },
+  suArchiveRequests: { table: 'su_archive_requests' },
+  su_archive_requests: { table: 'su_archive_requests' },
+  transportFundingRequests: { table: 'transport_funding_requests' },
+  transport_funding_requests: { table: 'transport_funding_requests' },
+  transportFundingHistory: { table: 'transport_funding_status_history' },
+  transport_funding_status_history: { table: 'transport_funding_status_history' },
+
   // MH Complaint Welfare, Daily Laundry, Housekeeping, and Food Consumption
   mhComplaintWelfare: { table: 'mh_complaint_welfare_checks' },
   mh_complaint_welfare_checks: { table: 'mh_complaint_welfare_checks' },
@@ -582,7 +608,7 @@ export async function directGetDbStatus(): Promise<{
   }
 }
 
-async function recordDirectAudit(
+export async function recordDirectAudit(
   defaultAction: 'CREATE' | 'UPDATE' | 'DELETE',
   entity: string,
   record: any,
