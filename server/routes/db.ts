@@ -1028,10 +1028,10 @@ router.get('/crm-updates-migration-sql', requireRole(...ADMIN_ROLES), (_req: Req
   res.type('text/plain').send(sql);
 });
 
-// GET /api/db/su-enhancements-migration-sql - migrations 021, 022 and 023 in order, for the Supabase SQL editor.
+// GET /api/db/su-enhancements-migration-sql - migrations 021 to 024 in order, for the Supabase SQL editor.
 // They need migrations 012 (service users) and 014 (public transport) to be applied first.
 router.get('/su-enhancements-migration-sql', requireRole(...ADMIN_ROLES), (_req: Request, res: Response) => {
-  const files = ['021_su_enhancements.sql', '022_transport_funding_workflow.sql', '023_oyster_card_inventory.sql'];
+  const files = ['021_su_enhancements.sql', '022_transport_funding_workflow.sql', '023_oyster_card_inventory.sql', '024_shared_household.sql'];
   const parts: string[] = [];
   for (const f of files) {
     const migPath = path.join(process.cwd(), 'db', 'migrations', f);

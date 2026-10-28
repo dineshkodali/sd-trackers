@@ -1,4 +1,4 @@
-// Applies migrations 014, 021, 022 and 023 to an in-process Postgres (PGlite) and checks their rules. No database or .env needed.
+// Applies migrations 014, 021, 022, 023 and 024 to an in-process Postgres (PGlite) and checks their rules. No database or .env needed.
 // Run:  npm i --no-save @electric-sql/pglite   then   node scripts/db/pg-validate/validate.mjs
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,11 +6,12 @@ import { PGlite } from '@electric-sql/pglite';
 import fs from 'node:fs';
 import { run022 } from './tests022.mjs';
 import { run023 } from './tests023.mjs';
+import { run024 } from './tests024.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const migrations = path.join(here, '..', '..', '..', 'db', 'migrations');
 const files = process.argv.length > 2 ? process.argv.slice(2)
-  : ['014_public_transport_enhancements.sql', '021_su_enhancements.sql', '022_transport_funding_workflow.sql', '023_oyster_card_inventory.sql'].map(f => path.join(migrations, f));
+  : ['014_public_transport_enhancements.sql', '021_su_enhancements.sql', '022_transport_funding_workflow.sql', '023_oyster_card_inventory.sql', '024_shared_household.sql'].map(f => path.join(migrations, f));
 const db = new PGlite();
 
 // Minimal Supabase-like surroundings the migration expects
@@ -152,5 +153,6 @@ if (files.some(f => f.includes('021'))) {
 
 if (files.some(f => f.includes('022'))) await run022({ db, t, rejects });
 if (files.some(f => f.includes('023'))) await run023({ db, t, rejects });
+if (files.some(f => f.includes('024'))) await run024({ db, t, rejects });
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -209,3 +209,35 @@ test('API scope: every new SU-linked table is scoped through its Service User', 
     assert.deepEqual(TABLE_PARENT_SCOPE[table], { linkColumn: 'su_id', linkField: 'suId', parentTable: 'service_users' });
   }
 });
+
+import { searchableForHousehold, HOUSEHOLD_RELATIONSHIPS } from '../src/utils/suEnhancementsLogic.ts';
+
+test('household search: existing people only, never yourself, current members or archived; other households are marked', () => {
+  const people = [
+    { id: 'f', firstName: 'Omar', lastName: 'Khan', suReference: 'SU-1', externalReference: 'PORT-1' },
+    { id: 'm', firstName: 'Mina', lastName: 'Khan', suReference: 'SU-2' },
+    { id: 'd', firstName: 'Dina', lastName: 'Khan', suReference: 'SU-3' },
+    { id: 'x', firstName: 'Xavier', lastName: 'Khan', suReference: 'SU-4' },
+    { id: 'z', firstName: 'Zed', lastName: 'Khan', suReference: 'SU-5', status: 'Archived' },
+    { id: 'o', firstName: 'Olga', lastName: 'Other', suReference: 'SU-6' }
+  ];
+  const thisHousehold = [{ id: '1', familyId: 'fam', suId: 'f', status: 'Active' }, { id: '2', familyId: 'fam', suId: 'm', status: 'Active' }];
+  const everyone = [...thisHousehold, { id: '3', familyId: 'fam2', suId: 'x', status: 'Active' }, { id: '4', familyId: 'fam', suId: 'd', status: 'Removed' }];
+  const ids = (q: string) => searchableForHousehold(people, q, 'f', thisHousehold, everyone).map(r => `${r.su.id}${r.inOtherHousehold ? '*' : ''}`);
+  assert.deepEqual(ids('k'), []);                          // fewer than two characters: nothing
+  assert.deepEqual(ids('khan'), ['d', 'x*']);              // not f (self), not m (already in), not z (archived); x is in another household
+  assert.deepEqual(ids('port-1'), []);                     // the only match is the person themselves
+  assert.deepEqual(ids('su-6'), ['o']);
+  assert.deepEqual(ids('dina'), ['d']);                    // a removed member can be added again
+});
+
+test('household relationships include the family terms staff use, and keep older recorded values readable', () => {
+  for (const r of ['Father', 'Mother', 'Son', 'Daughter', 'Husband', 'Wife', 'Brother', 'Sister']) assert.ok((HOUSEHOLD_RELATIONSHIPS as readonly string[]).includes(r), r);
+});
+
+test('migration 024 locks people in order, is closed to the browser, and schema.sql carries it verbatim', () => {
+  const sql = fs.readFileSync('db/migrations/024_shared_household.sql', 'utf8');
+  for (const needle of ['ORDER BY id FOR UPDATE', 'A person cannot be linked to themselves', 'already in another household', 'Household ended',
+    'REVOKE ALL ON FUNCTION public.add_household_member', 'REVOKE ALL ON FUNCTION public.remove_household_member']) assert.ok(sql.includes(needle), needle);
+  assert.ok(fs.readFileSync('db/schema.sql', 'utf8').includes(sql.trim()), 'db/schema.sql must include migration 024 verbatim');
+});

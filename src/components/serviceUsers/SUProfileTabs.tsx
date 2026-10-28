@@ -381,7 +381,7 @@ export const SUHouseholdTab: React.FC<SUHouseholdTabProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="font-bold text-xs text-neutral-800">Associated Household &amp; Dependents</h4>
+        <div><h4 className="font-bold text-xs text-neutral-800">Other dependants</h4><p className="text-[11px] text-neutral-500">For people who are not registered as Service Users. Registered family members are linked in the household above.</p></div>
         {canCRUD && onAddMember && (
           <button
             type="button"

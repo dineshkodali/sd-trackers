@@ -94,7 +94,11 @@ export function educationSummary(current?: { educationStatus: string; schoolName
 }
 
 /* --------------------------------------------------------------------------------------------------- Family */
-export const FAMILY_RELATIONSHIPS = ['Parent', 'Guardian', 'Partner', 'Child', 'Sibling', 'Other relative', 'Other'] as const;
+/** How a member is described in a household. Older values (Parent, Child, Sibling...) recorded earlier still display. */
+export const HOUSEHOLD_RELATIONSHIPS = [
+  'Father', 'Mother', 'Husband', 'Wife', 'Partner', 'Son', 'Daughter', 'Brother', 'Sister', 'Grandparent', 'Grandchild', 'Guardian', 'Other relative', 'Other'
+] as const;
+export const FAMILY_RELATIONSHIPS = HOUSEHOLD_RELATIONSHIPS;
 
 export interface FamilyMemberLike { id: string; familyId: string; suId: string; status: string }
 
@@ -107,6 +111,27 @@ export function activeFamilyOf<T extends FamilyMemberLike>(members: T[], suId: s
 export function addableToFamily<S extends { id: string; archiveStatus?: string; status?: string }>(sus: S[], members: FamilyMemberLike[]): S[] {
   const taken = new Set(members.filter(m => m.status === 'Active').map(m => m.suId));
   return sus.filter(s => !taken.has(s.id) && s.status !== 'Archived' && s.archiveStatus !== 'Archived');
+}
+
+export interface HouseholdCandidate<S> { su: S; inOtherHousehold: boolean }
+
+/**
+ * Existing Service Users that can be searched for when adding to a household: matches by name or reference (at least two characters),
+ * never the person themselves, anyone already in this household, or anyone archived. People who already belong to a different
+ * household are listed but marked, because they must leave it first.
+ */
+export function searchableForHousehold<S extends { id: string; firstName: string; lastName: string; suReference?: string; externalReference?: string; status?: string; archiveStatus?: string }>(
+  people: S[], query: string, selfId: string, thisHousehold: FamilyMemberLike[], allMemberships: FamilyMemberLike[], limit = 50
+): HouseholdCandidate<S>[] {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return [];
+  const inThis = new Set(thisHousehold.filter(m => m.status === 'Active').map(m => m.suId));
+  const inAny = new Set(allMemberships.filter(m => m.status === 'Active').map(m => m.suId));
+  return people
+    .filter(p => p.id !== selfId && !inThis.has(p.id) && p.status !== 'Archived' && p.archiveStatus !== 'Archived')
+    .filter(p => `${p.firstName} ${p.lastName} ${p.suReference || ''} ${p.externalReference || ''}`.toLowerCase().includes(q))
+    .slice(0, limit)
+    .map(p => ({ su: p, inOtherHousehold: inAny.has(p.id) }));
 }
 
 /* ------------------------------------------------------------------------------------------------- Archive */

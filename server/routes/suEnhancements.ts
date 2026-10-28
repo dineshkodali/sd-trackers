@@ -175,4 +175,60 @@ router.delete('/hc2/:suId/document', async (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
+// ------------------------------------------------------------------------------------------------------------ household
+// A household is the shared family group (migration 021). These actions work from any member's profile and change the one shared record,
+// so every linked profile shows the same members. Each is one database function (migration 024).
+const householdActor = (req: Request, res: Response) => {
+  if (!req.user || !isSuManager(req.user.role)) { res.status(403).json({ success: false, error: 'Insufficient privileges for this operation' }); return false; }
+  return true;
+};
+
+// POST /api/su/household/add  { anchorSuId, memberSuId, relationship, anchorRelationship? }
+router.post('/household/add', async (req: Request, res: Response) => {
+  const client = db(res);
+  if (!client || !householdActor(req, res)) return;
+  const anchor = cleanText(req.body?.anchorSuId, 200), member = cleanText(req.body?.memberSuId, 200);
+  if (!anchor || !member) return res.status(400).json({ success: false, error: 'Choose the Service User to add.' });
+  if (anchor === member) return res.status(400).json({ success: false, error: 'A person cannot be linked to themselves.' });
+  if (!(await visibleServiceUser(client, req, anchor)) || !(await visibleServiceUser(client, req, member))) {
+    return res.status(404).json({ success: false, error: 'Service User not found.' });
+  }
+  const { data, error } = await client.rpc('add_household_member', {
+    p_anchor_su: anchor, p_member_su: member, p_relationship: cleanText(req.body?.relationship, 60), p_anchor_relationship: cleanText(req.body?.anchorRelationship, 60),
+    p_user: req.user!.name || req.user!.email, p_role: req.user!.role
+  });
+  if (error) return res.status(httpStatusForDbError(error)).json({ success: false, error: error.message });
+  recordAuditTrailEntry(req, { defaultAction: 'UPDATE', entity: 'familyMembers', entityId: member, defaultDetails: `Added Service User [${member}] to the household of [${anchor}]` });
+  res.status(201).json({ success: true, member: data });
+});
+
+// POST /api/su/household/remove  { familyId, suId, reason }
+router.post('/household/remove', async (req: Request, res: Response) => {
+  const client = db(res);
+  if (!client || !householdActor(req, res)) return;
+  const familyId = cleanText(req.body?.familyId, 200), suId = cleanText(req.body?.suId, 200);
+  if (!familyId || !suId) return res.status(400).json({ success: false, error: 'Choose the household member to remove.' });
+  if (!(await visibleServiceUser(client, req, suId))) return res.status(404).json({ success: false, error: 'Service User not found.' });
+  const { data, error } = await client.rpc('remove_household_member', {
+    p_family_id: familyId, p_su_id: suId, p_reason: cleanText(req.body?.reason), p_user: req.user!.name || req.user!.email, p_role: req.user!.role
+  });
+  if (error) return res.status(httpStatusForDbError(error)).json({ success: false, error: error.message });
+  recordAuditTrailEntry(req, { defaultAction: 'UPDATE', entity: 'familyMembers', entityId: suId, defaultDetails: `Removed Service User [${suId}] from household [${familyId}]` });
+  res.json({ success: true, household: data });
+});
+
+// POST /api/su/household/relationship  { familyId, suId, relationship }
+router.post('/household/relationship', async (req: Request, res: Response) => {
+  const client = db(res);
+  if (!client || !householdActor(req, res)) return;
+  const familyId = cleanText(req.body?.familyId, 200), suId = cleanText(req.body?.suId, 200);
+  if (!familyId || !suId) return res.status(400).json({ success: false, error: 'Choose the household member.' });
+  if (!(await visibleServiceUser(client, req, suId))) return res.status(404).json({ success: false, error: 'Service User not found.' });
+  const { data, error } = await client.rpc('set_household_relationship', {
+    p_family_id: familyId, p_su_id: suId, p_relationship: cleanText(req.body?.relationship, 60), p_user: req.user!.name || req.user!.email, p_role: req.user!.role
+  });
+  if (error) return res.status(httpStatusForDbError(error)).json({ success: false, error: error.message });
+  res.json({ success: true, member: data });
+});
+
 export default router;

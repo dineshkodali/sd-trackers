@@ -480,10 +480,10 @@ export const SupabaseBackendCard: React.FC = () => {
                   <button
                     onClick={handleCopySuEnhancementsSql}
                     className="px-2 py-1 bg-[#0d9488] hover:bg-[#0f766e] text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                    title="HC2, Oyster cards, SU meals, education, family groups, archive approval, funding workflow (migrations 021, 022, 023)"
+                    title="HC2, Oyster cards, SU meals, education, family groups, archive approval, funding workflow (migrations 021 to 024)"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>{copiedSql === 'su_enhancements' ? 'Copied' : 'Copy SU Enhancements SQL (021-023)'}</span>
+                    <span>{copiedSql === 'su_enhancements' ? 'Copied' : 'Copy SU Enhancements SQL (021-024)'}</span>
                   </button>
                   <a
                     href="https://supabase.com/dashboard/project/kxikojvpcyprfbyxsdaa/sql/new"
@@ -530,7 +530,7 @@ export const SupabaseBackendCard: React.FC = () => {
                             Connected
                           </span>
                         ) : (
-                          <span className="text-amber-700 font-semibold flex items-center gap-1" title={SU_ENHANCEMENT_TABLES.has(p.table) ? 'Table not found. Use "Copy SU Enhancements SQL (021-023)" above and run it in the Supabase SQL editor.' : 'Table not found in Supabase schema cache. Run the matching migration in the Supabase SQL editor.'}>
+                          <span className="text-amber-700 font-semibold flex items-center gap-1" title={SU_ENHANCEMENT_TABLES.has(p.table) ? 'Table not found. Use "Copy SU Enhancements SQL (021-024)" above and run it in the Supabase SQL editor.' : 'Table not found in Supabase schema cache. Run the matching migration in the Supabase SQL editor.'}>
                             <AlertCircle className="w-3 h-3 text-amber-600" />
                             Pending Migration (Run SQL)
                           </span>

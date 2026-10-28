@@ -23,7 +23,7 @@ import {
 import { SUActivityTimeline } from './SUActivityTimeline';
 import { SUArchivePanel } from './SUArchivePanel';
 import { SUEducationTab } from './SUEducationTab';
-import { SuFamilyPanel } from '../registers/FamilyGroupsSection';
+import { SUHousehold } from './SUHousehold';
 import { SuOysterUsage } from '../transport/OysterCardsSection';
 import { isChildByDob } from '../../utils/suEnhancementsLogic';
 import { MoveAccommodationModal } from './MoveAccommodationModal';
@@ -453,7 +453,6 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
         {/* Archive workflow and family grouping */}
         <div className="px-4 py-3 border-b border-[#e5e5e5] space-y-2">
           <SUArchivePanel serviceUser={serviceUser} onChanged={onRefreshData} />
-          <SuFamilyPanel suId={serviceUser.id} onOpenProfile={onOpenServiceUser} />
         </div>
 
         {/* Tab Navigation */}
@@ -508,12 +507,17 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
           )}
 
           {activeTab === 'household' && (
-            <SUHouseholdTab 
-              household={household}
-              onAddMember={handleAddHouseholdMember}
-              onDeleteMember={handleDeleteHouseholdMember}
-              canCRUD={canCRUD}
-            />
+            <div className="space-y-6">
+              <SUHousehold serviceUser={serviceUser} canManage={canCRUD} onOpenServiceUser={onOpenServiceUser} />
+              <div className="pt-4 border-t border-neutral-200">
+                <SUHouseholdTab
+                  household={household}
+                  onAddMember={handleAddHouseholdMember}
+                  onDeleteMember={handleDeleteHouseholdMember}
+                  canCRUD={canCRUD}
+                />
+              </div>
+            </div>
           )}
 
           {activeTab === 'support' && (

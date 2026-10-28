@@ -278,6 +278,24 @@ export const suEnhancementsService = {
       { module: 'Family Groups', targetItem: member.suId, details: `Removed from family group ${member.familyId}` });
   },
 
+  /* ------------------------------------------------------------------------------------------------- Household */
+  /** Add an existing Service User to the household of another; the household is created on the first add. One database transaction. */
+  async householdAdd(input: { anchorSuId: string; memberSuId: string; relationship?: string; anchorRelationship?: string }): Promise<Result<FamilyMember>> {
+    if (!input.memberSuId) return fail('Choose the Service User to add.');
+    if (input.memberSuId === input.anchorSuId) return fail('A person cannot be linked to themselves.');
+    const r = await postJson('/api/su/household/add', input);
+    return r.ok ? ok(r.json.member as FamilyMember) : fail(friendlyDbError(r.json?.error));
+  },
+  async householdRemove(familyId: string, suId: string, reason: string): Promise<Result<null>> {
+    if (clean(reason).length < 3) return fail('Enter a reason.');
+    const r = await postJson('/api/su/household/remove', { familyId, suId, reason });
+    return r.ok ? ok(null) : fail(friendlyDbError(r.json?.error));
+  },
+  async householdSetRelationship(familyId: string, suId: string, relationship: string): Promise<Result<FamilyMember>> {
+    const r = await postJson('/api/su/household/relationship', { familyId, suId, relationship });
+    return r.ok ? ok(r.json.member as FamilyMember) : fail(friendlyDbError(r.json?.error));
+  },
+
   /* ------------------------------------------------------------------------------------------------- Archive */
   listArchiveRequests: (opts: { suId?: string; status?: string } = {}) =>
     list<ArchiveRequest>('suArchiveRequests', { eq: { ...(opts.suId ? { su_id: opts.suId } : {}), ...(opts.status ? { status: opts.status } : {}) }, order: 'requested_at.desc' }),
