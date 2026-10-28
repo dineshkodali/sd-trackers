@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
+import { ClampedText } from '../common/ClampedText';
 import { Bus, Plus, Search, Edit3, Trash2, Eye, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, MessageSquareWarning, BarChart3, CreditCard, Building2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PublicTransportRecord } from '../../types';
@@ -309,7 +310,7 @@ export const PublicTransportTrackerView: React.FC = () => {
       return <span className="text-[#a19f9d]">—</span>;
     }
 
-    return String(value);
+    return <ClampedText text={String(value)} />;
   };
 
   const tabSwitcher = (

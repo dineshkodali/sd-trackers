@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
+import { ClampedText } from '../common/ClampedText';
 import { 
   Stethoscope, 
   Plus, 
@@ -293,7 +294,7 @@ const GPAppointmentsTab: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwi
       return <span className="text-[#a19f9d]">—</span>;
     }
 
-    return String(value);
+    return <ClampedText text={String(value)} />;
   };
 
   return (

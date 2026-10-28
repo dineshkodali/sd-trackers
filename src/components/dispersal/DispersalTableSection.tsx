@@ -16,6 +16,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { DispersalRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
+import { ClampedText } from '../common/ClampedText';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
@@ -290,7 +291,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
     if (col.key === 'flatRoomNumber') return <span className="font-semibold text-[#242424]">{value || '—'}</span>;
     if (col.key === 'sno') return <span className="text-[#605e5c] font-mono">{value || '—'}</span>;
     if (value === null || value === undefined || value === '') return <span className="text-[#a19f9d]">—</span>;
-    return String(value);
+    return <ClampedText text={String(value)} />;
   };
 
   return (

@@ -3,6 +3,7 @@ import { Building2, Calendar, Plus, Trash2, Edit3, Search, X, Flame, UtensilsCro
 import { useApp } from '../../context/AppContext';
 import { PropertyFoodVendorBuffetLog, FoodVendorName, FoodBuffetItemBreakdown } from '../../types';
 import { Pagination } from '../common/Pagination';
+import { ClampedText } from '../common/ClampedText';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -524,7 +525,7 @@ export const FoodVendorBuffetLogSection: React.FC<{ tabSwitcher?: React.ReactNod
       return <span className="text-[#a19f9d]">—</span>;
     }
 
-    return String(value);
+    return <ClampedText text={String(value)} />;
   };
 
   const handleSubmit = (e: React.FormEvent) => {

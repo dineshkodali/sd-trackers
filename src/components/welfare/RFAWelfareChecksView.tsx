@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
+import { ClampedText } from '../common/ClampedText';
 import { 
   HeartHandshake,
   UserCheck, 
@@ -294,7 +295,7 @@ export const RFAWelfareChecksView: React.FC = () => {
       return <span className="text-[#a19f9d]">—</span>;
     }
 
-    return String(value);
+    return <ClampedText text={String(value)} />;
   };
 
   return (

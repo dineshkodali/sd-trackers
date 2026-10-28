@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
+import { ClampedText } from '../common/ClampedText';
 import { 
   HeartHandshake, 
   Search, 
@@ -369,7 +370,7 @@ export const SDVCSDirectoryView: React.FC = () => {
       return <span className="text-[#a19f9d]">—</span>;
     }
 
-    return String(value);
+    return <ClampedText text={String(value)} />;
   };
 
   return (

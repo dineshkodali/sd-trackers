@@ -6,6 +6,7 @@ import { financeService } from '../../services/financeService';
 import { FinanceBillModal } from './FinanceBillModal';
 import { FinanceBillDetailModal } from './FinanceBillDetailModal';
 import { Pagination } from '../common/Pagination';
+import { ClampedText } from '../common/ClampedText';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -401,7 +402,7 @@ export const CreditCardBillsView: React.FC = () => {
       return <span className="font-mono text-[#323130]">{val ? String(val).slice(0, 10) : '—'}</span>;
     }
 
-    return <span>{val || '—'}</span>;
+    return val ? <ClampedText text={String(val)} /> : <span>—</span>;
   };
 
   return (

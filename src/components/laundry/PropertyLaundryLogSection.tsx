@@ -21,6 +21,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { PropertyLaundryLog, RecordAttachment } from '../../types';
 import { Pagination } from '../common/Pagination';
+import { ClampedText } from '../common/ClampedText';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -601,7 +602,7 @@ export const PropertyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode
       return <span className="text-[#a19f9d]">—</span>;
     }
 
-    return String(value);
+    return <ClampedText text={String(value)} />;
   };
 
   const paginatedData = useMemo(() => {
