@@ -99,3 +99,15 @@ If your Amplify site is already built and you need to immediately connect it to 
 3. Configure the subdomain: `trackers.sdcdms.co.uk` to point to the `main` branch.
 4. Amplify will provide the required **CNAME** records to paste into your DNS provider (Hostinger/Cloudflare).
 5. AWS Amplify will automatically provision and renew a free SSL/TLS certificate.
+
+## Hiding the Supabase address (route database calls through your domain)
+
+By default the browser talks straight to `https://<project>.supabase.co`, which is visible in the network tab. To show only your own domain, add this rule in the Amplify console under **Hosting → Rewrites and redirects**, **above** the catch-all SPA rule:
+
+| Source | Target | Type |
+|---|---|---|
+| `/supabase/<*>` | `https://<project>.supabase.co/<*>` | 200 (Rewrite) |
+
+No redeploy is needed. At startup the app calls `/supabase/auth/v1/health`; if it returns JSON it uses `https://<your domain>/supabase` for all database, auth and storage calls, otherwise it falls back to the direct URL (so a missing rule never breaks the app).
+
+Limits of an Amplify rewrite: realtime websockets are not proxied, and Supabase response headers (`sb-*`) still pass through. For both, serve the domain from the Docker/Express deployment (`deploy/README.md`), where `/supabase` is a full proxy that strips those headers.
