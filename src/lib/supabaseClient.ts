@@ -62,6 +62,9 @@ export function getBrowserSupabaseClient(): SupabaseClient | null {
     try {
       supabaseClientInstance = createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
+          // supabase-js derives the default key from the URL host. Pin it to the project's key so
+          // existing sessions survive switching between the direct and /supabase proxy URLs.
+          storageKey: `sb-${new URL(directSupabaseUrl).hostname.split('.')[0]}-auth-token`,
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true
