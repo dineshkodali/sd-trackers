@@ -96,10 +96,9 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
 
     if (error) {
       if (error.code === '42P01' || error.code === 'PGRST205') {
-        const supabaseUrl = getSupabaseUrl() || 'your Supabase project';
         return {
           success: true,
-          message: `Connected to your Supabase project (${supabaseUrl}) successfully!`,
+          message: 'Connected to your Supabase project successfully!',
           details: { code: error.code, hint: 'Schema online' }
         };
       }

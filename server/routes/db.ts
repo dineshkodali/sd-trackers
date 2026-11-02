@@ -846,7 +846,7 @@ function getSchemaVersionCached(client: SupabaseClient): string | null {
 }
 
 // GET /api/db/status — live connection, schema and per-page coverage
-router.get('/status', async (_req: Request, res: Response) => {
+router.get('/status', async (req: Request, res: Response) => {
   if (!isSupabaseConfigured()) {
     return res.json({
       connected: false,
@@ -927,7 +927,8 @@ router.get('/status', async (_req: Request, res: Response) => {
     connected: true,
     live: true,
     mode: 'supabase-cloud',
-    url: getSupabaseUrl(),
+    // Never expose the database host: report the app's own gateway address instead.
+    url: `${req.protocol}://${req.get('host')}/supabase`,
     schemaVersion,
     migrationRequired: missingTables.length > 0 || outdatedTables.length > 0,
     tables,

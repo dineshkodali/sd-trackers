@@ -19,8 +19,10 @@ function originOf(url?: string): string | null {
 }
 
 export function buildContentSecurityPolicy(allowInlineScripts = false): string {
-  const connect = new Set<string>(["'self'", 'https://*.supabase.co', 'wss://*.supabase.co']);
-  for (const value of [process.env.SUPABASE_URL, process.env.VITE_SUPABASE_URL, process.env.VITE_API_URL, process.env.APP_URL, process.env.PUBLIC_URL]) {
+  // The browser reaches Supabase only through this origin (/supabase proxy), so the
+  // database host is deliberately absent from this header. Use CSP_CONNECT_SRC to add hosts.
+  const connect = new Set<string>(["'self'"]);
+  for (const value of [process.env.VITE_API_URL, process.env.APP_URL, process.env.PUBLIC_URL]) {
     const origin = originOf(value);
     if (origin) connect.add(origin);
   }

@@ -22,11 +22,27 @@ const directSupabaseUrl: string =
 function resolveSupabaseUrl(): string {
   const mode = String(env.VITE_SUPABASE_PROXY || '').toLowerCase();
   if (typeof window === 'undefined' || mode === 'off') return directSupabaseUrl;
-  if (mode !== 'on' && window.location.hostname.endsWith('.amplifyapp.com')) return directSupabaseUrl;
-  return `${window.location.origin}/supabase`;
+  const proxyUrl = `${window.location.origin}/supabase`;
+  return proxyIsAvailable(proxyUrl) ? proxyUrl : directSupabaseUrl;
 }
 
-const supabaseUrl: string = resolveSupabaseUrl();
+/**
+ * Hosts without the Express server (static hosting) answer /supabase/* with HTML or a
+ * redirect, which would break every page with "invalid JSON". Probe once at startup and
+ * only use the proxy when it really returns Supabase JSON; otherwise connect directly.
+ */
+function proxyIsAvailable(proxyUrl: string): boolean {
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', `${proxyUrl}/auth/v1/health`, false);
+    xhr.setRequestHeader('apikey', supabaseAnonKey);
+    xhr.send();
+    const type = xhr.getResponseHeader('content-type') || '';
+    return xhr.status >= 200 && xhr.status < 500 && /json/i.test(type);
+  } catch {
+    return false;
+  }
+}
 
 const supabaseAnonKey: string =
   env.VITE_SUPABASE_ANON_KEY ||
@@ -34,6 +50,8 @@ const supabaseAnonKey: string =
   win.__VITE_SUPABASE_ANON_KEY__ ||
   win.__VITE_SUPABASE_PUBLISHABLE_KEY__ ||
   DEFAULT_SUPABASE_ANON_KEY;
+
+const supabaseUrl: string = resolveSupabaseUrl();
 
 let supabaseClientInstance: SupabaseClient | null = null;
 
