@@ -225,6 +225,39 @@ export function getApiUrl(path: string): string {
   return base ? `${base}${cleanPath}` : cleanPath;
 }
 
+/**
+ * On static hosting (Amplify / CloudFront / S3) there is no Express backend, so every
+ * same-origin /api/* request can only come back as a 404 page. The app already falls back
+ * to the direct Supabase path when such a call fails, so answer them locally with a JSON 503
+ * instead of sending requests that clutter the network tab and the console with errors.
+ */
+function installNoBackendApiGuard(): void {
+  if (typeof window === 'undefined') return;
+  const w = window as any;
+  if (w.__sdApiGuardInstalled) return;
+  w.__sdApiGuardInstalled = true;
+
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    try {
+      const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const target = new URL(raw, window.location.origin);
+      const isLocalApi = target.origin === window.location.origin && target.pathname.startsWith('/api/');
+      if (isLocalApi && (shouldPreferDirectSupabase() || isDirectSupabaseActive()) && !getApiBaseUrl()) {
+        return Promise.resolve(new Response(
+          JSON.stringify({ success: false, error: 'Backend API is not available on this host; using direct database mode.' }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        ));
+      }
+    } catch {
+      // fall through to the real fetch
+    }
+    return nativeFetch(input, init);
+  };
+}
+
+installNoBackendApiGuard();
+
 /** Fast fetch with configurable timeout to prevent blocking on dead or static endpoints */
 export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 3000): Promise<Response> {
   const controller = new AbortController();
