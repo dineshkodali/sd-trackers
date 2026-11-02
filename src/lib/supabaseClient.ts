@@ -7,10 +7,26 @@ const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpD
 const env = (import.meta as any).env || {};
 const win = typeof window !== 'undefined' ? (window as any) : {};
 
-const supabaseUrl: string =
+const directSupabaseUrl: string =
   env.VITE_SUPABASE_URL ||
   win.__VITE_SUPABASE_URL__ ||
   DEFAULT_SUPABASE_URL;
+
+/**
+ * Browser traffic goes through this app's own domain (https://<domain>/supabase/...),
+ * which the Express server forwards to Supabase, so the network tab never shows the
+ * *.supabase.co host. Static Amplify previews have no server to forward, so they keep
+ * the direct URL unless VITE_SUPABASE_PROXY=on is set (with a /supabase rewrite rule).
+ * VITE_SUPABASE_PROXY=off forces the direct URL everywhere.
+ */
+function resolveSupabaseUrl(): string {
+  const mode = String(env.VITE_SUPABASE_PROXY || '').toLowerCase();
+  if (typeof window === 'undefined' || mode === 'off') return directSupabaseUrl;
+  if (mode !== 'on' && window.location.hostname.endsWith('.amplifyapp.com')) return directSupabaseUrl;
+  return `${window.location.origin}/supabase`;
+}
+
+const supabaseUrl: string = resolveSupabaseUrl();
 
 const supabaseAnonKey: string =
   env.VITE_SUPABASE_ANON_KEY ||

@@ -33,6 +33,7 @@ import { isSupabaseConfigured } from './supabase.js';
 import { getNetworkIps } from './urlHelper.js';
 import { securityHeaders, sanitizeServerErrors } from './middleware/securityHeaders.js';
 import { requireAuth } from './middleware/requireAuth.js';
+import { supabaseProxy, attachSupabaseUpgrade } from './supabaseProxy.js';
 
 const HOST = process.env.HOST || '0.0.0.0';
 const DEFAULT_PORT = Number(process.env.PORT || 3020);
@@ -140,6 +141,8 @@ async function startServer() {
   app.disable('x-powered-by');
   app.use(securityHeaders());
   app.use(sanitizeServerErrors());
+  // Same-origin Supabase gateway; mounted before body parsing so request bodies stream through untouched.
+  app.use(supabaseProxy());
 
   /**
    * CORS allow-list.
@@ -296,7 +299,7 @@ async function startServer() {
 
   const { local, networkUrls, publicUrl } = getDisplayUrls(PORT);
 
-  app.listen(PORT, HOST, () => {
+  const httpServer = app.listen(PORT, HOST, () => {
     console.log(`\n  ======================================================`);
     console.log(`  SD Operations Platform Ready:`);
     console.log(`  ➜  Local:     ${local}`);
@@ -321,6 +324,7 @@ async function startServer() {
       openBrowser(local);
     }
   });
+  attachSupabaseUpgrade(httpServer);
 }
 
 /**
