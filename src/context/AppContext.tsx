@@ -1,3 +1,5 @@
+import { evaluateOverride, type PageAction, type UserPagePermissions } from '../config/pagePermissionsConfig';
+import { pageAccessService } from '../services/pageAccessService';
 import React, { createContext, useContext, useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   RoleType,
@@ -244,6 +246,10 @@ interface AppContextType {
   canDeleteRecord: () => boolean;
   canEditRecord: (recordSite?: string) => boolean;
   canCreateRecord: () => boolean;
+  /** Page Access Management: per-user page/action overrides (restrict-only). */
+  canAccessPage: (pageId: string) => boolean;
+  canPageAction: (pageId: string, action: PageAction) => boolean;
+  refreshPagePermissions: () => void;
   canManageSettings: () => boolean;
   canManageRoles: () => boolean;
   canAccessAllSites: () => boolean;
@@ -783,6 +789,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dataChangeRequests, setDataChangeRequests] = useState<DataChangeRequest[]>(INITIAL_CHANGE_REQUESTS);
 
   const [rolePermissions, setRolePermissions] = useState<Record<RoleType, RolePermissions>>(INITIAL_ROLE_PERMISSIONS);
+
+  // Page Access Management: null = no overrides (role rules only, identical to previous behaviour).
+  const [pagePerms, setPagePerms] = useState<UserPagePermissions | null>(null);
+  const loadPagePerms = useCallback(() => {
+    const uid = authProfile?.id;
+    if (!uid || authProfile?.role === 'Super Admin') { setPagePerms(null); return; }
+    pageAccessService.fetchMine(uid).then(r => { if (r.ok) setPagePerms(r.permissions); }).catch(() => {});
+  }, [authProfile?.id, authProfile?.role]);
+  useEffect(() => {
+    loadPagePerms();
+    const timer = window.setInterval(loadPagePerms, 60_000);
+    const onFocus = () => loadPagePerms();
+    window.addEventListener('focus', onFocus);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', onFocus); };
+  }, [loadPagePerms]);
+  const isSuperAdminSession = authProfile?.role === 'Super Admin' || (!authProfile && currentUserRole === 'Super Admin');
+  const canPageAction = useCallback((pageId: string, action: PageAction) => {
+    if (isSuperAdminSession) return true;
+    return evaluateOverride(pagePerms, pageId, action).allowed;
+  }, [pagePerms, isSuperAdminSession]);
+  const canAccessPage = useCallback((pageId: string) => canPageAction(pageId, 'view'), [canPageAction]);
 
   const [fieldOptions, setFieldOptions] = useState<CustomFieldOption[]>(DEFAULT_FIELD_OPTIONS);
 
@@ -2267,24 +2294,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [reportPersistFailure]);
 
   const canDeleteRecord = useCallback(() => {
+    if (!canPageAction(activePage, 'delete')) return false;
     if (rolePermissions[currentUserRole]?.canDeleteRecords !== undefined) {
       return rolePermissions[currentUserRole].canDeleteRecords;
     }
     return ['Super Admin', 'Admin'].includes(currentUserRole);
-  }, [currentUserRole, rolePermissions]);
+  }, [currentUserRole, rolePermissions, canPageAction, activePage]);
 
   const canEditRecord = useCallback((recordSite?: string) => {
     const perm = rolePermissions[currentUserRole]?.canEditRecords ?? true;
-    if (!perm) return false;
+    if (!perm || !canPageAction(activePage, 'edit')) return false;
     if (canAccessAllSites()) {
       return true;
     }
     return !recordSite || isSitePermitted(recordSite, 'all');
-  }, [currentUserRole, rolePermissions, canAccessAllSites, isSitePermitted]);
+  }, [currentUserRole, rolePermissions, canAccessAllSites, isSitePermitted, canPageAction, activePage]);
 
   const canCreateRecord = useCallback(() => {
+    if (!canPageAction(activePage, 'create')) return false;
     return rolePermissions[currentUserRole]?.canCreateRecords ?? true;
-  }, [currentUserRole, rolePermissions]);
+  }, [currentUserRole, rolePermissions, canPageAction, activePage]);
 
   const canManageSettings = useCallback(() => {
     const isAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
@@ -6001,6 +6030,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canDeleteRecord,
       canEditRecord,
       canCreateRecord,
+      canAccessPage,
+      canPageAction,
+      refreshPagePermissions: loadPagePerms,
       canManageSettings,
       canManageRoles,
       canAccessAllSites,

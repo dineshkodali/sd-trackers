@@ -20,6 +20,7 @@ import { DocumentsView } from './components/documents/DocumentsView';
 import { ReportsView } from './components/reports/ReportsView';
 import { AuditView } from './components/audit/AuditView';
 import { RolesView } from './components/roles/RolesView';
+import { PageAccessView } from './components/roles/PageAccessView';
 import { SettingsView } from './components/settings/SettingsView';
 import { PropertiesView } from './components/properties/PropertiesView';
 import { UsersView } from './components/users/UsersView';
@@ -78,6 +79,7 @@ function AppLayout() {
     setDiagnosticModalOpen,
     canManageSettings,
     canManageRoles,
+    canAccessPage,
     canManageUsers,
     canManageProperties,
     currentUserRole,
@@ -213,7 +215,16 @@ function AppLayout() {
       );
     }
 
+    // Page Access Management: a user restricted from this page cannot open it, even by URL / stored state.
+    if (!canAccessPage(activePage)) {
+      return <AccessDeniedView pageName={getPageTitle(activePage)} requiredRole="Page access granted by a Super Admin" />;
+    }
+
     switch (activePage) {
+      case 'pageAccess':
+        return currentUserRole === 'Super Admin'
+          ? <PageAccessView />
+          : <AccessDeniedView pageName="Page Access Management" requiredRole="Super Admin" />;
       case 'dashboard':
         return <DashboardView />;
       case 'referrals':

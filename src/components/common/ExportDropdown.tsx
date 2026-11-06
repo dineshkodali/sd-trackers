@@ -6,6 +6,7 @@ import {
   FileSpreadsheet, 
   Calendar 
 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 import { 
   ExportModal, 
   ExportFormat, 
@@ -54,6 +55,7 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
   className = '',
   buttonVariant = 'toolbar'
 }) => {
+  const { canPageAction, activePage } = useApp();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('pdf');
@@ -85,6 +87,9 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
     }
     return 'bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0f766e] border-[#71afe5]';
   };
+
+  // Page Access Management: users without export rights on this page get no export control.
+  if (!canPageAction(activePage, 'export')) return null;
 
   return (
     <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>

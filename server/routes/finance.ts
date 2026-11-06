@@ -4,6 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { getSupabaseAdmin } from '../supabase.js';
 import { requireAuth, requireRole } from '../middleware/requireAuth.js';
+import { userMayAccessPage } from '../pagePermissions.js';
 import { resolveSiteId } from '../schemaAdapter.js';
 import {
   APPROVER_ROLES,
@@ -1263,6 +1264,9 @@ router.post('/bills/:id/submit', requireAuth, async (req, res) => {
 //   under_review      -> Finance gives FINAL APPROVAL -> approved
 router.post('/bills/:id/approve', requireAuth, async (req, res) => {
   try {
+    if (!(await userMayAccessPage(req.user, 'financeApprovals', 'approve'))) {
+      return res.status(403).json({ success: false, error: 'Access denied: you do not have approval permission.' });
+    }
     const supabase = getSupabaseAdmin();
     const store = await getUnifiedStore(supabase);
     const { id } = req.params;
@@ -1334,6 +1338,9 @@ router.post('/bills/:id/approve', requireAuth, async (req, res) => {
 // POST /api/finance/bills/:id/reject
 router.post('/bills/:id/reject', requireAuth, async (req, res) => {
   try {
+    if (!(await userMayAccessPage(req.user, 'financeApprovals', 'approve'))) {
+      return res.status(403).json({ success: false, error: 'Access denied: you do not have approval permission.' });
+    }
     const supabase = getSupabaseAdmin();
     const store = await getUnifiedStore(supabase);
     const { id } = req.params;

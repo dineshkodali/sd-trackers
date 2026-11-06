@@ -12,6 +12,7 @@ import { getLiveSchema, getLiveColumns, invalidateLiveSchema } from '../liveSche
 import { seedReferenceData } from '../seed.js';
 import { INITIAL_ROLE_PERMISSIONS } from '../../src/data/initialData.js';
 import { masterDataStore } from '../masterDataStore.js';
+import { enforceEntityPagePermission, userMayAccessTable } from '../pagePermissions.js';
 import { SU_MANAGER_ROLES, SU_EDITOR_ROLES, redactSensitiveRows, stripSensitiveUpdateFields, sanitizeFundingBody, sanitizeOysterCardBody } from '../suAccess.js';
 
 const router = Router();
@@ -1078,6 +1079,10 @@ router.post('/batch-read', async (req: Request, res: Response) => {
       return;
     }
     try {
+      if (!(await userMayAccessTable(req.user, def.table, 'view'))) {
+        results[key] = { success: false, error: 'Access denied: you do not have permission for this page.', data: [] };
+        return;
+      }
       results[key] = await readEntity(client, def, buildListOptions(r, def.table), req.user);
     } catch (err: any) {
       results[key] = { success: false, error: err.message, data: [] };
@@ -1476,6 +1481,10 @@ router.post('/sync/push', async (req: Request, res: Response) => {
       results[entity] = 'Error: insufficient privileges';
       continue;
     }
+    if (!(await userMayAccessTable(req.user, def.table, 'create')) || !(await userMayAccessTable(req.user, def.table, 'edit'))) {
+      results[entity] = 'Error: access denied';
+      continue;
+    }
     const scopeError = await writeScopeError(client, req, def, records);
     if (scopeError) {
       results[entity] = `Error: ${scopeError}`;
@@ -1497,6 +1506,9 @@ router.post('/sync/push', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 // Parametric routes (/:entity, /:entity/:id)
 // ---------------------------------------------------------------------------
+
+// Page Access Management: per-user page/action overrides apply to every entity route below.
+router.use('/:entity', enforceEntityPagePermission(entity => ENTITY_REGISTRY[entity]?.table));
 
 // GET /api/db/:entity  (optional ?limit=N&order=column.asc|desc)
 router.get('/:entity', async (req: Request, res: Response) => {

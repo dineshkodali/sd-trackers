@@ -39,7 +39,8 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
     canManageSettings,
     canManageProperties,
     canManageUsers,
-    rolePermissions
+    rolePermissions,
+    canAccessPage
   } = useApp();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,11 +73,14 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
     { id: 'reports', name: 'Compliance Reports', category: 'Analytics', icon: Activity, desc: 'Home Office audit analytics' },
     { id: 'audit', name: 'System Audit Logs', category: 'Security', icon: Activity, desc: 'Immutable transaction ledger' },
     { id: 'requests', name: 'Requests & Approvals', category: 'Workflow', icon: CheckCircle, desc: 'Pending administrative approvals' },
+    { id: 'pageAccess', name: 'Page Access Management', category: 'Security', icon: Shield, desc: 'Per-user page & action permissions' },
     { id: 'roles', name: 'RBAC Role Matrix', category: 'Security', icon: Shield, desc: 'Permission levels & scopes' },
     { id: 'settings', name: 'System Settings', category: 'Administration', icon: Settings, desc: 'Global configuration & sync' }
   ];
 
   const allowedModules = modules.filter(m => {
+    if (!canAccessPage(m.id)) return false;
+    if (m.id === 'pageAccess') return currentUserRole === 'Super Admin';
     if (m.id === 'roles') return canManageRoles();
     if (m.id === 'settings') return canManageSettings();
     if (m.id === 'properties') return canManageProperties();

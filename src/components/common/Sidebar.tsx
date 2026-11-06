@@ -66,8 +66,10 @@ interface NavItemProps {
 const NavItem: React.FC<NavItemProps> = ({ 
   id, page, label, icon: Icon, iconColor, badge, badgeClass, active, onClick, extraBadge
 }) => {
-  const { isPageUnderMaintenance } = useApp();
+  const { isPageUnderMaintenance, canAccessPage } = useApp();
   const inMaintenance = isPageUnderMaintenance(page);
+  // Page Access Management: hide pages this user has been restricted from.
+  if (!canAccessPage(page)) return null;
 
   return (
     <button
@@ -527,6 +529,9 @@ export const Sidebar: React.FC = () => {
               )}
               {canManageRoles() && (
                 <NavItem id="nav-roles" page="roles" label="Roles & RBAC Matrix" icon={KeyRound} iconColor="text-purple-700" active={isNavActive('roles')} onClick={handleNavClick} />
+              )}
+              {currentUserRole === 'Super Admin' && (
+                <NavItem id="nav-page-access" page="pageAccess" label="Page Access Management" icon={KeyRound} iconColor="text-teal-700" active={isNavActive('pageAccess')} onClick={handleNavClick} />
               )}
               {canManageRoles() && (
                 <NavItem id="nav-setup-options" page="setupOptions" label="Field Options & Setup" icon={ListFilter} iconColor="text-blue-600" active={isNavActive('setupOptions')} onClick={handleNavClick} />
