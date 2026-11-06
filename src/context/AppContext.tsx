@@ -248,6 +248,8 @@ interface AppContextType {
   canCreateRecord: () => boolean;
   /** Page Access Management: per-user page/action overrides (restrict-only). */
   canAccessPage: (pageId: string) => boolean;
+  /** False until this user's page permissions have been resolved (prevents a flash of unrestricted navigation). */
+  pagePermsReady: boolean;
   canPageAction: (pageId: string, action: PageAction) => boolean;
   refreshPagePermissions: () => void;
   canManageSettings: () => boolean;
@@ -792,11 +794,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [rolePermissions, setRolePermissions] = useState<Record<RoleType, RolePermissions>>(INITIAL_ROLE_PERMISSIONS);
 
   // Page Access Management: null = no overrides (role rules only, identical to previous behaviour).
-  const [pagePerms, setPagePerms] = useState<UserPagePermissions | null>(null);
+  const readCachedPagePerms = (uid?: string): { v: UserPagePermissions | null } | undefined => {
+    if (!uid || typeof window === 'undefined') return undefined;
+    try {
+      const raw = localStorage.getItem('sd_page_perms_' + uid);
+      return raw ? JSON.parse(raw) : undefined;
+    } catch { return undefined; }
+  };
+  const [pagePerms, setPagePerms] = useState<UserPagePermissions | null>(() => readCachedPagePerms(authProfile?.id)?.v ?? null);
+  // Ready immediately for Super Admin / signed-out, or when a cached answer exists; otherwise wait for the first fetch.
+  const [pagePermsReady, setPagePermsReady] = useState<boolean>(() =>
+    !authProfile?.id || authProfile.role === 'Super Admin' || readCachedPagePerms(authProfile.id) !== undefined);
+  const pagePermsFailures = useRef(0);
+  const permsUserRef = useRef<string | undefined>(authProfile?.id);
   const loadPagePerms = useCallback(() => {
     const uid = authProfile?.id;
-    if (!uid || authProfile?.role === 'Super Admin') { setPagePerms(null); return; }
-    pageAccessService.fetchMine(uid).then(r => { if (r.ok) setPagePerms(r.permissions); }).catch(() => {});
+    if (permsUserRef.current !== uid) {
+      // A different user signed in: start from their cached answer, or hold navigation until loaded.
+      permsUserRef.current = uid;
+      pagePermsFailures.current = 0;
+      const cached = readCachedPagePerms(uid);
+      setPagePerms(cached?.v ?? null);
+      setPagePermsReady(!uid || authProfile?.role === 'Super Admin' || cached !== undefined);
+    }
+    if (!uid || authProfile?.role === 'Super Admin') { setPagePerms(null); setPagePermsReady(true); return; }
+    pageAccessService.fetchMine(uid).then(r => {
+      if (r.ok) {
+        pagePermsFailures.current = 0;
+        setPagePerms(r.permissions);
+        setPagePermsReady(true);
+        try { localStorage.setItem('sd_page_perms_' + uid, JSON.stringify({ v: r.permissions })); } catch {}
+      } else if (++pagePermsFailures.current >= 3) {
+        setPagePermsReady(true); // server / database still enforce; do not lock the user out of the UI forever
+      } else {
+        window.setTimeout(() => loadPagePerms(), 3000);
+      }
+    }).catch(() => {
+      if (++pagePermsFailures.current >= 3) setPagePermsReady(true);
+      else window.setTimeout(() => loadPagePerms(), 3000);
+    });
   }, [authProfile?.id, authProfile?.role]);
   useEffect(() => {
     loadPagePerms();
@@ -808,8 +844,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isSuperAdminSession = authProfile?.role === 'Super Admin' || (!authProfile && currentUserRole === 'Super Admin');
   const canPageAction = useCallback((pageId: string, action: PageAction) => {
     if (isSuperAdminSession) return true;
+    if (!pagePermsReady) return false;
     return evaluateOverride(pagePerms, pageId, action).allowed;
-  }, [pagePerms, isSuperAdminSession]);
+  }, [pagePerms, isSuperAdminSession, pagePermsReady]);
   const canAccessPage = useCallback((pageId: string) => canPageAction(pageId, 'view'), [canPageAction]);
 
   const [fieldOptions, setFieldOptions] = useState<CustomFieldOption[]>(DEFAULT_FIELD_OPTIONS);
@@ -6033,6 +6070,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canEditRecord,
       canCreateRecord,
       canAccessPage,
+      pagePermsReady,
       canPageAction,
       refreshPagePermissions: loadPagePerms,
       canManageSettings,

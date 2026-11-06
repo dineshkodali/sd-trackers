@@ -123,6 +123,7 @@ export const Sidebar: React.FC = () => {
     spcdRecords,
     users,
     currentUserRole,
+    canAccessPage,
     dataChangeRequests,
     publicTransportRecords,
     complianceRecords,
@@ -284,7 +285,7 @@ export const Sidebar: React.FC = () => {
         <nav className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto custom-scrollbar text-xs">
           
           {/* 1. Dashboard & Daily Operations */}
-          <div className="space-y-1">
+          <div className="space-y-1 not-has-[button]:hidden">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
               Dashboard &amp; Daily Operations
             </div>
@@ -293,7 +294,7 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* 2. Service Users & Properties */}
-          <div className="space-y-1">
+          <div className="space-y-1 not-has-[button]:hidden">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
               Service Users &amp; Properties
             </div>
@@ -319,12 +320,13 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* 3. Safeguarding & Welfare */}
-          <div className="space-y-1">
+          <div className="space-y-1 not-has-[button]:hidden">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
               Safeguarding &amp; Welfare
             </div>
 
             {/* SG Referrals with Drawer */}
+            {canAccessPage('referrals') && (
             <div>
               <div className="flex items-center">
                 <button
@@ -359,8 +361,10 @@ export const Sidebar: React.FC = () => {
                 </div>
               )}
             </div>
+            )}
 
             {/* Vulnerable SUs with Drawer */}
+            {canAccessPage('vulnerable') && (
             <div>
               <div className="flex items-center">
                 <button
@@ -395,8 +399,10 @@ export const Sidebar: React.FC = () => {
                 </div>
               )}
             </div>
+            )}
 
             {/* Challenging SUs with Drawer */}
+            {canAccessPage('challenging') && (
             <div>
               <div className="flex items-center">
                 <button
@@ -431,6 +437,7 @@ export const Sidebar: React.FC = () => {
                 </div>
               )}
             </div>
+            )}
 
             <NavItem id="nav-welfare-checks" page="welfareChecks" label="Welfare Checks" icon={HeartHandshake} iconColor="text-rose-600" badge={scopedWelfareChecks.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('welfareChecks')} onClick={handleNavClick} />
             <NavItem id="nav-rfa-welfare" page="rfaWelfare" label="RFA Welfare Checks" icon={UserCheck} iconColor="text-rose-600" badge={scopedRfaWelfare.length || null} badgeClass="bg-rose-50 text-rose-800" active={isNavActive('rfaWelfare')} onClick={handleNavClick} />
@@ -441,7 +448,7 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* 4. Facilities & Site Services */}
-          <div className="space-y-1">
+          <div className="space-y-1 not-has-[button]:hidden">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
               Facilities &amp; Site Services
             </div>
@@ -464,7 +471,7 @@ export const Sidebar: React.FC = () => {
 
           {/* 5. Finance & Procurement */}
           {/* Section: Finance Management */}
-          <div className="space-y-1">
+          <div className="space-y-1 not-has-[button]:hidden">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider flex items-center justify-between">
               <span>Finance &amp; Procurement</span>
               {isFinanceUser() && (
@@ -481,7 +488,7 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* 6. Compliance & Quality Assurance */}
-          <div className="space-y-1">
+          <div className="space-y-1 not-has-[button]:hidden">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
               Compliance &amp; Quality Assurance
             </div>
@@ -494,7 +501,7 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* 7. Requests & Community */}
-          <div className="space-y-1">
+          <div className="space-y-1 not-has-[button]:hidden">
             <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
               Requests &amp; Community
             </div>
@@ -505,7 +512,7 @@ export const Sidebar: React.FC = () => {
 
           {/* 8. Security & Audit (Super Admin & Admin only) */}
           {isAdminOrSuperAdmin && (
-            <div className="space-y-1">
+            <div className="space-y-1 not-has-[button]:hidden">
               <div className="px-2 text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
                 Security &amp; Audit
               </div>
@@ -516,7 +523,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Section: Admin & Governance (Super Admin & Admin Only) */}
           {isAdminOrSuperAdmin && (
-            <div className="space-y-1 pt-2 border-t border-[#ecebe8]">
+            <div className="space-y-1 pt-2 border-t border-[#ecebe8] not-has-[button]:hidden">
               <div className="px-2 flex items-center justify-between text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
                 <span>Admin & Governance</span>
               </div>

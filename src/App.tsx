@@ -64,13 +64,14 @@ import { HousekeepingView } from './components/housekeeping/HousekeepingView';
 import { FoodConsumptionView } from './components/food/FoodConsumptionView';
 import { PageMaintenanceView } from './components/common/PageMaintenanceView';
 import { SuperAdminMaintenanceBanner } from './components/common/SuperAdminMaintenanceBanner';
-import { getPageTitle } from './config/pageRegistry';
+import { getPageTitle, APP_PAGES_REGISTRY } from './config/pageRegistry';
 import { PageMaintenanceManagerView } from './components/maintenance/PageMaintenanceManagerView';
 
 
 function AppLayout() {
   const { 
     activePage, 
+    setActivePage,
     isAuthenticated, 
     isAuthChecking, 
     authBlockedState, 
@@ -80,6 +81,7 @@ function AppLayout() {
     canManageSettings,
     canManageRoles,
     canAccessPage,
+    pagePermsReady,
     canManageUsers,
     canManageProperties,
     currentUserRole,
@@ -140,6 +142,14 @@ function AppLayout() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  // Page Access Management: if the current page is not permitted (stale stored page, refresh, deep link),
+  // move to the first page this user may open instead of showing a blocked screen.
+  useEffect(() => {
+    if (!isAuthenticated || !pagePermsReady || activePage === 'pageAccess' || canAccessPage(activePage)) return;
+    const firstAllowed = APP_PAGES_REGISTRY.find(p => canAccessPage(p.id));
+    if (firstAllowed) setActivePage(firstAllowed.id);
+  }, [isAuthenticated, pagePermsReady, activePage, canAccessPage, setActivePage]);
 
   if (isAuthChecking) {
     return (
@@ -215,6 +225,9 @@ function AppLayout() {
       );
     }
 
+    if (!pagePermsReady) {
+      return <div className="p-8 text-xs text-[#605e5c]">Loading your access…</div>;
+    }
     // Page Access Management: a user restricted from this page cannot open it, even by URL / stored state.
     if (!canAccessPage(activePage)) {
       return <AccessDeniedView pageName={getPageTitle(activePage)} requiredRole="Page access granted by a Super Admin" />;
