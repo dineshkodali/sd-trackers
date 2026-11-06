@@ -219,7 +219,7 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
       } else {
         setPropertyName('');
         setPropertyType('HMO');
-        setSiteId(availableSites[0]?.id || sites[0]?.id || '');
+        setSiteId(''); // a new property is created as its own new site, never attached to an existing one
         setAddressLine1('');
         setAddressLine2('');
         setCity('');
@@ -267,6 +267,15 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
       return;
     }
 
+    if (!propertyToEdit) {
+      const dup = sites.find(s => s.name.toLowerCase().trim() === propertyName.toLowerCase().trim());
+      if (dup) {
+        setErrorMsg(`A property named "${dup.name}" already exists. Use a different name, or edit the existing property.`);
+        setActiveTab('core');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setErrorMsg('');
     try {
@@ -295,6 +304,22 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
       };
 
       let targetPropId = propertyToEdit?.id;
+      const targetManagerForNew = data.propertyManager || '';
+
+      if (!propertyToEdit && data.propertyName) {
+        // New property => brand-new site. Never reuse or overwrite an existing site.
+        const newSiteId = addProperty({
+          name: data.propertyName,
+          pid: data.propertyName.slice(0, 8),
+          city: data.city || 'London',
+          address: data.addressLine1 || '',
+          capacity: Number(data.maximumOccupancy) || 10,
+          status: data.status === 'Under Maintenance' ? 'Under Maintenance' : 'Active',
+          leadOfficer: targetManagerForNew,
+          contactNumber: contactsData.housingOfficerPhone || ''
+        });
+        data.siteId = newSiteId;
+      }
 
       if (propertyToEdit) {
         const res = await suPropertyService.updateProperty(propertyToEdit.id, data);
@@ -305,9 +330,10 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
         targetPropId = res.record.id;
       }
 
-      // Synchronize changes with Properties Directory (sites in AppContext)
+      // Synchronize changes with Properties Directory (sites in AppContext) - edit mode only;
+      // a new property already created its own site above.
       const targetManager = data.propertyManager || '';
-      const matchingSite = sites.find(s =>
+      const matchingSite = !propertyToEdit ? undefined : sites.find(s =>
         (siteId && s.id === siteId) ||
         (propertyToEdit && (
           s.id === propertyToEdit.id ||
@@ -329,7 +355,7 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
           status: data.status === 'Under Maintenance' ? 'Under Maintenance' : 'Active',
           capacity: Number(data.maximumOccupancy) || matchingSite.capacity
         });
-      } else if (data.propertyName) {
+      } else if (propertyToEdit && data.propertyName) {
         addProperty({
           name: data.propertyName,
           pid: (propertyToEdit as any)?.propertyReference || (data as any).propertyReference || data.propertyName.slice(0, 8),
@@ -392,7 +418,7 @@ export const PropertyFormModal: React.FC<PropertyFormModalProps> = ({
           {activeTab === 'core' && (
             <PropertyCoreSection
               propertyName={propertyName} setPropertyName={setPropertyName}
-              siteId={siteId} setSiteId={setSiteId} sites={availableSites}
+              siteId={siteId} setSiteId={setSiteId} sites={availableSites} isNew={!propertyToEdit}
               propertyType={propertyType} setPropertyType={setPropertyType}
               status={status} setStatus={setStatus}
               addressLine1={addressLine1} setAddressLine1={setAddressLine1}

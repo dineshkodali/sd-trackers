@@ -481,10 +481,11 @@ interface AppContextType {
 
   // CRUD for Properties (Sites) & Users
   properties: PropertyInfo[];
-  addProperty: (prop: Omit<PropertyInfo, 'id'>) => void;
+  /** Returns the id of the newly created property/site. */
+  addProperty: (prop: Omit<PropertyInfo, 'id'>) => string;
   updateProperty: (id: string, updates: Partial<PropertyInfo>) => void;
   deleteProperty: (id: string) => void;
-  addSite: (site: Omit<SiteInfo, 'id'>) => void;
+  addSite: (site: Omit<SiteInfo, 'id'>) => string;
   updateSite: (id: string, updates: Partial<SiteInfo>) => void;
   deleteSite: (id: string) => void;
   addUser: (user: Omit<UserAccount, 'id' | 'lastActive'>) => void;
@@ -4975,7 +4976,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [users, reportPersistFailure]);
 
-  const addSite = useCallback((data: Omit<SiteInfo, 'id'>) => {
+  const addSite = useCallback((data: Omit<SiteInfo, 'id'>): string => {
     const newSite: SiteInfo = {
       ...data,
       id: 'site-' + Date.now()
@@ -5003,6 +5004,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }));
     }
+    return newSite.id;
   }, [persistCreate, syncOfficerSiteAccess]);
 
   const updateSite = useCallback((id: string, updates: Partial<SiteInfo>) => {

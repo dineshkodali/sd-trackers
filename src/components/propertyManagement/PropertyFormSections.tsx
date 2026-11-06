@@ -10,6 +10,8 @@ import { getUserDropdownOptions } from '../../utils/userSelectOptions';
 export const PropertyCoreSection: React.FC<{
   propertyName: string; setPropertyName: (v: string) => void;
   siteId: string; setSiteId: (v: string) => void; sites: SiteInfo[];
+  /** Creating a new property: it becomes its own new site, so no existing site is offered. */
+  isNew?: boolean;
   propertyType: string; setPropertyType: (v: string) => void;
   status: string; setStatus: (v: any) => void;
   addressLine1: string; setAddressLine1: (v: string) => void;
@@ -18,7 +20,7 @@ export const PropertyCoreSection: React.FC<{
   county: string; setCounty: (v: string) => void;
   postcode: string; setPostcode: (v: string) => void;
 }> = ({
-  propertyName, setPropertyName, siteId, setSiteId, sites,
+  propertyName, setPropertyName, siteId, setSiteId, sites, isNew,
   propertyType, setPropertyType, status, setStatus,
   addressLine1, setAddressLine1, addressLine2, setAddressLine2,
   city, setCity, county, setCounty, postcode, setPostcode
@@ -43,6 +45,12 @@ export const PropertyCoreSection: React.FC<{
             className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:border-[#0d9488] outline-hidden"
           />
         </div>
+        {isNew ? (
+          <div>
+            <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Site</label>
+            <div className="w-full px-2.5 py-1.5 bg-[#f0fdfa] border border-[#99f6e4] rounded-xs text-xs text-[#0f766e]">New property (created as a new site)</div>
+          </div>
+        ) : (
         <div>
           <label className="block text-[11px] font-semibold text-neutral-700 mb-1">Assigned Site *</label>
           <select
@@ -54,6 +62,7 @@ export const PropertyCoreSection: React.FC<{
             {sites.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
           </select>
         </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
