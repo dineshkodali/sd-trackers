@@ -25,6 +25,7 @@ import smtpRouter from './routes/smtp.js';
 import statusRouter from './routes/status.js';
 import financeRouter from './routes/finance.js';
 import pageAccessRouter from './routes/pageAccess.js';
+import dashboardsRouter from './routes/dashboards.js';
 import documentBuilderRouter from './routes/documentBuilder.js';
 import { statusMonitor } from './status/monitor.js';
 import { runDatabaseMigrations } from './migrate.js';
@@ -256,6 +257,8 @@ async function startServer() {
   app.use('/api/oyster', requireAuth, oysterRouter);
   // Page Access Management (Super Admin only, except GET /me)
   app.use('/api/page-access', requireAuth, pageAccessRouter);
+  // Personal dashboards (each user can only reach their own rows)
+  app.use('/api/dashboards', requireAuth, dashboardsRouter);
   // Mount Finance module router
   app.use('/api/finance', requireAuth, financeRouter);
   // Mount HO Report Generator module router (concurrently supporting /api/document-builder and /api/ho-reports)

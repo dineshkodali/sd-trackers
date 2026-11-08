@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, 
   AlertTriangle, 
@@ -11,10 +11,34 @@ import {
   TrendingUp,
   ShieldCheck,
   Zap,
-  SlidersHorizontal,
+  ArrowDown,
+  ArrowUp,
+  GripVertical,
+  X,
   Bus
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useDashboards } from '../../hooks/useDashboards';
+import {
+  DEFAULT_ROW_LIMIT,
+  ROW_LIMIT_OPTIONS,
+  WIDGET_SIZE_LABELS,
+  getWidgetDefinition,
+  isWidgetAvailable,
+  sizeSpanClass,
+  type DashboardWidgetInstance,
+} from '../../config/dashboardWidgets';
+import { DashboardToolbar } from './DashboardToolbar';
+import { WidgetLibrary } from './WidgetLibrary';
+import { ErrorBoundary } from '../common/ErrorBoundary';
+import {
+  ComplianceStatusWidget,
+  FinanceBillsWidget,
+  MaintenanceOpenWidget,
+  MyRequestsWidget,
+  QuickActionsWidget,
+  RecentNotificationsWidget,
+} from './DashboardMiniWidgets';
 import { FilterBar } from '../common/FilterBar';
 import { QuickIncidentModal } from './QuickIncidentModal';
 import { DashboardAnalytics } from './DashboardAnalytics';
@@ -52,7 +76,10 @@ export const DashboardView: React.FC = () => {
     assignedSite,
     allowedSites,
     canAccessAllSites,
-    isSitePermitted
+    isSitePermitted,
+    canAccessPage,
+    requestConfirmation,
+    authProfile
   } = useApp();
 
   const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
@@ -63,30 +90,15 @@ export const DashboardView: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [exportModalFormat, setExportModalFormat] = useState<ExportFormat>('pdf');
 
-  const [widgetVisibility, setWidgetVisibility] = useState({
-    stats: true,
-    laundryFoodOperations: true,
-    transportOverview: true,
-    analytics: true,
-    vulnerable: true,
-    quickOps: true
-  });
-  const [showWidgetMenu, setShowWidgetMenu] = useState(false);
-  const widgetMenuRef = useRef<HTMLDivElement>(null);
+  const dash = useDashboards(authProfile?.id);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setSiteFilter(defaultSiteFilter);
   }, [defaultSiteFilter]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (widgetMenuRef.current && !widgetMenuRef.current.contains(e.target as Node)) {
-        setShowWidgetMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleReset = () => {
     setSiteFilter(canAccessAllSites() || (allowedSites && allowedSites.length > 1) ? 'all' : (allowedSites[0] || assignedSite));
@@ -301,136 +313,27 @@ export const DashboardView: React.FC = () => {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Page Title & Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
-        <div>
-          <h2 className="text-2xl font-semibold text-[#242424] tracking-tight">
-            SD Commercial Trackers Dashboard
-          </h2>
-          <p className="text-xs text-[#605e5c] mt-0.5">
-            Commercial operations, resident safeguarding trackers, facility logs, and compliance analytics across contracted accommodation sites.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Incident Log shortcut button */}
-          <button
-            id="btn-quick-incident-log"
-            onClick={() => setIsQuickIncidentModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xs shadow-xs transition-colors"
-            title="Trigger Quick Incident Log for immediate escalation reporting"
-          >
-            <Siren className="w-3.5 h-3.5" />
-            <span>Quick Incident Log</span>
-          </button>
+  const widgetProps = { onNavigate: setActivePage };
 
-          <button
-            onClick={() => setActivePage('referrals')}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ New Record</span>
-          </button>
-          
-          {/* Customize Widgets Button */}
-          <div className="relative" ref={widgetMenuRef}>
-            <button
-              onClick={() => setShowWidgetMenu(!showWidgetMenu)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white border border-[#8a8886] hover:bg-[#edebe9] text-[#323130] rounded-xs shadow-xs transition-colors"
-              title="Toggle dashboard widget visibility"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
-              <span>Customize Widgets</span>
-            </button>
+  // A saved layout can list any widget; only those the user can already view are shown.
+  const visibleWidgets = dash.layout.widgets
+    .map((inst, index) => ({ inst, index, def: getWidgetDefinition(inst.type) }))
+    .filter((w): w is { inst: DashboardWidgetInstance; index: number; def: NonNullable<typeof w.def> } => !!w.def && isWidgetAvailable(w.def, canAccessPage))
+    .map(({ inst, index }) => ({ inst, index }));
 
-            {showWidgetMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-60 bg-white border border-[#e1dfdd] rounded-xs shadow-xl z-50 p-3 space-y-2 text-xs">
-                <div className="font-bold text-[#242424] pb-1 border-b border-[#edebe9] flex items-center justify-between">
-                  <span>Dashboard Widget Visibility</span>
-                  <button 
-                    onClick={() => setWidgetVisibility({ stats: true, laundryFoodOperations: true, transportOverview: true, analytics: true, vulnerable: true, quickOps: true })}
-                    className="text-[10px] text-[#0d9488] hover:underline font-normal"
-                  >
-                    Reset All
-                  </button>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
-                    <span className="text-[#323130]">Key Summary Cards</span>
-                    <input 
-                      type="checkbox" 
-                      checked={widgetVisibility.stats} 
-                      onChange={e => setWidgetVisibility({ ...widgetVisibility, stats: e.target.checked })} 
-                      className="rounded accent-[#0d9488]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
-                    <span className="text-[#323130]">Laundry Logs &amp; Hot Food 4-Vendors</span>
-                    <input 
-                      type="checkbox" 
-                      checked={widgetVisibility.laundryFoodOperations} 
-                      onChange={e => setWidgetVisibility({ ...widgetVisibility, laundryFoodOperations: e.target.checked })} 
-                      className="rounded accent-[#0d9488]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
-                    <span className="text-[#323130]">Public Transport Overview</span>
-                    <input 
-                      type="checkbox" 
-                      checked={widgetVisibility.transportOverview} 
-                      onChange={e => setWidgetVisibility({ ...widgetVisibility, transportOverview: e.target.checked })} 
-                      className="rounded accent-[#0d9488]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
-                    <span className="text-[#323130]">Analytics Charts</span>
-                    <input 
-                      type="checkbox" 
-                      checked={widgetVisibility.analytics} 
-                      onChange={e => setWidgetVisibility({ ...widgetVisibility, analytics: e.target.checked })} 
-                      className="rounded accent-[#0d9488]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
-                    <span className="text-[#323130]">Priority Vulnerable SUs</span>
-                    <input 
-                      type="checkbox" 
-                      checked={widgetVisibility.vulnerable} 
-                      onChange={e => setWidgetVisibility({ ...widgetVisibility, vulnerable: e.target.checked })} 
-                      className="rounded accent-[#0d9488]"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-1 hover:bg-[#f3f2f1] rounded cursor-pointer">
-                    <span className="text-[#323130]">Quick Operations Panel</span>
-                    <input 
-                      type="checkbox" 
-                      checked={widgetVisibility.quickOps} 
-                      onChange={e => setWidgetVisibility({ ...widgetVisibility, quickOps: e.target.checked })} 
-                      className="rounded accent-[#0d9488]"
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
+  const confirmDelete = () => requestConfirmation({
+    title: 'Delete dashboard',
+    message: `Delete "${dash.active.name}"? This cannot be undone.`,
+    confirmLabel: 'Delete',
+    isDanger: true,
+    onConfirm: () => { void dash.remove(); },
+  });
 
-          <ExportDropdown
-            moduleName="Dashboard Cases"
-            totalRecordCount={totalAllTimeCases}
-            filteredRecordCount={totalCases}
-            defaultOrientation="landscape"
-            dateRangeRecordCount={calculateDateRangeCount}
-            availableColumns={dashboardExportColumns}
-            getPreviewData={getExportPreviewData}
-            onExport={handlePerformExport}
-          />
-        </div>
-      </div>
-
-      {/* Executive Key Summary Cards Section */}
-      {widgetVisibility.stats && (
+  const renderWidget = (inst: DashboardWidgetInstance): React.ReactNode => {
+    switch (inst.type) {
+      case 'summaryCards':
+        return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Card 1: Active Referrals */}
         <div 
@@ -545,24 +448,9 @@ export const DashboardView: React.FC = () => {
           </div>
         )}
       </div>
-      )}
-
-      {/* Filter Bar */}
-      <FilterBar
-        siteFilter={siteFilter}
-        setSiteFilter={setSiteFilter}
-        monthFilter={monthFilter}
-        setMonthFilter={setMonthFilter}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onReset={handleReset}
-        onOpenExport={handleOpenExportModal}
-        totalFilteredCount={totalCases}
-      />
-
-      {/* 5-Column Microsoft Style Stat Metrics */}
+        );
+      case 'keyStats':
+        return (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <div className="bg-white border border-[#e1dfdd] p-3.5 shadow-xs rounded-xs">
           <div className="flex items-center justify-between text-neutral-500 text-xs">
@@ -619,10 +507,9 @@ export const DashboardView: React.FC = () => {
           <span className="text-[11px] text-[#605e5c]">Permitted hotels</span>
         </div>
       </div>
-
-      {/* Recharts Data Visualization Section: Incident Types & Referral Status Trends */}
-      {widgetVisibility.analytics && (
-        <div className="space-y-4">
+        );
+      case 'analytics':
+        return (
           <DashboardAnalytics
             referrals={activeReferrals}
             escalations={activeEscalations}
@@ -630,29 +517,34 @@ export const DashboardView: React.FC = () => {
             selectedSite={siteFilter}
             onNavigate={setActivePage}
           />
-
-          {/* Operational Breakdown Cards Suite */}
+        );
+      case 'propertyLoad':
+        return (
           <PropertyLoadBreakdown 
             onSelectSiteFilter={setSiteFilter} 
             onNavigate={setActivePage} 
           />
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        );
+      case 'vulnerabilityRisk':
+        return (
             <VulnerabilityRiskBreakdown 
               onNavigate={setActivePage} 
             />
+        );
+      case 'welfareBreakdown':
+        return (
             <CommercialWelfareBreakdown 
               onNavigate={setActivePage} 
             />
-          </div>
-
-          {widgetVisibility.laundryFoodOperations && (
+        );
+      case 'operationsOverview':
+        return (
             <PropertyOperationsOverviewWidget 
               onNavigate={setActivePage}
             />
-          )}
-
-          {widgetVisibility.transportOverview && (
+        );
+      case 'transport':
+        return (
             <div className="bg-white border border-[#e1dfdd] rounded-xs p-4 shadow-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#edebe9] mb-4">
                 <div className="flex items-center gap-2.5">
@@ -677,15 +569,11 @@ export const DashboardView: React.FC = () => {
               </div>
               <TransportKPIDashboard selectedSiteFilter={siteFilter} onNavigate={setActivePage} />
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Module Quick Shortcuts & Urgent Safeguarding Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Urgent Attention / High Risk Cases */}
-        {widgetVisibility.vulnerable && (
-          <div className={`${widgetVisibility.quickOps ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white border border-[#e1dfdd] shadow-xs rounded-xs`}>
+        );
+      case 'priorityVulnerable': {
+        const limit = inst.config?.limit ?? DEFAULT_ROW_LIMIT;
+        return (
+          <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs h-full">
             <div className="px-4 py-3 border-b border-[#e1dfdd] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -702,7 +590,7 @@ export const DashboardView: React.FC = () => {
             </div>
 
             <div className="p-4 divide-y divide-[#edebe9] text-xs">
-              {activeVulnerable.slice(0, 4).map(vul => (
+              {activeVulnerable.slice(0, limit).map(vul => (
                 <div key={vul.id} className="py-2.5 first:pt-0 last:pb-0 flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -736,80 +624,187 @@ export const DashboardView: React.FC = () => {
               )}
             </div>
           </div>
-        )}
+        );
+      }
+      case 'quickActions':
+        return <QuickActionsWidget onNavigate={setActivePage} onQuickIncident={() => setIsQuickIncidentModalOpen(true)} />;
+      case 'myRequests':
+        return <MyRequestsWidget {...widgetProps} limit={inst.config?.limit} />;
+      case 'maintenanceOpen':
+        return <MaintenanceOpenWidget {...widgetProps} />;
+      case 'complianceStatus':
+        return <ComplianceStatusWidget {...widgetProps} />;
+      case 'financeBills':
+        return <FinanceBillsWidget {...widgetProps} />;
+      case 'recentNotifications':
+        return <RecentNotificationsWidget {...widgetProps} limit={inst.config?.limit} />;
+      default:
+        return null;
+    }
+  };
 
-        {/* Quick Operations Panel */}
-        {widgetVisibility.quickOps && (
-          <div className={`${widgetVisibility.vulnerable ? 'lg:col-span-1' : 'lg:col-span-3'} bg-white border border-[#e1dfdd] shadow-xs rounded-xs flex flex-col justify-between`}>
-          <div>
-            <div className="px-4 py-3 border-b border-[#e1dfdd]">
-              <h3 className="text-sm font-semibold text-[#242424] flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[#0d9488]" />
-                <span>Quick Operations</span>
-              </h3>
-            </div>
-            <div className="p-4 space-y-2 text-xs">
-              <button
-                id="quick-op-incident-log"
-                onClick={() => setIsQuickIncidentModalOpen(true)}
-                className="w-full text-left p-2.5 rounded bg-red-50 hover:bg-red-100 text-red-800 font-bold flex items-center justify-between border border-red-200 transition-colors shadow-2xs"
-              >
-                <div className="flex items-center gap-2">
-                  <Siren className="w-4 h-4 text-red-600" />
-                  <span>Quick incident log</span>
-                </div>
-                <ArrowUpRight className="w-3.5 h-3.5 text-red-700" />
-              </button>
-              <button
-                onClick={() => setActivePage('referrals')}
-                className="w-full text-left p-2.5 rounded bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0f766e] font-medium flex items-center justify-between border border-[#99f6e4] transition-colors"
-              >
-                <span>+ Register New SG Referral</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#0d9488]" />
-              </button>
-              <button
-                onClick={() => setActivePage('vulnerable')}
-                className="w-full text-left p-2.5 rounded bg-[#fff8e5] hover:bg-[#ffefc2] text-[#7f6000] font-medium flex items-center justify-between border border-[#ffe082] transition-colors"
-              >
-                <span>+ Log Vulnerability Assessment</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#7f6000]" />
-              </button>
-              <button
-                onClick={() => setActivePage('challenging')}
-                className="w-full text-left p-2.5 rounded bg-purple-50 hover:bg-purple-100 text-purple-800 font-medium flex items-center justify-between border border-purple-200 transition-colors"
-              >
-                <span>+ Log Challenging Behavior Incident</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-purple-700" />
-              </button>
-              <button
-                onClick={() => setActivePage('laundry')}
-                className="w-full text-left p-2.5 rounded bg-[#f7f8fa] hover:bg-[#edebe9] text-[#323130] font-medium flex items-center justify-between border border-[#edebe9] transition-colors"
-              >
-                <span>+ Record Laundry Wash Intake</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-neutral-600" />
-              </button>
-              <button
-                onClick={() => setActivePage('food')}
-                className="w-full text-left p-2.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-medium flex items-center justify-between border border-emerald-200 transition-colors"
-              >
-                <span>+ Log Hot Food Temp Check</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-700" />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-4 bg-[#faf9f8] border-t border-[#edebe9] text-[11px] text-[#605e5c]">
-            <div className="flex items-center gap-1.5 font-semibold text-neutral-800">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#107c10]" />
-              <span>Strict Role Protection Active</span>
-            </div>
-            <p className="mt-0.5">
-              All CRUD changes require explicit confirmation modals per system policy.
-            </p>
-          </div>
+  return (
+    <div className="space-y-4">
+      {/* Page Title & Action Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#e1dfdd]">
+        <div>
+          <h2 className="text-2xl font-semibold text-[#242424] tracking-tight">
+            SD Commercial Trackers Dashboard
+          </h2>
+          <p className="text-xs text-[#605e5c] mt-0.5">
+            Commercial operations, resident safeguarding trackers, facility logs, and compliance analytics across contracted accommodation sites.
+          </p>
         </div>
-        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Incident Log shortcut button */}
+          <button
+            id="btn-quick-incident-log"
+            onClick={() => setIsQuickIncidentModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xs shadow-xs transition-colors"
+            title="Trigger Quick Incident Log for immediate escalation reporting"
+          >
+            <Siren className="w-3.5 h-3.5" />
+            <span>Quick Incident Log</span>
+          </button>
+
+          <button
+            onClick={() => setActivePage('referrals')}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ New Record</span>
+          </button>
+          
+          <ExportDropdown
+            moduleName="Dashboard Cases"
+            totalRecordCount={totalAllTimeCases}
+            filteredRecordCount={totalCases}
+            defaultOrientation="landscape"
+            dateRangeRecordCount={calculateDateRangeCount}
+            availableColumns={dashboardExportColumns}
+            getPreviewData={getExportPreviewData}
+            onExport={handlePerformExport}
+          />
+        </div>
       </div>
+
+      <DashboardToolbar
+        dashboards={dash.dashboards}
+        active={dash.active}
+        isBuiltIn={dash.isBuiltIn}
+        isEditing={dash.isEditing}
+        busy={dash.busy}
+        error={dash.error}
+        storage={dash.storage}
+        canAddDashboard={dash.canAddDashboard}
+        draftName={dash.draftName}
+        previewing={previewing}
+        onDraftName={dash.setDraftName}
+        onSelect={dash.select}
+        onCreate={dash.create}
+        onRename={dash.rename}
+        onDuplicate={dash.duplicate}
+        onDelete={confirmDelete}
+        onSetDefault={dash.setAsDefault}
+        onEdit={dash.startEdit}
+        onAddWidget={() => setLibraryOpen(true)}
+        onTogglePreview={() => setPreviewing(p => !p)}
+        onReset={dash.resetLayout}
+        onSave={async () => { await dash.saveEdit(); setPreviewing(false); }}
+        onCancel={() => { dash.cancelEdit(); setPreviewing(false); }}
+      />
+      {/* Filter Bar */}
+      <FilterBar
+        siteFilter={siteFilter}
+        setSiteFilter={setSiteFilter}
+        monthFilter={monthFilter}
+        setMonthFilter={setMonthFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onReset={handleReset}
+        onOpenExport={handleOpenExportModal}
+        totalFilteredCount={totalCases}
+      />
+
+      {dash.loading ? (
+        <p className="text-xs text-[#605e5c]" aria-busy="true">Loading dashboard…</p>
+      ) : visibleWidgets.length === 0 ? (
+        <div className="border border-dashed border-[#c8c6c4] rounded-xs p-8 text-center">
+          <p className="text-sm font-semibold text-[#242424]">
+            {dash.layout.widgets.length === 0 ? 'This dashboard has no widgets' : 'No widgets available for your access'}
+          </p>
+          <p className="text-xs text-[#605e5c] mt-1">
+            {dash.isEditing ? 'Select Add widget to choose what to show.' : 'Select Edit dashboard, then Add widget.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {visibleWidgets.map(({ inst, index }, position) => {
+            const def = getWidgetDefinition(inst.type)!;
+            const editing = dash.isEditing && !previewing;
+            return (
+              <div
+                key={inst.id}
+                className={`${sizeSpanClass(inst.size)} min-w-0 ${editing ? 'outline outline-1 outline-dashed rounded-xs ' + (dropIndex === index && dragIndex !== index ? 'outline-[#0d9488] bg-[#f0fdfa]' : 'outline-[#c8c6c4]') : ''}`}
+                draggable={editing}
+                onDragStart={editing ? (e => { setDragIndex(index); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', inst.id); }) : undefined}
+                onDragOver={editing ? (e => { e.preventDefault(); if (dropIndex !== index) setDropIndex(index); }) : undefined}
+                onDrop={editing ? (e => { e.preventDefault(); if (dragIndex !== null) dash.moveWidget(dragIndex, index); setDragIndex(null); setDropIndex(null); }) : undefined}
+                onDragEnd={() => { setDragIndex(null); setDropIndex(null); }}
+              >
+                {editing && (
+                  <div className="flex items-center gap-2 px-2 py-1.5 border-b border-[#e1dfdd] bg-[#faf9f8] text-xs">
+                    <GripVertical className="w-4 h-4 text-[#605e5c] cursor-grab shrink-0" aria-hidden="true" />
+                    <span className="font-semibold text-[#323130] truncate flex-1">{def.title}</span>
+                    {def.hasRowLimit && (
+                      <select
+                        aria-label={`Rows shown in ${def.title}`}
+                        value={inst.config?.limit ?? DEFAULT_ROW_LIMIT}
+                        onChange={e => dash.setWidgetLimit(inst.id, Number(e.target.value))}
+                        className="px-1.5 py-1 border border-[#8a8886] rounded-xs bg-white"
+                      >
+                        {ROW_LIMIT_OPTIONS.map(n => <option key={n} value={n}>{n} rows</option>)}
+                      </select>
+                    )}
+                    {def.sizes.length > 1 && (
+                      <div role="group" aria-label={`Size of ${def.title}`} className="inline-flex border border-[#8a8886] rounded-xs overflow-hidden">
+                        {def.sizes.map(sz => (
+                          <button
+                            key={sz}
+                            type="button"
+                            aria-pressed={inst.size === sz}
+                            onClick={() => dash.resizeWidget(inst.id, sz)}
+                            className={`px-2 py-1 ${inst.size === sz ? 'bg-[#0d9488] text-white' : 'bg-white text-[#323130] hover:bg-[#edebe9]'}`}
+                          >
+                            {WIDGET_SIZE_LABELS[sz]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button type="button" aria-label={`Move ${def.title} earlier`} disabled={position === 0} onClick={() => dash.moveWidget(index, visibleWidgets[position - 1].index)} className="p-1 text-[#323130] hover:bg-[#edebe9] rounded-xs disabled:opacity-40"><ArrowUp className="w-3.5 h-3.5" /></button>
+                    <button type="button" aria-label={`Move ${def.title} later`} disabled={position === visibleWidgets.length - 1} onClick={() => dash.moveWidget(index, visibleWidgets[position + 1].index)} className="p-1 text-[#323130] hover:bg-[#edebe9] rounded-xs disabled:opacity-40"><ArrowDown className="w-3.5 h-3.5" /></button>
+                    <button type="button" aria-label={`Remove ${def.title}`} onClick={() => dash.removeWidget(inst.id)} className="p-1 text-[#a4262c] hover:bg-[#fde7e9] rounded-xs"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                )}
+                <div className={editing ? 'pointer-events-none select-none' : 'h-full'}>
+                  <ErrorBoundary>{renderWidget(inst)}</ErrorBoundary>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <WidgetLibrary
+        isOpen={libraryOpen && dash.isEditing}
+        onClose={() => setLibraryOpen(false)}
+        onAdd={dash.addWidget}
+        added={new Set(dash.layout.widgets.map(w => w.type))}
+        canViewPage={canAccessPage}
+      />
 
       {/* Quick Incident Log Modal for Immediate Escalation Reporting */}
       <QuickIncidentModal
