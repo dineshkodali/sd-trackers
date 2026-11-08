@@ -313,7 +313,7 @@ const GPAppointmentsTab: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwi
                   {filteredRecords.length} Consultations
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Resident primary healthcare appointments, GP surgery referrals, time slots, attendance &amp; clinical comments.</p>
+              <p className="text-xs text-neutral-500">GP appointments, referrals and attendance.</p>
             </div>
           </div>
 

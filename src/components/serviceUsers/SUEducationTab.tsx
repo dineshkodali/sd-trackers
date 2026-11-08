@@ -37,13 +37,13 @@ export const SUEducationTab: React.FC<{ suId: string; suName: string }> = ({ suI
       <ErrorBanner message={error} />
       {message && <Notice tone="ok">{message}</Notice>}
       {loading ? <p className="text-neutral-500">Loading...</p> : !current ? (
-        <div className="border border-dashed border-neutral-300 rounded-lg p-5 text-center space-y-2">
+        <div className="border border-dashed border-neutral-300 rounded-xs p-5 text-center space-y-2">
           <p className="text-neutral-600 font-semibold">No school details have been recorded.</p>
           <p className="text-neutral-500">This is not the same as "Not enrolled". Record the child's education status once it is known.</p>
           <button type="button" className={`${primaryBtn} inline-flex items-center gap-1.5`} onClick={() => { setMessage(''); setDialog({ mode: 'add' }); }}><Plus className="w-3.5 h-3.5" /> Add school details</button>
         </div>
       ) : (
-        <div className="border border-neutral-200 rounded-lg p-4 bg-white space-y-3">
+        <div className="border border-neutral-200 rounded-xs p-4 bg-white space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
             <StatusPill status={current.educationStatus} tone={tone(current.educationStatus)} />
             <span className="font-semibold text-neutral-800">{current.schoolName || 'School not yet known'}</span>
@@ -64,7 +64,7 @@ export const SUEducationTab: React.FC<{ suId: string; suName: string }> = ({ suI
       {past.length > 0 && (
         <div>
           <h5 className="font-bold text-neutral-700 mb-1">Previous schools</h5>
-          <ul className="divide-y divide-neutral-200 border border-neutral-200 rounded-lg bg-white">
+          <ul className="divide-y divide-neutral-200 border border-neutral-200 rounded-xs bg-white">
             {past.map(r => (
               <li key={r.id} className="p-2.5 flex flex-wrap gap-x-3 gap-y-0.5">
                 <span className="font-semibold">{r.schoolName || 'School not recorded'}</span><StatusPill status={r.educationStatus} tone={tone(r.educationStatus)} />

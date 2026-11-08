@@ -571,7 +571,7 @@ export const MaintenanceTrackerView: React.FC = () => {
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-800 animate-pulse">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-800">
         <Clock className="w-3 h-3 text-sky-600" />
         In Process
       </span>

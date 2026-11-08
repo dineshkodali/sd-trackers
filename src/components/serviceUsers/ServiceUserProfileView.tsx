@@ -577,7 +577,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
               {suWelfare.length === 0 ? (
                 <p className="text-neutral-400 italic">No welfare check logs recorded for this resident.</p>
               ) : (
-                <div className="border border-neutral-200 rounded-lg overflow-hidden bg-white">
+                <div className="border border-neutral-200 rounded-xs overflow-hidden bg-white">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-neutral-50 border-b border-neutral-200 text-[10px] font-bold text-neutral-500 uppercase">
                       <tr>
@@ -623,7 +623,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
               ) : (
                 <div className="space-y-2">
                   {suFood.map(f => (
-                    <div key={f.id} className="p-3 bg-white border border-neutral-200 rounded-lg flex items-center justify-between">
+                    <div key={f.id} className="p-3 bg-white border border-neutral-200 rounded-xs flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-neutral-800 text-xs">{f.siteName}</span>
@@ -649,7 +649,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
               ) : (
                 <div className="space-y-2">
                   {suRooms.map(r => (
-                    <div key={r.id} className="p-3 bg-white border border-neutral-200 rounded-lg flex items-center justify-between">
+                    <div key={r.id} className="p-3 bg-white border border-neutral-200 rounded-xs flex items-center justify-between">
                       <div>
                         <strong className="text-neutral-800 text-xs">Room {r.roomNumber} ({r.siteName})</strong>
                         <p className="text-[11px] text-neutral-500 mt-0.5">Inspector: {r.officerName || 'Staff'} • {r.inspectionDate}</p>

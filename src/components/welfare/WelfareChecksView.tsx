@@ -1,3 +1,4 @@
+import { X as CloseIcon } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { HeartHandshake, Plus, Search, Edit3, Trash2, Eye, ShieldAlert, CheckCircle2, XCircle, Building2, User, Activity, Stethoscope, Home, SlidersHorizontal, ArrowUp, ArrowDown, ArrowUpDown, Lock } from 'lucide-react';
@@ -331,7 +332,7 @@ export const WelfareChecksView: React.FC = () => {
             </div>
             <div>
               <h1 className="text-base font-bold text-[#242424] tracking-tight">Welfare Checks</h1>
-              <p className="text-xs text-neutral-500">Conduct, monitor and document resident welfare and safeguarding engagements.</p>
+              <p className="text-xs text-neutral-500">Resident welfare and safeguarding checks.</p>
             </div>
           </div>
 
@@ -535,7 +536,7 @@ export const WelfareChecksView: React.FC = () => {
                 onClick={() => setIsFormOpen(false)}
                 className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -552,7 +553,7 @@ export const WelfareChecksView: React.FC = () => {
                     </h3>
 
                     {/* Central Master SU Selector */}
-                    <div className="p-3 bg-white border border-teal-100 rounded-lg shadow-2xs space-y-2">
+                    <div className="p-3 bg-white border border-teal-100 rounded-xs shadow-2xs space-y-2">
                       <div className="text-[11px] font-semibold text-teal-800 uppercase tracking-wider">
                         Master Data Selection
                       </div>
@@ -979,7 +980,7 @@ export const WelfareChecksView: React.FC = () => {
                 onClick={() => setIsViewOpen(false)}
                 className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 

@@ -391,7 +391,7 @@ export const CreditCardBillsView: React.FC = () => {
           </span>
           {bill.status === 'awaiting_approval' && (
             <span className="text-[10px] text-amber-600 flex items-center gap-0.5" title="Awaiting Manager Approval">
-              <Clock className="w-3 h-3 animate-pulse text-amber-500" />
+              <Clock className="w-3 h-3 text-amber-500" />
             </span>
           )}
         </div>
@@ -421,7 +421,7 @@ export const CreditCardBillsView: React.FC = () => {
                   {filteredBills.length}
                 </span>
               </div>
-              <p className="text-xs text-neutral-500 mt-0.5">Corporate credit card receipts, petty cash disbursements, and direct emergency site expense logs.</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Credit card receipts, petty cash and site expenses.</p>
             </div>
           </div>
 

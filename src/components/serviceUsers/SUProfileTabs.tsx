@@ -33,22 +33,22 @@ export const SUOverviewTab: React.FC<SUOverviewTabProps> = ({
 }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <div className="p-3 bg-neutral-50 rounded-xs border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Current Room</span>
         <p className="text-sm font-bold text-neutral-800">{currentRoom ? `Room ${currentRoom.roomNumber}` : 'Unassigned'}</p>
         <p className="text-[10px] text-neutral-500 truncate">{currentProperty?.propertyName || 'No property'}</p>
       </div>
-      <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <div className="p-3 bg-neutral-50 rounded-xs border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Status</span>
         <p className="text-sm font-bold text-teal-700">{serviceUser.status}</p>
         <p className="text-[10px] text-neutral-500 font-mono">{serviceUser.externalReference || 'No Port Ref'}</p>
       </div>
-      <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <div className="p-3 bg-neutral-50 rounded-xs border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Last Welfare Check</span>
         <p className="text-sm font-bold text-neutral-800">{lastWelfareDate || 'None'}</p>
         <p className="text-[10px] text-neutral-500">{suWelfareCount} checks logged</p>
       </div>
-      <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <div className="p-3 bg-neutral-50 rounded-xs border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Open Support / Issues</span>
         <p className="text-sm font-bold text-amber-700">
           {supportRecords.filter(s => s.status === 'Open' || s.status === 'In Progress').length} Open
@@ -76,7 +76,7 @@ export interface SUPersonalTabProps {
 
 export const SUPersonalTab: React.FC<SUPersonalTabProps> = ({ serviceUser, contact }) => (
   <div className="space-y-4">
-    <div className="bg-white p-4 rounded-lg border border-neutral-200 space-y-4">
+    <div className="bg-white p-4 rounded-xs border border-neutral-200 space-y-4">
       <h3 className="font-bold text-xs text-neutral-800 border-b pb-2">Personal &amp; Demographic Information</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div>
@@ -142,7 +142,7 @@ export const SUPersonalTab: React.FC<SUPersonalTabProps> = ({ serviceUser, conta
 
     {/* Primary & Emergency Contact Cards - 100% Parity with Edit Form */}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div className="bg-white p-4 rounded-lg border border-neutral-200 space-y-3">
+      <div className="bg-white p-4 rounded-xs border border-neutral-200 space-y-3">
         <h3 className="font-bold text-xs text-neutral-800 border-b pb-2 flex items-center justify-between">
           <span>Primary Contact Details</span>
           <span className="text-[10px] text-teal-700 font-medium font-mono">{contact?.preferredContactMethod || 'Mobile'} Preferred</span>
@@ -163,7 +163,7 @@ export const SUPersonalTab: React.FC<SUPersonalTabProps> = ({ serviceUser, conta
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-lg border border-neutral-200 space-y-3">
+      <div className="bg-white p-4 rounded-xs border border-neutral-200 space-y-3">
         <h3 className="font-bold text-xs text-neutral-800 border-b pb-2">Emergency Contact Details</h3>
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
@@ -221,7 +221,7 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
 
   return (
   <div className="space-y-4">
-    <div className="p-4 bg-teal-50/60 rounded-lg border border-teal-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="p-4 bg-teal-50/60 rounded-xs border border-teal-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
         <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider block">Current Active Placement</span>
         <h4 className="text-sm font-bold text-neutral-800 mt-0.5">
@@ -235,7 +235,7 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
         {canCRUD && (
           <button
             onClick={onOpenMoveModal}
-            className="px-3.5 py-1.5 bg-[#0d9488] text-white rounded-md font-semibold text-xs hover:bg-[#0f766e] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="px-3.5 py-1.5 bg-[#0d9488] text-white rounded-xs font-semibold text-xs hover:bg-[#0f766e] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <ArrowRightLeft className="w-3.5 h-3.5" />
             <span>Move Accommodation</span>
@@ -244,7 +244,7 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
         {canCRUD && activePlacement && onEndPlacement && (
           <button
             onClick={() => onEndPlacement(activePlacement.id)}
-            className="px-3.5 py-1.5 bg-white text-amber-700 border border-amber-300 rounded-md font-semibold text-xs hover:bg-amber-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="px-3.5 py-1.5 bg-white text-amber-700 border border-amber-300 rounded-xs font-semibold text-xs hover:bg-amber-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <span>End Placement</span>
           </button>
@@ -395,7 +395,7 @@ export const SUHouseholdTab: React.FC<SUHouseholdTabProps> = ({
       </div>
 
       {showAddForm && (
-        <form onSubmit={handleSubmit} className="p-3.5 bg-neutral-50 border border-neutral-300 rounded-lg space-y-2.5 animate-in fade-in duration-150">
+        <form onSubmit={handleSubmit} className="p-3.5 bg-neutral-50 border border-neutral-300 rounded-xs space-y-2.5 animate-in fade-in duration-150">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
             <div>
               <label className="block text-[10px] font-bold text-neutral-500 mb-0.5">Full Name *</label>
@@ -473,13 +473,13 @@ export const SUHouseholdTab: React.FC<SUHouseholdTabProps> = ({
       )}
 
       {household.length === 0 ? (
-        <div className="p-6 text-center bg-neutral-50 rounded-lg border border-dashed border-neutral-200 text-neutral-400">
+        <div className="p-6 text-center bg-neutral-50 rounded-xs border border-dashed border-neutral-200 text-neutral-400">
           No household members registered.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {household.map(m => (
-            <div key={m.id} className="p-3 bg-white border border-neutral-200 rounded-lg space-y-1 relative group">
+            <div key={m.id} className="p-3 bg-white border border-neutral-200 rounded-xs space-y-1 relative group">
               <div className="flex items-center justify-between">
                 <strong className="text-neutral-800 text-xs">{m.name}</strong>
                 <div className="flex items-center gap-1.5">
@@ -540,7 +540,7 @@ export const SUSupportTab: React.FC<SUSupportTabProps> = ({
     </div>
 
     {showAddSupport && (
-      <form onSubmit={onCreateSupport} className="p-3.5 bg-neutral-50 border border-neutral-300 rounded-lg space-y-2.5">
+      <form onSubmit={onCreateSupport} className="p-3.5 bg-neutral-50 border border-neutral-300 rounded-xs space-y-2.5">
         <div className="grid grid-cols-2 gap-2">
           <input
             type="text"
@@ -571,7 +571,7 @@ export const SUSupportTab: React.FC<SUSupportTabProps> = ({
     ) : (
       <div className="space-y-2">
         {supportRecords.map(s => (
-          <div key={s.id} className="p-3 bg-white border border-neutral-200 rounded-lg flex items-center justify-between">
+          <div key={s.id} className="p-3 bg-white border border-neutral-200 rounded-xs flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[10px] text-teal-800 font-bold">{s.supportReference}</span>

@@ -437,7 +437,7 @@ export const RolesView: React.FC = () => {
                   onClick={handleSave}
                   className={`px-3.5 py-1.5 text-xs font-semibold rounded-xs shadow-xs flex items-center gap-1.5 transition-colors ${
                     unsavedChangesCount > 0
-                      ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white animate-pulse'
+                      ? 'bg-[#0d9488] hover:bg-[#0f766e] text-white'
                       : 'bg-[#0d9488] hover:bg-[#0f766e] text-white'
                   }`}
                 >

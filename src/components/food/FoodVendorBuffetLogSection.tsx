@@ -759,7 +759,7 @@ export const FoodVendorBuffetLogSection: React.FC<{ tabSwitcher?: React.ReactNod
                   {filteredLogs.length} Buffet Logs
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Commercial 4-vendor hot food buffet matrix, daily breakfast, lunch, dinner, toddler &amp; special diet allocations.</p>
+              <p className="text-xs text-neutral-500">Daily vendor buffet allocations by meal and diet.</p>
             </div>
           </div>
 

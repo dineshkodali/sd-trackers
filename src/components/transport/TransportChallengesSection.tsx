@@ -286,7 +286,7 @@ export const TransportChallengesSection: React.FC<{ tabSwitcher?: React.ReactNod
                   {filteredRecords.length} Periods
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Track monthly operational challenges, public transport adoption, and safeguarding flags across sites.</p>
+              <p className="text-xs text-neutral-500">Monthly challenges, adoption and safeguarding flags by site.</p>
             </div>
           </div>
 

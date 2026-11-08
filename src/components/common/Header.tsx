@@ -217,7 +217,7 @@ export const Header: React.FC = () => {
         <button
           id="btn-mobile-menu-toggle"
           onClick={() => setIsMobileSidebarOpen(prev => !prev)}
-          className="lg:hidden p-2 -ml-1 text-[#323130] hover:text-[#0d9488] hover:bg-[#f3f2f1] rounded-md transition-colors focus:outline-hidden"
+          className="lg:hidden p-2 -ml-1 text-[#323130] hover:text-[#0d9488] hover:bg-[#f3f2f1] rounded-xs transition-colors focus:outline-hidden"
           aria-label={isMobileSidebarOpen ? 'Close navigation drawer' : 'Open navigation drawer'}
           title={isMobileSidebarOpen ? 'Close navigation' : 'Open navigation'}
         >

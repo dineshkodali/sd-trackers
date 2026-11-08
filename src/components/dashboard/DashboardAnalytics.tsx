@@ -323,10 +323,10 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
 
   // Month-over-month trend indicators
   const momIncidentTrend = useMemo(() => {
-    if (monthlyIncidentsData.length < 2) return 0;
+    if (monthlyIncidentsData.length < 2) return null;
     const current = monthlyIncidentsData[monthlyIncidentsData.length - 1]?.total || 0;
     const previous = monthlyIncidentsData[monthlyIncidentsData.length - 2]?.total || 0;
-    if (previous === 0) return current > 0 ? 100 : 0;
+    if (previous === 0) return null;
     return Math.round(((current - previous) / previous) * 100);
   }, [monthlyIncidentsData]);
 
@@ -341,13 +341,10 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
             </span>
             <div>
               <h2 className="text-base font-semibold text-[#242424] flex items-center gap-2">
-                Operational Trends & Visual Analytics
-                <span className="text-xs px-2 py-0.5 font-normal bg-[#f3f8fd] text-[#0f766e] border border-[#5eead4] rounded">
-                  Manager Overview
-                </span>
+                Operational Trends
               </h2>
               <p className="text-xs text-[#605e5c] mt-0.5">
-                Monthly incidence distribution and safeguarding referral pipeline trends across {selectedSite === 'all' ? 'all contracted hotels' : selectedSite}.
+                Incidents and referrals by month, {selectedSite === 'all' ? 'all sites' : selectedSite}.
               </p>
             </div>
           </div>
@@ -358,7 +355,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           <div className="text-right">
             <span className="text-[11px] text-[#605e5c] block">Current Scope</span>
             <span className="text-xs font-semibold text-[#0f766e]">
-              {selectedSite === 'all' ? 'All Accommodations (16 Sites)' : selectedSite}
+              {selectedSite === 'all' ? 'All sites' : selectedSite}
             </span>
           </div>
           <button
@@ -388,12 +385,14 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-2xl font-bold text-[#242424]">{totalIncidentsCount}</span>
-            <span className={`text-xs font-semibold ${momIncidentTrend >= 0 ? 'text-[#a4262c]' : 'text-[#107c10]'}`}>
-              {momIncidentTrend >= 0 ? `+${momIncidentTrend}%` : `${momIncidentTrend}%`} MoM
-            </span>
+            {momIncidentTrend !== null && (
+              <span className={`text-xs font-semibold ${momIncidentTrend >= 0 ? 'text-[#a4262c]' : 'text-[#107c10]'}`}>
+                {momIncidentTrend >= 0 ? `+${momIncidentTrend}%` : `${momIncidentTrend}%`} MoM
+              </span>
+            )}
           </div>
           <span className="text-[11px] text-[#605e5c] mt-0.5 block">
-            Escalations & behavioral reports combined
+            Escalations and behavioural reports
           </span>
         </div>
 
@@ -426,7 +425,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
             </span>
           </div>
           <span className="text-[11px] text-[#605e5c] mt-0.5 block">
-            Closed or permanent aids provided
+            Closed or aid provided
           </span>
         </div>
 
@@ -445,7 +444,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
             </span>
           </div>
           <span className="text-[11px] text-[#605e5c] mt-0.5 block">
-            Awaiting local authority allocation or visit
+            Awaiting allocation or visit
           </span>
         </div>
       </div>
@@ -466,7 +465,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   <span>Monthly Incident Types Breakdown</span>
                 </h3>
                 <p className="text-[11px] text-[#605e5c] mt-0.5">
-                  Monthly volume categorized by risk vector and operational impact
+                  Monthly volume by category
                 </p>
               </div>
 
@@ -702,20 +701,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                     data={monthlyReferralsData}
                     margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
                   >
-                    <defs>
-                      <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#107c10" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#107c10" stopOpacity={0.02} />
-                      </linearGradient>
-                      <linearGradient id="colorInProgress" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#d83b01" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#d83b01" stopOpacity={0.02} />
-                      </linearGradient>
-                      <linearGradient id="colorOpen" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0078d4" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#0078d4" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis 
                       dataKey="month" 
@@ -776,8 +761,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       name="Completed" 
                       stroke="#107c10" 
                       strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorCompleted)" 
+                      fill="#107c10" fillOpacity={0.15} 
                     />
                     <Area 
                       type="monotone" 
@@ -785,8 +769,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       name="In Progress" 
                       stroke="#d83b01" 
                       strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorInProgress)" 
+                      fill="#d83b01" fillOpacity={0.15} 
                     />
                     <Area 
                       type="monotone" 
@@ -794,8 +777,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       name="Open (New)" 
                       stroke="#0078d4" 
                       strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorOpen)" 
+                      fill="#0078d4" fillOpacity={0.15} 
                     />
                   </AreaChart>
                 ) : (

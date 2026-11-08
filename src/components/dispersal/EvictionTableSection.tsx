@@ -265,7 +265,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
                   {filteredRecords.length} Eviction Notices
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Record, audit, and manage Home Office cessation notices, appeals, and room vacation orders.</p>
+              <p className="text-xs text-neutral-500">Cessation notices, appeals and room vacation orders.</p>
             </div>
           </div>
 

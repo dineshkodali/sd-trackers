@@ -1,3 +1,4 @@
+import { X as CloseIcon } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { Soup, Plus, Search, Edit3, Trash2, Eye, CheckCircle2, Utensils, SlidersHorizontal, ArrowUp, ArrowDown, ArrowUpDown, Lock } from 'lucide-react';
@@ -361,7 +362,7 @@ export const FoodSurveysView: React.FC = () => {
             </div>
             <div>
               <h1 className="text-base font-bold text-[#242424] tracking-tight">Food Surveys &amp; Meal Quality</h1>
-              <p className="text-xs text-neutral-500">Collect weekly meal quality matrices and resident catering feedback across all properties.</p>
+              <p className="text-xs text-neutral-500">Weekly meal quality and catering feedback.</p>
             </div>
           </div>
 
@@ -567,7 +568,7 @@ export const FoodSurveysView: React.FC = () => {
                 onClick={() => setIsFormOpen(false)}
                 className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -600,7 +601,7 @@ export const FoodSurveysView: React.FC = () => {
               {activeTab === 'details' && (
                 <div className="space-y-4">
                   {/* Central Master SU Selector */}
-                  <div className="p-3 bg-white border border-emerald-100 rounded-lg shadow-2xs space-y-2">
+                  <div className="p-3 bg-white border border-emerald-100 rounded-xs shadow-2xs space-y-2">
                     <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">
                       Master Data Selection
                     </div>
@@ -924,7 +925,7 @@ export const FoodSurveysView: React.FC = () => {
                 onClick={() => setIsViewOpen(false)}
                 className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 

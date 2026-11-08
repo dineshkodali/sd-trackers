@@ -305,7 +305,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
           </button>
         </div>
 
-        <div className="bg-[#1e293b] border border-slate-700 rounded-md p-6 sm:p-7">
+        <div className="bg-[#1e293b] border border-slate-700 rounded-xs p-6 sm:p-7">
           <h1 className="text-lg font-semibold text-white">
             {mode === 'success' ? 'Password updated' : mode === 'request' ? 'Reset your password' : 'Set a new password'}
           </h1>
@@ -320,20 +320,20 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
           </p>
 
             {rateLimitNotice && (
-              <div role="alert" className="mb-4 p-3 bg-amber-950/40 border-amber-500/40 text-amber-200 border rounded-sm text-xs">{rateLimitNotice}</div>
+              <div role="alert" className="mb-4 p-3 bg-amber-950/40 border-amber-500/40 text-amber-200 border rounded-xs text-xs">{rateLimitNotice}</div>
             )}
             {expiredLinkNotice && (
-              <div role="alert" className="mb-4 p-3 bg-amber-950/40 border-amber-500/40 text-amber-200 border rounded-sm text-xs">{expiredLinkNotice}</div>
+              <div role="alert" className="mb-4 p-3 bg-amber-950/40 border-amber-500/40 text-amber-200 border rounded-xs text-xs">{expiredLinkNotice}</div>
             )}
             {errorMessage && (
-              <div role="alert" className="mb-4 p-3 bg-red-950/40 border-red-500/40 text-red-200 border rounded-sm text-xs">{errorMessage}</div>
+              <div role="alert" className="mb-4 p-3 bg-red-950/40 border-red-500/40 text-red-200 border rounded-xs text-xs">{errorMessage}</div>
             )}
             {successNotice && (
-              <div role="alert" className="mb-4 p-3 bg-teal-950/40 border-teal-500/40 text-teal-200 border rounded-sm text-xs">{successNotice}</div>
+              <div role="alert" className="mb-4 p-3 bg-teal-950/40 border-teal-500/40 text-teal-200 border rounded-xs text-xs">{successNotice}</div>
             )}
 
           {mode === 'success' && (
-            <button type="button" onClick={handleReturnToLogin} className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-sm text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+            <button type="button" onClick={handleReturnToLogin} className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-xs text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
               Sign in
             </button>
           )}
@@ -342,9 +342,9 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
             <form onSubmit={handleRequestReset} className="space-y-4">
               <div>
                 <label htmlFor="reset-email" className="block text-xs font-medium text-slate-300 mb-1.5">Email</label>
-                <input id="reset-email" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500" />
+                <input id="reset-email" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xs text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500" />
               </div>
-              <button type="submit" disabled={loading || cooldownSeconds > 0} className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-sm text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+              <button type="submit" disabled={loading || cooldownSeconds > 0} className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-xs text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
                 {loading ? 'Sending...' : cooldownSeconds > 0 ? `Send again in ${cooldownSeconds}s` : 'Send reset link'}
               </button>
               <div className="text-center">
@@ -363,7 +363,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
             <form onSubmit={handleConfirmReset} className="space-y-4">
               <div>
                 <label htmlFor="reset-email2" className="block text-xs font-medium text-slate-300 mb-1.5">Email</label>
-                <input id="reset-email2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500" />
+                <input id="reset-email2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xs text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500" />
               </div>
 
               {!tokenHash && !accessToken && (
@@ -386,7 +386,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
                     maxLength={8}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-mono tracking-widest"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xs text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-mono tracking-widest"
                   />
                 </div>
               )}
@@ -394,7 +394,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
               <div>
                 <label htmlFor="reset-new" className="block text-xs font-medium text-slate-300 mb-1.5">New password</label>
                 <div className="relative">
-                  <input id="reset-new" type={showPassword ? 'text' : 'password'} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 pr-16" />
+                  <input id="reset-new" type={showPassword ? 'text' : 'password'} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xs text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 pr-16" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 px-3 text-xs text-slate-400 hover:text-slate-200 cursor-pointer">
                     {showPassword ? 'Hide' : 'Show'}
                   </button>
@@ -405,7 +405,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
                       <span>Strength</span>
                       <span className="text-slate-300">{strength.label}</span>
                     </div>
-                    <div className="w-full h-1 bg-slate-800 rounded-sm overflow-hidden">
+                    <div className="w-full h-1 bg-slate-800 rounded-xs overflow-hidden">
                       <div className={`h-full ${strength.color}`} style={{ width: `${strength.score}%` }} />
                     </div>
                   </div>
@@ -415,7 +415,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
               <div>
                 <label htmlFor="reset-confirm" className="block text-xs font-medium text-slate-300 mb-1.5">Confirm new password</label>
                 <div className="relative">
-                  <input id="reset-confirm" type={showConfirmPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 pr-16" />
+                  <input id="reset-confirm" type={showConfirmPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xs text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 pr-16" />
                   <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 px-3 text-xs text-slate-400 hover:text-slate-200 cursor-pointer">
                     {showConfirmPassword ? 'Hide' : 'Show'}
                   </button>
@@ -427,7 +427,7 @@ export function ResetPasswordView({ initialMode, onBackToLogin }: ResetPasswordV
                 <li className={isMatchValid ? 'text-emerald-400' : 'text-slate-400'}>{isMatchValid ? 'Done: ' : ''}Passwords match</li>
               </ul>
 
-              <button type="submit" disabled={loading || !isFormValid} className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-sm text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+              <button type="submit" disabled={loading || !isFormValid} className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-xs text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
                 {loading ? 'Saving...' : 'Set new password'}
               </button>
               <div className="text-center">

@@ -149,7 +149,7 @@ export const BulkUserActionModal: React.FC<BulkUserActionModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-md shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-xs shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
         <div className="bg-[#faf9f8] border-b border-[#e1dfdd] px-6 py-4 flex items-center justify-between shrink-0">

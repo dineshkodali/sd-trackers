@@ -1,3 +1,4 @@
+import { X as CloseIcon } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Building2, Search, Plus, SlidersHorizontal, Lock, RefreshCw } from 'lucide-react';
 import { suPropertyService } from '../../services/suPropertyService';
@@ -283,12 +284,8 @@ export const LiveDailyRegistersView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-bold text-[#242424] tracking-tight">Live Daily Registers (AASC Headcount)</h1>
-                <span className="text-xs bg-teal-50 text-[#0d9488] font-bold px-2 py-0.5 rounded border border-teal-200 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488] animate-pulse" />
-                  Live Operations
-                </span>
               </div>
-              <p className="text-xs text-neutral-500">Real-time room occupancy roster, bedspace inventory, service user headcount, and Home Office arrivals/evictions.</p>
+              <p className="text-xs text-neutral-500">Room occupancy, bedspaces, headcount, arrivals and evictions.</p>
             </div>
           </div>
 
@@ -384,7 +381,7 @@ export const LiveDailyRegistersView: React.FC = () => {
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 text-xs cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             )}
           </div>

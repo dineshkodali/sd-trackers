@@ -210,7 +210,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({ isOpen
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-md shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-xs shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="bg-[#faf9f8] border-b border-[#e1dfdd] px-6 py-4 flex items-center justify-between shrink-0">
           <h2 className="text-lg font-bold text-[#323130] flex items-center gap-2">
             <Upload className="w-5 h-5 text-[#0d9488]" />
@@ -224,7 +224,7 @@ export const BulkUserImportModal: React.FC<BulkUserImportModalProps> = ({ isOpen
         <div className="p-6 overflow-y-auto flex-1">
           {step === 'upload' && (
             <div className="space-y-6 text-center">
-              <div className="bg-[#f0fdfa] p-6 rounded-md border border-teal-200">
+              <div className="bg-[#f0fdfa] p-6 rounded-xs border border-teal-200">
                 <FileText className="w-12 h-12 text-[#0d9488] mx-auto mb-3" />
                 <h3 className="font-bold text-lg mb-2 text-[#0f766e]">Upload CSV File</h3>
                 <p className="text-sm text-teal-800 mb-4 max-w-md mx-auto">

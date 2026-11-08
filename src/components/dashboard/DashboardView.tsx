@@ -322,7 +322,7 @@ export const DashboardView: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xs shadow-xs transition-colors"
             title="Trigger Quick Incident Log for immediate escalation reporting"
           >
-            <Siren className="w-3.5 h-3.5 animate-pulse" />
+            <Siren className="w-3.5 h-3.5" />
             <span>Quick Incident Log</span>
           </button>
 
@@ -661,12 +661,9 @@ export const DashboardView: React.FC = () => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-[#242424]">Public Transport Operations Overview</h3>
-                      <span className="text-[10px] bg-purple-50 text-[#8764b8] font-semibold px-2 py-0.5 rounded-xs border border-purple-200">
-                        Live Tracking
-                      </span>
+                      <h3 className="text-sm font-bold text-[#242424]">Public Transport</h3>
                     </div>
-                    <p className="text-xs text-[#605e5c]">Journey activity, issue tracking, funding requests, and site operational metrics</p>
+                    <p className="text-xs text-[#605e5c]">Journeys, issues and funding requests</p>
                   </div>
                 </div>
                 <button
@@ -758,8 +755,8 @@ export const DashboardView: React.FC = () => {
                 className="w-full text-left p-2.5 rounded bg-red-50 hover:bg-red-100 text-red-800 font-bold flex items-center justify-between border border-red-200 transition-colors shadow-2xs"
               >
                 <div className="flex items-center gap-2">
-                  <Siren className="w-4 h-4 text-red-600 animate-pulse" />
-                  <span>⚡ Quick Incident Log (Immediate Escalation)</span>
+                  <Siren className="w-4 h-4 text-red-600" />
+                  <span>Quick incident log</span>
                 </div>
                 <ArrowUpRight className="w-3.5 h-3.5 text-red-700" />
               </button>

@@ -60,7 +60,7 @@ export const CompactRecordCard: React.FC<CompactRecordCardProps> = ({
   return (
     <div 
       id={id ? `compact-card-${id}` : undefined}
-      className="bg-white border border-[#e1dfdd] rounded-md p-3.5 shadow-xs hover:border-[#0d9488]/40 transition-all flex flex-col justify-between gap-3 text-xs"
+      className="bg-white border border-[#e1dfdd] rounded-xs p-3.5 shadow-xs hover:border-[#0d9488]/40 transition-all flex flex-col justify-between gap-3 text-xs"
     >
       {/* Top Header Row */}
       <div className="flex items-start justify-between gap-2">
@@ -98,7 +98,7 @@ export const CompactRecordCard: React.FC<CompactRecordCardProps> = ({
 
       {/* Middle Key-Value Metadata Grid */}
       {fields.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 bg-[#faf9f8] p-2.5 rounded-sm border border-[#edebe9]">
+        <div className="grid grid-cols-2 gap-2 bg-[#faf9f8] p-2.5 rounded-xs border border-[#edebe9]">
           {fields.map((field, idx) => {
             const Icon = field.icon;
             return (
@@ -205,7 +205,7 @@ export function CompactRecordList<T = any>({
 }: CompactRecordListProps<T>) {
   if (data.length === 0) {
     return (
-      <div className="py-12 text-center text-neutral-500 bg-white border border-[#e1dfdd] rounded-sm p-6">
+      <div className="py-12 text-center text-neutral-500 bg-white border border-[#e1dfdd] rounded-xs p-6">
         <Inbox className="w-8 h-8 text-neutral-400 mx-auto mb-2 stroke-1" />
         <p className="text-xs font-medium text-[#605e5c]">{emptyMessage}</p>
       </div>

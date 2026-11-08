@@ -115,8 +115,8 @@ export const IncidentBuilderPreview: React.FC<PreviewProps> = ({ report: r, file
           }`}
         >
           {n
-            ? `⚠ ${n} red placeholder${n > 1 ? 's' : ''} still to complete – you can download now and finish them in Word.`
-            : '✓ Nothing left to fill in – ready to send.'}
+            ? `${n} red placeholder${n > 1 ? 's' : ''} still to complete – you can download now and finish them in Word.`
+            : 'Nothing left to fill in – ready to send.'}
         </div>
       </div>
 

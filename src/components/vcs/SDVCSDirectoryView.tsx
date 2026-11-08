@@ -389,7 +389,7 @@ export const SDVCSDirectoryView: React.FC = () => {
                   {filteredAgencies.length} Partner Organisations
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Voluntary, Community, and Faith Sector partner directory mapped across initial accommodation clusters.</p>
+              <p className="text-xs text-neutral-500">Voluntary, community and faith sector partners by property.</p>
             </div>
           </div>
 

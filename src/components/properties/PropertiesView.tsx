@@ -554,7 +554,7 @@ export const PropertiesView: React.FC = () => {
                   {visibleProperties.length}
                 </span>
               </div>
-              <p className="text-xs text-neutral-500 mt-0.5">Official accommodation list with Property IDs (PIDs), resident capacity, and lead officers.</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Properties, capacity and lead officers.</p>
             </div>
           </div>
 

@@ -253,11 +253,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
           <Logo size="lg" onDark />
         </div>
 
-        <div className="bg-[#1e293b] border border-slate-700 rounded-md p-6 sm:p-7">
+        <div className="bg-[#1e293b] border border-slate-700 rounded-xs p-6 sm:p-7">
           <h1 className="text-lg font-semibold text-white">Sign in</h1>
 
           {(localError || authError) && (
-            <div role="alert" className="mt-4 p-3 bg-red-950/40 border border-red-500/40 rounded-sm text-xs text-red-200">
+            <div role="alert" className="mt-4 p-3 bg-red-950/40 border border-red-500/40 rounded-xs text-xs text-red-200">
               <div>{localError || authError}</div>
               {(authError?.toLowerCase().includes('expired') || authError?.toLowerCase().includes('invalid')) && (
                 <button
@@ -285,7 +285,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xs text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
               />
             </div>
 
@@ -315,7 +315,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-3 pr-16 py-2 bg-slate-900 border border-slate-600 rounded-sm text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                  className="w-full pl-3 pr-16 py-2 bg-slate-900 border border-slate-600 rounded-xs text-sm text-white focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
                 />
                 <button
                   type="button"
@@ -332,7 +332,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded-sm border-slate-600 bg-slate-900 text-teal-600 focus:ring-teal-500 focus:ring-offset-0"
+                className="w-4 h-4 rounded-xs border-slate-600 bg-slate-900 text-teal-600 focus:ring-teal-500 focus:ring-offset-0"
               />
               <span>Keep me signed in on this device</span>
             </label>
@@ -340,7 +340,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
             <button
               type="submit"
               disabled={authLoading}
-              className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-sm text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="w-full py-2 px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-xs text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {authLoading ? 'Signing in...' : 'Sign in'}
             </button>
@@ -357,7 +357,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
       {/* PASSWORD RESET MODAL */}
       {isResetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-[#1e293b] border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden text-slate-200">
+          <div className="bg-[#1e293b] border border-slate-700 rounded-xs shadow-2xl w-full max-w-md overflow-hidden text-slate-200">
             <div className="px-6 py-4 border-b border-slate-700/80 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-teal-400" />
@@ -389,12 +389,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   placeholder="staff@sdcommercial.co.uk"
-                  className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
+                  className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xs text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
                 />
               </div>
 
               {resetStatusMessage && (
-                <div className={`p-3 rounded-lg flex items-start gap-2 ${
+                <div className={`p-3 rounded-xs flex items-start gap-2 ${
                   resetStatusMessage.type === 'error'
                     ? 'bg-red-950/60 text-red-200 border border-red-500/50'
                     : 'bg-teal-950/60 text-teal-200 border border-teal-500/50'
@@ -415,14 +415,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                     setIsResetModalOpen(false);
                     setResetStatusMessage(null);
                   }}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg transition-colors"
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={resetLoading}
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {resetLoading ? (
                     <>
@@ -455,10 +455,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
       {/* PASSWORD RECOVERY / SET NEW PASSWORD MODAL */}
       {isPasswordRecoveryMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-[#1e293b] border border-teal-500/40 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden text-slate-200">
+          <div className="bg-[#1e293b] border border-teal-500/40 rounded-xs shadow-2xl w-full max-w-md overflow-hidden text-slate-200">
             <div className="px-6 py-4 border-b border-slate-700/80 bg-slate-800/50 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center border border-teal-500/30">
+                <div className="w-8 h-8 rounded-xs bg-teal-500/20 text-teal-300 flex items-center justify-center border border-teal-500/30">
                   <ShieldCheck className="w-4 h-4 text-teal-400" />
                 </div>
                 <div>
@@ -482,7 +482,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
 
             <form onSubmit={handleUpdateNewPassword} className="p-6 space-y-4 text-xs">
               {recoveryEmail ? (
-                <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700/70 text-slate-300 text-[11px]">
+                <div className="p-2.5 rounded-xs bg-slate-800/80 border border-slate-700/70 text-slate-300 text-[11px]">
                   Account: <span className="font-semibold text-white">{recoveryEmail}</span>
                 </div>
               ) : (
@@ -503,7 +503,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter at least 12 characters"
-                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
+                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xs text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
                   />
                   <button
                     type="button"
@@ -526,12 +526,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter your new password"
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xs text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
                 />
               </div>
 
               {recoveryStatus && (
-                <div className={`p-3 rounded-lg flex items-start gap-2 ${
+                <div className={`p-3 rounded-xs flex items-start gap-2 ${
                   recoveryStatus.type === 'error'
                     ? 'bg-red-950/60 text-red-200 border border-red-500/50'
                     : 'bg-teal-950/60 text-teal-200 border border-teal-500/50'
@@ -555,14 +555,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
                       window.history.replaceState(null, '', '/');
                     }
                   }}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg transition-colors"
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={recoverySubmitting}
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {recoverySubmitting ? (
                     <>

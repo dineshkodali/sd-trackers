@@ -369,13 +369,13 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
       }}
     >
       <div 
-        className="bg-white border-2 border-red-600 rounded-sm shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto"
+        className="bg-white border-2 border-red-600 rounded-xs shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div className="bg-red-800 text-white px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-red-600 text-white rounded-xs shadow-xs animate-pulse">
+            <div className="p-1.5 bg-red-600 text-white rounded-xs shadow-xs">
               <Siren className="w-5 h-5" />
             </div>
             <div>

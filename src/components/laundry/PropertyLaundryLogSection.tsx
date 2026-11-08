@@ -792,7 +792,7 @@ export const PropertyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode
                   {sortedData.length} Laundry Logs
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Dirty laundry dispatched, clean laundry returned, reconciliation variance, and discrepancy tracking.</p>
+              <p className="text-xs text-neutral-500">Laundry dispatched and returned, with variance.</p>
             </div>
           </div>
 

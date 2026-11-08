@@ -25,7 +25,7 @@ export const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', showTex
   }
   return (
     <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      <img src="/brand/sd-icon.png" alt={showText ? '' : 'SD Commercial'} className={`${emblemSize[size]} rounded-sm`} draggable={false} />
+      <img src="/brand/sd-icon.png" alt={showText ? '' : 'SD Commercial'} className={`${emblemSize[size]} rounded-xs`} draggable={false} />
       {showText && (
         <span className="font-semibold tracking-wide text-white text-base leading-none">
           SD <span className="text-[#14b8a6]">COMMERCIAL</span>

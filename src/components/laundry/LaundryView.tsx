@@ -149,7 +149,7 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
                   {filteredRecords.length} Daily Records
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Log and track daily linen &amp; clothing washing cycles per resident room (house, room, bags &amp; batches).</p>
+              <p className="text-xs text-neutral-500">Daily laundry by room, bags and batches.</p>
             </div>
           </div>
 

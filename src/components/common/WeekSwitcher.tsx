@@ -141,7 +141,7 @@ export const WeekSwitcher: React.FC<WeekSwitcherProps> = ({
 
   const currentLabel = useMemo(() => {
     if (activeWeekCursor === 'all') {
-      return '📅 All Weeks (Entire History)';
+      return 'All weeks';
     }
     return formatWeekLabel(startDate, endDate);
   }, [activeWeekCursor, startDate, endDate]);

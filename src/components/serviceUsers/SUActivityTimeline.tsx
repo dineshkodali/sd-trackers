@@ -19,7 +19,7 @@ export const SUActivityTimeline: React.FC<SUActivityTimelineProps> = ({ items, l
 
   if (items.length === 0) {
     return (
-      <div className="py-8 text-center bg-white rounded-lg border border-dashed border-neutral-200">
+      <div className="py-8 text-center bg-white rounded-xs border border-dashed border-neutral-200">
         <Clock className="w-6 h-6 text-neutral-400 mx-auto mb-1.5" />
         <p className="text-xs font-semibold text-neutral-700">No activity records yet</p>
         <p className="text-[11px] text-neutral-400 mt-0.5">
@@ -61,7 +61,7 @@ export const SUActivityTimeline: React.FC<SUActivityTimelineProps> = ({ items, l
             {getIcon(item.type)}
           </div>
 
-          <div className="bg-white p-3 rounded-lg border border-neutral-200/90 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="bg-white p-3 rounded-xs border border-neutral-200/90 shadow-2xs hover:shadow-xs transition-shadow">
             <div className="flex items-center justify-between gap-2 mb-1">
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${item.badgeClass || 'bg-neutral-100 text-neutral-700'}`}>
                 {item.type}

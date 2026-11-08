@@ -313,7 +313,7 @@ export const TransportFeedbackSection: React.FC<{ tabSwitcher?: React.ReactNode 
                   {filteredRecords.length} Feedbacks
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Record, categorize, and resolve journey incidents across Aspen and OOH services.</p>
+              <p className="text-xs text-neutral-500">Journey incidents across Aspen and OOH services.</p>
             </div>
           </div>
 

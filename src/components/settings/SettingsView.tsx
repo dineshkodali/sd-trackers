@@ -87,7 +87,7 @@ export const SettingsView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full text-xs font-semibold">
-            <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+            <Activity className="w-3.5 h-3.5 text-emerald-600" />
             <span>Operational · Production Baseline</span>
           </span>
           <span className="inline-flex items-center px-2.5 py-1 bg-[#edebe9] text-[#323130] rounded-full text-xs font-medium">
@@ -119,9 +119,8 @@ export const SettingsView: React.FC = () => {
           </div>
           <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded border ${rtMeta.bg} ${rtMeta.color} ${rtMeta.border}`}>
             {rt.status === 'connected' && (
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              <span className="flex h-2 w-2">
+                <span className="inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
             )}
             {rtMeta.label}
@@ -187,7 +186,7 @@ export const SettingsView: React.FC = () => {
                 <span className="font-mono font-bold">{rt.stats.updates}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-red-600 font-semibold">✕ DELETE</span>
+                <span className="text-red-600 font-semibold">DELETE</span>
                 <span className="font-mono font-bold">{rt.stats.deletes}</span>
               </div>
             </div>
@@ -539,7 +538,7 @@ export const SettingsView: React.FC = () => {
             disabled={downloading}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-[#8a8886] hover:bg-[#edebe9] text-neutral-800 font-semibold text-xs rounded-xs transition-colors shadow-2xs disabled:opacity-50"
           >
-            <Download className={`w-3.5 h-3.5 text-[#0d9488] ${downloading ? 'animate-bounce' : ''}`} />
+            <Download className={`w-3.5 h-3.5 text-[#0d9488] `} />
             <span>{downloading ? 'Compiling Snapshot...' : 'Download Compliance Snapshot (JSON)'}</span>
           </button>
         </div>

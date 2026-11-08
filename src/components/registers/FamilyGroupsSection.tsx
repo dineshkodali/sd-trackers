@@ -343,9 +343,9 @@ export const SuFamilyPanel: React.FC<{ suId: string; onOpenProfile?: (suId: stri
     return () => { alive = false; };
   }, [suId, actor.canEdit]);
   if (!actor.canEdit || state === null) return null;
-  if (state === 'none') return <div className="border border-neutral-200 rounded-lg p-3 bg-white text-xs flex items-center gap-2"><Users className="w-4 h-4 text-neutral-500" /><span className="font-bold text-neutral-800">Family group</span><span className="text-neutral-500">Not part of a family group</span></div>;
+  if (state === 'none') return <div className="border border-neutral-200 rounded-xs p-3 bg-white text-xs flex items-center gap-2"><Users className="w-4 h-4 text-neutral-500" /><span className="font-bold text-neutral-800">Family group</span><span className="text-neutral-500">Not part of a family group</span></div>;
   return (
-    <div className="border border-neutral-200 rounded-lg p-3 bg-white text-xs space-y-1.5">
+    <div className="border border-neutral-200 rounded-xs p-3 bg-white text-xs space-y-1.5">
       <div className="flex items-center gap-2"><Users className="w-4 h-4 text-teal-700" /><span className="font-bold text-neutral-800">Family group: {state.family.displayName || state.family.familyRef}</span></div>
       {state.others.length === 0 ? <p className="text-neutral-500">No other active members.</p> : (
         <ul className="flex flex-wrap gap-2">{state.others.map(o => (

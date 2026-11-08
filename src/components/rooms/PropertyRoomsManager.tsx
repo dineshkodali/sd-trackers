@@ -283,7 +283,7 @@ export const PropertyRoomsManager: React.FC<Props> = ({ property, addSignal = 0,
                             <div className="font-bold text-[#1e293b]">{r.room.roomNumber}</div>
                             <div className="text-[10px] text-[#64748b]">{r.room.roomName && r.room.roomName !== `Room ${r.room.roomNumber}` ? r.room.roomName : r.room.roomReference}</div>
                           </td>
-                          <td className="py-2 pr-2">{r.room.roomType}{r.room.isAccessible ? <span title="Accessible room"> ♿</span> : null}{r.room.isFamilyRoom ? <span title="Family room"> 👪</span> : null}</td>
+                          <td className="py-2 pr-2">{r.room.roomType}{r.room.isAccessible ? <span title="Accessible room"> (accessible)</span> : null}{r.room.isFamilyRoom ? <span title="Family room"> (family)</span> : null}</td>
                           <td className="py-2 pr-2">{r.room.floor || 'Ground'}</td>
                           <td className="py-2 pr-2">
                             <div className="flex items-center gap-1.5">

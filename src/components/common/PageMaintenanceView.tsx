@@ -29,7 +29,7 @@ export const PageMaintenanceView: React.FC<PageMaintenanceViewProps> = ({
 
         {/* Animated Badge Icon */}
         <div className="relative mx-auto w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-xs">
-          <Wrench className="w-8 h-8 text-amber-600 animate-pulse" />
+          <Wrench className="w-8 h-8 text-amber-600" />
           <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-1 shadow-xs">
             <AlertTriangle className="w-3 h-3" />
           </span>

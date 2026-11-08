@@ -310,7 +310,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
                   {filteredRecords.length} Dispersals
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Track Initial Accommodation departures, long-term NASS transfers, exit briefings, and Home Office letters.</p>
+              <p className="text-xs text-neutral-500">Departures, NASS transfers, exit briefings and Home Office letters.</p>
             </div>
           </div>
 

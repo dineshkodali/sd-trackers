@@ -149,7 +149,7 @@ export const ManageableSelect: React.FC<ManageableSelectProps> = ({
 
           {canQuickAdd && (
             <option value={ADD_NEW_SENTINEL} className="font-bold text-teal-800 bg-teal-50">
-              ➕ + Add New Option...
+              Add new option...
             </option>
           )}
         </select>

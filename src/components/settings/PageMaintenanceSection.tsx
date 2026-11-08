@@ -104,7 +104,7 @@ export const PageMaintenanceSection: React.FC = () => {
 
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold border ${
             maintenanceCount > 0 
-              ? 'bg-amber-50 text-amber-900 border-amber-300 animate-pulse' 
+              ? 'bg-amber-50 text-amber-900 border-amber-300' 
               : 'bg-neutral-50 text-neutral-600 border-neutral-200'
           }`}>
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
@@ -248,7 +248,7 @@ export const PageMaintenanceSection: React.FC = () => {
                           ? 'bg-amber-100 text-amber-800 border-amber-300'
                           : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       }`}>
-                        {inMaintenance ? '⚠ Maintenance' : '● Live'}
+                        {inMaintenance ? 'Maintenance' : 'Live'}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">

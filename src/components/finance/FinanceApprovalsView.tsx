@@ -332,7 +332,7 @@ export const FinanceApprovalsView: React.FC = () => {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-neutral-500 mt-0.5">Central Finance final authorization, segregation of duties compliance, and payment release control.</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Final authorisation and payment release.</p>
             </div>
           </div>
 

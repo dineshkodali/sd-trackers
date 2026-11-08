@@ -1,3 +1,4 @@
+import { X as CloseIcon } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { Building2, Plus, Search, Edit3, Trash2, Eye, CheckCircle2, AlertTriangle, AlertOctagon, MessageSquare, SlidersHorizontal, ArrowUp, ArrowDown, ArrowUpDown, Lock } from 'lucide-react';
@@ -350,7 +351,7 @@ export const RoomChecksView: React.FC = () => {
       case 'Issues':
         return 'bg-amber-50 text-amber-800 border-amber-200';
       case 'Attention Required':
-        return 'bg-red-50 text-red-800 border-red-200 font-bold animate-pulse';
+        return 'bg-red-50 text-red-800 border-red-200 font-bold';
       default:
         return 'bg-neutral-100 text-neutral-700 border-neutral-200';
     }
@@ -421,7 +422,7 @@ export const RoomChecksView: React.FC = () => {
             </div>
             <div>
               <h1 className="text-base font-bold text-[#242424] tracking-tight">Room Checks &amp; Property Inspections</h1>
-              <p className="text-xs text-neutral-500">Carry out 30-point room checks, safety checks and housekeeping verifications.</p>
+              <p className="text-xs text-neutral-500">Room, safety and housekeeping checks.</p>
             </div>
           </div>
 
@@ -632,7 +633,7 @@ export const RoomChecksView: React.FC = () => {
                   onClick={() => setIsFormOpen(false)}
                   className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
                 >
-                  ✕
+                  <CloseIcon className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -873,7 +874,7 @@ export const RoomChecksView: React.FC = () => {
                   onClick={() => setIsViewOpen(false)}
                   className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
                 >
-                  ✕
+                  <CloseIcon className="w-4 h-4" />
                 </button>
               </div>
             </div>

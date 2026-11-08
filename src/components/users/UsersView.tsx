@@ -590,7 +590,7 @@ export const UsersView: React.FC = () => {
                   <span>Directory Managed</span>
                 </span>
               </div>
-              <p className="text-xs text-neutral-500 mt-0.5">User logins and credentials are authenticated securely. Assign operational roles and hotel property access below.</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Assign roles and property access.</p>
             </div>
           </div>
 
@@ -755,7 +755,7 @@ export const UsersView: React.FC = () => {
                 : 'bg-red-50 text-red-800 border-red-200'
             }`}>
               <div className="flex items-center gap-2">
-                <span className="font-semibold">{resetStatusNotice.type === 'success' ? '✓' : '⚠️'}</span>
+                <span className="font-semibold">{resetStatusNotice.type === 'success' ? 'Success:' : 'Warning:'}</span>
                 <span>{resetStatusNotice.text}</span>
               </div>
               <button onClick={() => setResetStatusNotice(null)} className="text-neutral-500 hover:text-neutral-800 font-bold ml-2">×</button>

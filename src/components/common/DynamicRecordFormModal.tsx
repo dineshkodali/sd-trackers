@@ -1144,7 +1144,7 @@ export function DynamicRecordFormModal<T = any>({
                           ))}
                           {col.type === 'select' && !isSite && !isUserColumn(col) && !isSiteManager && col.allowQuickAdd !== false && (
                             <option value="__ADD_NEW_OPTION__" className="font-bold text-teal-800 bg-teal-50">
-                              ➕ + Add New Option...
+                              Add new option...
                             </option>
                           )}
                         </select>

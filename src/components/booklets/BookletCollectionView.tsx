@@ -313,7 +313,7 @@ export const BookletCollectionView: React.FC = () => {
         <span className="flex items-center gap-1.5 font-semibold text-[#242424]">
           <span>{value || '—'}</span>
           {record.id === lastCreatedId && (
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse">
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
               NEW
             </span>
           )}
@@ -348,7 +348,7 @@ export const BookletCollectionView: React.FC = () => {
                   {filteredRecords.length} Consignments
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Initial Accommodation onboarding literature, translations, collection targets, and delivery receipts.</p>
+              <p className="text-xs text-neutral-500">Booklet collections, translations and delivery receipts.</p>
             </div>
           </div>
 

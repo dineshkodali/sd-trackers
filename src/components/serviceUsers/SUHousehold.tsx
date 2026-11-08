@@ -68,12 +68,12 @@ export const SUHousehold: React.FC<{ serviceUser: ServiceUserMaster; canManage: 
       {message && <Notice tone="ok">{message}</Notice>}
 
       {loading ? <p className="text-xs text-neutral-500">Loading household...</p> : active.length === 0 ? (
-        <div className="border border-dashed border-neutral-300 rounded-lg p-5 text-center text-xs text-neutral-500 space-y-1">
+        <div className="border border-dashed border-neutral-300 rounded-xs p-5 text-center text-xs text-neutral-500 space-y-1">
           <p className="font-semibold text-neutral-600">{serviceUser.firstName} is not part of a household.</p>
           <p>{canManage ? 'Add an existing Service User to start one. Both profiles will then show it.' : 'A manager can link family members here.'}</p>
         </div>
       ) : (
-        <div className="border border-neutral-200 rounded-lg overflow-x-auto bg-white">
+        <div className="border border-neutral-200 rounded-xs overflow-x-auto bg-white">
           <table className="w-full text-left text-xs">
             <thead className="bg-neutral-50 border-b border-neutral-200 text-[10px] font-bold text-neutral-500 uppercase">
               <tr><th className="p-2.5">Service User</th><th className="p-2.5">Reference</th><th className="p-2.5">Relationship</th><th className="p-2.5">Linked</th><th className="p-2.5" /></tr>

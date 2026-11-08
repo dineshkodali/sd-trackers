@@ -106,7 +106,7 @@ export const NetworkStatusIndicator: React.FC = () => {
         onClick={() => setShowTooltip(prev => !prev)}
         className={`flex items-center gap-1.5 px-2 py-1 rounded-xs text-xs font-semibold transition-all duration-200 border cursor-pointer select-none ${
           !isOnline
-            ? 'bg-[#fdf3f2] text-[#a4262c] border-[#f1998e] hover:bg-[#fde7e9] animate-pulse shadow-xs'
+            ? 'bg-[#fdf3f2] text-[#a4262c] border-[#f1998e] hover:bg-[#fde7e9] shadow-xs'
             : justReconnected
             ? 'bg-[#dff6dd] text-[#107c10] border-[#92c353] hover:bg-[#d0f0ce]'
             : 'bg-[#f8f9fa] text-[#484644] border-[#edebe9] hover:bg-[#edebe9] hover:text-[#242424]'
@@ -124,7 +124,6 @@ export const NetworkStatusIndicator: React.FC = () => {
           <>
             <WifiOff className="w-3.5 h-3.5 text-[#a4262c] shrink-0" />
             <span className="text-[11px] font-bold tracking-tight text-[#a4262c]">Offline</span>
-            <span className="w-2 h-2 rounded-full bg-[#a4262c] animate-ping ml-0.5 hidden sm:inline-block" />
           </>
         ) : justReconnected ? (
           <>

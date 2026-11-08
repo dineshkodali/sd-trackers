@@ -347,7 +347,7 @@ export const PublicTransportTrackerView: React.FC = () => {
                       {filteredRecords.length} Authorizations
                     </span>
                   </div>
-                  <p className="text-xs text-neutral-500">Journey authorizations, feedback, site challenges, funding requests and Oyster cards in one place.</p>
+                  <p className="text-xs text-neutral-500">Journeys, feedback, site challenges, funding and Oyster cards.</p>
                 </div>
               </div>
 

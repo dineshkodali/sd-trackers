@@ -440,7 +440,7 @@ export const SuOysterUsage: React.FC<{ suId: string; suName: string }> = ({ suId
   if (!actor.canEdit || txns === null) return null;
   const requestOf = (id?: string | null) => transportFundingRequests.find(r => r.id === id);
   return (
-    <div className="border border-neutral-200 rounded-lg p-3 bg-white text-xs space-y-2">
+    <div className="border border-neutral-200 rounded-xs p-3 bg-white text-xs space-y-2">
       <div className="flex items-center gap-2"><CreditCard className="w-4 h-4 text-neutral-500" /><span className="font-bold text-neutral-800">Funding usage: Oyster cards</span></div>
       <ErrorBanner message={error} />
       {txns.length === 0 ? <p className="text-neutral-500">No Oyster card has been issued to this Service User.</p> : (

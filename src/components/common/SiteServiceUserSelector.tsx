@@ -237,7 +237,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
   }, [propertySUs, searchTerm]);
 
   return (
-    <div className={`space-y-3.5 bg-neutral-50/80 p-3.5 rounded-lg border border-neutral-200/90 text-xs ${className}`}>
+    <div className={`space-y-3.5 bg-neutral-50/80 p-3.5 rounded-xs border border-neutral-200/90 text-xs ${className}`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Site Selector */}
         <div>
@@ -250,7 +250,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
             value={currentSiteId}
             onChange={e => handleSiteSelect(e.target.value)}
             disabled={disabled || (!canAccessAllSites() && permittedSites.length <= 1)}
-            className="w-full px-2.5 py-1.5 bg-white border border-neutral-300 rounded-md text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:bg-neutral-100 disabled:text-neutral-500"
+            className="w-full px-2.5 py-1.5 bg-white border border-neutral-300 rounded-xs text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:bg-neutral-100 disabled:text-neutral-500"
           >
             <option value="">-- Select Site --</option>
             {permittedSites.map(s => (
@@ -273,7 +273,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
             value={currentPropertyId}
             onChange={e => handlePropertySelect(e.target.value)}
             disabled={disabled || !currentSiteId || properties.length === 0}
-            className="w-full px-2.5 py-1.5 bg-white border border-neutral-300 rounded-md text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:bg-neutral-100 disabled:text-neutral-500"
+            className="w-full px-2.5 py-1.5 bg-white border border-neutral-300 rounded-xs text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:bg-neutral-100 disabled:text-neutral-500"
           >
             <option value="">
               {!currentSiteId ? '-- Select Site First --' : properties.length === 0 ? '-- No Properties at Site --' : '-- Select Property --'}
@@ -301,7 +301,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
             value={selectedSuId || ''}
             onChange={e => handleServiceUserSelect(e.target.value)}
             disabled={disabled || loading}
-            className="w-full px-2.5 py-1.5 bg-white border border-neutral-300 rounded-md text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:bg-neutral-100 disabled:text-neutral-500"
+            className="w-full px-2.5 py-1.5 bg-white border border-neutral-300 rounded-xs text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none disabled:bg-neutral-100 disabled:text-neutral-500"
           >
             <option value="">
               {loading
@@ -333,7 +333,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
               <Home className="w-3.5 h-3.5 text-blue-600" />
               <span>Current Property (Active Placement)</span>
             </label>
-            <div className="px-2.5 py-1.5 bg-neutral-100 border border-neutral-200 rounded-md text-neutral-800 text-xs font-medium flex items-center justify-between">
+            <div className="px-2.5 py-1.5 bg-neutral-100 border border-neutral-200 rounded-xs text-neutral-800 text-xs font-medium flex items-center justify-between">
               <span>{resolvedProperty ? resolvedProperty.propertyName : 'Unassigned / Outside Managed Properties'}</span>
               <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-mono">RESOLVED</span>
             </div>
@@ -349,7 +349,7 @@ export const SiteServiceUserSelector: React.FC<SiteServiceUserSelectorProps> = (
               <DoorOpen className="w-3.5 h-3.5 text-cyan-600" />
               <span>Current Room (Active Placement)</span>
             </label>
-            <div className="px-2.5 py-1.5 bg-neutral-100 border border-neutral-200 rounded-md text-neutral-800 text-xs font-medium flex items-center justify-between">
+            <div className="px-2.5 py-1.5 bg-neutral-100 border border-neutral-200 rounded-xs text-neutral-800 text-xs font-medium flex items-center justify-between">
               <span>{resolvedRoom ? `Room ${resolvedRoom.roomNumber} (${resolvedRoom.roomType})` : 'Unassigned Room'}</span>
               <span className="text-[10px] bg-cyan-100 text-cyan-800 px-1.5 py-0.5 rounded font-mono">READ-ONLY</span>
             </div>

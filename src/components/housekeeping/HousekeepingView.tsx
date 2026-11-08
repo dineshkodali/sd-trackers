@@ -1,3 +1,4 @@
+import { X as CloseIcon } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Sparkles, Plus, Trash2, Edit3, Search, SlidersHorizontal, Eye, CheckCircle2, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -400,7 +401,7 @@ export const HousekeepingView: React.FC = () => {
               <h2 className="text-base font-bold text-[#1e293b]">
                 {editingRecord ? 'Edit Daily Housekeeping Log & Rooms Cleaned Checklist' : 'Daily Housekeeping Log & Rooms Cleaned Checklist'}
               </h2>
-              <button type="button" onClick={closeForm} className="text-[#64748b] hover:text-[#1e293b] font-bold">✕</button>
+              <button type="button" onClick={closeForm} className="text-[#64748b] hover:text-[#1e293b] font-bold"><CloseIcon className="w-4 h-4" /></button>
             </div>
 
             <form
@@ -628,7 +629,7 @@ export const HousekeepingView: React.FC = () => {
                               onClick={() => setActiveRoomLogs(prev => prev.filter((_, i) => i !== idx))}
                               className="text-rose-500 hover:text-rose-700 font-bold"
                             >
-                              ✕
+                              <CloseIcon className="w-4 h-4" />
                             </button>
                           </td>
                         </tr>
@@ -675,7 +676,7 @@ export const HousekeepingView: React.FC = () => {
           <div className="bg-white rounded-xs shadow-xl border border-[#cbd5e1] max-w-3xl w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h2 className="text-base font-bold text-[#1e293b]">Housekeeping Inspection Details</h2>
-              <button onClick={() => setViewingRecord(null)} className="font-bold text-[#64748b]">✕</button>
+              <button onClick={() => setViewingRecord(null)} className="font-bold text-[#64748b]"><CloseIcon className="w-4 h-4" /></button>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-xs">

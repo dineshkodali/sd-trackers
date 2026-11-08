@@ -24,26 +24,26 @@ export const PropertyOverviewTab: React.FC<PropertyOverviewTabProps> = ({
 }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <div className="p-3 bg-neutral-50 rounded-xs border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Occupancy Rate</span>
         <p className="text-sm font-bold text-teal-700">
           {totalCapacity > 0 ? `${Math.round((activeOccupantsCount / totalCapacity) * 100)}%` : '—'}
         </p>
         <p className="text-[10px] text-neutral-500">{totalCapacity > 0 ? `${activeOccupantsCount} / ${totalCapacity} bed spaces (from the rooms)` : 'Add rooms to count bed spaces'}</p>
       </div>
-      <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <div className="p-3 bg-neutral-50 rounded-xs border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Total Rooms</span>
         <p className="text-sm font-bold text-neutral-800">{rooms.length}</p>
         <p className="text-[10px] text-neutral-500">{occupiedRoomsCount} occupied, {availableRoomsCount} available</p>
       </div>
-      <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <div className="p-3 bg-neutral-50 rounded-xs border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Compliance Status</span>
         <p className="text-sm font-bold text-emerald-700">
           {complianceList.filter(c => c.status === 'Valid').length} / {complianceList.length} Valid
         </p>
         <p className="text-[10px] text-neutral-500">{complianceList.filter(c => c.status === 'Expired').length} expired</p>
       </div>
-      <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+      <div className="p-3 bg-neutral-50 rounded-xs border border-neutral-200">
         <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Active Defect Tickets</span>
         <p className="text-sm font-bold text-amber-700">{propertyMaintenanceCount} Open</p>
         <p className="text-[10px] text-neutral-500">{assetsCount} inventoried items</p>
@@ -94,13 +94,13 @@ export const PropertyOverviewTab: React.FC<PropertyOverviewTabProps> = ({
           return (
             <div 
               key={r.id} 
-              className={`p-4 border rounded-xl shadow-xs transition-colors ${statusColor} relative overflow-hidden group`}
+              className={`p-4 border rounded-xs shadow-xs transition-colors ${statusColor} relative overflow-hidden group`}
             >
               
               <div className="flex items-center justify-between mb-3 relative z-10">
                 <span className="font-mono text-[11px] font-bold opacity-80">{r.roomReference}</span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor} shadow-sm flex items-center gap-1.5`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${isFull ? 'bg-purple-500' : isOccupied ? 'bg-blue-500' : isMaintenance ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`}></div>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isFull ? 'bg-purple-500' : isOccupied ? 'bg-blue-500' : isMaintenance ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
                   {statusBadgeText}
                 </span>
               </div>
@@ -140,7 +140,7 @@ export interface PropertyDetailsTabProps {
 
 export const PropertyDetailsTab: React.FC<PropertyDetailsTabProps> = ({ property }) => (
   <div className="space-y-4">
-    <div className="bg-white p-4 rounded-lg border border-neutral-200 space-y-4">
+    <div className="bg-white p-4 rounded-xs border border-neutral-200 space-y-4">
       <h3 className="font-bold text-xs text-neutral-800 border-b pb-2">Full Address &amp; Location</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
         <div>
@@ -262,7 +262,7 @@ export const PropertyServiceUsersTab: React.FC<PropertyServiceUsersTabProps> = (
     {occupants.length === 0 ? (
       <p className="text-neutral-400 italic">No Service Users currently placed at this property.</p>
     ) : (
-      <div className="border border-neutral-200 rounded-lg overflow-hidden bg-white">
+      <div className="border border-neutral-200 rounded-xs overflow-hidden bg-white">
         <table className="w-full text-left text-xs border-collapse">
           <thead className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none whitespace-nowrap">
             <tr>
@@ -353,7 +353,7 @@ export const PropertyComplianceTab: React.FC<PropertyComplianceTabProps> = ({
       <h3 className="font-bold text-xs text-neutral-800">Compliance &amp; Safety Certificates</h3>
       <button
         onClick={onAddCompliance}
-        className="px-3 py-1.5 bg-[#0d9488] text-white rounded-md font-semibold text-xs hover:bg-[#0f766e] flex items-center gap-1.5 cursor-pointer"
+        className="px-3 py-1.5 bg-[#0d9488] text-white rounded-xs font-semibold text-xs hover:bg-[#0f766e] flex items-center gap-1.5 cursor-pointer"
       >
         <Plus className="w-3.5 h-3.5" />
         <span>Add Certificate</span>
@@ -449,14 +449,14 @@ export const PropertyAssetsTab: React.FC<PropertyAssetsTabProps> = ({
       <h3 className="font-bold text-xs text-neutral-800">Inventory &amp; Asset Register</h3>
       <button
         onClick={onAddAsset}
-        className="px-3 py-1.5 bg-[#0d9488] text-white rounded-md font-semibold text-xs hover:bg-[#0f766e] flex items-center gap-1.5 cursor-pointer"
+        className="px-3 py-1.5 bg-[#0d9488] text-white rounded-xs font-semibold text-xs hover:bg-[#0f766e] flex items-center gap-1.5 cursor-pointer"
       >
         <Plus className="w-3.5 h-3.5" />
         <span>Add Asset</span>
       </button>
     </div>
 
-    <div className="border border-neutral-200 rounded-lg overflow-hidden bg-white">
+    <div className="border border-neutral-200 rounded-xs overflow-hidden bg-white">
       <table className="w-full text-left">
         <thead className="bg-neutral-50 border-b text-[10px] font-bold text-neutral-500 uppercase">
           <tr>

@@ -72,11 +72,11 @@ export const TransportKPIDashboard: React.FC<TransportKPIDashboardProps> = ({ se
       {/* Category 1: Journey Activity */}
       <div 
         onClick={() => onNavigate?.('publicTransport')}
-        className={`bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-xs transition-all hover:shadow-md ${onNavigate ? 'cursor-pointer hover:border-blue-400' : ''}`}
+        className={`bg-white dark:bg-slate-800 rounded-xs p-4 border border-slate-200 dark:border-slate-700 shadow-xs transition-all hover:shadow-md ${onNavigate ? 'cursor-pointer hover:border-blue-400' : ''}`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700/60 mb-3">
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xs bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
               <Bus className="w-4 h-4" />
             </span>
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
@@ -88,19 +88,19 @@ export const TransportKPIDashboard: React.FC<TransportKPIDashboardProps> = ({ se
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">PT Journeys</div>
             <div className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{ptJourneys}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Aspen Journeys</div>
             <div className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{aspenJourneys}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">OOH Journeys</div>
             <div className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{oohJourneys}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Taxi Journeys</div>
             <div className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">{taxiJourneys}</div>
           </div>
@@ -110,11 +110,11 @@ export const TransportKPIDashboard: React.FC<TransportKPIDashboardProps> = ({ se
       {/* Category 2: Transport Issues */}
       <div 
         onClick={() => onNavigate?.('publicTransport')}
-        className={`bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-xs transition-all hover:shadow-md ${onNavigate ? 'cursor-pointer hover:border-amber-400' : ''}`}
+        className={`bg-white dark:bg-slate-800 rounded-xs p-4 border border-slate-200 dark:border-slate-700 shadow-xs transition-all hover:shadow-md ${onNavigate ? 'cursor-pointer hover:border-amber-400' : ''}`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700/60 mb-3">
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+            <span className="p-2 rounded-xs bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
               <AlertTriangle className="w-4 h-4" />
             </span>
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
@@ -128,19 +128,19 @@ export const TransportKPIDashboard: React.FC<TransportKPIDashboardProps> = ({ se
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Open Issues</div>
             <div className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">{openIssues}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">High / Critical</div>
             <div className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-0.5">{highCriticalIssues}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Resolved</div>
             <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{resolvedIssues}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Outstanding</div>
             <div className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{outstandingIssues}</div>
           </div>
@@ -150,11 +150,11 @@ export const TransportKPIDashboard: React.FC<TransportKPIDashboardProps> = ({ se
       {/* Category 3: Funding Requests */}
       <div 
         onClick={() => onNavigate?.('publicTransport')}
-        className={`bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-xs transition-all hover:shadow-md ${onNavigate ? 'cursor-pointer hover:border-indigo-400' : ''}`}
+        className={`bg-white dark:bg-slate-800 rounded-xs p-4 border border-slate-200 dark:border-slate-700 shadow-xs transition-all hover:shadow-md ${onNavigate ? 'cursor-pointer hover:border-indigo-400' : ''}`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700/60 mb-3">
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+            <span className="p-2 rounded-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
               <CreditCard className="w-4 h-4" />
             </span>
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
@@ -166,19 +166,19 @@ export const TransportKPIDashboard: React.FC<TransportKPIDashboardProps> = ({ se
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Pending Approval</div>
             <div className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingFunding}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Approved</div>
             <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{approvedFunding}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Rejected</div>
             <div className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-0.5">{rejectedFunding}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Total Raised</div>
             <div className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{totalFunding}</div>
           </div>
@@ -188,11 +188,11 @@ export const TransportKPIDashboard: React.FC<TransportKPIDashboardProps> = ({ se
       {/* Category 4: Site Challenges */}
       <div 
         onClick={() => onNavigate?.('publicTransport')}
-        className={`bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-xs transition-all hover:shadow-md ${onNavigate ? 'cursor-pointer hover:border-teal-400' : ''}`}
+        className={`bg-white dark:bg-slate-800 rounded-xs p-4 border border-slate-200 dark:border-slate-700 shadow-xs transition-all hover:shadow-md ${onNavigate ? 'cursor-pointer hover:border-teal-400' : ''}`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700/60 mb-3">
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400">
+            <span className="p-2 rounded-xs bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400">
               <Activity className="w-4 h-4" />
             </span>
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
@@ -204,21 +204,21 @@ export const TransportKPIDashboard: React.FC<TransportKPIDashboardProps> = ({ se
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Sites Reporting</div>
             <div className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{sitesReporting}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">SG Concerns</div>
             <div className={`text-lg font-bold mt-0.5 ${sitesWithSg > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
               {sitesWithSg}
             </div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Not Using Tracker</div>
             <div className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">{sitesNotUsingTracker}</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
+          <div className="p-2.5 rounded-xs bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700">
             <div className="text-slate-500 dark:text-slate-400 text-[11px]">Follow-Up Req.</div>
             <div className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">{sitesRequiringFollowUp}</div>
           </div>

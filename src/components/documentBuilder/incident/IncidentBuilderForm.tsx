@@ -718,14 +718,14 @@ export const IncidentBuilderForm: React.FC<FormProps> = ({
       <Panel num={7} title="Check & send">
         <ul className="space-y-1 mb-3">
           {!checks.some(c => c.lvl === 'warn') && (
-            <li className="text-xs px-2 py-1 rounded-xs bg-[#f0fdf4] text-[#166534] font-semibold">{'✓'} Everything required is filled in.</li>
+            <li className="text-xs px-2 py-1 rounded-xs bg-[#f0fdf4] text-[#166534] font-semibold">Everything required is filled in.</li>
           )}
           {checks.map((c, i) => (
             <li
               key={i}
               className={`text-xs px-2 py-1 rounded-xs ${c.lvl === 'warn' ? 'bg-[#fffbeb] text-[#92400e]' : 'bg-[#f0fdfa] text-[#134e4a]'}`}
             >
-              {c.lvl === 'warn' ? '⚠ ' : 'ℹ '}{c.text}
+              {c.lvl === 'warn' ? 'Warning: ' : 'Note: '}{c.text}
             </li>
           ))}
         </ul>

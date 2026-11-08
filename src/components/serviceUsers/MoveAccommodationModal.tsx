@@ -190,7 +190,7 @@ export const MoveAccommodationModal: React.FC<MoveAccommodationModalProps> = ({
           </div>
 
           <div className="flex items-center justify-center text-[#0d9488] py-1">
-            <ArrowRight className="w-5 h-5 animate-pulse" />
+            <ArrowRight className="w-5 h-5" />
           </div>
 
           {/* New Placement Details */}

@@ -76,7 +76,7 @@ const NavItem: React.FC<NavItemProps> = ({
       id={id}
       type="button"
       onClick={() => onClick(page)}
-      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left cursor-pointer ${
+      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xs transition-all text-left cursor-pointer ${
         active ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
       }`}
     >
@@ -274,7 +274,7 @@ export const Sidebar: React.FC = () => {
           <button
             id="btn-close-mobile-sidebar"
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-colors cursor-pointer"
+            className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-xs transition-colors cursor-pointer"
             aria-label="Close navigation menu"
           >
             <X className="w-5 h-5 text-neutral-600" />
@@ -332,7 +332,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   id="nav-referrals-main"
                   onClick={() => handleNavClick('referrals')}
-                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-xs transition-all text-left ${
                     isNavActive('referrals') ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
                   }`}
                 >
@@ -349,7 +349,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   onClick={(e) => toggleGroup('referrals', e)}
                   title="Toggle Archive View"
-                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5 cursor-pointer"
+                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-xs transition-colors ml-0.5 cursor-pointer"
                 >
                   {openGroups.referrals ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
@@ -370,7 +370,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   id="nav-vulnerable-main"
                   onClick={() => handleNavClick('vulnerable')}
-                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-xs transition-all text-left ${
                     isNavActive('vulnerable') ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
                   }`}
                 >
@@ -387,7 +387,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   onClick={(e) => toggleGroup('vulnerable', e)}
                   title="Toggle Archive View"
-                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5 cursor-pointer"
+                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-xs transition-colors ml-0.5 cursor-pointer"
                 >
                   {openGroups.vulnerable ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
@@ -408,7 +408,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   id="nav-challenging-main"
                   onClick={() => handleNavClick('challenging')}
-                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-md transition-all text-left ${
+                  className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-xs transition-all text-left ${
                     isNavActive('challenging') ? 'bg-[#0d9488] text-white font-medium shadow-xs' : 'text-[#333333] hover:bg-[#f0efeb]'
                   }`}
                 >
@@ -425,7 +425,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   onClick={(e) => toggleGroup('challenging', e)}
                   title="Toggle Archive View"
-                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-md transition-colors ml-0.5 cursor-pointer"
+                  className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-[#f0efeb] rounded-xs transition-colors ml-0.5 cursor-pointer"
                 >
                   {openGroups.challenging ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
@@ -453,7 +453,7 @@ export const Sidebar: React.FC = () => {
               Facilities &amp; Site Services
             </div>
 
-            <NavItem id="nav-maintenance" page="maintenance" label="Maintenance Tracker" icon={HardHat} iconColor="text-amber-700" extraBadge={cat1Count > 0 ? (<span className="text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded animate-pulse">{cat1Count} CAT 1</span>) : null} badge={openMaintenance || null} badgeClass="bg-amber-50 text-amber-900 border border-amber-200" active={isNavActive('maintenance')} onClick={handleNavClick} />
+            <NavItem id="nav-maintenance" page="maintenance" label="Maintenance Tracker" icon={HardHat} iconColor="text-amber-700" extraBadge={cat1Count > 0 ? (<span className="text-[9px] font-bold bg-red-100 text-red-800 px-1 py-0.5 rounded">{cat1Count} CAT 1</span>) : null} badge={openMaintenance || null} badgeClass="bg-amber-50 text-amber-900 border border-amber-200" active={isNavActive('maintenance')} onClick={handleNavClick} />
             <NavItem id="nav-room-checks" page="roomChecks" label="Room Checks" icon={Building2} iconColor="text-cyan-700" badge={scopedRoomChecks.length || null} badgeClass="bg-cyan-50 text-cyan-800" active={isNavActive('roomChecks')} onClick={handleNavClick} />
             <NavItem id="nav-housekeeping" page="housekeeping" label="Housekeeping Log" icon={Sparkles} iconColor="text-emerald-700" badge={scopedHousekeeping.length || null} badgeClass="bg-emerald-50 text-emerald-800" active={isNavActive('housekeeping')} onClick={handleNavClick} />
             <NavItem id="nav-spcd" page="spcd" label="SPCD Tracker" icon={ScrollText} iconColor="text-emerald-700" badge={spcdCount || null} badgeClass="bg-emerald-50 text-emerald-900 border border-emerald-200" active={isNavActive('spcd')} onClick={handleNavClick} />

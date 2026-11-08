@@ -286,7 +286,7 @@ export const PropertyManagementView: React.FC = () => {
                   {filteredProperties.length} Properties
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Central source of truth for sites, properties, rooms, occupancy, and facilities.</p>
+              <p className="text-xs text-neutral-500">Sites, properties, rooms, occupancy and facilities.</p>
             </div>
           </div>
 

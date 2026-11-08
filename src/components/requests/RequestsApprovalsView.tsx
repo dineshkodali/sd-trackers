@@ -268,7 +268,7 @@ export const RequestsApprovalsView: React.FC = () => {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-neutral-500 mt-0.5">Submit data entry corrections, deletion requests, or record changes for Regional Manager and Admin review.</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Corrections and deletion requests for manager review.</p>
             </div>
           </div>
 

@@ -5,6 +5,7 @@
  * Supports compact field entry and in-place field/section additions and removals.
  */
 
+import { X as CloseIcon } from 'lucide-react';
 import React, { useCallback, useRef, useState } from 'react';
 import { Trash2, Plus, Camera, Image as ImageIcon } from 'lucide-react';
 import type { TemplateFieldDefinition, LayoutConfig, SectionLayout } from '../../types/documentBuilder';
@@ -339,7 +340,7 @@ export const DocumentInputForm: React.FC<DocumentInputFormProps> = ({
                   className="p-1 text-[#ef4444] hover:bg-[#fee2e2] rounded-xs transition-colors cursor-pointer"
                   title="Remove row"
                 >
-                  <span className="text-xs font-bold leading-none">✕</span>
+                  <CloseIcon className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}

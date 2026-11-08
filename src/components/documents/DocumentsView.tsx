@@ -339,7 +339,7 @@ export const DocumentsView: React.FC = () => {
                   {filteredData.length} Documents
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Store risk assessments, local authority MOUs, medical assessments, and safeguarding support plans.</p>
+              <p className="text-xs text-neutral-500">Risk assessments, MOUs, medical assessments and support plans.</p>
             </div>
           </div>
 

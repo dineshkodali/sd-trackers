@@ -69,7 +69,7 @@ export const OptionSelect: React.FC<{
         <option value="">{placeholder || (required ? `Select ${label}...` : `Select ${label}... (Unassigned)`)}</option>
         {value && !known && <option value={value}>{value} (Current Value)</option>}
         {options.map(o => <option key={String(o.value)} value={o.value}>{o.label}</option>)}
-        {allowAdd && !disabled && <option value="__ADD_NEW_OPTION__" className="font-bold text-teal-800 bg-teal-50">➕ + Add New Option...</option>}
+        {allowAdd && !disabled && <option value="__ADD_NEW_OPTION__" className="font-bold text-teal-800 bg-teal-50">Add new option...</option>}
       </select>
       {open && (
         <QuickOptionModal

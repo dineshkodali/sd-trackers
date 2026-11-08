@@ -660,7 +660,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                             : 'bg-white border-[#8a8886]/40 text-[#605e5c]'
                         }`}
                       >
-                        ✓ Goods in Good Order
+                        Goods in good order
                       </button>
                       <button
                         type="button"
@@ -671,7 +671,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
                             : 'bg-white border-[#8a8886]/40 text-[#605e5c]'
                         }`}
                       >
-                        ⚠ Damaged / Discrepancy
+                        Damaged / discrepancy
                       </button>
                     </div>
                   </div>

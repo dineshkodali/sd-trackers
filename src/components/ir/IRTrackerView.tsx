@@ -242,7 +242,7 @@ export const IRTrackerView: React.FC = () => {
                   {filteredRecords.length} Incident Reports
                 </span>
               </div>
-              <p className="text-xs text-neutral-500">Log, track 1st/2nd review progression, and monitor CRH submission status for incident reports.</p>
+              <p className="text-xs text-neutral-500">Incident reports, review stages and CRH submission.</p>
             </div>
           </div>
 

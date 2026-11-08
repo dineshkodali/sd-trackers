@@ -69,7 +69,7 @@ export const SUPeepTab: React.FC<{ suId: string; searchText: string }> = ({ suId
         : error ? <p className="text-red-700 bg-red-50 border border-red-200 rounded-xs p-2.5">{error}</p>
         : !active ? <p className="text-neutral-400 italic">No active PEEP plan recorded for this resident. Add one from the PEEP Tracker.</p>
         : (
-          <div className="border border-neutral-200 rounded-lg bg-white p-4 space-y-4">
+          <div className="border border-neutral-200 rounded-xs bg-white p-4 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`px-2 py-0.5 rounded border font-semibold ${riskBadge[active.riskLevel] || ''}`}>{active.riskLevel} risk</span>
               <span className={`px-2 py-0.5 rounded border font-semibold ${reviewBadge[reviewStatusOf(active.reviewDate, today)][1]}`}>{reviewBadge[reviewStatusOf(active.reviewDate, today)][0]}</span>
@@ -93,7 +93,7 @@ export const SUPeepTab: React.FC<{ suId: string; searchText: string }> = ({ suId
       {history.length > 0 && (
         <div className="space-y-2">
           <h4 className="font-bold text-xs text-neutral-800">Plan history</h4>
-          <ul className="border border-neutral-200 rounded-lg divide-y divide-neutral-100 bg-white">
+          <ul className="border border-neutral-200 rounded-xs divide-y divide-neutral-100 bg-white">
             {history.map(h => (
               <li key={h.id} className="px-3 py-1.5 flex items-center justify-between gap-3">
                 <span><b>v{h.version}</b> {h.changeType}{h.changedFields ? ` (${h.changedFields})` : ''}</span>

@@ -1,3 +1,4 @@
+import { X as CloseIcon } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Utensils, Calendar, Plus, Trash2, Edit3, Search, Eye, CheckCircle2, Inbox, Database, Check, RotateCcw, Coffee, Soup, BookmarkPlus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -923,7 +924,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                 onClick={() => { setIsReportModalOpen(false); setEditingReport(null); }} 
                 className="text-slate-400 hover:text-white font-bold p-1 text-lg transition-colors cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -1020,7 +1021,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                   <CheckCircle2 className="w-4 h-4 text-teal-600" />
                   {savedDbItemsNotice}
                 </div>
-                <button onClick={() => setSavedDbItemsNotice(null)} className="text-teal-700 hover:text-teal-900 font-bold">✕</button>
+                <button onClick={() => setSavedDbItemsNotice(null)} className="text-teal-700 hover:text-teal-900 font-bold"><CloseIcon className="w-4 h-4" /></button>
               </div>
             )}
 
@@ -1184,7 +1185,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                                       <option key={`${opt}-${oIdx}`} value={opt}>{opt}</option>
                                     ))}
                                   </optgroup>
-                                  <option value="__custom__">➕ Enter Custom Item...</option>
+                                  <option value="__custom__">Enter custom item...</option>
                                 </select>
 
                                 {/* Custom Text Input & Save to DB button */}
@@ -1432,7 +1433,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                   <h3 className="text-sm font-bold text-slate-800">Food Dishes Database Library</h3>
                 </div>
               </div>
-              <button onClick={() => setIsManagePresetsOpen(false)} className="font-bold text-slate-400 hover:text-slate-800">✕</button>
+              <button onClick={() => setIsManagePresetsOpen(false)} className="font-bold text-slate-400 hover:text-slate-800"><CloseIcon className="w-4 h-4" /></button>
             </div>
 
             {/* Meal Switcher */}
@@ -1528,7 +1529,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                 </p>
               </div>
               <button onClick={() => setViewingReport(null)} className="font-bold text-[#64748b] hover:text-[#1e293b] p-1 text-lg">
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -1626,7 +1627,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                   Track special diet boxes (no salt, non-spicy, allergies) and resident complaints.
                 </p>
               </div>
-              <button onClick={() => { setIsBoxModalOpen(false); setEditingBox(null); }} className="font-bold text-[#64748b] hover:text-[#1e293b] p-1 text-lg">✕</button>
+              <button onClick={() => { setIsBoxModalOpen(false); setEditingBox(null); }} className="font-bold text-[#64748b] hover:text-[#1e293b] p-1 text-lg"><CloseIcon className="w-4 h-4" /></button>
             </div>
 
             <form

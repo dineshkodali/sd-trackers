@@ -18,7 +18,7 @@ function RecordTable<T extends { id: string }>({ title, rows, columns, empty }: 
       {rows.length === 0 ? (
         <p className="text-neutral-400 italic">{empty}</p>
       ) : (
-        <div className="border border-neutral-200 rounded-lg overflow-x-auto bg-white">
+        <div className="border border-neutral-200 rounded-xs overflow-x-auto bg-white">
           <table className="w-full text-left text-xs">
             <thead className="bg-neutral-50 border-b border-neutral-200 text-[10px] font-bold text-neutral-500 uppercase">
               <tr>{columns.map(c => <th key={c.label} className="p-2.5 whitespace-nowrap">{c.label}</th>)}</tr>
