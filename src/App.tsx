@@ -84,6 +84,8 @@ function AppLayout() {
     pagePermsReady,
     canManageUsers,
     canManageProperties,
+    canAccessUsersPage,
+    canAccessPropertiesPage,
     currentUserRole,
     rolePermissions,
     isPageUnderMaintenance,
@@ -315,11 +317,11 @@ function AppLayout() {
       case 'documentBuilder':
         return <DocumentBuilderView />;
       case 'properties':
-        return canManageProperties()
+        return canAccessPropertiesPage()
           ? <PropertiesView />
           : <AccessDeniedView pageName="Properties Directory" requiredRole="Super Admin or Admin" />;
       case 'users':
-        return canManageUsers()
+        return canAccessUsersPage()
           ? <UsersView />
           : <AccessDeniedView pageName="Staff & User Accounts" requiredRole="Super Admin or Admin" />;
       case 'reports':

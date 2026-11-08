@@ -147,6 +147,8 @@ export const Sidebar: React.FC = () => {
     canManageRoles,
     canManageProperties,
     canManageUsers,
+    canAccessUsersPage,
+    canAccessPropertiesPage,
     rolePermissions,
     isFinanceUser,
     financeBills,
@@ -522,16 +524,16 @@ export const Sidebar: React.FC = () => {
           )}
 
           {/* Section: Admin & Governance (Super Admin & Admin Only) */}
-          {isAdminOrSuperAdmin && (
+          {(isAdminOrSuperAdmin || canAccessUsersPage() || canAccessPropertiesPage()) && (
             <div className="space-y-1 pt-2 border-t border-[#ecebe8] not-has-[button]:hidden">
               <div className="px-2 flex items-center justify-between text-[10px] font-semibold text-[#8c8c8c] uppercase tracking-wider">
                 <span>Admin & Governance</span>
               </div>
 
-              {canManageProperties() && (
+              {canAccessPropertiesPage() && (
                 <NavItem id="nav-properties" page="properties" label="Properties Directory" icon={Landmark} iconColor="text-[#0d9488]" badge={properties.length || null} badgeClass="bg-[#eef3f7] text-[#0f766e]" active={isNavActive('properties')} onClick={handleNavClick} />
               )}
-              {canManageUsers() && (
+              {canAccessUsersPage() && (
                 <NavItem id="nav-users" page="users" label="Staff & User Accounts" icon={UsersRound} iconColor="text-teal-700" badge={users.length || null} badgeClass="bg-teal-50 text-teal-800" active={isNavActive('users')} onClick={handleNavClick} />
               )}
               {canManageRoles() && (

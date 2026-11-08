@@ -1741,7 +1741,7 @@ export const apiService = {
             }
           });
 
-          const mapped = data.map((p: any) => {
+          const mapped = data.filter((p: any) => !p.lifecycle_state || p.lifecycle_state === 'Active').map((p: any) => {
             let sites: string[] = [];
             if (p.assigned_site) {
               sites = p.assigned_site.includes(',')
@@ -1863,29 +1863,40 @@ export const apiService = {
   },
 
   /** Delete the account from Supabase Auth; its profile and assignments cascade. */
-  async deleteUserAccount(userId: string): Promise<{ success: boolean; error?: string }> {
+  /**
+   * Recoverable delete: the account moves to Deleted Records (sign-in blocked) and a Super Admin
+   * can restore it. Nothing is removed from the database.
+   */
+  async deleteUserAccount(userId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+    let networkFailure = false;
     try {
       const res = await fetchWithTimeout(getApiUrl(`/api/auth/users/${encodeURIComponent(userId)}`), {
         method: 'DELETE',
-        headers: authHeaders()
-      }, 2500);
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ reason: reason || '' })
+      }, 8000);
       const json = await parseApiResponse<any>(res);
       if (res.ok && json?.success !== false) {
         this.removeLocalUserCache(userId);
         return { success: true };
       }
-    } catch {}
-
-    const sb = getBrowserSupabaseClient();
-    if (sb) {
-      try {
-        await sb.from('property_user_assignments').delete().eq('user_id', userId);
-        await sb.from('profiles').delete().eq('id', userId);
-      } catch {}
+      // The API answered but refused (permission, scope, migration pending): report it, do not retry another way.
+      if (json?.error) return { success: false, error: json.error };
+      networkFailure = res.status >= 502 || res.status === 404;
+    } catch {
+      networkFailure = true;
     }
 
-    this.removeLocalUserCache(userId);
-    return { success: true };
+    const sb = getBrowserSupabaseClient();
+    if (networkFailure && sb) {
+      const { error } = await sb.rpc('lifecycle_apply_self', { p_entity: 'users', p_id: userId, p_action: 'delete', p_reason: reason || null });
+      if (!error) {
+        this.removeLocalUserCache(userId);
+        return { success: true };
+      }
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: 'The server could not be reached.' };
   }
 };
 

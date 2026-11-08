@@ -1,3 +1,5 @@
+import { applyLifecycle } from './lifecycle.js';
+import { canCreateProperty, isLifecycleEditor } from '../../src/config/recordLifecycle.js';
 import { isOutOfUse } from '../../src/utils/roomManagementLogic.js';
 import fs from 'fs';
 import path from 'path';
@@ -26,7 +28,7 @@ const router = Router();
  *   permission - governed by role_permissions.canDeleteRecords (deletes only)
  *   none       - not through this API
  */
-type Policy = 'any' | 'admin' | 'superadmin' | 'append' | 'permission' | 'none' | 'manager' | 'suEditor';
+type Policy = 'any' | 'admin' | 'lifecycleEditor' | 'superadmin' | 'append' | 'permission' | 'none' | 'manager' | 'suEditor';
 
 interface EntityDef {
   page: string;
@@ -78,7 +80,7 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   booklets: { page: 'Booklets to be Collected', table: 'booklet_collections' },
   vcsAgencies: { page: 'SD VCS Directory', table: 'vcs_agencies' },
   requests: { page: 'Requests & Approvals', table: 'data_change_requests' },
-  sites: { page: 'Properties Directory', table: 'sites', write: 'admin', remove: 'admin' },
+  sites: { page: 'Properties Directory', table: 'sites', write: 'lifecycleEditor', remove: 'lifecycleEditor' },
   users: { page: 'Staff & User Accounts', table: 'profiles', write: 'admin', remove: 'none' },
   userGroups: { page: 'User Groups', table: 'user_groups', write: 'admin', remove: 'admin' },
   property_user_assignments: { page: 'Property Assignments', table: 'property_user_assignments', write: 'admin', remove: 'admin' },
@@ -281,6 +283,12 @@ function sanitizeWriteBody(req: Request, def: EntityDef, isUpdate: boolean) {
     const { archiveStatus, archivedAt, archivedPreStatus, archive_status, archived_at, archived_pre_status, ...rest } = body;
     body = rest;
   }
+  if (def.table === 'sites' || def.table === 'profiles') {
+    // Archive / delete / restore state changes only through /api/lifecycle (and the database enforces it).
+    const clean = { ...body };
+    for (const k of Object.keys(clean)) if (/^lifecycle/i.test(k) || /^lifecycle_/.test(k)) delete clean[k];
+    body = clean;
+  }
   if (def.table === 'transport_funding_requests') body = sanitizeFundingBody(body, isUpdate, req.user);
   if (def.table === 'oyster_cards') body = sanitizeOysterCardBody(body, isUpdate, req.user);
   if (isUpdate) body = stripSensitiveUpdateFields(def.table, body, req.user?.role);
@@ -348,6 +356,7 @@ async function authorize(req: Request, res: Response, policy: Policy, operation:
   switch (policy) {
     case 'any': allowed = true; break;
     case 'admin': allowed = ADMIN_ROLES.includes(role); break;
+    case 'lifecycleEditor': allowed = isLifecycleEditor(role); break;
     case 'superadmin': allowed = role === 'Super Admin'; break;
     case 'append': allowed = operation === 'create'; break;
     case 'permission': allowed = operation === 'delete' ? await roleMayDelete(role) : true; break;
@@ -804,7 +813,10 @@ async function readEntityUnscopedChildren(client: SupabaseClient, def: EntityDef
     }
     return { success: false as const, error: error.message, tableMissing: isMissingTableError(error), data: [] as any[] };
   }
-  let rows = (data || []).map((row: any) => fromDatabaseRow(def.table, row));
+  const hideInactive = def.table === 'sites' || def.table === 'profiles';
+  let rows = (data || [])
+    .filter((row: any) => !hideInactive || !row.lifecycle_state || row.lifecycle_state === 'Active')
+    .map((row: any) => fromDatabaseRow(def.table, row));
   if (def.variant) rows = rows.filter(def.variant);
 
   // In-memory defense-in-depth scoping check for mapped rows
@@ -1272,6 +1284,18 @@ async function writeScopeError(client: SupabaseClient, req: Request, def: Entity
     }
   }
 
+  if (def.table === 'sites') {
+    for (const r of records) {
+      const prev = existing.get(String(r?.id));
+      if (prev && prev.lifecycle_state && prev.lifecycle_state !== 'Active') {
+        return 'Archived or deleted properties cannot be edited. A Super Admin must restore the property first.';
+      }
+      if (!prev && role !== 'Super Admin' && role !== 'Admin' && !canCreateProperty({ role, sites: getUserAssignedSites(user) })) {
+        return 'A new property can only be added by someone assigned to all sites.';
+      }
+    }
+  }
+
   if (FINANCE_STATUS_TABLES.has(def.table) && !ADMIN_ROLES.includes(role)) {
     for (const r of records) {
       const prev = existing.get(String(r?.id));
@@ -1476,7 +1500,7 @@ router.post('/sync/push', async (req: Request, res: Response) => {
     if (!def || !Array.isArray(records) || records.length === 0) continue;
     const policy = def.write || 'any';
     const role = req.user?.role || '';
-    const permitted = policy === 'any' || (policy === 'admin' && ADMIN_ROLES.includes(role)) || (policy === 'superadmin' && role === 'Super Admin');
+    const permitted = policy === 'any' || (policy === 'admin' && ADMIN_ROLES.includes(role)) || (policy === 'lifecycleEditor' && isLifecycleEditor(role)) || (policy === 'superadmin' && role === 'Super Admin');
     if (!permitted) {
       results[entity] = 'Error: insufficient privileges';
       continue;
@@ -1597,6 +1621,15 @@ router.post('/:entity/bulk-delete', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'Body must be { ids: [ "id", ... ] }' });
   }
   if (ids.length === 0) return res.json({ success: true, deleted: 0 });
+  if (def.table === 'sites') {
+    let softDeleted = 0;
+    for (const id of ids) {
+      const soft = await applyLifecycle(client, req, 'properties', id, 'delete', req.body?.reason);
+      if (soft.ok === false) return res.status(soft.status).json({ success: false, error: soft.error, deleted: softDeleted });
+      softDeleted++;
+    }
+    return res.json({ success: true, deleted: softDeleted, softDeleted: true });
+  }
   const bulkDeleteScopeError = await deleteScopeError(client, req, def, ids);
   if (bulkDeleteScopeError) return res.status(403).json({ success: false, error: bulkDeleteScopeError });
 
@@ -1918,6 +1951,12 @@ router.delete('/:entity/:id', async (req: Request, res: Response) => {
   if (!client) return;
 
   const { id } = req.params;
+  if (def.table === 'sites') {
+    // Recoverable delete: the property moves to Deleted and a Super Admin can restore it.
+    const soft = await applyLifecycle(client, req, 'properties', id, 'delete', req.body?.reason);
+    if (soft.ok === false) return res.status(soft.status).json({ success: false, error: soft.error });
+    return res.json({ success: true, id, deleted: 1, softDeleted: true });
+  }
   const writeTable = VIEW_WRITE_TARGETS[def.table]?.table || def.table;
   const singleDeleteScopeError = await deleteScopeError(client, req, def, [id]);
   if (singleDeleteScopeError) return res.status(403).json({ success: false, error: singleDeleteScopeError });

@@ -355,6 +355,11 @@ export async function directFetchEntityRecords<T = any>(
       rows = rows.filter(mapping.variant);
     }
 
+    // Archived and deleted users / properties are not part of the active lists.
+    if (mapping.table === 'sites' || mapping.table === 'profiles') {
+      rows = rows.filter((r: any) => !r.lifecycle_state || r.lifecycle_state === 'Active');
+    }
+
     const mapped = rows.map(r => fromDatabaseRow(mapping.table, r) as T);
     return { success: true, data: mapped };
   } catch (err: any) {
@@ -498,6 +503,12 @@ export async function directDeleteEntityRecord(
   if (!mapping) return { success: false, error: `Unknown entity: ${entity}` };
 
   try {
+    if (mapping.table === 'sites') {
+      // Recoverable delete (the database refuses a hard delete from the browser).
+      const { error: rpcError } = await supabase.rpc('lifecycle_apply_self', { p_entity: 'properties', p_id: id, p_action: 'delete', p_reason: null });
+      if (rpcError) return { success: false, error: rpcError.message };
+      return { success: true };
+    }
     const { error, status } = await supabase.from(mapping.table).delete().eq('id', id);
     if (error) return { success: false, error: error.message, status };
 
@@ -555,6 +566,13 @@ export async function directBulkDeleteEntityRecords(
   if (!mapping) return { success: false, error: `Unknown entity: ${entity}` };
 
   try {
+    if (mapping.table === 'sites') {
+      for (const id of ids) {
+        const { error: rpcError } = await supabase.rpc('lifecycle_apply_self', { p_entity: 'properties', p_id: id, p_action: 'delete', p_reason: null });
+        if (rpcError) return { success: false, error: rpcError.message };
+      }
+      return { success: true, deleted: ids.length };
+    }
     const { error, status } = await supabase.from(mapping.table).delete().in('id', ids);
     if (error) return { success: false, error: error.message, status };
 

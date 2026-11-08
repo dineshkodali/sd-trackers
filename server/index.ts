@@ -26,6 +26,7 @@ import statusRouter from './routes/status.js';
 import financeRouter from './routes/finance.js';
 import pageAccessRouter from './routes/pageAccess.js';
 import dashboardsRouter from './routes/dashboards.js';
+import lifecycleRouter from './routes/lifecycle.js';
 import documentBuilderRouter from './routes/documentBuilder.js';
 import { statusMonitor } from './status/monitor.js';
 import { runDatabaseMigrations } from './migrate.js';
@@ -259,6 +260,8 @@ async function startServer() {
   app.use('/api/page-access', requireAuth, pageAccessRouter);
   // Personal dashboards (each user can only reach their own rows)
   app.use('/api/dashboards', requireAuth, dashboardsRouter);
+  // Archive, recoverable delete and restore for Users and Properties (database function is the real gate)
+  app.use('/api/lifecycle', requireAuth, lifecycleRouter);
   // Mount Finance module router
   app.use('/api/finance', requireAuth, financeRouter);
   // Mount HO Report Generator module router (concurrently supporting /api/document-builder and /api/ho-reports)

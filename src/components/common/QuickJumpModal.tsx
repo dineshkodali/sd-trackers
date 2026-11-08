@@ -39,6 +39,8 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
     canManageSettings,
     canManageProperties,
     canManageUsers,
+    canAccessUsersPage,
+    canAccessPropertiesPage,
     rolePermissions,
     canAccessPage
   } = useApp();
@@ -83,8 +85,8 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
     if (m.id === 'pageAccess') return currentUserRole === 'Super Admin';
     if (m.id === 'roles') return canManageRoles();
     if (m.id === 'settings') return canManageSettings();
-    if (m.id === 'properties') return canManageProperties();
-    if (m.id === 'users') return canManageUsers();
+    if (m.id === 'properties') return canAccessPropertiesPage();
+    if (m.id === 'users') return canAccessUsersPage();
     if (m.id === 'audit') return currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
     if (m.id === 'reports') return rolePermissions[currentUserRole]?.canExportData || canManageSettings();
     return true;

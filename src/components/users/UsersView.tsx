@@ -1,4 +1,9 @@
 import React, { useState, useMemo } from 'react';
+import { Archive } from 'lucide-react';
+import { useLifecycleActions } from '../../hooks/useLifecycleActions';
+import { LifecycleDialog } from '../common/LifecycleDialog';
+import { LifecycleNoticeBar, LifecycleRecordsPanel, LifecycleTabs, type LifecycleSection } from '../common/LifecycleRecordsPanel';
+import { checkTransition } from '../../config/recordLifecycle';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { Users, Search, Check, ShieldAlert, ShieldCheck, Layers, FolderPlus, RefreshCw, Edit2, Trash2, X, UserPlus, ArrowUpDown, ArrowUp, ArrowDown, KeyRound } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -30,7 +35,10 @@ export const UsersView: React.FC = () => {
     deleteUserGroup,
     properties, 
     updateUser, 
-    canManageUsers,
+    canAccessUsersPage,
+    deleteUser,
+    authProfile,
+    allowedSites,
     currentUserRole,
     syncFromDatabase
   , requestConfirmation } = useApp();
@@ -139,8 +147,14 @@ export const UsersView: React.FC = () => {
     userIds: []
   });
 
-  const hasAdminAuthority = canManageUsers();
-  const isAuthorized = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
+  const hasAdminAuthority = canAccessUsersPage();
+  const isAuthorized = canAccessUsersPage();
+  const lifecycle = useLifecycleActions('users');
+  const [section, setSection] = useState<LifecycleSection>('Active');
+  const [lifecycleCounts, setLifecycleCounts] = useState<Partial<Record<LifecycleSection, number>>>({});
+  // Whether the signed-in person may archive or delete this user (role rank and site scope; the server re-checks).
+  const canActOn = (u: { id: string; role: string; assignedSites?: string[] }) =>
+    checkTransition('users', 'archive', { id: authProfile?.id || '', role: currentUserRole, sites: allowedSites || [] }, { id: u.id, state: 'Active', role: u.role, sites: u.assignedSites || [] }).ok;
 
   const handleRefreshSupabase = async () => {
     setIsRefreshing(true);
@@ -731,8 +745,28 @@ export const UsersView: React.FC = () => {
         </div>
       </div>
 
-      {/* TAB CONTENT: USERS */}
       {activeMainTab === 'users' && (
+        <>
+          <LifecycleTabs value={section} onChange={setSection} counts={lifecycleCounts} />
+          <LifecycleNoticeBar notice={lifecycle.notice} onDismiss={() => lifecycle.setNotice(null)} />
+        </>
+      )}
+
+      {activeMainTab === 'users' && section !== 'Active' && (
+        <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden">
+          <LifecycleRecordsPanel
+            entity="users"
+            state={section}
+            role={currentUserRole}
+            reloadKey={lifecycle.reloadKey}
+            onRestore={row => lifecycle.ask('restore', { id: row.id, label: row.label })}
+            onLoaded={(s, n) => setLifecycleCounts(c => ({ ...c, [s]: n }))}
+          />
+        </div>
+      )}
+
+      {/* TAB CONTENT: USERS */}
+      {activeMainTab === 'users' && section === 'Active' && (
         <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
           {selectedUserIds.length > 0 && hasAdminAuthority && (
             <div className="bg-[#f0fdfa] border-b border-[#ccfbf1] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
@@ -905,6 +939,24 @@ export const UsersView: React.FC = () => {
                               <ShieldCheck className="w-3.5 h-3.5 text-[#0d9488]" />
                               <span>Assign Role</span>
                             </button>
+                            {canActOn(u) && (
+                              <>
+                                <button
+                                  onClick={() => lifecycle.ask('archive', { id: u.id, label: u.name || u.email })}
+                                  className="p-1.5 text-neutral-600 hover:text-[#0d9488] hover:bg-neutral-100 rounded-xs transition-colors cursor-pointer"
+                                  title="Archive user"
+                                >
+                                  <Archive className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => deleteUser(u.id)}
+                                  className="p-1.5 text-[#a4262c] hover:bg-[#fdf3f2] rounded-xs transition-colors cursor-pointer"
+                                  title="Delete user"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </td>
@@ -1445,6 +1497,7 @@ export const UsersView: React.FC = () => {
           handleRefreshSupabase();
         }}
       />
+      <LifecycleDialog request={lifecycle.request} busy={lifecycle.busy} error={lifecycle.error} onClose={lifecycle.close} onConfirm={lifecycle.confirm} />
       <BulkUserImportModal
         isOpen={isBulkImportModalOpen}
         onClose={() => setIsBulkImportModalOpen(false)}

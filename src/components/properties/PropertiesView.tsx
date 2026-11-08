@@ -1,6 +1,11 @@
 import { useRoomOccupancy } from '../../hooks/useRoomOccupancy';
 import { formatOccupancy } from '../../utils/roomManagementLogic';
 import React, { useState, useMemo } from 'react';
+import { Archive } from 'lucide-react';
+import { useLifecycleActions } from '../../hooks/useLifecycleActions';
+import { LifecycleDialog } from '../common/LifecycleDialog';
+import { LifecycleNoticeBar, LifecycleRecordsPanel, LifecycleTabs, type LifecycleSection } from '../common/LifecycleRecordsPanel';
+import { canCreateProperty } from '../../config/recordLifecycle';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import {
   Building2,
@@ -57,7 +62,8 @@ export const PropertiesView: React.FC = () => {
     addProperty,
     updateProperty,
     deleteProperty,
-    canManageProperties,
+    canAccessPropertiesPage,
+    allowedSites,
     currentUserRole,
     setCurrentUserRole,
     resetPropertiesToDefault,
@@ -96,8 +102,12 @@ export const PropertiesView: React.FC = () => {
   const [editingProperty, setEditingProperty] = useState<PropertyInfo | null>(null);
   const [viewingProperty, setViewingProperty] = useState<PropertyInfo | null>(null);
 
-  const hasAdminAuthority = canManageProperties();
-  const isAdminRole = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
+  const hasAdminAuthority = canAccessPropertiesPage();
+  const isAdminRole = canAccessPropertiesPage();
+  const canAddProperty = hasAdminAuthority && canCreateProperty({ role: currentUserRole, sites: allowedSites });
+  const lifecycle = useLifecycleActions('properties');
+  const [section, setSection] = useState<LifecycleSection>('Active');
+  const [lifecycleCounts, setLifecycleCounts] = useState<Partial<Record<LifecycleSection, number>>>({});
 
   const visibleProperties = properties;
 
@@ -615,7 +625,7 @@ export const PropertiesView: React.FC = () => {
             />
 
             {/* Add Property Button */}
-            {hasAdminAuthority && (
+            {canAddProperty && (
               <button
                 id="btn-add-property"
                 onClick={handleOpenAdd}
@@ -706,6 +716,22 @@ export const PropertiesView: React.FC = () => {
         </div>
       </div>
 
+      <LifecycleTabs value={section} onChange={setSection} counts={lifecycleCounts} />
+      <LifecycleNoticeBar notice={lifecycle.notice} onDismiss={() => lifecycle.setNotice(null)} />
+
+      {section !== 'Active' ? (
+        <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs">
+          <LifecycleRecordsPanel
+            entity="properties"
+            state={section}
+            role={currentUserRole}
+            reloadKey={lifecycle.reloadKey}
+            onRestore={row => lifecycle.ask('restore', { id: row.id, label: row.label })}
+            onLoaded={(s, n) => setLifecycleCounts(c => ({ ...c, [s]: n }))}
+          />
+        </div>
+      ) : (
+      <>
       {/* KPI Stats Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white border border-[#e5e5e5] rounded-xs p-3.5 shadow-2xs flex items-center gap-3">
@@ -920,11 +946,18 @@ export const PropertiesView: React.FC = () => {
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
+                              onClick={() => lifecycle.ask('archive', { id: prop.id, label: prop.name })}
+                              className="p-1.5 text-neutral-600 hover:text-[#0d9488] hover:bg-neutral-100 rounded-xs transition-colors cursor-pointer"
+                              title="Archive Property"
+                            >
+                              <Archive className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => {
                                 if (typeof requestConfirmation !== 'undefined') {
                                   requestConfirmation({
                                     title: `Delete Property: ${prop.name}`,
-                                    message: `Are you sure you want to delete "${prop.name}"? This action will remove the property from the directory.`,
+                                    message: `Delete "${prop.name}"? It moves to Deleted Records and a Super Admin can restore it.`,
                                     isDanger: true,
                                     onConfirm: async () => {
                                       deleteProperty(prop.id);
@@ -993,6 +1026,11 @@ export const PropertiesView: React.FC = () => {
           )
         }
       />
+
+      </>
+      )}
+
+      <LifecycleDialog request={lifecycle.request} busy={lifecycle.busy} error={lifecycle.error} onClose={lifecycle.close} onConfirm={lifecycle.confirm} />
 
       {/* ADD PROPERTY MODAL */}
       <DynamicRecordFormModal<PropertyInfo>

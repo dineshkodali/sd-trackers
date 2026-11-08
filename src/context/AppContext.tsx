@@ -1,3 +1,4 @@
+import { isLifecycleEditor } from '../config/recordLifecycle';
 import { evaluateOverride, type PageAction, type UserPagePermissions } from '../config/pagePermissionsConfig';
 import { pageAccessService } from '../services/pageAccessService';
 import React, { createContext, useContext, useState, useRef, useEffect, useMemo, useCallback } from 'react';
@@ -262,6 +263,9 @@ interface AppContextType {
   canManageFiles: () => boolean;
   canManageProperties: () => boolean;
   canManageUsers: () => boolean;
+  /** Users / Properties pages: Super Admin and Admin as before, plus Staff, General Manager and Area Manager (scoped by the server). */
+  canAccessUsersPage: () => boolean;
+  canAccessPropertiesPage: () => boolean;
   canManageFinance: () => boolean;
   isFinanceUser: () => boolean;
 
@@ -2396,6 +2400,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isAdmin) return false;
     return rolePermissions[currentUserRole]?.canManageUsers ?? true;
   }, [currentUserRole, rolePermissions]);
+
+  const isScopedLifecycleRole = currentUserRole !== 'Super Admin' && currentUserRole !== 'Admin' && isLifecycleEditor(currentUserRole);
+  const canAccessUsersPage = useCallback(() => canManageUsers() || isScopedLifecycleRole, [canManageUsers, isScopedLifecycleRole]);
+  const canAccessPropertiesPage = useCallback(() => canManageProperties() || isScopedLifecycleRole, [canManageProperties, isScopedLifecycleRole]);
 
   // Confirmation Request helper
   const requestConfirmation = useCallback((req: ConfirmationRequest) => {
@@ -5111,16 +5119,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!current) return;
 
     requestConfirmation({
-      title: 'Decommission Facility Site',
-      message: `Are you sure you want to delete ${current.name}? All associate records must be transferred.`,
-      confirmLabel: 'Decommission Site',
+      title: 'Delete Property',
+      message: `Delete ${current.name}? It moves to Deleted Records with its data and relationships. Only a Super Admin can restore it.`,
+      confirmLabel: 'Delete Property',
       isDanger: true,
       onConfirm: async () => {
         setSites(prev => prev.filter(s => s.id !== id));
         closeConfirmation();
         await persistDelete('sites', 'Property deletion', setSites, current, {
           action: 'DELETE', module: 'Properties', targetItem: `Property: ${current.name}${current.pid ? ` (${current.pid})` : ''}`, site: current.name,
-          details: `Decommissioned/deleted accommodation property: ${current.name} in ${current.city} (Capacity: ${current.capacity}, Lead: ${current.leadOfficer || 'Unassigned'}).`
+          details: `Deleted (recoverable) accommodation property: ${current.name} in ${current.city} (Capacity: ${current.capacity}, Lead: ${current.leadOfficer || 'Unassigned'}).`
         });
       }
     });
@@ -5237,8 +5245,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!current) return;
 
     requestConfirmation({
-      title: 'Delete User Account',
-      message: `Permanently delete user account for ${current.name} (${current.role})? Their sign-in is removed immediately.`,
+      title: 'Delete User',
+      message: `Delete ${current.name} (${current.role})? Their sign-in is blocked immediately and the account moves to Deleted Records. Only a Super Admin can restore it.`,
       confirmLabel: 'Delete User',
       isDanger: true,
       onConfirm: async () => {
@@ -5266,7 +5274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           'Users',
           `User: ${current.name} (${current.email})`,
           currentSite,
-          `Permanently deleted user account for ${current.name} (Role: ${current.role}, Email: ${current.email}).`
+          `Deleted (recoverable) user account for ${current.name} (Role: ${current.role}, Email: ${current.email}).`
         );
       }
     });
@@ -6082,6 +6090,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canManageFiles,
       canManageProperties,
       canManageUsers,
+      canAccessUsersPage,
+      canAccessPropertiesPage,
       canManageFinance,
       isFinanceUser,
       addReferral,

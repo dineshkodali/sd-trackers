@@ -5,6 +5,8 @@ import { sendEmail, isSmtpConfigured } from '../mailer.js';
 import { getAppBaseUrl } from '../urlHelper.js';
 import { signAdminToken } from '../tokenSigner.js';
 import { requireAuth, requireRole, resolveUser, invalidateTokenCache, ProfileLookupError } from '../middleware/requireAuth.js';
+import { applyLifecycle } from './lifecycle.js';
+import { LIFECYCLE_EDITOR_ROLES, checkUserWrite, sitesWithinScope } from '../../src/config/recordLifecycle.js';
 
 const router = Router();
 
@@ -65,6 +67,43 @@ async function guardSuperAdminChange(req: Request, admin: any, opts: { newRole?:
     if (data?.role === 'Super Admin') return 'Only a Super Admin can modify a Super Admin account.';
   }
   return null;
+}
+
+/**
+ * Create / edit rules for the people who may use the Users page. Super Admin and Admin keep the
+ * existing rules (above). Everyone else (Staff, General Manager, Area Manager) may only create or
+ * change users ranked below them, inside their own sites - never their own account, never an
+ * archived or deleted account.
+ */
+async function guardUserWrite(req: Request, admin: any, opts: { newRole?: string; newSites?: string[]; targetUserId?: string }): Promise<string | null> {
+  const base = await guardSuperAdminChange(req, admin, { newRole: opts.newRole, targetUserId: opts.targetUserId });
+  if (base) return base;
+  const role = req.user?.role || '';
+  if (opts.targetUserId) {
+    const { data } = await admin.from('profiles').select('*').eq('id', opts.targetUserId).maybeSingle();
+    if (data && data.lifecycle_state && data.lifecycle_state !== 'Active') {
+      return 'Archived or deleted users cannot be edited. A Super Admin must restore the account first.';
+    }
+    if (role !== 'Super Admin' && role !== 'Admin') {
+      const actor = { id: req.user!.id, role, sites: req.user!.assignedSites || (req.user!.assignedSite ? [req.user!.assignedSite] : []) };
+      const currentSites = String(data?.assigned_site || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+      if (!sitesWithinScope(actor, currentSites)) return 'This user is outside your assigned sites.';
+    }
+  }
+  if (role === 'Super Admin' || role === 'Admin') return null;
+  const actor = { id: req.user!.id, role, sites: req.user!.assignedSites || (req.user!.assignedSite ? [req.user!.assignedSite] : []) };
+  let currentRole: string | null | undefined;
+  if (opts.targetUserId) {
+    const { data } = await admin.from('profiles').select('role').eq('id', opts.targetUserId).maybeSingle();
+    currentRole = data?.role ?? null;
+  }
+  const verdict = checkUserWrite(actor, {
+    id: opts.targetUserId,
+    role: opts.newRole || currentRole || 'Staff',
+    sites: opts.newSites || [],
+    currentRole,
+  });
+  return verdict.ok === false ? verdict.error : null;
 }
 
 export const MIN_PASSWORD_LENGTH = 12;
@@ -325,7 +364,7 @@ async function syncPropertyUserAssignments(
 }
 
 // POST /api/auth/signup — Creates user in Supabase Auth + profile + property_user_assignments
-router.post('/signup', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
+router.post('/signup', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), async (req: Request, res: Response) => {
   const { email, password, name, role = 'Staff' } = req.body;
 
   if (!email || !password) {
@@ -363,6 +402,9 @@ router.post('/signup', requireAuth, requireRole('Super Admin', 'Admin'), async (
       : (rawSites.includes('Pending Assignment') ? ['Pending Assignment'] : ['All Sites']);
     const primarySite = finalSites[0] || 'Pending Assignment';
     const assignedSiteStr = finalSites.join(', ');
+
+    const scopedDenied = await guardUserWrite(req, admin, { newRole: role, newSites: cleanSites });
+    if (scopedDenied) return res.status(403).json({ error: scopedDenied });
 
     // Create user via Admin API to automatically confirm without email bounce during setup
     const { data, error } = await admin.auth.admin.createUser({
@@ -1269,6 +1311,8 @@ router.get('/users', requireAuth, async (req: Request, res: Response) => {
       profilesData.forEach((p: any) => {
         if (!p || !p.id) return;
         seenIds.add(p.id);
+        // Archived and deleted users are listed under Archived / Deleted Records, not in the directory.
+        if (p.lifecycle_state && p.lifecycle_state !== 'Active') return;
         const email = (p.email || '').toLowerCase().trim();
         const authUser = authMap.get(p.id) || authMap.get(email);
 
@@ -1364,7 +1408,7 @@ router.get('/users', requireAuth, async (req: Request, res: Response) => {
 });
 
 // PUT /api/auth/users/:id - Update user's properties assignment & role in Supabase
-router.put('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
+router.put('/users/:id', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { name, role, assignedSites, status } = req.body;
 
@@ -1390,6 +1434,9 @@ router.put('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), async
       : (rawSites.includes('Pending Assignment') ? ['Pending Assignment'] : ['All Sites']);
     const assignedSiteStr = finalSites.join(', ');
     const primarySite = finalSites[0] || 'Pending Assignment';
+
+    const scopedDenied = await guardUserWrite(req, admin, { newRole: role, newSites: cleanSites, targetUserId: id });
+    if (scopedDenied) return res.status(403).json({ success: false, error: scopedDenied });
 
     // 1. Fetch user to verify they exist in Supabase Auth
     const { data: userData, error: getUserError } = await admin.auth.admin.getUserById(id);
@@ -1461,10 +1508,9 @@ router.put('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), async
   }
 });
 
-// DELETE /api/auth/users/:id - Remove the account from Supabase Auth.
-// Deleting only the profile row (as the data API used to) left the login
-// working; the profile and property assignments cascade from auth.users.
-router.delete('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), async (req: Request, res: Response) => {
+// DELETE /api/auth/users/:id - recoverable delete. The account is never removed: it moves to the
+// Deleted state, its sign-in is blocked, and a Super Admin can restore it (see /api/lifecycle).
+router.delete('/users/:id', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), async (req: Request, res: Response) => {
   const { id } = req.params;
   if (!isSupabaseConfigured()) {
     return res.status(503).json({ success: false, error: 'Supabase is not configured.' });
@@ -1482,14 +1528,9 @@ router.delete('/users/:id', requireAuth, requireRole('Super Admin', 'Admin'), as
   const denied = await guardSuperAdminChange(req, admin, { targetUserId: id });
   if (denied) return res.status(403).json({ success: false, error: denied });
 
-  const { error } = await admin.auth.admin.deleteUser(id);
-  if (error) {
-    const notFound = /not found/i.test(error.message);
-    return res.status(notFound ? 404 : 500).json({ success: false, error: error.message });
-  }
-  // Defensive: remove any profile left behind by a missing cascade.
-  await admin.from('profiles').delete().eq('id', id);
-
+  const result = await applyLifecycle(admin, req, 'users', id, 'delete', typeof req.body?.reason === 'string' ? req.body.reason : '');
+  if (result.ok === false) return res.status(result.status).json({ success: false, error: result.error });
+  invalidateTokenCache();
   res.json({ success: true, id });
 });
 

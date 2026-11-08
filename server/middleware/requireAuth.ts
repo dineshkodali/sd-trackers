@@ -111,6 +111,9 @@ export async function resolveUser(token: string): Promise<AuthenticatedUser | nu
     if (String(profile.status || '').toLowerCase() !== 'active') {
       return null; // suspended or inactive accounts must not transact
     }
+    if (profile.lifecycle_state && profile.lifecycle_state !== 'Active') {
+      return null; // archived or deleted accounts must not transact
+    }
 
     let sites: string[] = [];
     if (profile.assigned_site) {
