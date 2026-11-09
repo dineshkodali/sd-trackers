@@ -12,6 +12,8 @@ import { TableColumnConfig } from '../../types/tableSchema';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
+import { roomChoices } from '../../utils/interconnectingRooms';
+import { NO_GUEST_FILTER, buildGuests, emptyGuestContext, filterRegisterRecords, type GuestContext, type GuestFilter } from '../../utils/guestStats';
 
 interface DailyRegisterSectionProps {
   selectedSite: string;
@@ -22,6 +24,9 @@ interface DailyRegisterSectionProps {
   createTrigger?: number;
   exportTrigger?: { format: 'csv' | 'pdf'; ts: number } | null;
   customizeTrigger?: number;
+  /** Age, gender, family size and Aspen card filters chosen in the register toolbar. */
+  guestFilter?: GuestFilter;
+  guestContext?: GuestContext;
 }
 
 export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
@@ -32,7 +37,9 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
   occupancyFilter: externalOccupancyFilter,
   createTrigger,
   exportTrigger,
-  customizeTrigger
+  customizeTrigger,
+  guestFilter = NO_GUEST_FILTER,
+  guestContext
 }) => {
   const {
     dailyRegisterRecords,
@@ -85,8 +92,10 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
     }
   }, [customizeTrigger]);
 
+  const guestCtx = useMemo(() => guestContext ?? emptyGuestContext(), [guestContext]);
+
   const filteredRecords = useMemo(() => {
-    return dailyRegisterRecords.filter(r => {
+    const base = dailyRegisterRecords.filter(r => {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         r.name.toLowerCase().includes(q) ||
@@ -101,7 +110,32 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
 
       return matchesSearch && matchesSite && matchesOcc;
     });
-  }, [dailyRegisterRecords, searchQuery, selectedSite, occupancyFilter, isSitePermitted]);
+    return filterRegisterRecords(base, guestCtx, guestFilter, registerDate);
+  }, [dailyRegisterRecords, searchQuery, selectedSite, occupancyFilter, isSitePermitted, guestCtx, guestFilter, registerDate]);
+
+  // Age and Aspen card for each row, worked out by the same rules as the filters and the Dashboard.
+  const guestByRecord = useMemo(
+    () => new Map(buildGuests(filteredRecords, guestCtx, registerDate).map(g => [g.record.id, g])),
+    [filteredRecords, guestCtx, registerDate]
+  );
+
+  // Room is a list of the property's rooms that still have a free bed. Interconnecting rooms name
+  // the rooms they connect to and how many of the group still have space.
+  const formColumns = useMemo<TableColumnConfig<DailyRegisterRecord>[]>(() => columns.map(col => {
+    if (col.key !== 'roomNo') return col;
+    return {
+      ...col,
+      type: 'select',
+      placeholder: 'Select a room',
+      helperText: 'Rooms with a free bed. For a family, choose any room of an interconnecting group.',
+      options: (ctx?: any) => {
+        const form = ctx?.formData || {};
+        const hotel = String(form.hotel || '');
+        if (!hotel) return [];
+        return roomChoices(dailyRegisterRooms, dailyRegisterRecords, hotel, String(form.roomNo || '')).map(({ label, value }) => ({ label, value }));
+      }
+    };
+  }), [columns, dailyRegisterRooms, dailyRegisterRecords]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -169,6 +203,7 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
       nationality: data.nationality || '',
       language: data.language || '',
       gender: data.gender || '',
+      aspenCard: data.aspenCard || '',
       suComments: data.suComments || '',
       availableToBook: data.availableToBook || 'No',
       isVoid: data.isVoid || 'No',
@@ -255,6 +290,8 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
                 <th className="p-2.5">Nationality</th>
                 <th className="p-2.5">Language</th>
                 <th className="p-2.5">Gender</th>
+                <th className="p-2.5">Age</th>
+                <th className="p-2.5">Aspen</th>
                 <th className="p-2.5">Beds (S/D/Bunk)</th>
                 <th className="p-2.5">Occupied</th>
                 <th className="p-2.5 text-right w-24 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
@@ -263,7 +300,7 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
             <tbody className="divide-y divide-[#edebe9] text-[#323130]">
               {paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-[#605e5c]">
+                  <td colSpan={13} className="py-12 text-center text-[#605e5c]">
                     <Users className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
                     <p className="font-semibold text-sm text-[#242424]">No service user records found</p>
                     <p className="text-xs text-[#605e5c] mt-0.5">Click '+ Log Service User' to assign a resident to a room.</p>
@@ -280,6 +317,8 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
                     <td className="p-2.5">{rec.nationality || '—'}</td>
                     <td className="p-2.5">{rec.language || '—'}</td>
                     <td className="p-2.5">{rec.gender || '—'}</td>
+                    <td className="p-2.5 text-[#605e5c]">{guestByRecord.get(rec.id)?.age ?? '—'}</td>
+                    <td className="p-2.5">{guestByRecord.get(rec.id)?.aspen ? <span className="inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-teal-50 text-[#0f766e]">Yes</span> : <span className="text-[#a19f9d]">—</span>}</td>
                     <td className="p-2.5 text-[11px] text-[#605e5c]">
                       {rec.singleBed || 0}S / {rec.doubleBed || 0}D / {(rec.singleBunk || 0) + (rec.doubleBunk || 0)}B
                     </td>
@@ -343,7 +382,7 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Log Service User to Daily Register"
-        columns={columns}
+        columns={formColumns}
         initialValues={{
           hotel: selectedSite !== 'all' ? selectedSite : (assignedSite || 'Brit Hotel'),
           roomNo: '',
@@ -370,7 +409,7 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
           isOpen={Boolean(editingRecord)}
           onClose={() => setEditingRecord(null)}
           title={`Edit Register Entry: ${editingRecord.name}`}
-          columns={columns}
+          columns={formColumns}
           initialValues={editingRecord}
           onSubmit={handleEditSubmit}
           submitLabel="Save Changes"

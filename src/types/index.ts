@@ -774,6 +774,8 @@ export interface DailyRegisterRoom {
   maxRoomType?: string; // Max Room Type (Room Size & Inventory)
   potentialMaxCapacity: number; // Potential Max Capacity
   stepsToIncreaseCapacity?: string; // Steps to Increase Capacity
+  roomCategory?: 'Standard' | 'Interconnecting' | string; // Standard Room / Interconnecting Room
+  interconnectGroup?: string; // Shared id of rooms that connect to each other (same hotel)
   date?: string; // Date
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
@@ -809,6 +811,7 @@ export interface DailyRegisterRecord {
   nationality?: string; // Nationality
   language?: string; // Language
   gender?: string; // Gender
+  aspenCard?: string; // Aspen Card (falls back to the New Arrivals entry for this Port Ref)
   suComments?: string; // SU Comments
   availableToBook?: string; // Available to Book (Yes/No)
   isVoid?: string; // Void (Yes/No)

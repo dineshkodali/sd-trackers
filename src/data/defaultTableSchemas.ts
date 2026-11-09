@@ -714,6 +714,7 @@ export const DAILY_REGISTER_TABLE_COLUMNS: TableColumnConfig<DailyRegisterRecord
   { key: 'nationality', label: 'Nationality', type: 'text', section: 'Demographics' },
   { key: 'language', label: 'Language', type: 'text', section: 'Demographics' },
   { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other', 'Prefer not to say'], section: 'Demographics' },
+  { key: 'aspenCard', label: 'Aspen Card', type: 'text', helperText: 'Leave blank if the guest has no Aspen card. New Arrivals entries with the same Port Ref are used when this is blank.', section: 'Demographics' },
   { key: 'suComments', label: 'SU Comments', type: 'textarea', colSpan: 2, section: 'Operational Notes' },
   { key: 'availableToBook', label: 'Available to Book', type: 'select', options: ['Yes', 'No'], section: 'Occupancy Controls' },
   { key: 'isVoid', label: 'Void', type: 'select', options: ['Yes', 'No'], section: 'Occupancy Controls' },

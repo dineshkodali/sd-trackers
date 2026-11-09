@@ -17,6 +17,12 @@ import { NewArrivalsSection } from './NewArrivalsSection';
 import { FamilyGroupsSection } from './FamilyGroupsSection';
 import { RegisterSummarySection } from './RegisterSummarySection';
 import { LiveRegisterKpiCards } from './LiveRegisterKpiCards';
+import { RegisterGuestFilters } from './RegisterGuestFilters';
+import { useGuestContext } from '../../hooks/useGuestContext';
+import {
+  NO_GUEST_FILTER, clearRegisterFilterIntent, filterRegisterRecords, isGuestFilterActive, readRegisterFilterIntent,
+  type GuestFilter,
+} from '../../utils/guestStats';
 
 export type DailyRegisterTab = 
   | 'stats'
@@ -120,6 +126,12 @@ export const LiveDailyRegistersView: React.FC = () => {
     }
   };
 
+  // A click on the Dashboard's guest statistics arrives here as a filter. It is read once and cleared.
+  const [intent] = useState(() => readRegisterFilterIntent());
+  useEffect(() => { if (intent) clearRegisterFilterIntent(); }, [intent]);
+  const [guestFilter, setGuestFilter] = useState<GuestFilter>(intent?.filter ?? NO_GUEST_FILTER);
+  const { ctx: guestCtx, error: guestCtxError } = useGuestContext();
+
   const [activeTab, setActiveTab] = useState<DailyRegisterTab>('dailyRegister');
 
   useEffect(() => {
@@ -128,14 +140,23 @@ export const LiveDailyRegistersView: React.FC = () => {
     }
   }, [activeTab]);
 
-  const [selectedSite, setSelectedSite] = useState<string>(defaultSiteFilter);
+  const [selectedSite, setSelectedSite] = useState<string>(() => {
+    const wanted = intent?.site;
+    if (!wanted) return defaultSiteFilter;
+    if (wanted === 'all') return canAccessAllSites() || (allowedSites || []).length > 1 ? 'all' : defaultSiteFilter;
+    return isSitePermitted(wanted) ? wanted : defaultSiteFilter;
+  });
 
+  // Follow the default site when it changes, but not on first render, so a site chosen on the Dashboard is kept.
+  const lastDefaultSite = React.useRef(defaultSiteFilter);
   useEffect(() => {
+    if (lastDefaultSite.current === defaultSiteFilter) return;
+    lastDefaultSite.current = defaultSiteFilter;
     setSelectedSite(defaultSiteFilter);
   }, [defaultSiteFilter]);
 
   const [registerDate, setRegisterDate] = useState<string>(() => {
-    return new Date().toISOString().slice(0, 10);
+    return intent?.date || new Date().toISOString().slice(0, 10);
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [occupancyFilter, setOccupancyFilter] = useState<'all' | 'Occupied' | 'Vacant'>('all');
@@ -174,6 +195,11 @@ export const LiveDailyRegistersView: React.FC = () => {
   const scopedEvictions = useMemo(() => {
     return evictionRecords.filter(e => isSiteMatch(e.hotel, effectiveSite));
   }, [evictionRecords, effectiveSite]);
+
+  const guestFilteredCount = useMemo(
+    () => filterRegisterRecords(scopedRecords, guestCtx, guestFilter, registerDate).length,
+    [scopedRecords, guestCtx, guestFilter, registerDate]
+  );
 
   // Operational KPI calculations
   const activeResidentsCount = useMemo(() => {
@@ -434,6 +460,17 @@ export const LiveDailyRegistersView: React.FC = () => {
             </div>
           )}
         </div>
+
+        {activeTab === 'dailyRegister' && (
+          <RegisterGuestFilters
+            value={guestFilter}
+            onChange={setGuestFilter}
+            shown={guestFilteredCount}
+            total={scopedRecords.length}
+            defaultOpen={!!intent && isGuestFilterActive(intent.filter)}
+            familyNote={guestCtxError && guestFilter.family !== 'all' ? `Family groups could not be loaded, so family size uses the people sharing a room. ${guestCtxError}` : null}
+          />
+        )}
       </div>
 
       {/* 4. Operational KPI Metrics Scorecard */}
@@ -456,6 +493,8 @@ export const LiveDailyRegistersView: React.FC = () => {
             onDateChange={setRegisterDate}
             searchQuery={searchQuery}
             occupancyFilter={occupancyFilter}
+            guestFilter={guestFilter}
+            guestContext={guestCtx}
             createTrigger={createTrigger}
             customizeTrigger={customizeTrigger}
           />

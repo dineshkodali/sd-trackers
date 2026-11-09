@@ -1,5 +1,6 @@
 import { applyLifecycle } from './lifecycle.js';
 import { canCreateProperty, isLifecycleEditor } from '../../src/config/recordLifecycle.js';
+import { canConfigureInterconnecting } from '../../src/utils/interconnectingRooms.js';
 import { isOutOfUse } from '../../src/utils/roomManagementLogic.js';
 import fs from 'fs';
 import path from 'path';
@@ -1280,6 +1281,21 @@ async function writeScopeError(client: SupabaseClient, req: Request, def: Entity
       const prev = existing.get(String(r?.id));
       if (r?.role === 'Super Admin' || prev?.role === 'Super Admin') {
         return 'Only a Super Admin can grant or modify the Super Admin role.';
+      }
+    }
+  }
+
+  // Interconnecting-room links are configuration: managers only. Staff may still allocate guests to those rooms.
+  if (def.table === 'daily_register_rooms' && !canConfigureInterconnecting(role)) {
+    const clean = (v: unknown) => String(v ?? '').trim();
+    for (const r of records) {
+      const prev = existing.get(String(r?.id));
+      const nextGroup = clean(r?.interconnect_group ?? r?.interconnectGroup ?? prev?.interconnect_group);
+      const nextCategory = clean(r?.room_category ?? r?.roomCategory ?? prev?.room_category) || 'Standard';
+      const prevGroup = clean(prev?.interconnect_group);
+      const prevCategory = clean(prev?.room_category) || 'Standard';
+      if (nextGroup !== prevGroup || nextCategory !== prevCategory) {
+        return 'Only a manager can change interconnecting room links.';
       }
     }
   }

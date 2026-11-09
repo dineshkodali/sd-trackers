@@ -633,6 +633,8 @@ CREATE TABLE IF NOT EXISTS public.daily_register_rooms (
   max_room_type TEXT,
   potential_max_capacity INT DEFAULT 0,
   steps_to_increase_capacity TEXT,
+  room_category TEXT NOT NULL DEFAULT 'Standard', -- added by migration 029
+  interconnect_group TEXT,                        -- added by migration 029
   date TEXT,
   attachments JSONB DEFAULT '[]'::jsonb,
   data JSONB,
@@ -665,6 +667,7 @@ CREATE TABLE IF NOT EXISTS public.daily_register_records (
   nationality TEXT,
   language TEXT,
   gender TEXT,
+  aspen_card TEXT, -- added by migration 029
   su_comments TEXT,
   available_to_book TEXT DEFAULT 'No',
   is_void TEXT DEFAULT 'No',

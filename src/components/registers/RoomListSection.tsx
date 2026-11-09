@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Building, Edit3, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Building, Edit3, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Link2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DailyRegisterRoom } from '../../types';
 import { Pagination } from '../common/Pagination';
@@ -11,6 +11,11 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
+import { InterconnectRoomsModal } from './InterconnectRoomsModal';
+import {
+  GROUP_AVAILABILITY_LABEL, canConfigureInterconnecting, connectedRooms, groupRooms, groupStatus, isInterconnecting, planGroupDissolve,
+  roomAvailability, type RoomAvailability, type RoomChange,
+} from '../../utils/interconnectingRooms';
 
 interface RoomListSectionProps {
   selectedSite: string;
@@ -29,6 +34,7 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
 }) => {
   const {
     dailyRegisterRooms,
+    dailyRegisterRecords,
     addDailyRegisterRoom,
     updateDailyRegisterRoom,
     deleteDailyRegisterRoom,
@@ -61,6 +67,30 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<DailyRegisterRoom | null>(null);
   const [viewingRecord, setViewingRecord] = useState<DailyRegisterRoom | null>(null);
+  // Interconnecting rooms: connectRoom set = editing that room's group; connectOpen with no room = new group.
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [connectRoom, setConnectRoom] = useState<DailyRegisterRoom | null>(null);
+  const canConfigure = canConfigureInterconnecting(currentUserRole) && canEditRecord();
+
+  const permittedHotels = useMemo(
+    () => Array.from(new Set(dailyRegisterRooms.filter(r => isSitePermitted(r.hotel, selectedSite)).map(r => r.hotel).filter(Boolean))).sort(),
+    [dailyRegisterRooms, isSitePermitted, selectedSite]
+  );
+
+  const applyConnection = (changes: RoomChange[]) => {
+    // Each room is checked again on the server and in the database; a refusal shows when the list reloads.
+    changes.forEach(c => updateDailyRegisterRoom(c.id, c.changes));
+    setConnectOpen(false);
+    setConnectRoom(null);
+  };
+
+  // Removing a room from a pair would leave its partner connected to nothing, so the partner is released too.
+  const handleDeleteRoom = (room: DailyRegisterRoom) => {
+    if (isInterconnecting(room) && groupRooms(dailyRegisterRooms, room).length <= 2) {
+      planGroupDissolve(dailyRegisterRooms, room).filter(c => c.id !== room.id).forEach(c => updateDailyRegisterRoom(c.id, c.changes));
+    }
+    deleteDailyRegisterRoom(room.id);
+  };
 
   // Sync with external triggers
   useEffect(() => {
@@ -156,11 +186,12 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
   };
 
   const handleExportCsv = () => {
-    const headers = ['Hotel', 'Room No.', 'Floor', 'Room Type', 'Cohort', 'Max Occupancy', 'Current Occupancy', 'Available Bedspaces', 'Void Bedspaces', 'Void Reason', 'Size (sqm)', 'Potential Max Capacity'];
+    const headers = ['Hotel', 'Room No.', 'Floor', 'Room Type', 'Cohort', 'Max Occupancy', 'Current Occupancy', 'Available Bedspaces', 'Void Bedspaces', 'Void Reason', 'Size (sqm)', 'Potential Max Capacity', 'Room Category', 'Connected Rooms'];
     const rows = sortedRooms.map(r => [
       r.hotel, r.roomNo, r.floor || '', r.roomType || '', r.suCohort || '',
       String(r.currentMaxOccupancy || 0), String(r.currentOccupancy || 0), String(r.bedspacesAvailable || 0),
-      String(r.voidBedspaces || 0), r.voidReason || '', String(r.sizeSqm || ''), String(r.potentialMaxCapacity || '')
+      String(r.voidBedspaces || 0), r.voidReason || '', String(r.sizeSqm || ''), String(r.potentialMaxCapacity || ''),
+      isInterconnecting(r) ? 'Interconnecting' : 'Standard', connectedRooms(dailyRegisterRooms, r).map(c => c.roomNo).join(' / ')
     ]);
     exportTableToCsv({ filename: `Room_List_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows });
   };
@@ -223,8 +254,50 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
     return String(val);
   };
 
+  const AVAILABILITY_STYLE: Record<RoomAvailability, string> = {
+    Available: 'bg-emerald-100 text-emerald-900',
+    'Part occupied': 'bg-sky-100 text-sky-900',
+    Full: 'bg-amber-100 text-amber-900',
+    Unavailable: 'bg-red-50 text-red-800',
+  };
+
+  const renderAvailability = (room: DailyRegisterRoom) => {
+    const a = roomAvailability(room, dailyRegisterRecords);
+    return <span className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${AVAILABILITY_STYLE[a]}`}>{a}</span>;
+  };
+
+  const renderInterconnect = (room: DailyRegisterRoom) => {
+    const others = connectedRooms(dailyRegisterRooms, room);
+    if (!isInterconnecting(room) || others.length === 0) {
+      return <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-neutral-100 text-[#605e5c]">Standard Room</span>;
+    }
+    const status = groupStatus(dailyRegisterRooms, room, dailyRegisterRecords);
+    return (
+      <div className="space-y-0.5">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-teal-50 text-[#0f766e] border border-teal-200">
+          <Link2 className="w-3 h-3" />Interconnecting Room
+        </span>
+        <div className="text-[11px] text-[#605e5c]">
+          Connects to <span className="font-mono font-semibold text-[#323130]">{others.map(o => o.roomNo).join(', ')}</span>
+          {' · '}{GROUP_AVAILABILITY_LABEL[status.availability].toLowerCase()}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
+      {canConfigure && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => { setConnectRoom(null); setConnectOpen(true); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-[#8a8886] rounded-xs bg-white text-[#323130] hover:bg-[#edebe9] cursor-pointer"
+          >
+            <Link2 className="w-3.5 h-3.5 text-[#0d9488]" />Connect rooms
+          </button>
+        </div>
+      )}
       {/* Table */}
       <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
@@ -250,13 +323,15 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
                     </th>
                   );
                 })}
+                <th className="p-2.5">Interconnecting</th>
+                <th className="p-2.5">Availability</th>
                 <th className="p-2.5 text-right w-24 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9] text-[#323130]">
               {paginatedRooms.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-[#605e5c]">
+                  <td colSpan={visibleColumns.length + 3} className="py-12 text-center text-[#605e5c]">
                     <Building className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
                     <p className="font-semibold text-sm text-[#242424]">No rooms configured</p>
                     <p className="text-xs text-[#605e5c] mt-0.5">Click '+ Add Room' to record room inventory details.</p>
@@ -270,8 +345,20 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
                         {renderColumnCell(col, room)}
                       </td>
                     ))}
+                    <td className="p-2.5">{renderInterconnect(room)}</td>
+                    <td className="p-2.5">{renderAvailability(room)}</td>
                     <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
                       <div className="flex items-center justify-end gap-1.5">
+                        {canConfigure && (
+                          <button
+                            onClick={() => { setConnectRoom(room); setConnectOpen(true); }}
+                            className="p-1 hover:bg-teal-50 text-[#0d9488] rounded-xs"
+                            title={isInterconnecting(room) ? 'Edit interconnecting rooms' : 'Connect to other rooms'}
+                            aria-label={isInterconnecting(room) ? `Edit interconnecting rooms for room ${room.roomNo}` : `Connect room ${room.roomNo} to other rooms`}
+                          >
+                            <Link2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setViewingRecord(room)}
                           className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs"
@@ -290,7 +377,7 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
                         )}
                         {canDeleteRecord() && (
                           <button
-                            onClick={() => deleteDailyRegisterRoom(room.id)}
+                            onClick={() => handleDeleteRoom(room)}
                             className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs"
                             title="Delete Room"
                           >
@@ -366,6 +453,18 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
             setEditingRecord(rec);
           }}
           canEdit={canEditRecord()}
+        />
+      )}
+
+      {connectOpen && canConfigure && (
+        <InterconnectRoomsModal
+          rooms={dailyRegisterRooms.filter(r => isSitePermitted(r.hotel, 'all'))}
+          records={dailyRegisterRecords}
+          hotels={permittedHotels}
+          room={connectRoom}
+          defaultHotel={selectedSite !== 'all' ? selectedSite : (permittedHotels[0] || '')}
+          onApply={applyConnection}
+          onClose={() => { setConnectOpen(false); setConnectRoom(null); }}
         />
       )}
 

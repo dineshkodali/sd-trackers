@@ -11,7 +11,8 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
-import { evaluateRegisterAllocation, roomKey, roomOccupants, usableCapacity } from '../../utils/roomAllocation';
+import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
+import { roomChoices } from '../../utils/interconnectingRooms';
 import { syncArrivalToServiceUser } from '../../utils/arrivalServiceUserSync';
 
 interface NewArrivalsSectionProps {
@@ -146,25 +147,13 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       ...col,
       type: 'select',
       placeholder: 'Select a room',
-      helperText: 'Only rooms in the selected hotel with a free bed are listed.',
+      helperText: 'Only rooms in the selected hotel with a free bed are listed. For a family, any room of an interconnecting group can be chosen.',
       options: (ctx?: any) => {
         const form = ctx?.formData || {};
         const hotel = String(form.hotel || '');
         if (!hotel) return [];
-        const hotelKey = roomKey(hotel, '');
-        const current = String(form.room || '').trim();
-        return dailyRegisterRooms
-          .filter(r => roomKey(r.hotel, '') === hotelKey)
-          .map(r => {
-            const free = usableCapacity(r) - roomOccupants(dailyRegisterRecords, r.hotel, r.roomNo).length;
-            return { room: r, free };
-          })
-          .filter(({ room, free }) => free > 0 || room.roomNo === current)
-          .sort((a, b) => String(a.room.roomNo).localeCompare(String(b.room.roomNo), undefined, { numeric: true }))
-          .map(({ room, free }) => ({
-            label: `Room ${room.roomNo}${room.floor ? ` · Floor ${room.floor}` : ''} · ${Math.max(0, free)} bed${free === 1 ? '' : 's'} free`,
-            value: room.roomNo
-          }));
+        // Interconnecting rooms name the rooms they connect to and whether the group still has space.
+        return roomChoices(dailyRegisterRooms, dailyRegisterRecords, hotel, String(form.room || '')).map(({ label, value }) => ({ label, value }));
       }
     };
   }), [columns, dailyRegisterRooms, dailyRegisterRecords]);
@@ -223,6 +212,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         checkInDate,
         contactNo: data.contactNumber,
         email: data.email,
+        aspenCard: data.aspenCard || '',
         dob: data.dob,
         nationality: data.country,
         language: data.language,
@@ -308,6 +298,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
       checkInDate,
       contactNo: arrival.contactNumber,
       email: arrival.email,
+      aspenCard: arrival.aspenCard || '',
       dob: arrival.dob,
       nationality: arrival.country,
       language: arrival.language,
