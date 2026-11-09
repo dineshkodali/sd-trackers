@@ -173,9 +173,9 @@ export function shouldPreferDirectSupabase(): boolean {
     const envVal = (import.meta as any).env?.VITE_API_URL || '';
     if (!envVal) {
       const host = window.location.hostname;
-      // Only prefer direct mode on static AWS Amplify bucket URLs (amplifyapp.com)
-      // Never force direct mode on custom domains (e.g. sdcdms.co.uk) or local development
-      if (host.endsWith('amplifyapp.com') && !host.includes('sdcdms')) {
+      // On static hosting (AWS Amplify S3 / CloudFront, or any non-localhost host without VITE_API_URL)
+      // there is no Express backend running on the same origin.
+      if (host !== 'localhost' && host !== '127.0.0.1') {
         return true;
       }
     }

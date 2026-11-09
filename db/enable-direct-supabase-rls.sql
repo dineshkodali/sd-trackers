@@ -105,7 +105,12 @@ DECLARE
     'transport_funding_requests',
     'transport_funding_status_history',
     -- Oyster card inventory (migration 023)
-    'oyster_card_transactions'
+    'oyster_card_transactions',
+    -- HO Report Generator & Report History (migrations 009, 031)
+    'ho_report_templates',
+    'ho_report_records',
+    'ho_report_audit_logs',
+    'service_user_report_history'
   ];
   t TEXT;
 BEGIN
