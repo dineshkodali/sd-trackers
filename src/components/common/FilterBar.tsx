@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RotateCcw, Download, Lock, FileText, FileSpreadsheet, ChevronDown, LayoutGrid, List } from 'lucide-react';
+import { IconRotate as RotateCcw, IconDownload as Download, IconLock as Lock, IconFileText as FileText, IconFileSpreadsheet as FileSpreadsheet, IconChevronDown as ChevronDown, IconLayoutGrid as LayoutGrid, IconList as List } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { SearchInput } from './SearchInput';
 

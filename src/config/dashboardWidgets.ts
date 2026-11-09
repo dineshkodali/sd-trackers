@@ -42,7 +42,7 @@ export interface WidgetDefinition {
   title: string;
   description: string;
   category: WidgetCategory;
-  /** lucide icon name; mapped to a component in the UI layer. */
+  /** icon name; mapped to a component in the UI layer. */
   icon: string;
   /** Pages the user must be able to view to see this widget. Empty = no page dependency. */
   pages: string[];

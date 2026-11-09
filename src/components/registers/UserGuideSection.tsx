@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, CheckCircle2, AlertTriangle, Calculator, Layers } from 'lucide-react';
+import { IconBook as BookOpen, IconCircleCheck as CheckCircle2, IconAlertTriangle as AlertTriangle, IconCalculator as Calculator, IconStack2 as Layers } from '@tabler/icons-react';
 
 export const UserGuideSection: React.FC = () => {
   return (

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { LogOut, CheckCircle2 } from 'lucide-react';
+import { IconLogout as LogOut, IconCircleCheck as CheckCircle2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DispersalRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

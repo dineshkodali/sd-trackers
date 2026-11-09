@@ -1,27 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  BellRing, 
-  Mail, 
-  Send, 
-  RefreshCw, 
-  CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
-  Search, 
-  RotateCcw, 
-  Server, 
-  Settings, 
-  Info, 
-  Clock, 
-  Edit3, 
-  Shield, 
-  Wrench, 
-  Bus, 
-  HeartPulse, 
-  Building2, 
-  FileCheck2
-} from 'lucide-react';
+import { IconBellRinging as BellRing, IconMail as Mail, IconSend as Send, IconRefresh as RefreshCw, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconAlertTriangle as AlertTriangle, IconSearch as Search, IconRotate as RotateCcw, IconServer as Server, IconSettings as Settings, IconInfoCircle as Info, IconClock as Clock, IconEdit as Edit3, IconShield as Shield, IconTool as Wrench, IconBus as Bus, IconHeartbeat as HeartPulse, IconBuilding as Building2, IconFileCheck as FileCheck2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { 
   NotificationRule, 

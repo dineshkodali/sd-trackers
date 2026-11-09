@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Users, UserMinus, ExternalLink } from 'lucide-react';
+import { IconUsers as Users, IconUserMinus as UserMinus, IconExternalLink as ExternalLink } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type SuDirectoryRow } from '../../services/suTrackerService';
 import { suEnhancementsService, type FamilyGroup, type FamilyMember } from '../../services/suEnhancementsService';

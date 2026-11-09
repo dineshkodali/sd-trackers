@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { UserAccount, RoleType } from '../../types';
-import { X, Users, AlertTriangle, CheckCircle, Loader2, ArrowRight } from 'lucide-react';
+import { IconX as X, IconUsers as Users, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle, IconLoader2 as Loader2, IconArrowRight as ArrowRight } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 export type BulkActionType = 'role' | 'status' | 'assign_sites' | 'remove_sites' | 'delete' | null;

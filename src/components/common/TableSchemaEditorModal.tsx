@@ -1,18 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  X, 
-  SlidersHorizontal, 
-  Plus, 
-  Trash2, 
-  ArrowUp, 
-  ArrowDown, 
-  RotateCcw, 
-  Check, 
-  ShieldAlert, 
-  Eye, 
-  EyeOff,
-  Edit2
-} from 'lucide-react';
+import { IconX as X, IconAdjustmentsHorizontal as SlidersHorizontal, IconPlus as Plus, IconTrash as Trash2, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconRotate as RotateCcw, IconCheck as Check, IconShieldExclamation as ShieldAlert, IconEye as Eye, IconEyeOff as EyeOff, IconPencil as Edit2 } from '@tabler/icons-react';
 import { TableColumnConfig, FieldType } from '../../types/tableSchema';
 import { FIELD_CATEGORIES_META } from '../../data/defaultFieldOptions';
 import { FieldOptionCategory } from '../../types';

@@ -1,39 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  SlidersHorizontal, 
-  Plus, 
-  Edit3, 
-  Trash2, 
-  ArrowUp, 
-  ArrowDown, 
-  CheckCircle2, 
-  XCircle, 
-  RefreshCw, 
-  Download, 
-  Search, 
-  Eye, 
-  Check, 
-  X, 
-  FolderHeart, 
-  HeartHandshake, 
-  AlertTriangle, 
-  ShieldAlert, 
-  Siren, 
-  HardHat, 
-  Clock, 
-  Soup, 
-  Apple, 
-  Waves, 
-  Landmark, 
-  Send,
-  CheckCircle,
-  Activity,
-  AlertCircle,
-  Wrench,
-  Utensils,
-  CreditCard
-} from 'lucide-react';
+import { IconAdjustmentsHorizontal as SlidersHorizontal, IconPlus as Plus, IconEdit as Edit3, IconTrash as Trash2, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconRefresh as RefreshCw, IconDownload as Download, IconSearch as Search, IconEye as Eye, IconCheck as Check, IconX as X, IconFolderHeart as FolderHeart, IconHeartHandshake as HeartHandshake, IconAlertTriangle as AlertTriangle, IconShieldExclamation as ShieldAlert, IconAlarm as Siren, IconHelmet as HardHat, IconClock as Clock, IconSoup as Soup, IconApple as Apple, IconWaveSine as Waves, IconBuildingBank as Landmark, IconSend as Send, IconCircleCheck as CheckCircle, IconActivity as Activity, IconAlertCircle as AlertCircle, IconTool as Wrench, IconToolsKitchen2 as Utensils, IconCreditCard as CreditCard } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { CustomFieldOption, FieldOptionCategory } from '../../types';
 import { FIELD_CATEGORIES_META } from '../../data/defaultFieldOptions';

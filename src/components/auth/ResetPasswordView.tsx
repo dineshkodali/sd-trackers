@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Logo } from '../common/Logo';
-import { ShieldCheck, Lock, KeyRound, Mail, ArrowLeft, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff, ShieldAlert, Clock } from 'lucide-react';
+import { IconShieldCheck as ShieldCheck, IconLock as Lock, IconKey as KeyRound, IconMail as Mail, IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconCircleCheck as CheckCircle2, IconAlertCircle as AlertCircle, IconRefresh as RefreshCw, IconEye as Eye, IconEyeOff as EyeOff, IconShieldExclamation as ShieldAlert, IconClock as Clock } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { getBrowserSupabaseClient } from '../../lib/supabaseClient';
 

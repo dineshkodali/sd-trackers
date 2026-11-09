@@ -1,6 +1,6 @@
 import { isOutOfUse } from '../../utils/roomManagementLogic';
 import React from 'react';
-import { Plus, Trash2, Users } from 'lucide-react';
+import { IconPlus as Plus, IconTrash as Trash2, IconUsers as Users } from '@tabler/icons-react';
 import { PropertyMaster, PropertyRoom } from '../../types/masterData';
 
 export interface HouseholdSectionProps {

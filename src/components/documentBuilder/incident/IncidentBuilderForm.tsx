@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Copy, RotateCcw, Settings, Trash2, X, FilePlus2 } from 'lucide-react';
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconCopy as Copy, IconRotate as RotateCcw, IconSettings as Settings, IconTrash as Trash2, IconX as X, IconFilePlus as FilePlus2 } from '@tabler/icons-react';
 import {
   AUTH_ROWS,
   EMAIL_TYPES,

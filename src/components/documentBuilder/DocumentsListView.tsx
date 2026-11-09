@@ -11,21 +11,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import {
-  FileText,
-  Download,
-  Edit,
-  Trash2,
-  History,
-  Search,
-  Clock,
-  Shield,
-  MapPin,
-  Calendar,
-  X,
-  Loader2,
-  CheckCircle,
-} from 'lucide-react';
+import { IconFileText as FileText, IconDownload as Download, IconEdit as Edit, IconTrash as Trash2, IconHistory as History, IconSearch as Search, IconClock as Clock, IconShield as Shield, IconMapPin as MapPin, IconCalendar as Calendar, IconX as X, IconLoader2 as Loader2, IconCircleCheck as CheckCircle } from '@tabler/icons-react';
 import type { DocumentBuilderRecord, DocumentAuditLog } from '../../types/documentBuilder';
 import {
   fetchDocumentRecords,

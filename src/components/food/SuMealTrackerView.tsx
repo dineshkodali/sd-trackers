@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { History, ClipboardList } from 'lucide-react';
+import { IconHistory as History, IconClipboardList as ClipboardList } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type SuDirectoryRow } from '../../services/suTrackerService';
 import { suEnhancementsService, type MealRecord, type MealHistoryEntry } from '../../services/suEnhancementsService';

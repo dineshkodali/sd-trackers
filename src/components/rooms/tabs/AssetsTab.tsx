@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2, Wrench } from 'lucide-react';
+import { IconPencil as Pencil, IconPlus as Plus, IconTrash as Trash2, IconTool as Wrench } from '@tabler/icons-react';
 import { useApp } from '../../../context/AppContext';
 import { roomManagementService } from '../../../services/roomManagementService';
 import type { PropertyAsset } from '../../../types/masterData';

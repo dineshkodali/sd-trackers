@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Search, Pencil, Eye, X, Lock, ClipboardCheck, History, Archive, Accessibility } from 'lucide-react';
+import { IconPlus as Plus, IconSearch as Search, IconPencil as Pencil, IconEye as Eye, IconX as X, IconLock as Lock, IconClipboardCheck as ClipboardCheck, IconHistory as History, IconArchive as Archive, IconAccessible as Accessibility } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import {
   suTrackerService, PEEP_RISK_LEVELS, PEEP_COMPANIONS, PEEP_ALARMS, PEEP_ASSISTANCE,

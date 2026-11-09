@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, X } from 'lucide-react';
+import { IconPlus as Plus, IconSearch as Search, IconX as X } from '@tabler/icons-react';
 import { WIDGET_CATEGORIES, WIDGET_DEFINITIONS, isWidgetAvailable, type WidgetCategory } from '../../config/dashboardWidgets';
 import { widgetIcon } from './widgetIcons';
 

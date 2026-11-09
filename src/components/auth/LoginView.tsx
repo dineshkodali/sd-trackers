@@ -1,18 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Shield, 
-  Lock, 
-  Mail, 
-  Eye, 
-  EyeOff, 
-  ArrowRight, 
-  AlertCircle, 
-  Building2, 
-  ShieldCheck, 
-  RefreshCw, 
-  X,
-  CheckCircle2
-} from 'lucide-react';
+import { IconShield as Shield, IconLock as Lock, IconMail as Mail, IconEye as Eye, IconEyeOff as EyeOff, IconArrowRight as ArrowRight, IconAlertCircle as AlertCircle, IconBuilding as Building2, IconShieldCheck as ShieldCheck, IconRefresh as RefreshCw, IconX as X, IconCircleCheck as CheckCircle2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { apiService } from '../../services/apiService';
 import { getBrowserSupabaseClient } from '../../lib/supabaseClient';

@@ -1,24 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  History, 
-  Search, 
-  ShieldCheck, 
-  RotateCcw,
-  Building2,
-  Users,
-  UserCheck,
-  Shield,
-  Eye,
-  X,
-  Clock,
-  ArrowRight,
-  Layers,
-  FileText,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown
-} from 'lucide-react';
+import { IconHistory as History, IconSearch as Search, IconShieldCheck as ShieldCheck, IconRotate as RotateCcw, IconBuilding as Building2, IconUsers as Users, IconUserCheck as UserCheck, IconShield as Shield, IconEye as Eye, IconX as X, IconClock as Clock, IconArrowRight as ArrowRight, IconStack2 as Layers, IconFileText as FileText, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { AuditLog } from '../../types';
 import { Pagination } from '../common/Pagination';

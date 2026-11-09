@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArchiveRestore, History } from 'lucide-react';
+import { IconArchiveRestore as ArchiveRestore, IconHistory as History } from '@tabler/icons-react';
 import { lifecycleService } from '../../services/lifecycleService';
 import { canRestoreRecords, type LifecycleEntity, type LifecycleEvent, type LifecycleRow } from '../../config/recordLifecycle';
 

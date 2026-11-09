@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, History, CreditCard } from 'lucide-react';
+import { IconPlus as Plus, IconHistory as History, IconCreditCard as CreditCard } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type SuDirectoryRow } from '../../services/suTrackerService';
 import { suPropertyService } from '../../services/suPropertyService';

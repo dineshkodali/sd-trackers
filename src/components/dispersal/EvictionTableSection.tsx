@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserMinus, Send, Plus, Search, Edit3, Trash2, Eye, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { IconUserMinus as UserMinus, IconSend as Send, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { EvictionRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

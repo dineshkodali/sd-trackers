@@ -1,19 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { 
-  Paperclip, 
-  UploadCloud, 
-  FileText, 
-  Image as ImageIcon, 
-  Download, 
-  Trash2, 
-  Eye, 
-  X, 
-  File, 
-  FileSpreadsheet,
-  Copy,
-  Check,
-  Link as LinkIcon
-} from 'lucide-react';
+import { IconPaperclip as Paperclip, IconCloudUpload as UploadCloud, IconFileText as FileText, IconPhoto as ImageIcon, IconDownload as Download, IconTrash as Trash2, IconEye as Eye, IconX as X, IconFile as File, IconFileSpreadsheet as FileSpreadsheet, IconCopy as Copy, IconCheck as Check, IconLink as LinkIcon } from '@tabler/icons-react';
 import { RecordAttachment } from '../../types';
 import { useApp } from '../../context/AppContext';
 

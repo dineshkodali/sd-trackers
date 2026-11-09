@@ -1,6 +1,6 @@
-import { X as CloseIcon } from 'lucide-react';
+import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
-import { Utensils, Calendar, Plus, Trash2, Edit3, Search, Eye, CheckCircle2, Inbox, Database, Check, RotateCcw, Coffee, Soup, BookmarkPlus } from 'lucide-react';
+import { IconToolsKitchen2 as Utensils, IconCalendar as Calendar, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconEye as Eye, IconCircleCheck as CheckCircle2, IconInbox as Inbox, IconDatabase as Database, IconCheck as Check, IconRotate as RotateCcw, IconCoffee as Coffee, IconSoup as Soup, IconBookmarkPlus as BookmarkPlus } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { FoodConsumptionReport, FoodConsumptionItem, FoodBoxRequest, FieldOptionCategory } from '../../types';
 import { Pagination } from '../common/Pagination';

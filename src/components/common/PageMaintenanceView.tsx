@@ -1,13 +1,5 @@
 import React from 'react';
-import { 
-  Wrench, 
-  ArrowLeft, 
-  RefreshCw, 
-  Building2, 
-  AlertTriangle,
-  Clock,
-  ShieldCheck
-} from 'lucide-react';
+import { IconTool as Wrench, IconArrowLeft as ArrowLeft, IconRefresh as RefreshCw, IconBuilding as Building2, IconAlertTriangle as AlertTriangle, IconClock as Clock, IconShieldCheck as ShieldCheck } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 interface PageMaintenanceViewProps {

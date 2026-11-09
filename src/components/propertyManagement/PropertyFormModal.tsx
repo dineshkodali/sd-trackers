@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, ShieldCheck } from 'lucide-react';
+import { IconAlertCircle as AlertCircle, IconShieldCheck as ShieldCheck } from '@tabler/icons-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
 import { useApp } from '../../context/AppContext';

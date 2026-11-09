@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, X, Edit3 } from 'lucide-react';
+import { IconShieldCheck as ShieldCheck, IconX as X, IconEdit as Edit3 } from '@tabler/icons-react';
 
 export interface DetailsField { label: string; value: React.ReactNode; full?: boolean }
 export interface DetailsSection { title: string; fields: DetailsField[] }

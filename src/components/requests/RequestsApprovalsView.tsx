@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, ShieldCheck, FileText, Search, X, MessageSquareQuote, Building2, User, Lock } from 'lucide-react';
+import { IconPlus as Plus, IconShieldCheck as ShieldCheck, IconFileText as FileText, IconSearch as Search, IconX as X, IconMessageDots as MessageSquareQuote, IconBuilding as Building2, IconUser as User, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DataChangeRequest } from '../../types';
 import { ExportDropdown } from '../common/ExportDropdown';

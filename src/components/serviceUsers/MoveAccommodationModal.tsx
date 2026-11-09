@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowRight, Home, DoorOpen, AlertTriangle } from 'lucide-react';
+import { IconX as X, IconArrowRight as ArrowRight, IconHome as Home, IconDoorEnter as DoorOpen, IconAlertTriangle as AlertTriangle } from '@tabler/icons-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { useApp } from '../../context/AppContext';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';

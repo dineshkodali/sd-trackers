@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Plus, Trash2, DoorOpen, UploadCloud, FileText } from 'lucide-react';
+import { IconPlus as Plus, IconTrash as Trash2, IconDoorEnter as DoorOpen, IconCloudUpload as UploadCloud, IconFileText as FileText } from '@tabler/icons-react';
 
 export interface RoomSetupItem {
   id: string;

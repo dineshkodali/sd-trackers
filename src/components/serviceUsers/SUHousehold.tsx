@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Users, UserMinus, Plus, ExternalLink, Search } from 'lucide-react';
+import { IconUsers as Users, IconUserMinus as UserMinus, IconPlus as Plus, IconExternalLink as ExternalLink, IconSearch as Search } from '@tabler/icons-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { suEnhancementsService, type FamilyGroup, type FamilyMember } from '../../services/suEnhancementsService';
 import { HOUSEHOLD_RELATIONSHIPS, activeFamilyOf, searchableForHousehold } from '../../utils/suEnhancementsLogic';

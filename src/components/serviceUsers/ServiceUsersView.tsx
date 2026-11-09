@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { UsersRound, Plus, Search, DoorOpen, Eye, Edit3, ArrowRightLeft, RefreshCw, CheckCircle2, AlertCircle, Trash2, UserMinus, Lock } from 'lucide-react';
+import { IconUsersGroup as UsersRound, IconPlus as Plus, IconSearch as Search, IconDoorEnter as DoorOpen, IconEye as Eye, IconEdit as Edit3, IconArrowsLeftRight as ArrowRightLeft, IconRefresh as RefreshCw, IconCircleCheck as CheckCircle2, IconAlertCircle as AlertCircle, IconTrash as Trash2, IconUserMinus as UserMinus, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';

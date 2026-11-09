@@ -1,15 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Terminal, 
-  Clock, 
-  Database, 
-  CheckCircle2, 
-  RotateCw, 
-  Copy, 
-  Activity, 
-  Server
-} from 'lucide-react';
+import { IconX as X, IconTerminal as Terminal, IconClock as Clock, IconDatabase as Database, IconCircleCheck as CheckCircle2, IconRotateClockwise as RotateCw, IconCopy as Copy, IconActivity as Activity, IconServer as Server } from '@tabler/icons-react';
 import { diagnosticLogger, DiagnosticEvent, parseJwtPayload } from '../../utils/diagnosticLogger';
 import { apiService } from '../../services/apiService';
 

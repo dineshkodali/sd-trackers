@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, UploadCloud, FileText, AlertCircle } from 'lucide-react';
+import { IconX as X, IconCloudUpload as UploadCloud, IconFileText as FileText, IconAlertCircle as AlertCircle } from '@tabler/icons-react';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
 import { useApp } from '../../context/AppContext';
 

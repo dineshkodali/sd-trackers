@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, ArchiveRestore, Archive, Trash2, X } from 'lucide-react';
+import { IconAlertTriangle as AlertTriangle, IconArchiveRestore as ArchiveRestore, IconArchive as Archive, IconTrash as Trash2, IconX as X } from '@tabler/icons-react';
 import { LIFECYCLE_ENTITY_LABEL, type LifecycleAction, type LifecycleEntity } from '../../config/recordLifecycle';
 
 export interface LifecycleRequest {

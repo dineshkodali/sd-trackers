@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { Wrench, AlertTriangle, CheckCircle2, Clock, Plus, Trash2, Edit3, Search, X, BookOpen, Flame, Hammer, Eye, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal } from 'lucide-react';
+import { IconTool as Wrench, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconX as X, IconBook as BookOpen, IconFlame as Flame, IconHammer as Hammer, IconEye as Eye, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { calculateDueDate, getPriorityRule } from '../../utils/maintenancePriority';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';

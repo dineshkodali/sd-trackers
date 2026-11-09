@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Search, Truck, AlertCircle, CheckCircle2, Phone, Mail, Hash, Check } from 'lucide-react';
+import { IconX as X, IconPlus as Plus, IconTrash as Trash2, IconSearch as Search, IconTruck as Truck, IconAlertCircle as AlertCircle, IconCircleCheck as CheckCircle2, IconPhone as Phone, IconMail as Mail, IconHash as Hash, IconCheck as Check } from '@tabler/icons-react';
 import { financeService } from '../../services/financeService';
 import type { FinanceVendor } from '../../types/finance';
 

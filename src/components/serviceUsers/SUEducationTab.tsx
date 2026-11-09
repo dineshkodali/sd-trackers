@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { GraduationCap, Plus } from 'lucide-react';
+import { IconSchool as GraduationCap, IconPlus as Plus } from '@tabler/icons-react';
 import { suEnhancementsService, type EducationDetails } from '../../services/suEnhancementsService';
 import { EDUCATION_STATUSES } from '../../utils/suEnhancementsLogic';
 import { Field, ErrorBanner, Notice, StatusPill, SuModal, inputCls, primaryBtn, secondaryBtn, useSuActor, fmtDate } from '../su/suUi';

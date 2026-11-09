@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Link2, Unlink, X } from 'lucide-react';
+import { IconLink as Link2, IconUnlink as Unlink, IconX as X } from '@tabler/icons-react';
 import type { DailyRegisterRecord, DailyRegisterRoom } from '../../types';
 import {
   GROUP_AVAILABILITY_LABEL, MAX_GROUP_ROOMS, MIN_GROUP_ROOMS, connectableRooms, freeBeds, groupIdOf, groupRooms, groupStatus,

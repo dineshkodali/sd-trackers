@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bus, CreditCard, AlertTriangle, Activity } from 'lucide-react';
+import { IconBus as Bus, IconCreditCard as CreditCard, IconAlertTriangle as AlertTriangle, IconActivity as Activity } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 interface TransportKPIDashboardProps {

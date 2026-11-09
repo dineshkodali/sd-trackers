@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, FileText, Eye, Trash2, Calendar, Edit3, Link2 } from 'lucide-react';
+import { IconPlus as Plus, IconFileText as FileText, IconEye as Eye, IconTrash as Trash2, IconCalendar as Calendar, IconEdit as Edit3, IconLink as Link2 } from '@tabler/icons-react';
 import { PropertyDocument } from '../../types/masterData';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
 import { MasterDocumentModal } from '../common/MasterDocumentModal';

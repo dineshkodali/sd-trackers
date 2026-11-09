@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Edit3, X, CheckSquare } from 'lucide-react';
+import { IconTrash as Trash2, IconEdit as Edit3, IconX as X, IconSquareCheck as CheckSquare } from '@tabler/icons-react';
 
 interface BulkActionToolbarProps {
   selectedCount: number;

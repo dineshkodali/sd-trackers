@@ -1,17 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Siren, 
-  X, 
-  AlertTriangle, 
-  ShieldAlert, 
-  CheckCircle2,
-  ArrowRight,
-  Flame,
-  PhoneCall,
-  Save,
-  RotateCcw,
-  Lock
-} from 'lucide-react';
+import { IconAlarm as Siren, IconX as X, IconAlertTriangle as AlertTriangle, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconArrowRight as ArrowRight, IconFlame as Flame, IconPhoneCall as PhoneCall, IconDeviceFloppy as Save, IconRotate as RotateCcw, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { RiskLevel, EscalationRecord, RecordAttachment } from '../../types';
 import { saveFormDraft, loadFormDraft, clearFormDraft, formatDraftTime } from '../../utils/autoSave';

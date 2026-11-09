@@ -9,16 +9,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import {
-  X,
-  UploadCloud,
-  FileText,
-  Loader2,
-  FileCheck,
-  Layers,
-  ArrowRight,
-  AlertCircle,
-} from 'lucide-react';
+import { IconX as X, IconCloudUpload as UploadCloud, IconFileText as FileText, IconLoader2 as Loader2, IconFileCheck as FileCheck, IconStack2 as Layers, IconArrowRight as ArrowRight, IconAlertCircle as AlertCircle } from '@tabler/icons-react';
 import type {
   TemplateWithVersion,
   TemplateFieldDefinition,

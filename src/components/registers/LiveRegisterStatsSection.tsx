@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Globe2, Users, BarChart3 } from 'lucide-react';
+import { IconWorld as Globe2, IconUsers as Users, IconChartBar as BarChart3 } from '@tabler/icons-react';
 import { DailyRegisterRecord } from '../../types';
 
 interface LiveRegisterStatsSectionProps {

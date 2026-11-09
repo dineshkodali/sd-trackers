@@ -1,16 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  X, 
-  Plus, 
-  Settings2, 
-  Check, 
-  ArrowUp, 
-  ArrowDown, 
-  Trash2, 
-  ToggleLeft, 
-  ToggleRight,
-  ShieldAlert
-} from 'lucide-react';
+import { IconX as X, IconPlus as Plus, IconSettings2 as Settings2, IconCheck as Check, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconTrash as Trash2, IconToggleLeft as ToggleLeft, IconToggleRight as ToggleRight, IconShieldExclamation as ShieldAlert } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { FieldOptionCategory, CustomFieldOption } from '../../types';
 import { FIELD_CATEGORIES_META } from '../../data/defaultFieldOptions';

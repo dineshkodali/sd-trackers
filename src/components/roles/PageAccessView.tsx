@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  KeyRound, Search, Save, RotateCcw, ShieldCheck, ShieldAlert, Copy, CheckCheck, Ban, History, Lock, Users2, X
-} from 'lucide-react';
+import { IconKey as KeyRound, IconSearch as Search, IconDeviceFloppy as Save, IconRotate as RotateCcw, IconShieldCheck as ShieldCheck, IconShieldExclamation as ShieldAlert, IconCopy as Copy, IconChecks as CheckCheck, IconBan as Ban, IconHistory as History, IconLock as Lock, IconUsers as Users2, IconX as X } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { APP_PAGES_REGISTRY } from '../../config/pageRegistry';
 import {

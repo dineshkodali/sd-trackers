@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { CreditCard, Plus, Search, Trash2, Eye, Building2, Calendar, CheckSquare, ArrowRight, ArrowLeft, X, ShieldCheck, Lock, ChevronRight } from 'lucide-react';
+import { IconCreditCard as CreditCard, IconPlus as Plus, IconSearch as Search, IconTrash as Trash2, IconEye as Eye, IconBuilding as Building2, IconCalendar as Calendar, IconSquareCheck as CheckSquare, IconArrowRight as ArrowRight, IconArrowLeft as ArrowLeft, IconX as X, IconShieldCheck as ShieldCheck, IconLock as Lock, IconChevronRight as ChevronRight } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { TransportFundingRequestRecord, FundingRequestStatus } from '../../types';
 import { Pagination } from '../common/Pagination';

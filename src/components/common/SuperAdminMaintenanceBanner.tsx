@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wrench, Power } from 'lucide-react';
+import { IconTool as Wrench, IconPower as Power } from '@tabler/icons-react';
 
 interface SuperAdminMaintenanceBannerProps {
   pageId: string;

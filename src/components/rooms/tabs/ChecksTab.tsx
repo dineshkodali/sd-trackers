@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ClipboardList } from 'lucide-react';
+import { IconClipboardList as ClipboardList } from '@tabler/icons-react';
 import { useApp } from '../../../context/AppContext';
 import { Card, Chip, EmptyState, btnCls, fmtDate } from '../roomUi';
 import type { RoomTabProps } from './tabTypes';

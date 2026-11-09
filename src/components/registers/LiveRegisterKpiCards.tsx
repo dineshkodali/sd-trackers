@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Bed, AlertTriangle, UserPlus } from 'lucide-react';
+import { IconUsers as Users, IconBed as Bed, IconAlertTriangle as AlertTriangle, IconUserPlus as UserPlus } from '@tabler/icons-react';
 
 interface LiveRegisterKpiCardsProps {
   activeResidentsCount: number;

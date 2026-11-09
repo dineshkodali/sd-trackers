@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, RotateCcw } from 'lucide-react';
+import { IconRefresh as RefreshCw, IconRotate as RotateCcw } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { ExportDropdown } from './ExportDropdown';
 import type { ExportColumnOption, ExportFormat, ExportOrientation, ExportScope } from './ExportModal';

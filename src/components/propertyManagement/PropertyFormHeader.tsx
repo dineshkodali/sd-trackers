@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, X } from 'lucide-react';
+import { IconBuilding as Building2, IconX as X } from '@tabler/icons-react';
 import { PropertyMaster } from '../../types/masterData';
 
 export type PropertyTabType = 'core' | 'ownership' | 'specs' | 'rooms' | 'compliance' | 'facilities' | 'contacts' | 'documents';

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Pencil, History, X, Lock, Trash2, CalendarCheck, Eye } from 'lucide-react';
+import { IconPlus as Plus, IconSearch as Search, IconPencil as Pencil, IconHistory as History, IconX as X, IconLock as Lock, IconTrash as Trash2, IconCalendarCheck as CalendarCheck, IconEye as Eye } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import {
   suTrackerService, type AttendanceRecord, type AbsenceFollowUp, type SuDirectoryRow

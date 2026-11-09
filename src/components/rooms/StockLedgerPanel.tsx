@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Download, ScrollText } from 'lucide-react';
+import { IconDownload as Download, IconFileText as ScrollText } from '@tabler/icons-react';
 import { exportTableToCsv } from '../../utils/csvExport';
 import type { PropertyRoom } from '../../types/masterData';
 import { MOVEMENT_TYPES, type InventoryMovement } from '../../types/roomManagement';

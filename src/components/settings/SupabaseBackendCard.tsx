@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Database, 
-  Copy, 
-  ExternalLink, 
-  Mail, 
-  CheckCircle2, 
-  AlertCircle, 
-  RefreshCw, 
-  Send, 
-  Key, 
-  Shield
-} from 'lucide-react';
+import { IconDatabase as Database, IconCopy as Copy, IconExternalLink as ExternalLink, IconMail as Mail, IconCircleCheck as CheckCircle2, IconAlertCircle as AlertCircle, IconRefresh as RefreshCw, IconSend as Send, IconKey as Key, IconShield as Shield } from '@tabler/icons-react';
 import { apiService, authHeaders, getApiUrl, SystemConfigStatus, DbStatusResponse } from '../../services/apiService';
 import { useApp } from '../../context/AppContext';
 

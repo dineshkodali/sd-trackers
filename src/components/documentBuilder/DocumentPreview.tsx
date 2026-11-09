@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useMemo, useRef } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Minimize2, Eye, ChevronLeft, ChevronRight, FileText, Pin } from 'lucide-react';
+import { IconZoomIn as ZoomIn, IconZoomOut as ZoomOut, IconMaximize as Maximize2, IconMinimize as Minimize2, IconEye as Eye, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconFileText as FileText, IconPin as Pin } from '@tabler/icons-react';
 import { DocumentPreviewPage } from './DocumentPreviewPage';
 import { normalizeIncidentData, computeIncidentPages, ComputedPage } from './documentFlowEngine';
 import type {

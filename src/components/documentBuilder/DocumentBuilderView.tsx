@@ -10,19 +10,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import {
-  FilePlus,
-  Save,
-  RotateCcw,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  Plus,
-  UploadCloud,
-  Sliders,
-  ArrowLeft,
-  UserCheck,
-} from 'lucide-react';
+import { IconFilePlus as FilePlus, IconDeviceFloppy as Save, IconRotate as RotateCcw, IconLoader2 as Loader2, IconCircleCheck as CheckCircle2, IconAlertCircle as AlertCircle, IconPlus as Plus, IconCloudUpload as UploadCloud, IconAdjustments as Sliders, IconArrowLeft as ArrowLeft, IconUserCheck as UserCheck } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { TemplateSelector } from './TemplateSelector';
 import { DocumentInputForm } from './DocumentInputForm';

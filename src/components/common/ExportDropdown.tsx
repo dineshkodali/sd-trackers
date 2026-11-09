@@ -1,11 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Download, 
-  ChevronDown, 
-  FileText, 
-  FileSpreadsheet, 
-  Calendar 
-} from 'lucide-react';
+import { IconDownload as Download, IconChevronDown as ChevronDown, IconFileText as FileText, IconFileSpreadsheet as FileSpreadsheet, IconCalendar as Calendar } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { 
   ExportModal, 

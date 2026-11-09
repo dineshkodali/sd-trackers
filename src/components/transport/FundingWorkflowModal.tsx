@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ShieldCheck } from 'lucide-react';
+import { IconCheck as Check, IconShieldCheck as ShieldCheck } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { callWorkflow } from '../../services/workflowClient';
 import { useApp } from '../../context/AppContext';

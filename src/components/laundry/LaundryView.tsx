@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar, Plus, Trash2, Edit3, Search, SlidersHorizontal, Eye, Shirt, Layers, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { IconCalendar as Calendar, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconAdjustmentsHorizontal as SlidersHorizontal, IconEye as Eye, IconShirt as Shirt, IconStack2 as Layers, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DailyLaundryRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

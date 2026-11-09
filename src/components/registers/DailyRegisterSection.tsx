@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Users, Edit3, Trash2, Eye } from 'lucide-react';
+import { IconUsers as Users, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DailyRegisterRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

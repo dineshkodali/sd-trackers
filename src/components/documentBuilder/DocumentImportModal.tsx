@@ -7,14 +7,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import {
-  X,
-  UploadCloud,
-  FileCheck,
-  Loader2,
-  Eye,
-  Sliders,
-  } from 'lucide-react';
+import { IconX as X, IconCloudUpload as UploadCloud, IconFileCheck as FileCheck, IconLoader2 as Loader2, IconEye as Eye, IconAdjustments as Sliders } from '@tabler/icons-react';
 import type {
   TemplateWithVersion,
   TemplateFieldDefinition,

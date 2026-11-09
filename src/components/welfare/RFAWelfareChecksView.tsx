@@ -1,19 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { ClampedText } from '../common/ClampedText';
-import { 
-  HeartHandshake,
-  UserCheck, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown
-} from 'lucide-react';
+import { IconHeartHandshake as HeartHandshake, IconUserCheck as UserCheck, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { RFAWelfareCheckRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

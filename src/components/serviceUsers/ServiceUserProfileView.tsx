@@ -5,7 +5,7 @@ import { getServiceUserRecords } from '../../utils/serviceUserRecords';
 import { SUPeepTab } from './SUPeepTab';
 import { SUIncidentsTab, SUReferralsTab, SUGpTab, SUTransportTab, SUOtherWelfareTable } from './SURecordTabs';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { ArrowLeft, ChevronRight, Building2, DoorOpen, Edit3, ArrowRightLeft, FileText, UserMinus, Trash2 } from 'lucide-react';
+import { IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight, IconBuilding as Building2, IconDoorEnter as DoorOpen, IconEdit as Edit3, IconArrowsLeftRight as ArrowRightLeft, IconFileText as FileText, IconUserMinus as UserMinus, IconTrash as Trash2 } from '@tabler/icons-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
 import { useApp } from '../../context/AppContext';

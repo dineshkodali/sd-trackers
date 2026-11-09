@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Shirt, 
-  AlertTriangle, 
-  CheckCircle2, 
-  ArrowUpRight, 
-  Flame, 
-  Building2, 
-  Layers
-} from 'lucide-react';
+import { IconShirt as Shirt, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconArrowUpRight as ArrowUpRight, IconFlame as Flame, IconBuilding as Building2, IconStack2 as Layers } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { FoodBuffetItemBreakdown } from '../../types';
 

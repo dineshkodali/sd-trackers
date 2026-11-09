@@ -112,3 +112,8 @@ samp {
     scroll-behavior: auto !important;
   }
 }
+
+/* Interface icons (Tabler): slightly lighter stroke than the 2px default. */
+.tabler-icon {
+  stroke-width: 1.75;
+}

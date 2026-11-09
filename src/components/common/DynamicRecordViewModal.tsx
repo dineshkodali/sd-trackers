@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { X, Edit3, ShieldCheck } from 'lucide-react';
+import { IconX as X, IconEdit as Edit3, IconShieldCheck as ShieldCheck } from '@tabler/icons-react';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { AttachmentsSection } from './AttachmentsSection';
 

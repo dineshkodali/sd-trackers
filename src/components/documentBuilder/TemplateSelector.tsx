@@ -6,18 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import {
-  FileText,
-  Loader2,
-  ShieldCheck,
-  AlertTriangle,
-  ClipboardList,
-  Plus,
-  UploadCloud,
-  Search,
-  Trash2,
-  Sliders,
-} from 'lucide-react';
+import { IconFileText as FileText, IconLoader2 as Loader2, IconShieldCheck as ShieldCheck, IconAlertTriangle as AlertTriangle, IconClipboardList as ClipboardList, IconPlus as Plus, IconCloudUpload as UploadCloud, IconSearch as Search, IconTrash as Trash2, IconAdjustments as Sliders } from '@tabler/icons-react';
 import type { TemplateWithVersion } from '../../types/documentBuilder';
 import { useApp } from '../../context/AppContext';
 

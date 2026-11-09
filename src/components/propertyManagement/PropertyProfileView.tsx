@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronRight, Building2, Edit3, Plus, Home, Users } from 'lucide-react';
+import { IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight, IconBuilding as Building2, IconEdit as Edit3, IconPlus as Plus, IconHome as Home, IconUsers as Users } from '@tabler/icons-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
 import { useApp } from '../../context/AppContext';

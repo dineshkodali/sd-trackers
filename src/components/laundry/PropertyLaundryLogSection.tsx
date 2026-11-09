@@ -1,23 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Building2, 
-  Calendar, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Search, 
-  X, 
-  Shirt, 
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  SlidersHorizontal,
-  Eye,
-  Lock,
-  UserCheck
-} from 'lucide-react';
+import { IconBuilding as Building2, IconCalendar as Calendar, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconCircleCheck as CheckCircle2, IconAlertTriangle as AlertTriangle, IconSearch as Search, IconX as X, IconShirt as Shirt, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal, IconEye as Eye, IconLock as Lock, IconUserCheck as UserCheck } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { PropertyLaundryLog, RecordAttachment } from '../../types';
 import { Pagination } from '../common/Pagination';

@@ -1,19 +1,10 @@
 import React from 'react';
-import { 
-  Eye, 
-  Edit3, 
-  Archive, 
-  RotateCcw, 
-  Trash2, 
-  Building2, 
-  Inbox,
-  LucideIcon
-} from 'lucide-react';
+import { IconEye as Eye, IconEdit as Edit3, IconArchive as Archive, IconRotate as RotateCcw, IconTrash as Trash2, IconBuilding as Building2, IconInbox as Inbox, type Icon as TablerIcon } from '@tabler/icons-react';
 
 export interface CompactRecordField {
   label: string;
   value: React.ReactNode;
-  icon?: LucideIcon;
+  icon?: TablerIcon;
   badgeClass?: string;
   fullWidth?: boolean;
 }

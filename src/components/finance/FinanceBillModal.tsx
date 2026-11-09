@@ -1,22 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  X, 
-  Plus, 
-  Trash2, 
-  Upload, 
-  FileText, 
-  AlertCircle, 
-  CheckCircle2, 
-  Building2, 
-  Lock, 
-  Loader2,
-  Truck,
-  ShieldCheck,
-  CreditCard,
-  ChevronDown,
-  ChevronUp,
-  Store
-} from 'lucide-react';
+import { IconX as X, IconPlus as Plus, IconTrash as Trash2, IconUpload as Upload, IconFileText as FileText, IconAlertCircle as AlertCircle, IconCircleCheck as CheckCircle2, IconBuilding as Building2, IconLock as Lock, IconLoader2 as Loader2, IconTruck as Truck, IconShieldCheck as ShieldCheck, IconCreditCard as CreditCard, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconBuildingStore as Store } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceSupplierModal } from './FinanceSupplierModal';

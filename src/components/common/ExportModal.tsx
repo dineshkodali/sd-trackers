@@ -1,23 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  X, 
-  FileText, 
-  FileSpreadsheet, 
-  Calendar, 
-  Download, 
-  Layers, 
-  Filter, 
-  Check, 
-  Clock,
-  Maximize2,
-  Minimize2,
-  ListFilter,
-  Eye,
-  Settings2,
-  Table,
-  ArrowRight,
-  CheckCircle2
-} from 'lucide-react';
+import { IconX as X, IconFileText as FileText, IconFileSpreadsheet as FileSpreadsheet, IconCalendar as Calendar, IconDownload as Download, IconStack2 as Layers, IconFilter as Filter, IconCheck as Check, IconClock as Clock, IconMaximize as Maximize2, IconMinimize as Minimize2, IconFilter as ListFilter, IconEye as Eye, IconSettings2 as Settings2, IconTable as Table, IconArrowRight as ArrowRight, IconCircleCheck as CheckCircle2 } from '@tabler/icons-react';
 
 export type ExportFormat = 'pdf' | 'csv';
 export type ExportScope = 'filtered' | 'all' | 'custom';

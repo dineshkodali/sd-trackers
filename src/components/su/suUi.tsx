@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { IconX as X } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { canViewNhsNumber, canEditSuTrackers } from '../../utils/suTrackerAccess';
 

@@ -1,16 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  FileCheck, 
-  Search, 
-  RotateCcw, 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown, 
-  SlidersHorizontal, 
-  Building2,
-  Clock
-} from 'lucide-react';
+import { IconFileCheck as FileCheck, IconSearch as Search, IconRotate as RotateCcw, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal, IconBuilding as Building2, IconClock as Clock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceBillDetailModal } from './FinanceBillDetailModal';

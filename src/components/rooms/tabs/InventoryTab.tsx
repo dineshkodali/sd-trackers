@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRightLeft, ClipboardCheck, Package, PackagePlus, Plus, Undo2 } from 'lucide-react';
+import { IconArrowsLeftRight as ArrowRightLeft, IconClipboardCheck as ClipboardCheck, IconPackage as Package, IconPackage as PackagePlus, IconPlus as Plus, IconArrowBackUp as Undo2 } from '@tabler/icons-react';
 import { roomManagementService } from '../../../services/roomManagementService';
 import type { PropertyRoom } from '../../../types/masterData';
 import { ITEM_CONDITIONS, type InventoryItem, type RoomItem } from '../../../types/roomManagement';

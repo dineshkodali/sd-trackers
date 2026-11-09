@@ -1,11 +1,5 @@
 import React from 'react';
-import { 
-  Soup, 
-  Shirt, 
-  CheckCircle2, 
-  ArrowUpRight, 
-  Flame
-} from 'lucide-react';
+import { IconSoup as Soup, IconShirt as Shirt, IconCircleCheck as CheckCircle2, IconArrowUpRight as ArrowUpRight, IconFlame as Flame } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 interface CommercialWelfareBreakdownProps {

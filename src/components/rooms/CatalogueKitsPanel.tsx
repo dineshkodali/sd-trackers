@@ -3,7 +3,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { IconPencil as Pencil, IconPlus as Plus, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { roomManagementService } from '../../services/roomManagementService';
 import { ITEM_CATEGORIES, ROOM_TYPES, type InventoryItem, type RoomKitTemplate } from '../../types/roomManagement';

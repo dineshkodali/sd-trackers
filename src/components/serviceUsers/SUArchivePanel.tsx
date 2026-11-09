@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, ShieldCheck } from 'lucide-react';
+import { IconArchive as Archive, IconArchiveRestore as ArchiveRestore, IconShieldCheck as ShieldCheck } from '@tabler/icons-react';
 import { suEnhancementsService, type ArchiveRequest } from '../../services/suEnhancementsService';
 import { archiveActionsFor } from '../../utils/suEnhancementsLogic';
 import type { ServiceUserMaster } from '../../types/masterData';

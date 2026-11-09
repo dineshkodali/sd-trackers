@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert, ArrowLeft, Lock, Building2 } from 'lucide-react';
+import { IconShieldExclamation as ShieldAlert, IconArrowLeft as ArrowLeft, IconLock as Lock, IconBuilding as Building2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 interface AccessDeniedViewProps {

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, FileText, AlertTriangle, CheckCircle, Loader2, Download } from 'lucide-react';
+import { IconX as X, IconUpload as Upload, IconFileText as FileText, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle, IconLoader2 as Loader2, IconDownload as Download } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
 import { apiService } from '../../services/apiService';

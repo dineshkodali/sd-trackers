@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Building, Bed, Users, Layers, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { IconBuilding as Building, IconBed as Bed, IconUsers as Users, IconStack2 as Layers, IconCircleCheck as CheckCircle2, IconShieldCheck as ShieldCheck } from '@tabler/icons-react';
 import { DailyRegisterRecord, DailyRegisterRoom } from '../../types';
 import { roomKey } from '../../utils/roomAllocation';
 

@@ -1,7 +1,7 @@
-import { X as CloseIcon } from 'lucide-react';
+import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { Soup, Plus, Search, Edit3, Trash2, Eye, CheckCircle2, Utensils, SlidersHorizontal, ArrowUp, ArrowDown, ArrowUpDown, Lock } from 'lucide-react';
+import { IconSoup as Soup, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconCircleCheck as CheckCircle2, IconToolsKitchen2 as Utensils, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { FoodSurveyRecord, FoodMealRating, MealRatingValue } from '../../types';
 import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';

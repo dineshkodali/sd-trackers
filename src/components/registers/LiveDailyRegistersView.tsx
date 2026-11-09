@@ -1,6 +1,6 @@
-import { X as CloseIcon } from 'lucide-react';
+import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
-import { Building2, Search, Plus, SlidersHorizontal, Lock, RefreshCw } from 'lucide-react';
+import { IconBuilding as Building2, IconSearch as Search, IconPlus as Plus, IconAdjustmentsHorizontal as SlidersHorizontal, IconLock as Lock, IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { buildRegisterSyncPlan } from '../../utils/registerMasterSync';
 import { useApp } from '../../context/AppContext';

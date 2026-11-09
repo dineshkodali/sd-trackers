@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { IconAlertTriangle as AlertTriangle, IconPlus as Plus } from '@tabler/icons-react';
 import { roomManagementService } from '../../../services/roomManagementService';
 import { ISSUE_CATEGORIES, ISSUE_PRIORITIES, type RoomIssue } from '../../../types/roomManagement';
 import { Card, Chip, EmptyState, Field, Modal, btnCls, fmtDate, inputCls, issueStatusTone, primaryBtnCls, priorityTone } from '../roomUi';

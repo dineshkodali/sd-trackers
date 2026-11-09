@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { AlertTriangle, Info, X } from 'lucide-react';
+import { IconAlertTriangle as AlertTriangle, IconInfoCircle as Info, IconX as X } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 export const ConfirmationModal: React.FC = () => {

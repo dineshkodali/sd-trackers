@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Plus, Edit3, Eye, BedDouble, RefreshCw } from 'lucide-react';
+import { IconUserPlus as UserPlus, IconPlus as Plus, IconEdit as Edit3, IconEye as Eye, IconBed as BedDouble, IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { NewArrivalRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, KeyRound } from 'lucide-react';
+import { IconLock as Lock, IconKey as KeyRound } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
 

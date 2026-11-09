@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wrench, ShieldAlert } from 'lucide-react';
+import { IconTool as Wrench, IconShieldExclamation as ShieldAlert } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { PageMaintenanceSection } from '../settings/PageMaintenanceSection';
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Search, Eye, X, Lock, Trash2, Stethoscope, Edit3 } from 'lucide-react';
+import { IconPlus as Plus, IconSearch as Search, IconEye as Eye, IconX as X, IconLock as Lock, IconTrash as Trash2, IconStethoscope as Stethoscope, IconEdit as Edit3 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type GpRegistration, type SuDirectoryRow } from '../../services/suTrackerService';
 import { canViewNhsNumber, canEditSuTrackers, maskNhsNumber, isValidNhsNumber, formatUkDate } from '../../utils/suTrackerAccess';

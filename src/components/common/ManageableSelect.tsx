@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Settings2 } from 'lucide-react';
+import { IconPlus as Plus, IconSettings2 as Settings2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { FieldOptionCategory } from '../../types';
 import { SelectOption } from '../../types/tableSchema';

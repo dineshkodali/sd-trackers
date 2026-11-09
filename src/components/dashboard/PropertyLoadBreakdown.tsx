@@ -1,10 +1,5 @@
 import React from 'react';
-import { 
-  Building2, 
-  AlertTriangle, 
-  ArrowUpRight, 
-  Filter
-} from 'lucide-react';
+import { IconBuilding as Building2, IconAlertTriangle as AlertTriangle, IconArrowUpRight as ArrowUpRight, IconFilter as Filter } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { useRoomOccupancy } from '../../hooks/useRoomOccupancy';
 import { formatOccupancy } from '../../utils/roomManagementLogic';

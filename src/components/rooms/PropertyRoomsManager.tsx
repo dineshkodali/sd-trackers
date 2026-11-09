@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, BedDouble, Boxes, DoorOpen, Package, Plus, RefreshCw, ScrollText, Search, Trash2 } from 'lucide-react';
+import { IconAlertTriangle as AlertTriangle, IconBed as BedDouble, IconBoxMultiple as Boxes, IconDoorEnter as DoorOpen, IconPackage as Package, IconPlus as Plus, IconRefresh as RefreshCw, IconFileText as ScrollText, IconSearch as Search, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { roomManagementService } from '../../services/roomManagementService';

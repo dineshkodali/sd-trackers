@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, MapPin } from 'lucide-react';
+import { IconBuilding as Building2, IconMapPin as MapPin } from '@tabler/icons-react';
 import { SiteInfo } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { getUserDropdownOptions } from '../../utils/userSelectOptions';

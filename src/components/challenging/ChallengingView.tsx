@@ -1,19 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import {
-  Plus,
-  Eye,
-  Edit3,
-  Archive,
-  RotateCcw,
-  Trash2,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  SlidersHorizontal,
-  AlertTriangle,
-  Search
-} from 'lucide-react';
+import { IconPlus as Plus, IconEye as Eye, IconEdit as Edit3, IconArchive as Archive, IconRotate as RotateCcw, IconTrash as Trash2, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal, IconAlertTriangle as AlertTriangle, IconSearch as Search } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { ChallengingSU } from '../../types';
 import { Pagination } from '../common/Pagination';

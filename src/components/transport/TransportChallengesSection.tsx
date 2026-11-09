@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { BarChart3, Plus, Search, Edit3, Trash2, Eye, ShieldAlert, Building2, Calendar, CheckCircle2, XCircle, X, Lock } from 'lucide-react';
+import { IconChartBar as BarChart3, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconShieldExclamation as ShieldAlert, IconBuilding as Building2, IconCalendar as Calendar, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconX as X, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { TransportChallengeRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

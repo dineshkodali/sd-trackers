@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Trash2, Plus, Search, Edit3, Eye, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, UtensilsCrossed, Calendar, Sun, Moon, Utensils, X, PlusCircle, AlertCircle, Building2 } from 'lucide-react';
+import { IconTrash as Trash2, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconEye as Eye, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconToolsKitchen as UtensilsCrossed, IconCalendar as Calendar, IconSun as Sun, IconMoon as Moon, IconToolsKitchen2 as Utensils, IconX as X, IconCirclePlus as PlusCircle, IconAlertCircle as AlertCircle, IconBuilding as Building2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { FoodWastageRecord, FoodWastageItem } from '../../types';
 import { Pagination } from '../common/Pagination';

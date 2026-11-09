@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Brush, ClipboardCheck, Info, ShieldAlert, Trash2 } from 'lucide-react';
+import { IconAlertTriangle as AlertTriangle, IconBrush as Brush, IconClipboardCheck as ClipboardCheck, IconInfoCircle as Info, IconShieldExclamation as ShieldAlert, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useApp } from '../../../context/AppContext';
 import { suPropertyService } from '../../../services/suPropertyService';
 import { roomManagementService } from '../../../services/roomManagementService';

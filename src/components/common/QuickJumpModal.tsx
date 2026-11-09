@@ -1,29 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, 
-  LayoutDashboard, 
-  Users, 
-  Shield, 
-  Building2, 
-  FileText, 
-  AlertTriangle, 
-  Utensils, 
-  Wrench, 
-  FolderLock, 
-  Activity, 
-  Settings, 
-  CheckCircle,
-  Command,
-  ArrowRight,
-  Bus,
-  ShieldCheck,
-  Stethoscope,
-  UserCheck,
-  PlaneTakeoff,
-  BookOpen,
-  HeartHandshake,
-  ClipboardList
-} from 'lucide-react';
+import { IconSearch as Search, IconLayoutDashboard as LayoutDashboard, IconUsers as Users, IconShield as Shield, IconBuilding as Building2, IconFileText as FileText, IconAlertTriangle as AlertTriangle, IconToolsKitchen2 as Utensils, IconTool as Wrench, IconFolderLock as FolderLock, IconActivity as Activity, IconSettings as Settings, IconCircleCheck as CheckCircle, IconCommand as Command, IconArrowRight as ArrowRight, IconBus as Bus, IconShieldCheck as ShieldCheck, IconStethoscope as Stethoscope, IconUserCheck as UserCheck, IconPlaneDeparture as PlaneTakeoff, IconBook as BookOpen, IconHeartHandshake as HeartHandshake, IconClipboardList as ClipboardList } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 interface QuickJumpModalProps {

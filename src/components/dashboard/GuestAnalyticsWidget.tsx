@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Users, ArrowUpRight, RefreshCw } from 'lucide-react';
+import { IconUsers as Users, IconArrowUpRight as ArrowUpRight, IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useApp } from '../../context/AppContext';
 import { useGuestContext } from '../../hooks/useGuestContext';

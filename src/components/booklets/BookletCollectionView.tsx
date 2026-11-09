@@ -1,21 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { ClampedText } from '../common/ClampedText';
-import { 
-  BookOpen, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  CheckCircle2,
-  X,
-  Lock
-} from 'lucide-react';
+import { IconBook as BookOpen, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconCircleCheck as CheckCircle2, IconX as X, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { BookletCollectionRecord } from '../../types';
 import { exportTableToCsv } from '../../utils/csvExport';

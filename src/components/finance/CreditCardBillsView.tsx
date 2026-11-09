@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { CreditCard, Plus, Search, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, Eye, Edit3, Trash2, Copy, Check, Building2, CheckCircle2, XCircle, Send, Clock, Store } from 'lucide-react';
+import { IconCreditCard as CreditCard, IconPlus as Plus, IconSearch as Search, IconRotate as RotateCcw, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal, IconEye as Eye, IconEdit as Edit3, IconTrash as Trash2, IconCopy as Copy, IconCheck as Check, IconBuilding as Building2, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconSend as Send, IconClock as Clock, IconBuildingStore as Store } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import { FinanceBillModal } from './FinanceBillModal';

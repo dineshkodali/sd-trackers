@@ -1,7 +1,7 @@
-import { X as CloseIcon } from 'lucide-react';
+import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { HeartHandshake, Plus, Search, Edit3, Trash2, Eye, ShieldAlert, CheckCircle2, XCircle, Building2, User, Activity, Stethoscope, Home, SlidersHorizontal, ArrowUp, ArrowDown, ArrowUpDown, Lock } from 'lucide-react';
+import { IconHeartHandshake as HeartHandshake, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconBuilding as Building2, IconUser as User, IconActivity as Activity, IconStethoscope as Stethoscope, IconHome as Home, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { WelfareCheckRecord } from '../../types';
 import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';

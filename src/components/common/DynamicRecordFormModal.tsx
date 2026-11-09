@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { X, AlertCircle, Loader2, Lock, Building2, UserCheck, Plus, Settings2 } from 'lucide-react';
+import { IconX as X, IconAlertCircle as AlertCircle, IconLoader2 as Loader2, IconLock as Lock, IconBuilding as Building2, IconUserCheck as UserCheck, IconPlus as Plus, IconSettings2 as Settings2 } from '@tabler/icons-react';
 import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
 import { FieldOptionCategory } from '../../types';
 import { useApp } from '../../context/AppContext';

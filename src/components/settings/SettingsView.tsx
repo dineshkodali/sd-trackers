@@ -1,21 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Settings, 
-  ShieldCheck, 
-  Database, 
-  Download, 
-  CheckCircle2, 
-  Lock,
-  Activity,
-  Server,
-  FileCheck2,
-  Cpu,
-  Wifi,
-  WifiOff,
-  Radio,
-  RefreshCw,
-  Zap
-} from 'lucide-react';
+import { IconSettings as Settings, IconShieldCheck as ShieldCheck, IconDatabase as Database, IconDownload as Download, IconCircleCheck as CheckCircle2, IconLock as Lock, IconActivity as Activity, IconServer as Server, IconFileCheck as FileCheck2, IconCpu as Cpu, IconWifi as Wifi, IconWifiOff as WifiOff, IconRadio as Radio, IconRefresh as RefreshCw, IconBolt as Zap } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { SupabaseBackendCard } from './SupabaseBackendCard';
 import { useSupabaseRealtime } from '../../hooks/useSupabaseRealtime';

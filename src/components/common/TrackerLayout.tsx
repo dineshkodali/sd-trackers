@@ -1,5 +1,5 @@
 import React from 'react';
-import { SlidersHorizontal, ArrowUp, ArrowDown, ArrowUpDown, UserCheck, Lock, AlertCircle, RefreshCw } from 'lucide-react';
+import { IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconUserCheck as UserCheck, IconLock as Lock, IconAlertCircle as AlertCircle, IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { Pagination } from './Pagination';
 
 /**

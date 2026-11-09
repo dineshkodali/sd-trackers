@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, WifiOff, RefreshCw } from 'lucide-react';
+import { IconAlertTriangle as AlertTriangle, IconWifiOff as WifiOff, IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 /**

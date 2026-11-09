@@ -1,5 +1,5 @@
 import React from 'react';
-import { HeartHandshake, Soup, Building2, AlertTriangle, Wrench, MessageSquare, FileText, LifeBuoy, MapPin, Calendar, Clock } from 'lucide-react';
+import { IconHeartHandshake as HeartHandshake, IconSoup as Soup, IconBuilding as Building2, IconAlertTriangle as AlertTriangle, IconTool as Wrench, IconMessage as MessageSquare, IconFileText as FileText, IconLifebuoy as LifeBuoy, IconMapPin as MapPin, IconCalendar as Calendar, IconClock as Clock } from '@tabler/icons-react';
 import { UnifiedActivityItem } from '../../types/masterData';
 
 interface SUActivityTimelineProps {

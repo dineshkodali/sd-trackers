@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { History, Send } from 'lucide-react';
+import { IconHistory as History, IconSend as Send } from '@tabler/icons-react';
 import { roomManagementService } from '../../../services/roomManagementService';
 import { residentName } from '../useRoomData';
 import { Card, Chip, EmptyState, btnCls, fmtDateTime, inputCls, primaryBtnCls, type Tone } from '../roomUi';

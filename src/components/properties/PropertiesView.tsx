@@ -1,33 +1,13 @@
 import { useRoomOccupancy } from '../../hooks/useRoomOccupancy';
 import { formatOccupancy } from '../../utils/roomManagementLogic';
 import React, { useState, useMemo } from 'react';
-import { Archive } from 'lucide-react';
+import { IconArchive as Archive } from '@tabler/icons-react';
 import { useLifecycleActions } from '../../hooks/useLifecycleActions';
 import { LifecycleDialog } from '../common/LifecycleDialog';
 import { LifecycleNoticeBar, LifecycleRecordsPanel, LifecycleTabs, type LifecycleSection } from '../common/LifecycleRecordsPanel';
 import { canCreateProperty } from '../../config/recordLifecycle';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import {
-  Building2,
-  Plus,
-  Edit3,
-  Trash2,
-  Users,
-  MapPin,
-  Phone,
-  UserCheck,
-  ShieldAlert,
-  RotateCcw,
-  Shield,
-  CheckCircle2,
-  History,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Eye,
-  SlidersHorizontal,
-  X
-} from 'lucide-react';
+import { IconBuilding as Building2, IconPlus as Plus, IconEdit as Edit3, IconTrash as Trash2, IconUsers as Users, IconMapPin as MapPin, IconPhone as Phone, IconUserCheck as UserCheck, IconShieldExclamation as ShieldAlert, IconRotate as RotateCcw, IconShield as Shield, IconCircleCheck as CheckCircle2, IconHistory as History, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconEye as Eye, IconAdjustmentsHorizontal as SlidersHorizontal, IconX as X } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { PropertyInfo } from '../../types';
 import { Pagination } from '../common/Pagination';

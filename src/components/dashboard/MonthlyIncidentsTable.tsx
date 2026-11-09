@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Copy, 
-  Check, 
-  Download, 
-  ArrowUpRight, 
-  ShieldAlert, 
-  Calendar 
-} from 'lucide-react';
+import { IconCopy as Copy, IconCheck as Check, IconDownload as Download, IconArrowUpRight as ArrowUpRight, IconShieldExclamation as ShieldAlert, IconCalendar as Calendar } from '@tabler/icons-react';
 import { INCIDENT_CATEGORIES } from './DashboardAnalytics';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { formatDataAsExcelClipboardTsv } from '../../utils/workbookExport';

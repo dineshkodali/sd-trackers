@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRightLeft, Plus, FileText, Trash2, Eye, Link2, Edit3 } from 'lucide-react';
+import { IconArrowsLeftRight as ArrowRightLeft, IconPlus as Plus, IconFileText as FileText, IconTrash as Trash2, IconEye as Eye, IconLink as Link2, IconEdit as Edit3 } from '@tabler/icons-react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
   ServiceUserMaster, 

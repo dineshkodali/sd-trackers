@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FileText, Upload, Trash2, Plus } from 'lucide-react';
+import { IconFileText as FileText, IconUpload as Upload, IconTrash as Trash2, IconPlus as Plus } from '@tabler/icons-react';
 import { suEnhancementsService, type Hc2Details } from '../../services/suEnhancementsService';
 import { HC2_STATUSES, hc2DisplayStatus } from '../../utils/suEnhancementsLogic';
 import { todayIso } from '../../utils/attendanceLogic';

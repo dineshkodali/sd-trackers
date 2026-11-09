@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BedDouble, Plus, Trash2, UserRound } from 'lucide-react';
+import { IconBed as BedDouble, IconPlus as Plus, IconTrash as Trash2, IconUser as UserRound } from '@tabler/icons-react';
 import { roomManagementService } from '../../../services/roomManagementService';
 import { BED_TYPES, ITEM_CONDITIONS } from '../../../types/roomManagement';
 import { bedViews, freeBeds, residentsWithoutBed } from '../../../utils/roomManagementLogic';

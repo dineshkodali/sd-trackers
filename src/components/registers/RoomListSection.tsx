@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Building, Edit3, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, Link2 } from 'lucide-react';
+import { IconBuilding as Building, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconLink as Link2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DailyRegisterRoom } from '../../types';
 import { Pagination } from '../common/Pagination';

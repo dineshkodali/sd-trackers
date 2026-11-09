@@ -5,9 +5,9 @@
  * Supports compact field entry and in-place field/section additions and removals.
  */
 
-import { X as CloseIcon } from 'lucide-react';
+import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useCallback, useRef, useState } from 'react';
-import { Trash2, Plus, Camera, Image as ImageIcon } from 'lucide-react';
+import { IconTrash as Trash2, IconPlus as Plus, IconCamera as Camera, IconPhoto as ImageIcon } from '@tabler/icons-react';
 import type { TemplateFieldDefinition, LayoutConfig, SectionLayout } from '../../types/documentBuilder';
 
 /**

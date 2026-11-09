@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { ClampedText } from '../common/ClampedText';
-import { Bus, Plus, Search, Edit3, Trash2, Eye, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, MessageSquareWarning, BarChart3, CreditCard, Building2 } from 'lucide-react';
+import { IconBus as Bus, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconMessageReport as MessageSquareWarning, IconChartBar as BarChart3, IconCreditCard as CreditCard, IconBuilding as Building2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { PublicTransportRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

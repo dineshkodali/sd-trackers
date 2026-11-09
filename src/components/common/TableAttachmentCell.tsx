@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Paperclip, Copy, Check, ExternalLink, Download, FileText, Image as ImageIcon, FileSpreadsheet, Files } from 'lucide-react';
+import { IconPaperclip as Paperclip, IconCopy as Copy, IconCheck as Check, IconExternalLink as ExternalLink, IconDownload as Download, IconFileText as FileText, IconPhoto as ImageIcon, IconFileSpreadsheet as FileSpreadsheet, IconFiles as Files } from '@tabler/icons-react';
 import { RecordAttachment } from '../../types';
 
 interface TableAttachmentCellProps {

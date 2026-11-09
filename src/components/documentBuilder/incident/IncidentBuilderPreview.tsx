@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Copy, Download, Loader2 } from 'lucide-react';
+import { IconCopy as Copy, IconDownload as Download, IconLoader2 as Loader2 } from '@tabler/icons-react';
 import { countPlaceholders, parseRich, type Report } from './incidentEngine';
 
 export interface DownloadGuard {

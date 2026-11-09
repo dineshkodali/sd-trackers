@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Accessibility, ExternalLink } from 'lucide-react';
+import { IconAccessible as Accessibility, IconExternalLink as ExternalLink } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type PeepPlan, type PeepHistoryEntry } from '../../services/suTrackerService';
 import { formatUkDate } from '../../utils/suTrackerAccess';

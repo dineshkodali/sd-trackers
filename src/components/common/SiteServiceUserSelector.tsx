@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Building2, User, Home, DoorOpen } from 'lucide-react';
+import { IconBuilding as Building2, IconUser as User, IconHome as Home, IconDoorEnter as DoorOpen } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';

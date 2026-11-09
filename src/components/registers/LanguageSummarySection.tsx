@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Languages } from 'lucide-react';
+import { IconLanguage as Languages } from '@tabler/icons-react';
 import { DailyRegisterRecord } from '../../types';
 
 interface LanguageSummarySectionProps {

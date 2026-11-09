@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ShieldCheck, AlertTriangle, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { IconShieldCheck as ShieldCheck, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconAlertCircle as AlertCircle } from '@tabler/icons-react';
 import { DailyRegisterRecord, DailyRegisterRoom } from '../../types';
 
 interface RegisterValidationSectionProps {

@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BedDouble, ChevronLeft, ChevronRight, ClipboardList, DoorOpen, History, LayoutDashboard, Package, Wrench, AlertTriangle, X } from 'lucide-react';
+import { IconBed as BedDouble, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconClipboardList as ClipboardList, IconDoorEnter as DoorOpen, IconHistory as History, IconLayoutDashboard as LayoutDashboard, IconPackage as Package, IconTool as Wrench, IconAlertTriangle as AlertTriangle, IconX as X } from '@tabler/icons-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import type { PropertyMaster, PropertyRoom } from '../../types/masterData';
 import { roomFlags } from '../../utils/roomManagementLogic';

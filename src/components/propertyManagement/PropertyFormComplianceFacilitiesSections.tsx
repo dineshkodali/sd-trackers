@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Wifi, Phone } from 'lucide-react';
+import { IconShieldCheck as ShieldCheck, IconWifi as Wifi, IconPhone as Phone } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { getUserDropdownOptions } from '../../utils/userSelectOptions';
 

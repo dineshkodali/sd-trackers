@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { HeartHandshake, FileText, UploadCloud, Trash2, CheckCircle2 } from 'lucide-react';
+import { IconHeartHandshake as HeartHandshake, IconFileText as FileText, IconCloudUpload as UploadCloud, IconTrash as Trash2, IconCircleCheck as CheckCircle2 } from '@tabler/icons-react';
 import { ServiceUserDocument } from '../../types/masterData';
 import { useApp } from '../../context/AppContext';
 import { getUserDropdownOptions } from '../../utils/userSelectOptions';

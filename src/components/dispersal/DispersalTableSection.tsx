@@ -1,18 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Send, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  PlaneTakeoff,
-  UserMinus
-} from 'lucide-react';
+import { IconSend as Send, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconPlaneDeparture as PlaneTakeoff, IconUserMinus as UserMinus } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DispersalRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

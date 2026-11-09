@@ -1,17 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  ShieldAlert, 
-  Clock, 
-  ArrowLeft, 
-  RotateCw, 
-  AlertTriangle, 
-  Terminal, 
-  CheckCircle2, 
-  Mail, 
-  Copy, 
-  ChevronDown, 
-  ChevronUp
-} from 'lucide-react';
+import { IconShieldExclamation as ShieldAlert, IconClock as Clock, IconArrowLeft as ArrowLeft, IconRotateClockwise as RotateCw, IconAlertTriangle as AlertTriangle, IconTerminal as Terminal, IconCircleCheck as CheckCircle2, IconMail as Mail, IconCopy as Copy, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp } from '@tabler/icons-react';
 import { Logo } from '../common/Logo';
 import { diagnosticLogger, DiagnosticEvent } from '../../utils/diagnosticLogger';
 

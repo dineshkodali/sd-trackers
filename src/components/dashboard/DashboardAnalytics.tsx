@@ -16,17 +16,7 @@ import {
   Tooltip,
   Legend
 } from 'recharts';
-import { 
-  TrendingUp, 
-  BarChart3, 
-  PieChart as PieIcon, 
-  Activity, 
-  ShieldAlert, 
-  CheckCircle2, 
-  Clock, 
-  ArrowUpRight, 
-  HelpCircle
-} from 'lucide-react';
+import { IconTrendingUp as TrendingUp, IconChartBar as BarChart3, IconChartPie as PieIcon, IconActivity as Activity, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconClock as Clock, IconArrowUpRight as ArrowUpRight, IconHelpCircle as HelpCircle } from '@tabler/icons-react';
 import { SGReferral, EscalationRecord, ChallengingSU } from '../../types';
 import { MonthlyIncidentsTable } from './MonthlyIncidentsTable';
 import { useApp } from '../../context/AppContext';

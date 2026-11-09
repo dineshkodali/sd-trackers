@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Copy, Eye, LayoutDashboard, MoreHorizontal, Pencil, Plus, RotateCcw, Star, Trash2 } from 'lucide-react';
+import { IconCheck as Check, IconChevronDown as ChevronDown, IconCopy as Copy, IconEye as Eye, IconLayoutDashboard as LayoutDashboard, IconDots as MoreHorizontal, IconPencil as Pencil, IconPlus as Plus, IconRotate as RotateCcw, IconStar as Star, IconTrash as Trash2 } from '@tabler/icons-react';
 import type { DashboardRecord } from '../../config/dashboardWidgets';
 import type { DashboardStorage } from '../../services/dashboardService';
 

@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Building2, Plus, Search, RefreshCw, Eye, Edit3, 
-  DoorClosed, Users, MapPin, AlertCircle 
-} from 'lucide-react';
+import { IconBuilding as Building2, IconPlus as Plus, IconSearch as Search, IconRefresh as RefreshCw, IconEye as Eye, IconEdit as Edit3, IconDoor as DoorClosed, IconUsers as Users, IconMapPin as MapPin, IconAlertCircle as AlertCircle } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suPropertyService } from '../../services/suPropertyService';
 import { PropertyMaster, PropertyRoom, Placement } from '../../types/masterData';

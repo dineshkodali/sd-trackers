@@ -1,22 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { 
-  Bell, 
-  Shield, 
-  Zap, 
-  Building2, 
-  ChevronDown, 
-  Check, 
-  ExternalLink, 
-  Lock, 
-  LogOut, 
-  Activity, 
-  Menu, 
-  X,
-  CheckCheck,
-  ShieldAlert,
-  UserCheck,
-  ArrowRight
-} from 'lucide-react';
+import { IconBell as Bell, IconShield as Shield, IconBolt as Zap, IconBuilding as Building2, IconChevronDown as ChevronDown, IconCheck as Check, IconExternalLink as ExternalLink, IconLock as Lock, IconLogout as LogOut, IconActivity as Activity, IconMenu as Menu, IconX as X, IconChecks as CheckCheck, IconShieldExclamation as ShieldAlert, IconUserCheck as UserCheck, IconArrowRight as ArrowRight } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
 import { isStaffLevel, isSiteMatch } from '../../services/inAppNotificationService';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, Siren } from 'lucide-react';
+import { IconArrowUpRight as ArrowUpRight, IconAlarm as Siren } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_ROW_LIMIT } from '../../config/dashboardWidgets';
 

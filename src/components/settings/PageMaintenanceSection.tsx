@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Wrench, Search, CheckCircle2, AlertTriangle, Power, Filter, MessageSquare } from 'lucide-react';
+import { IconTool as Wrench, IconSearch as Search, IconCircleCheck as CheckCircle2, IconAlertTriangle as AlertTriangle, IconPower as Power, IconFilter as Filter, IconMessage as MessageSquare } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { APP_PAGES_REGISTRY } from '../../config/pageRegistry';
 

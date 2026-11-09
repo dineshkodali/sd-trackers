@@ -1,22 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Users, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  Building2, 
-  ArrowUpRight, 
-  Siren, 
-  Plus, 
-  TrendingUp,
-  ShieldCheck,
-  Zap,
-  ArrowDown,
-  ArrowUp,
-  GripVertical,
-  X,
-  Bus
-} from 'lucide-react';
+import { IconUsers as Users, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconBuilding as Building2, IconArrowUpRight as ArrowUpRight, IconAlarm as Siren, IconPlus as Plus, IconTrendingUp as TrendingUp, IconShieldCheck as ShieldCheck, IconBolt as Zap, IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconGripVertical as GripVertical, IconX as X, IconBus as Bus } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { useDashboards } from '../../hooks/useDashboards';
 import {

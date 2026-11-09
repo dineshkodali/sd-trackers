@@ -1,6 +1,6 @@
-import { X as CloseIcon } from 'lucide-react';
+import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
-import { Sparkles, Plus, Trash2, Edit3, Search, SlidersHorizontal, Eye, CheckCircle2, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { IconSparkles as Sparkles, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconAdjustmentsHorizontal as SlidersHorizontal, IconEye as Eye, IconCircleCheck as CheckCircle2, IconClock as Clock, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { HousekeepingRecord, HousekeepingRoomCheck } from '../../types';
 import { Pagination } from '../common/Pagination';

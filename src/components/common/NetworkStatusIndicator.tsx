@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Wifi, WifiOff, RefreshCw, CheckCircle2, AlertCircle, Info, Database } from 'lucide-react';
+import { IconWifi as Wifi, IconWifiOff as WifiOff, IconRefresh as RefreshCw, IconCircleCheck as CheckCircle2, IconAlertCircle as AlertCircle, IconInfoCircle as Info, IconDatabase as Database } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 
 export const NetworkStatusIndicator: React.FC = () => {

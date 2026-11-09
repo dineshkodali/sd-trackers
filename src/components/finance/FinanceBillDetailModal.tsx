@@ -1,6 +1,6 @@
 import { canRaiseQuery, canRouteForApproval, decideApproval } from '../../../server/financeWorkflow';
 import React, { useState, useEffect } from 'react';
-import { X, FileText, CheckCircle, XCircle, Scale, CreditCard, History, Download, Upload, MessageSquare, AlertTriangle, Clock, ExternalLink, Plus, RotateCcw, Edit3, ShieldCheck, Eye, Trash2, Loader2 } from 'lucide-react';
+import { IconX as X, IconFileText as FileText, IconCircleCheck as CheckCircle, IconCircleX as XCircle, IconScale as Scale, IconCreditCard as CreditCard, IconHistory as History, IconDownload as Download, IconUpload as Upload, IconMessage as MessageSquare, IconAlertTriangle as AlertTriangle, IconClock as Clock, IconExternalLink as ExternalLink, IconPlus as Plus, IconRotate as RotateCcw, IconEdit as Edit3, IconShieldCheck as ShieldCheck, IconEye as Eye, IconTrash as Trash2, IconLoader2 as Loader2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
 import type {

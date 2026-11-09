@@ -3,7 +3,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { IconAlertCircle as AlertCircle, IconCircleCheck as CheckCircle2, IconInfoCircle as Info, IconX as X } from '@tabler/icons-react';
 
 export const inputCls =
   'w-full px-2.5 py-1.5 bg-white border border-[#d4d4d4] rounded-xs text-xs text-[#1e293b] focus:outline-none focus:border-[#0d9488] disabled:bg-[#f5f5f5] disabled:text-neutral-500';

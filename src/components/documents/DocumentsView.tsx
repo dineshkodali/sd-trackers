@@ -1,18 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { ClampedText } from '../common/ClampedText';
-import { 
-  FileText, 
-  Upload, 
-  Trash2, 
-  Eye, 
-  Edit3,
-  Search, 
-  SlidersHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown
-} from 'lucide-react';
+import { IconFileText as FileText, IconUpload as Upload, IconTrash as Trash2, IconEye as Eye, IconEdit as Edit3, IconSearch as Search, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DocumentRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

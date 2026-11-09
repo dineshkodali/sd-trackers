@@ -1,24 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { 
-  KeyRound, 
-  Check, 
-  X, 
-  ShieldCheck, 
-  ShieldAlert, 
-  Save, 
-  RotateCcw, 
-  FileSpreadsheet, 
-  Printer,
-  Search,
-  CheckCircle2,
-  Lock,
-  SlidersHorizontal,
-  FileText,
-  Building2,
-  Users2,
-  FolderLock
-} from 'lucide-react';
+import { IconKey as KeyRound, IconCheck as Check, IconX as X, IconShieldCheck as ShieldCheck, IconShieldExclamation as ShieldAlert, IconDeviceFloppy as Save, IconRotate as RotateCcw, IconFileSpreadsheet as FileSpreadsheet, IconPrinter as Printer, IconSearch as Search, IconCircleCheck as CheckCircle2, IconLock as Lock, IconAdjustmentsHorizontal as SlidersHorizontal, IconFileText as FileText, IconBuilding as Building2, IconUsers as Users2, IconFolderLock as FolderLock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType, RolePermissions } from '../../types';
 import { exportTableToPdf } from '../../utils/pdfExport';

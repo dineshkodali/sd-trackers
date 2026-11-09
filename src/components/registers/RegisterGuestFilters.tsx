@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Filter, X } from 'lucide-react';
+import { IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconFilter as Filter, IconX as X } from '@tabler/icons-react';
 import {
   NO_GUEST_FILTER, describeGuestFilter, isGuestFilterActive,
   type AgeFilter, type AspenFilter, type FamilyFilter, type GenderFilter, type GuestFilter,

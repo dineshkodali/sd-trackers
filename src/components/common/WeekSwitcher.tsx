@@ -1,13 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { 
-  CalendarDays, 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon, 
-  RotateCcw,
-  Check,
-  ChevronDown
-} from 'lucide-react';
+import { IconCalendar as CalendarDays, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconCalendar as CalendarIcon, IconRotate as RotateCcw, IconCheck as Check, IconChevronDown as ChevronDown } from '@tabler/icons-react';
 
 export interface WeekOption {
   start: string;

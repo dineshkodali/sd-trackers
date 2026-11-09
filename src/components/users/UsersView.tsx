@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Archive } from 'lucide-react';
+import { IconArchive as Archive } from '@tabler/icons-react';
 import { useLifecycleActions } from '../../hooks/useLifecycleActions';
 import { LifecycleDialog } from '../common/LifecycleDialog';
 import { LifecycleNoticeBar, LifecycleRecordsPanel, LifecycleTabs, type LifecycleSection } from '../common/LifecycleRecordsPanel';
 import { checkTransition } from '../../config/recordLifecycle';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { Users, Search, Check, ShieldAlert, ShieldCheck, Layers, FolderPlus, RefreshCw, Edit2, Trash2, X, UserPlus, ArrowUpDown, ArrowUp, ArrowDown, KeyRound } from 'lucide-react';
+import { IconUsers as Users, IconSearch as Search, IconCheck as Check, IconShieldExclamation as ShieldAlert, IconShieldCheck as ShieldCheck, IconStack2 as Layers, IconFolderPlus as FolderPlus, IconRefresh as RefreshCw, IconPencil as Edit2, IconTrash as Trash2, IconX as X, IconUserPlus as UserPlus, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconKey as KeyRound } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { UserAccount, RoleType, UserGroup } from '../../types';
 import { apiService } from '../../services/apiService';
@@ -15,7 +15,7 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { BulkUserActionModal, BulkActionType } from './BulkUserActionModal';
 import { BulkUserImportModal } from './BulkUserImportModal';
-import { Upload } from 'lucide-react';
+import { IconUpload as Upload } from '@tabler/icons-react';
 
 const usersExportColumns: ExportColumnOption[] = [
   { id: 'name', label: 'Full Name' },

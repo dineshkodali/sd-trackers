@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileSpreadsheet, Copy, Check, ExternalLink, Download, RefreshCw, Settings, CheckCircle2, Link2, Table } from 'lucide-react';
+import { IconFileSpreadsheet as FileSpreadsheet, IconCopy as Copy, IconCheck as Check, IconExternalLink as ExternalLink, IconDownload as Download, IconRefresh as RefreshCw, IconSettings as Settings, IconCircleCheck as CheckCircle2, IconLink as Link2, IconTable as Table } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { exportToSharePointExcelWorkbook, formatDataAsExcelClipboardTsv } from '../../utils/workbookExport';
 

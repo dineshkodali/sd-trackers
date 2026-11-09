@@ -1,6 +1,6 @@
 import { isOutOfUse } from '../../utils/roomManagementLogic';
 import React, { useState } from 'react';
-import { Plus, Users, Edit3 } from 'lucide-react';
+import { IconPlus as Plus, IconUsers as Users, IconEdit as Edit3 } from '@tabler/icons-react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { PropertyMaster, PropertyRoom, Placement, ServiceUserMaster, PropertyAsset, PropertyCompliance } from '../../types/masterData';
 

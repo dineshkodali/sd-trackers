@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { ClipboardList, Plus, Trash2, Edit3, Search, X, LogOut, RotateCcw, ShieldCheck, Eye, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, ScrollText } from 'lucide-react';
+import { IconClipboardList as ClipboardList, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconX as X, IconLogout as LogOut, IconRotate as RotateCcw, IconShieldCheck as ShieldCheck, IconEye as Eye, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal, IconFileText as ScrollText } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { SPCDRecord } from '../../types';
 import { Pagination } from '../common/Pagination';

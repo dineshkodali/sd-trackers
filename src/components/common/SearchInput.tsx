@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Clock, Trash2, History } from 'lucide-react';
+import { IconSearch as Search, IconX as X, IconClock as Clock, IconTrash as Trash2, IconHistory as History } from '@tabler/icons-react';
 
 export interface SearchInputProps {
   value: string;

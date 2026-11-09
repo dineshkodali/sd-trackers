@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Download, PackagePlus, Pencil } from 'lucide-react';
+import { IconDownload as Download, IconPackage as PackagePlus, IconPencil as Pencil } from '@tabler/icons-react';
 import { roomManagementService } from '../../services/roomManagementService';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ITEM_CATEGORIES, type InventoryItem, type PropertyStock, type RoomItem } from '../../types/roomManagement';
