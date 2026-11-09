@@ -14,7 +14,7 @@ import type {
   DocumentBuilderApiResponse,
 } from '../types/documentBuilder';
 
-import { authHeaders, getApiUrl, isDirectSupabaseActive } from './apiService';
+import { authHeaders, getApiUrl, isDirectSupabaseActive, enableDirectSupabaseFallback } from './apiService';
 import { generateClientDocx } from './clientDocxGenerator';
 import { CLIENT_SEED_TEMPLATES } from '../data/seedTemplates';
 
@@ -91,6 +91,9 @@ async function apiFetch<T>(
     });
 
     if (!res.ok) {
+      if (res.status === 404 || res.status === 502 || res.status === 503) {
+        enableDirectSupabaseFallback();
+      }
       const body = await res.json().catch(() => ({}));
       return { success: false, error: body.error || `HTTP ${res.status}` };
     }
@@ -104,6 +107,7 @@ async function apiFetch<T>(
 
     return { success: true, data: (await res.json()) as T };
   } catch (err: any) {
+    enableDirectSupabaseFallback();
     return { success: false, error: err.message || 'Network error' };
   }
 }
@@ -348,7 +352,7 @@ export async function importDocumentTemplate(
 
 const LOCAL_STORAGE_RECORDS_KEY = 'sd_ho_report_records';
 
-function readCachedLocalRecords(): DocumentBuilderRecord[] {
+export function readCachedLocalRecords(): DocumentBuilderRecord[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_RECORDS_KEY);
@@ -358,7 +362,7 @@ function readCachedLocalRecords(): DocumentBuilderRecord[] {
   }
 }
 
-function saveCachedLocalRecord(rec: DocumentBuilderRecord): void {
+export function saveCachedLocalRecord(rec: DocumentBuilderRecord): void {
   if (typeof window === 'undefined') return [];
   try {
     const list = readCachedLocalRecords();
@@ -508,7 +512,10 @@ export async function saveDocumentDraft(
         body: JSON.stringify(record),
       });
       if (res.success && res.data) return res;
-    } catch {}
+      enableDirectSupabaseFallback();
+    } catch {
+      enableDirectSupabaseFallback();
+    }
   }
 
   const now = new Date().toISOString();

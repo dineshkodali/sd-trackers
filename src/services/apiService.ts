@@ -144,11 +144,22 @@ export function getAuditUserContext(): AuditUserContext | null {
 }
 
 export function isDirectSupabaseActive(): boolean {
-  return directFallbackActive || shouldPreferDirectSupabase();
+  if (directFallbackActive || shouldPreferDirectSupabase()) return true;
+  if (typeof window !== 'undefined') {
+    try {
+      if (sessionStorage.getItem('sd_direct_supabase') === 'true') return true;
+    } catch {}
+  }
+  return false;
 }
 
 export function enableDirectSupabaseFallback(): void {
   directFallbackActive = true;
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem('sd_direct_supabase', 'true');
+    } catch {}
+  }
 }
 
 export function clearDirectSupabaseFallback(): void {
@@ -168,16 +179,17 @@ export function shouldPreferDirectSupabase(): boolean {
         return true;
       }
     } catch {}
-    const override = localStorage.getItem('sd_api_url');
-    if (override) return false;
+    const override = localStorage.getItem('sd_api_url') || '';
+    if (override && !override.includes('trackers.sdcdms.co.uk')) {
+      return false;
+    }
     const envVal = (import.meta as any).env?.VITE_API_URL || '';
-    if (!envVal) {
-      const host = window.location.hostname;
-      // On static hosting (AWS Amplify S3 / CloudFront, or any non-localhost host without VITE_API_URL)
-      // there is no Express backend running on the same origin.
-      if (host !== 'localhost' && host !== '127.0.0.1') {
-        return true;
-      }
+    const isDeadApi = !envVal || envVal.includes('api.trackers.sdcdms.co.uk') || envVal.includes('trackers.sdcdms.co.uk');
+    const host = window.location.hostname;
+    // On static hosting (AWS Amplify S3 / CloudFront, or any non-localhost host without a separate external backend)
+    // there is no Express backend running on the same origin.
+    if (host.includes('sdcdms') || host.includes('amplifyapp') || (isDeadApi && host !== 'localhost' && host !== '127.0.0.1')) {
+      return true;
     }
   }
   return false;
