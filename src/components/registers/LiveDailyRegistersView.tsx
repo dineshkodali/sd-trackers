@@ -294,41 +294,41 @@ export const LiveDailyRegistersView: React.FC = () => {
   const createLabel = getCreateButtonLabel();
 
   return (
-    <div className="space-y-4">
-      {/* Top Banner, Header, Actions, Tabs & Filters in ONE unified section */}
-      <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs">
-              <Building2 className="w-5 h-5" />
+    <div className="space-y-2.5">
+      {/* Top Banner, Header, Actions, Tabs & Filters in ONE compact, unified section */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs p-3 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-teal-50 border border-teal-200 text-[#0d9488] rounded-xs shrink-0">
+              <Building2 className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-[#242424] tracking-tight">Live Daily Registers (AASC Headcount)</h1>
+                <h1 className="text-sm sm:text-base font-bold text-[#242424] tracking-tight">Live Daily Registers (AASC Headcount)</h1>
               </div>
-              <p className="text-xs text-neutral-500">Room occupancy, bedspaces, headcount, arrivals and evictions.</p>
+              <p className="text-[11px] text-neutral-500">Room occupancy, bedspaces, headcount, arrivals and evictions.</p>
             </div>
           </div>
 
           {/* Dynamic Header Actions */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={handleManualSync}
               disabled={isSyncing}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs cursor-pointer transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs cursor-pointer transition-colors"
               title="Refresh database records"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[#0d9488]' : ''}`} />
+              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-[#0d9488]' : ''}`} />
               <span>{isSyncing ? 'Syncing...' : 'Sync with DB'}</span>
             </button>
 
             {currentUserRole === 'Super Admin' && isCustomizableTab && (
               <button
                 onClick={() => setCustomizeTrigger(prev => prev + 1)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs cursor-pointer"
                 title="Customize Table Schema"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <SlidersHorizontal className="w-3 h-3 text-[#0078d4]" />
                 <span>Customize Table</span>
               </button>
             )}
@@ -347,17 +347,17 @@ export const LiveDailyRegistersView: React.FC = () => {
             {canCreateRecord() && createLabel && (
               <button
                 onClick={() => setCreateTrigger(prev => prev + 1)}
-                className="flex items-center gap-1.5 px-3 py-1.5 font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs text-xs cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1 font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs text-xs cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3 h-3" />
                 <span>{createLabel}</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Professional Spreadsheet Sheet Tabs */}
-        <div className="mt-3.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xs p-1 flex items-center gap-1 overflow-x-auto shadow-2xs">
+        {/* Professional Compact Sheet Tabs */}
+        <div className="mt-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xs p-0.5 flex items-center gap-0.5 overflow-x-auto shadow-2xs">
           {SHEET_TABS.map(tab => {
             const isActive = activeTab === tab.id;
             const badge = getTabBadge(tab.id);
@@ -366,7 +366,7 @@ export const LiveDailyRegistersView: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xs ${
+                className={`text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 px-2.5 py-1 rounded-xs ${
                   isActive
                     ? 'bg-white text-[#0f766e] font-bold shadow-xs border border-[#99f6e4] ring-1 ring-[#0d9488]/20'
                     : 'text-[#64748b] hover:text-[#0f172a] hover:bg-white/70 border border-transparent'
@@ -390,29 +390,29 @@ export const LiveDailyRegistersView: React.FC = () => {
         </div>
 
         {/* Consolidated Unified Filter Row */}
-        <div className="mt-3.5 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+        <div className="mt-2.5 pt-2 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input 
               type="text"
               placeholder={`Search ${SHEET_TABS.find(t => t.id === activeTab)?.label}...`}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-6 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
+              className="w-full pl-8 pr-6 py-1 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] placeholder-neutral-400 focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all"
             />
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 text-xs cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 text-xs cursor-pointer"
               >
-                <CloseIcon className="w-4 h-4" />
+                <CloseIcon className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
           {/* Centralized Static Property / Site Indicator (Synced with Top Nav Bar) */}
           <div 
-            className="flex items-center justify-between gap-1.5 px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs shadow-2xs"
+            className="flex items-center justify-between gap-1.5 px-2.5 py-1 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs shadow-2xs"
             title="Site filter is controlled centrally by the top navigation bar"
           >
             <div className="flex items-center gap-1.5 min-w-0">
@@ -426,7 +426,7 @@ export const LiveDailyRegistersView: React.FC = () => {
                   : effectiveSite}
               </span>
             </div>
-            <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 shrink-0 flex items-center gap-0.5">
+            <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-1 py-0.2 rounded border border-teal-200 shrink-0 flex items-center gap-0.5">
               <Lock className="w-2.5 h-2.5" /> Top Bar
             </span>
           </div>
@@ -436,7 +436,7 @@ export const LiveDailyRegistersView: React.FC = () => {
               type="date"
               value={registerDate}
               onChange={e => setRegisterDate(e.target.value)}
-              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer font-medium"
+              className="w-full px-2.5 py-1 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer font-medium"
             />
           </div>
 
@@ -444,7 +444,7 @@ export const LiveDailyRegistersView: React.FC = () => {
             <select
               value={occupancyFilter}
               onChange={e => setOccupancyFilter(e.target.value as any)}
-              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
+              className="w-full px-2.5 py-1 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
             >
               <option value="all">All Rooms</option>
               <option value="Occupied">Occupied Only</option>
@@ -452,7 +452,7 @@ export const LiveDailyRegistersView: React.FC = () => {
             </select>
           ) : (
             <div className="flex items-center justify-end">
-              <span className="text-[11px] bg-teal-50 text-[#0d9488] font-bold px-2 py-1 rounded border border-teal-200">
+              <span className="text-[10px] bg-teal-50 text-[#0d9488] font-bold px-2 py-0.5 rounded border border-teal-200">
                 {activeResidentsCount} SUs · {availableBedspaces} Beds Free · {scopedRooms.length} Rooms
               </span>
             </div>

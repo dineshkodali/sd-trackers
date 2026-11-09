@@ -135,18 +135,38 @@ export function isStayingOn(rec: DailyRegisterRecord, date?: string): boolean {
   return !checkIn || checkIn <= date;
 }
 
+/** Is this register row staying at any point during `[startDate, endDate]`? */
+export function isStayingInRange(rec: DailyRegisterRecord, startDate?: string, endDate?: string): boolean {
+  if (rec.occupied === 'No') return false;
+  if (!startDate && !endDate) return true;
+  const start = startDate || '1900-01-01';
+  const end = endDate || '2100-01-01';
+  const history = rec.dailyOccupancy;
+  if (history) {
+    const dates = Object.keys(history).filter(d => d >= start && d <= end);
+    if (dates.length > 0) return dates.some(d => history[d] === 'Occupied');
+  }
+  const checkIn = (rec.checkInDate || '').slice(0, 10);
+  return !checkIn || checkIn <= end;
+}
+
 const guestKey = (rec: DailyRegisterRecord) => norm(rec.portRef) || (norm(rec.name) ? `${norm(rec.name)}|${norm(rec.dob)}` : `id:${rec.id}`);
 
 const roomGroupKey = (rec: DailyRegisterRecord) => `room:${norm(rec.hotel)}::${norm(rec.roomNo)}`;
 
 /**
- * The people staying on `date`, each counted once. If the same person appears twice (a moved
- * guest, or a duplicate row) the most recent check-in wins.
+ * The people staying on `date` (or within date range `dateOrStart` to `endDate`), each counted once.
+ * If the same person appears twice (a moved guest, or a duplicate row) the most recent check-in wins.
  */
-export function buildGuests(records: DailyRegisterRecord[], ctx: GuestContext, date?: string): Guest[] {
+export function buildGuests(records: DailyRegisterRecord[], ctx: GuestContext, dateOrStart?: string, endDate?: string): Guest[] {
+  const isRange = Boolean(endDate && dateOrStart && endDate !== dateOrStart);
   const unique = new Map<string, DailyRegisterRecord>();
   for (const rec of records) {
-    if (!isStayingOn(rec, date)) continue;
+    if (isRange) {
+      if (!isStayingInRange(rec, dateOrStart, endDate)) continue;
+    } else {
+      if (!isStayingOn(rec, dateOrStart)) continue;
+    }
     const key = guestKey(rec);
     const seen = unique.get(key);
     if (!seen || (rec.checkInDate || '') > (seen.checkInDate || '')) unique.set(key, rec);
@@ -163,11 +183,12 @@ export function buildGuests(records: DailyRegisterRecord[], ctx: GuestContext, d
     const familyKey = inFamily ? `family:${familyId}` : roomGroupKey(rec);
     const familySize = inFamily ? Math.max(1, ctx.familySize.get(familyId!) || 1) : Math.max(1, roomCount.get(roomGroupKey(rec)) || 1);
     const aspenText = (rec as DailyRegisterRecord & { aspenCard?: string }).aspenCard || (ref ? ctx.aspenByRef.get(ref) : undefined);
+    const refDate = endDate || dateOrStart;
     guests.push({
       key,
       record: rec,
-      age: ageOf(rec, date),
-      ageCategory: ageCategoryOf(rec, date),
+      age: ageOf(rec, refDate),
+      ageCategory: ageCategoryOf(rec, refDate),
       gender: genderOf(rec),
       aspen: isAspenValue(aspenText),
       familyKey,
