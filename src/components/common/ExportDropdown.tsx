@@ -10,6 +10,7 @@ import {
 } from './ExportModal';
 
 interface ExportDropdownProps {
+  buttonLabel?: string;
   moduleName: string;
   totalRecordCount: number;
   filteredRecordCount: number;
@@ -38,6 +39,7 @@ interface ExportDropdownProps {
 }
 
 export const ExportDropdown: React.FC<ExportDropdownProps> = ({
+  buttonLabel = 'Export',
   moduleName,
   totalRecordCount,
   filteredRecordCount,
@@ -96,7 +98,7 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
           title="Open Export & Review Options"
         >
           <Download className="w-3.5 h-3.5 text-inherit" />
-          <span>Export</span>
+          <span>{buttonLabel}</span>
         </button>
 
         {/* Dropdown Arrow Toggle Button */}

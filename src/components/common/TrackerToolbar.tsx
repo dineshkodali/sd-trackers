@@ -72,8 +72,9 @@ export interface TrackerExportColumn<T> extends ExportColumnOption {
  * `dateOf` gives the date used by the "custom date range" scope.
  */
 export function TrackerExport<T>({
-  moduleName, filename, title, columns, allRows, filteredRows, dateOf
+  buttonLabel, moduleName, filename, title, columns, allRows, filteredRows, dateOf
 }: {
+  buttonLabel?: string;
   moduleName: string;
   filename: string;
   title: string;
@@ -93,6 +94,7 @@ export function TrackerExport<T>({
   };
   return (
     <ExportDropdown
+      buttonLabel={buttonLabel}
       moduleName={moduleName}
       totalRecordCount={allRows.length}
       filteredRecordCount={filteredRows.length}

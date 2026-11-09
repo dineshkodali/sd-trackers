@@ -8,7 +8,7 @@ import { canEditSuTrackers, canViewAttendanceNotes, formatUkDate } from '../../u
 import {
   addDays, todayIso, dayCounts, currentAbsenceEpisode, DEFAULT_ABSENCE_POLICY, type AttendanceEntry
 } from '../../utils/attendanceLogic';
-import { SiteFilterSelect, ResetFiltersButton, TrackerExport, filterInputCls } from '../common/TrackerToolbar';
+import { SiteFilterSelect, ResetFiltersButton, TrackerExport, filterInputCls, type TrackerExportColumn } from '../common/TrackerToolbar';
 import {
   TrackerHeader, TabSwitcher, CustomizeTableButton, PrimaryButton, TablePanel, SortableTh, ActionsTh, actionsTdCls, EmptyRow, SkeletonRows,
   theadRowCls, tbodyCls, tdCls, AuditAccountability
@@ -19,8 +19,6 @@ import type { TableColumnConfig } from '../../types/tableSchema';
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
-/** How far back records are read; an absence run longer than this would be counted from the start of the window. */
-const HISTORY_DAYS = 120;
 const policy = DEFAULT_ABSENCE_POLICY;
 
 type Tab = 'roll' | 'records' | 'followups';
@@ -78,6 +76,8 @@ export const SUAttendanceTrackerView: React.FC = () => {
   const [room, setRoom] = useState('all');
   const [rollDate, setRollDate] = useState(todayIso());
   const [rollStatus, setRollStatus] = useState<'all' | 'Present' | 'Absent' | 'Not recorded'>('all');
+  type DatePreset = 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month' | '90d' | 'ytd' | 'custom';
+  const [datePreset, setDatePreset] = useState<DatePreset>('30d');
   const [recFrom, setRecFrom] = useState(addDays(todayIso(), -30));
   const [recTo, setRecTo] = useState(todayIso());
   const [recStatus, setRecStatus] = useState('all');
@@ -86,6 +86,53 @@ export const SUAttendanceTrackerView: React.FC = () => {
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const applyDatePreset = (preset: DatePreset) => {
+    setDatePreset(preset);
+    setPage(1);
+    switch (preset) {
+      case 'today':
+        setRecFrom(todayIso());
+        setRecTo(todayIso());
+        break;
+      case 'yesterday': {
+        const y = addDays(todayIso(), -1);
+        setRecFrom(y);
+        setRecTo(y);
+        break;
+      }
+      case '7d':
+        setRecFrom(addDays(todayIso(), -7));
+        setRecTo(todayIso());
+        break;
+      case '30d':
+        setRecFrom(addDays(todayIso(), -30));
+        setRecTo(todayIso());
+        break;
+      case 'month': {
+        const firstDay = `${todayIso().slice(0, 7)}-01`;
+        setRecFrom(firstDay);
+        setRecTo(todayIso());
+        break;
+      }
+      case '90d':
+        setRecFrom(addDays(todayIso(), -90));
+        setRecTo(todayIso());
+        break;
+      case 'ytd': {
+        const ytdStart = `${new Date().getFullYear()}-01-01`;
+        setRecFrom(ytdStart);
+        setRecTo(todayIso());
+        break;
+      }
+      case 'all':
+        setRecFrom('');
+        setRecTo('');
+        break;
+      case 'custom':
+        break;
+    }
+  };
 
   const [editFor, setEditFor] = useState<{ suId?: string; date?: string } | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
@@ -98,7 +145,7 @@ export const SUAttendanceTrackerView: React.FC = () => {
     setLoading(true); setError(null);
     const [dir, att, fu] = await Promise.all([
       suTrackerService.loadSuDirectory((sites || []).map((s: any) => ({ id: s.id, name: s.name }))),
-      suTrackerService.listAttendance({ from: addDays(todayIso(), -HISTORY_DAYS) }),
+      suTrackerService.listAttendance(),
       suTrackerService.listFollowUps()
     ]);
     if (!dir.success) { setError(dir.error || 'Could not load Service Users.'); setLoading(false); return; }
@@ -186,10 +233,11 @@ export const SUAttendanceTrackerView: React.FC = () => {
   const filtersActive =
     siteFilter !== defaultSiteFilter || !!search || room !== 'all' ||
     (tab === 'roll' && (rollDate !== todayIso() || rollStatus !== 'all')) ||
-    (tab === 'records' && (recFrom !== defaultRecFrom || recTo !== todayIso() || recStatus !== 'all')) ||
+    (tab === 'records' && (datePreset !== '30d' || recFrom !== defaultRecFrom || recTo !== todayIso() || recStatus !== 'all')) ||
     (tab === 'followups' && fuShow !== 'open');
   const resetFilters = () => {
     setSiteFilter(defaultSiteFilter); setSearch(''); setRoom('all'); setRollDate(todayIso()); setRollStatus('all');
+    setDatePreset('30d');
     setRecFrom(defaultRecFrom); setRecTo(todayIso()); setRecStatus('all'); setFuShow('open'); setPage(1);
   };
   const switchTab = (id: string) => { setTab(id as Tab); setPage(1); };
@@ -239,14 +287,43 @@ export const SUAttendanceTrackerView: React.FC = () => {
   const countLabel = loading || error ? undefined
     : tab === 'roll' ? `${rollRows.length} Residents` : tab === 'records' ? `${recRows.length} Records` : `${fuRows.length} Follow-ups`;
 
-  const recExportCols = [
-    { id: 'port', label: 'Port reference', get: (x: RecRow) => x.d.su.externalReference || x.d.su.suReference },
-    { id: 'name', label: 'Name', get: (x: RecRow) => `${x.d.su.firstName} ${x.d.su.lastName}` },
-    { id: 'dob', label: 'DOB', get: (x: RecRow) => formatUkDate(x.d.su.dateOfBirth) },
-    { id: 'room', label: 'Room No', get: (x: RecRow) => x.d.roomNo },
-    { id: 'date', label: 'Date', get: (x: RecRow) => formatUkDate(x.r.attendanceDate) },
-    { id: 'status', label: 'Attendance', get: (x: RecRow) => x.r.attendanceStatus },
-    { id: 'notes', label: 'Additional notes', get: (x: RecRow) => (canSeeNotes ? x.r.additionalNotes : 'Restricted') }
+  const recExportCols: TrackerExportColumn<RecRow>[] = [
+    { id: 'port', label: 'Port reference', defaultSelected: true, get: (x: RecRow) => x.d.su.externalReference || x.d.su.suReference },
+    { id: 'name', label: 'Service User Name', defaultSelected: true, get: (x: RecRow) => `${x.d.su.firstName} ${x.d.su.lastName}` },
+    { id: 'dob', label: 'DOB', defaultSelected: true, get: (x: RecRow) => formatUkDate(x.d.su.dateOfBirth) },
+    { id: 'room', label: 'Room No', defaultSelected: true, get: (x: RecRow) => x.d.roomNo || 'Not placed' },
+    { id: 'site', label: 'Property / Site', defaultSelected: true, get: (x: RecRow) => x.d.siteName || '—' },
+    { id: 'date', label: 'Attendance Date', defaultSelected: true, get: (x: RecRow) => formatUkDate(x.r.attendanceDate) },
+    { id: 'status', label: 'Attendance Status', defaultSelected: true, get: (x: RecRow) => x.r.attendanceStatus },
+    { id: 'notes', label: 'Additional notes', defaultSelected: true, get: (x: RecRow) => (canSeeNotes ? (x.r.additionalNotes || '—') : 'Restricted') },
+    { id: 'recordedBy', label: 'Recorded By', defaultSelected: false, get: (x: RecRow) => x.r.recordedBy || '—' },
+    { id: 'updatedAt', label: 'Last Updated', defaultSelected: false, get: (x: RecRow) => x.r.updatedAt ? new Date(x.r.updatedAt).toLocaleString('en-GB') : '—' }
+  ];
+
+  const rollExportCols: TrackerExportColumn<SuDirectoryRow>[] = [
+    { id: 'room', label: 'Room No', defaultSelected: true, get: d => d.roomNo || 'Not placed' },
+    { id: 'port', label: 'Port reference', defaultSelected: true, get: d => d.su.externalReference || d.su.suReference },
+    { id: 'name', label: 'Service User Name', defaultSelected: true, get: d => `${d.su.firstName} ${d.su.lastName}` },
+    { id: 'dob', label: 'DOB', defaultSelected: true, get: d => formatUkDate(d.su.dateOfBirth) },
+    { id: 'site', label: 'Property / Site', defaultSelected: true, get: d => d.siteName || '—' },
+    { id: 'date', label: 'Roll Date', defaultSelected: true, get: () => formatUkDate(rollDate) },
+    { id: 'status', label: 'Attendance Status', defaultSelected: true, get: d => forDay.get(d.su.id)?.attendanceStatus || 'Not recorded' },
+    { id: 'notes', label: 'Notes', defaultSelected: true, get: d => canSeeNotes ? (rollNotes[d.su.id] ?? forDay.get(d.su.id)?.additionalNotes ?? '—') : 'Restricted' },
+    { id: 'recordedBy', label: 'Recorded By', defaultSelected: false, get: d => forDay.get(d.su.id)?.recordedBy || '—' }
+  ];
+
+  const fuExportCols: TrackerExportColumn<AbsenceFollowUp>[] = [
+    { id: 'port', label: 'Port reference', defaultSelected: true, get: f => byId.get(f.suId)?.su.externalReference || byId.get(f.suId)?.su.suReference || '—' },
+    { id: 'name', label: 'Service User Name', defaultSelected: true, get: f => { const d = byId.get(f.suId); return d ? `${d.su.firstName} ${d.su.lastName}` : '—'; } },
+    { id: 'room', label: 'Room No', defaultSelected: true, get: f => byId.get(f.suId)?.roomNo || '—' },
+    { id: 'site', label: 'Property / Site', defaultSelected: true, get: f => byId.get(f.suId)?.siteName || '—' },
+    { id: 'since', label: 'Absent Since', defaultSelected: true, get: f => formatUkDate(String(f.absenceStartDate).slice(0, 10)) },
+    { id: 'days', label: 'Consecutive Days', defaultSelected: true, get: f => String(f.consecutiveDays ?? '') },
+    { id: 'threshold', label: 'Threshold Days', defaultSelected: true, get: f => `${f.thresholdDays} days` },
+    { id: 'status', label: 'Follow-up Status', defaultSelected: true, get: f => f.status },
+    { id: 'assigned', label: 'Assigned To', defaultSelected: true, get: f => f.assignedTo || 'Unassigned' },
+    { id: 'dueDate', label: 'Due Date', defaultSelected: false, get: f => f.dueDate ? formatUkDate(String(f.dueDate).slice(0, 10)) : '—' },
+    { id: 'last', label: 'Last Action', defaultSelected: true, get: f => f.lastActionAt ? new Date(f.lastActionAt).toLocaleString('en-GB') : '—' }
   ];
 
 
@@ -299,11 +376,51 @@ export const SUAttendanceTrackerView: React.FC = () => {
         actions={
           <>
             {currentUserRole === 'Super Admin' && <CustomizeTableButton onClick={() => setIsSchemaOpen(true)} />}
+            {tab === 'roll' && (
+              <>
+                <TrackerExport<SuDirectoryRow>
+                  buttonLabel="Export Daily Roll"
+                  moduleName="SU Daily Roll"
+                  filename={`SU_Daily_Roll_${rollDate}`}
+                  title={`SU Daily Attendance Roll - ${formatUkDate(rollDate)}`}
+                  allRows={directory}
+                  filteredRows={rollRows}
+                  columns={rollExportCols}
+                />
+                <TrackerExport<RecRow>
+                  buttonLabel="Export Attendance Records"
+                  moduleName="SU Attendance"
+                  filename="SU_Attendance_Records"
+                  title="SU Attendance Records Registry"
+                  allRows={records.filter(r => byId.has(r.suId)).map(r => ({ r, d: byId.get(r.suId)! }))}
+                  filteredRows={recRows}
+                  dateOf={x => x.r.attendanceDate}
+                  columns={recExportCols}
+                />
+              </>
+            )}
             {tab === 'records' && (
               <TrackerExport<RecRow>
-                moduleName="SU Attendance" filename="SU_Attendance" title="SU Attendance Records"
-                allRows={records.filter(r => byId.has(r.suId)).map(r => ({ r, d: byId.get(r.suId)! }))} filteredRows={recRows}
-                dateOf={x => x.r.attendanceDate} columns={recExportCols}
+                buttonLabel="Export Attendance Records"
+                moduleName="SU Attendance"
+                filename="SU_Attendance_Records"
+                title="SU Attendance Records Registry"
+                allRows={records.filter(r => byId.has(r.suId)).map(r => ({ r, d: byId.get(r.suId)! }))}
+                filteredRows={recRows}
+                dateOf={x => x.r.attendanceDate}
+                columns={recExportCols}
+              />
+            )}
+            {tab === 'followups' && (
+              <TrackerExport<AbsenceFollowUp>
+                buttonLabel="Export Follow-ups"
+                moduleName="Absence Follow-ups"
+                filename="SU_Absence_Followups"
+                title="Absence Follow-ups Registry"
+                allRows={followUps.filter(f => byId.has(f.suId))}
+                filteredRows={fuRows}
+                dateOf={f => String(f.absenceStartDate).slice(0, 10)}
+                columns={fuExportCols}
               />
             )}
             {canEdit && <PrimaryButton onClick={() => setEditFor({})} label="+ Record Attendance" />}
@@ -344,7 +461,31 @@ export const SUAttendanceTrackerView: React.FC = () => {
             )}
             {tab === 'roll' && (
               <>
-                {dateField('Date', rollDate, v => setRollDate(v || todayIso()), todayIso())}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => { setRollDate(todayIso()); setPage(1); }}
+                    className={`px-2 py-1 text-[11px] font-semibold rounded-xs border transition-colors cursor-pointer whitespace-nowrap ${
+                      rollDate === todayIso()
+                        ? 'bg-[#0d9488] text-white border-[#0d9488]'
+                        : 'bg-white hover:bg-neutral-50 text-neutral-700 border-[#e5e5e5]'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setRollDate(addDays(todayIso(), -1)); setPage(1); }}
+                    className={`px-2 py-1 text-[11px] font-semibold rounded-xs border transition-colors cursor-pointer whitespace-nowrap ${
+                      rollDate === addDays(todayIso(), -1)
+                        ? 'bg-[#0d9488] text-white border-[#0d9488]'
+                        : 'bg-white hover:bg-neutral-50 text-neutral-700 border-[#e5e5e5]'
+                    }`}
+                  >
+                    Yesterday
+                  </button>
+                  {dateField('Date', rollDate, v => setRollDate(v || todayIso()), todayIso())}
+                </div>
                 <select className={filterInputCls} value={rollStatus} onChange={e => { setRollStatus(e.target.value as any); setPage(1); }} aria-label="Status">
                   <option value="all">All Statuses</option><option>Present</option><option>Absent</option><option>Not recorded</option>
                 </select>
@@ -352,8 +493,25 @@ export const SUAttendanceTrackerView: React.FC = () => {
             )}
             {tab === 'records' && (
               <>
-                {dateField('From', recFrom, setRecFrom)}
-                {dateField('To', recTo, setRecTo)}
+                <select
+                  className={filterInputCls}
+                  value={datePreset}
+                  onChange={e => applyDatePreset(e.target.value as DatePreset)}
+                  aria-label="Date range preset"
+                  title="Quick date range presets"
+                >
+                  <option value="30d">Last 30 Days</option>
+                  <option value="7d">Last 7 Days</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="month">This Month</option>
+                  <option value="90d">Quarter (90 Days)</option>
+                  <option value="ytd">Year to Date (YTD)</option>
+                  <option value="all">All Historic Records</option>
+                  <option value="custom">Custom Date Range</option>
+                </select>
+                {dateField('From', recFrom, v => { setRecFrom(v); setDatePreset('custom'); })}
+                {dateField('To', recTo, v => { setRecTo(v); setDatePreset('custom'); })}
                 <select className={filterInputCls} value={recStatus} onChange={e => { setRecStatus(e.target.value); setPage(1); }} aria-label="Attendance status">
                   <option value="all">All Statuses</option><option>Present</option><option>Absent</option>
                 </select>
