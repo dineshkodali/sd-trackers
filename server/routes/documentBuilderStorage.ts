@@ -78,6 +78,9 @@ export interface StoredRecord {
   title: string;
   documentNumber: string;
   category?: string;
+  suId?: string | null;
+  suName?: string | null;
+  suReference?: string | null;
   status: 'draft' | 'final' | 'archived';
   preparedFormat?: 'docx' | 'pdf' | 'both' | null;
   docxUrl?: string | null;
@@ -671,6 +674,9 @@ export async function saveRecord(
     preparedFormat: data.preparedFormat || existingRecord?.preparedFormat || null,
     docxUrl: data.docxUrl || existingRecord?.docxUrl || null,
     pdfUrl: data.pdfUrl || existingRecord?.pdfUrl || null,
+    suId: (data as any).suId || (data as any).su_id || data.fieldValues?.suId || existingRecord?.suId || null,
+    suName: (data as any).suName || (data as any).su_name || data.fieldValues?.resident || data.fieldValues?.suName || data.fieldValues?.name || existingRecord?.suName || null,
+    suReference: (data as any).suReference || (data as any).su_reference || data.fieldValues?.portRef || existingRecord?.suReference || null,
     fieldValues: data.fieldValues || existingRecord?.fieldValues || {},
     fieldDefinitions: data.fieldDefinitions || existingRecord?.fieldDefinitions,
     layoutConfig: data.layoutConfig || existingRecord?.layoutConfig,
@@ -709,6 +715,9 @@ export async function saveRecord(
         title: stored.title,
         document_number: stored.documentNumber,
         category: stored.category || 'General',
+        su_id: stored.suId || null,
+        su_name: stored.suName || null,
+        su_reference: stored.suReference || null,
         status: stored.status,
         prepared_format: stored.preparedFormat,
         docx_url: stored.docxUrl,

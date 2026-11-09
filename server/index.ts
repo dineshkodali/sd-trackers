@@ -28,6 +28,7 @@ import pageAccessRouter from './routes/pageAccess.js';
 import dashboardsRouter from './routes/dashboards.js';
 import lifecycleRouter from './routes/lifecycle.js';
 import documentBuilderRouter from './routes/documentBuilder.js';
+import reportHistoryRouter from './routes/reportHistory.js';
 import { statusMonitor } from './status/monitor.js';
 import { runDatabaseMigrations } from './migrate.js';
 import { seedReferenceData } from './seed.js';
@@ -269,6 +270,8 @@ async function startServer() {
   // fallback trusted x-user-* headers, which made every role spoofable whenever
   // NODE_ENV was not exactly "production" (the Docker image never set it).
   app.use(['/api/document-builder', '/api/ho-reports'], requireAuth, documentBuilderRouter);
+  // Mount Service User Report History & Archive router
+  app.use('/api/report-history', requireAuth, reportHistoryRouter);
   // Public status monitoring endpoint (real-time health probes & incidents)
   app.use('/api/status', statusRouter);
 

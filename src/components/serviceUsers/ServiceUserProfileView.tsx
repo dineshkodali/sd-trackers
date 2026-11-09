@@ -24,6 +24,8 @@ import { SUActivityTimeline } from './SUActivityTimeline';
 import { SUArchivePanel } from './SUArchivePanel';
 import { SUEducationTab } from './SUEducationTab';
 import { SUHousehold } from './SUHousehold';
+import { SUReportsHistoryTab } from './SUReportsHistoryTab';
+import { reportHistoryService } from '../../services/reportHistoryService';
 import { SuOysterUsage } from '../transport/OysterCardsSection';
 import { isChildByDob } from '../../utils/suEnhancementsLogic';
 import { MoveAccommodationModal } from './MoveAccommodationModal';
@@ -73,6 +75,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
   const [household, setHousehold] = useState<ServiceUserHouseholdMember[]>([]);
   const [supportRecords, setSupportRecords] = useState<ServiceUserSupportRecord[]>([]);
   const [documents, setDocuments] = useState<ServiceUserDocument[]>([]);
+  const [reportsCount, setReportsCount] = useState<number>(0);
   const [activityItems, setActivityItems] = useState<UnifiedActivityItem[]>([]);
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -87,13 +90,14 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
   const loadProfileData = async (suId: string) => {
     setLoading(true);
     try {
-      const [plcsRes, cts, hhRes, spRes, docRes, actRes] = await Promise.all([
+      const [plcsRes, cts, hhRes, spRes, docRes, actRes, repRes] = await Promise.all([
         suPropertyService.getPlacements({ suId }),
         suPropertyDetailsService.getSUContacts(suId),
         suPropertyDetailsService.getSUHousehold(suId),
         suPropertyDetailsService.getSUSupport(suId),
         suPropertyDetailsService.getSUDocuments(suId),
-        suPropertyDetailsService.getUnifiedSUActivity(suId, serviceUser.externalReference)
+        suPropertyDetailsService.getUnifiedSUActivity(suId, serviceUser.externalReference),
+        reportHistoryService.fetchSUReports(suId, { includeArchived: true })
       ]);
 
       const plcs = plcsRes.success && plcsRes.data ? plcsRes.data : [];
@@ -103,6 +107,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
       if (Array.isArray(spRes)) setSupportRecords(spRes);
       if (Array.isArray(docRes)) setDocuments(docRes);
       if (Array.isArray(actRes)) setActivityItems(actRes);
+      if (repRes.success && Array.isArray(repRes.data)) setReportsCount(repRes.data.length);
 
       const active = pickActivePlacement(plcs);
       setActivePlacement(active);
@@ -309,6 +314,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     { id: 'household', label: `Household (${household.length})` },
     { id: 'support', label: `Support (${supportRecords.length})` },
     { id: 'documents', label: `Documents (${documents.length + repositoryDocsForServiceUser(repositoryDocuments, serviceUser).length})` },
+    { id: 'reports', label: `Reports History (${reportsCount})` },
     { id: 'incidents', label: `Incident Reports (${suRecords.incidents.length})` },
     { id: 'referrals', label: `SG Referrals (${suRecords.referrals.length})` },
     { id: 'welfare', label: `Welfare Checks (${suWelfare.length + suRecords.otherWelfare.length})` },
@@ -556,6 +562,12 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
                   loadProfileData(serviceUser.id);
                 }
               }}
+            />
+          )}
+
+          {activeTab === 'reports' && (
+            <SUReportsHistoryTab
+              serviceUser={serviceUser}
             />
           )}
 

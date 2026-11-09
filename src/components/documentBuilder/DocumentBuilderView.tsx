@@ -62,6 +62,8 @@ import {
   createTemplate,
   updateTemplate,
 } from '../../services/documentBuilderService';
+import { reportHistoryService } from '../../services/reportHistoryService';
+import { suPropertyService } from '../../services/suPropertyService';
 
 type ToastType = 'success' | 'error' | 'info';
 interface Toast {
@@ -127,6 +129,7 @@ export const DocumentBuilderView: React.FC = () => {
   const [documentTitle, setDocumentTitle] = useState('');
   const [selectedSite, setSelectedSite] = useState(assignedSite || allowedSites[0] || 'Site A');
   const [selectedSUKey, setSelectedSUKey] = useState<string>('');
+  const [masterSUs, setMasterSUs] = useState<any[]>([]);
   const [currentRecord, setCurrentRecord] = useState<DocumentBuilderRecord | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -200,6 +203,9 @@ export const DocumentBuilderView: React.FC = () => {
   // Load templates on mount
   useEffect(() => {
     loadTemplates();
+    suPropertyService.getServiceUsers().then(res => {
+      if (res.success && res.data) setMasterSUs(res.data);
+    }).catch(() => {});
   }, []);
 
   // Unsaved changes warning
@@ -330,24 +336,26 @@ export const DocumentBuilderView: React.FC = () => {
   // Aggregate Service Users (SUs) across site records to enable 1-click report auto-fill
   const siteSUs = useMemo<{
     id: string;
+    suId?: string;
     name: string;
     portRef: string;
     room?: string;
     site?: string;
     source: string;
   }[]>(() => {
-    const list: Array<{ id: string; name: string; portRef: string; room?: string; site?: string; source: string }> = [];
+    const list: Array<{ id: string; suId?: string; name: string; portRef: string; room?: string; site?: string; source: string }> = [];
     const seen = new Set<string>();
 
-    const addSU = (name?: string, portRef?: string, room?: string, site?: string, source = 'SU') => {
+    const addSU = (name?: string, portRef?: string, room?: string, site?: string, source = 'SU', suId?: string) => {
       const trimmedName = (name || '').trim();
       const trimmedPort = (portRef || '').trim();
       if (!trimmedName) return;
-      const key = `${trimmedName.toLowerCase()}|${trimmedPort.toLowerCase()}`;
+      const key = suId || `${trimmedName.toLowerCase()}|${trimmedPort.toLowerCase()}`;
       if (seen.has(key)) return;
       seen.add(key);
       list.push({
         id: key,
+        suId: suId || key,
         name: trimmedName,
         portRef: trimmedPort,
         room: (room || '').trim(),
@@ -359,13 +367,16 @@ export const DocumentBuilderView: React.FC = () => {
     const siteMatch = (s?: string) =>
       !s || !selectedSite || selectedSite === 'All Sites' || s.toLowerCase() === selectedSite.toLowerCase();
 
-    (vulnerableSUs || []).filter(v => siteMatch(v.site)).forEach(v => addSU(v.suName, v.portOrNassRef, v.roomOrFlatNo, v.site, 'Vulnerable SU'));
-    (challengingSUs || []).filter(c => siteMatch(c.site)).forEach(c => addSU(c.name, c.portRef, '', c.site, 'Challenging SU'));
-    (referrals || []).filter(r => siteMatch(r.site)).forEach(r => addSU(r.suName, r.portRef, '', r.site, 'Safeguarding'));
-    (dailyRegisterRecords || []).filter(d => siteMatch(d.hotel)).forEach(d => addSU(d.name, d.portRef, d.roomNo, d.hotel, 'Register'));
+    (masterSUs || []).filter(m => siteMatch(m.siteId)).forEach(m =>
+      addSU(`${m.firstName} ${m.lastName}`.trim(), m.externalReference || m.suReference, '', m.siteId, 'Master Directory', m.id)
+    );
+    (vulnerableSUs || []).filter(v => siteMatch(v.site)).forEach(v => addSU(v.suName, v.portOrNassRef, v.roomOrFlatNo, v.site, 'Vulnerable SU', v.id));
+    (challengingSUs || []).filter(c => siteMatch(c.site)).forEach(c => addSU(c.name, c.portRef, '', c.site, 'Challenging SU', c.id));
+    (referrals || []).filter(r => siteMatch(r.site)).forEach(r => addSU(r.suName, r.portRef, '', r.site, 'Safeguarding', r.id));
+    (dailyRegisterRecords || []).filter(d => siteMatch(d.hotel)).forEach(d => addSU(d.name, d.portRef, d.roomNo, d.hotel, 'Register', d.id));
 
     return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [vulnerableSUs, challengingSUs, referrals, dailyRegisterRecords, selectedSite]);
+  }, [masterSUs, vulnerableSUs, challengingSUs, referrals, dailyRegisterRecords, selectedSite]);
 
   const handleSelectSU = useCallback((suKey: string) => {
     setSelectedSUKey(suKey);
@@ -520,6 +531,26 @@ export const DocumentBuilderView: React.FC = () => {
             footerConfig: currentFooter,
           };
           setCurrentRecord(updated);
+
+          // Track report in Service User report history
+          const matchedSU = siteSUs.find(s => s.id === selectedSUKey);
+          if (matchedSU) {
+            void reportHistoryService.trackReport({
+              reportId: updated.id,
+              suId: matchedSU.suId || matchedSU.id,
+              suName: matchedSU.name,
+              suReference: matchedSU.portRef,
+              site: selectedSite,
+              reportName: documentTitle || selectedTemplate.name,
+              reportType: selectedTemplate.category || 'HO Report',
+              reportCategory: selectedTemplate.category || 'Operations',
+              fileFormat: 'docx',
+              fileName: `${(documentTitle || selectedTemplate.name).replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_')}.docx`,
+              status: status === 'final' ? 'Saved' : 'Generated',
+              metadata: { templateId: selectedTemplate.id, documentNumber: updated.documentNumber }
+            });
+          }
+
           return updated;
         } else {
           showToast(res.error || 'Failed to save', 'error');
@@ -542,6 +573,26 @@ export const DocumentBuilderView: React.FC = () => {
           setCurrentRecord(res.data);
           showToast(status === 'final' ? 'Document created and finalized' : 'Draft saved');
           setIsDirty(false);
+
+          // Track report in Service User report history
+          const matchedSU = siteSUs.find(s => s.id === selectedSUKey);
+          if (matchedSU) {
+            void reportHistoryService.trackReport({
+              reportId: res.data.id,
+              suId: matchedSU.suId || matchedSU.id,
+              suName: matchedSU.name,
+              suReference: matchedSU.portRef,
+              site: selectedSite,
+              reportName: documentTitle || selectedTemplate.name,
+              reportType: selectedTemplate.category || 'HO Report',
+              reportCategory: selectedTemplate.category || 'Operations',
+              fileFormat: 'docx',
+              fileName: `${(documentTitle || selectedTemplate.name).replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_')}.docx`,
+              status: status === 'final' ? 'Saved' : 'Generated',
+              metadata: { templateId: selectedTemplate.id, documentNumber: res.data.documentNumber }
+            });
+          }
+
           return res.data;
         } else {
           showToast(res.error || 'Failed to save draft', 'error');
@@ -582,6 +633,26 @@ export const DocumentBuilderView: React.FC = () => {
       if (res.success && res.blob) {
         downloadBlob(res.blob, res.filename || `document.${format}`);
         showToast(`${format.toUpperCase()} downloaded`);
+
+        // Track report download in Service User report history
+        const matchedSU = siteSUs.find(s => s.id === selectedSUKey);
+        if (matchedSU) {
+          void reportHistoryService.trackReport({
+            reportId: recordId !== 'direct' ? recordId : undefined,
+            suId: matchedSU.suId || matchedSU.id,
+            suName: matchedSU.name,
+            suReference: matchedSU.portRef,
+            site: selectedSite,
+            reportName: documentTitle || selectedTemplate?.name || 'Report',
+            reportType: selectedTemplate?.category || 'HO Report',
+            reportCategory: selectedTemplate?.category || 'Operations',
+            fileFormat: format,
+            fileName: res.filename || `${(documentTitle || 'document').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_')}.${format}`,
+            fileBlob: res.blob,
+            status: 'Downloaded',
+            metadata: { templateId: selectedTemplate?.id, documentNumber: activeRecord?.documentNumber }
+          });
+        }
       } else {
         showToast(res.error || `Failed to generate ${format.toUpperCase()}`, 'error');
       }
@@ -608,6 +679,36 @@ export const DocumentBuilderView: React.FC = () => {
       const name = reportFileName(irReport);
       downloadBlob(blob, name);
       showToast(`Saved ${name}`);
+
+      // Track against relevant resident victim(s) or selected SU
+      const victims = irState?.victims || [];
+      const targets = victims.length > 0
+        ? victims
+        : (selectedSUKey ? [siteSUs.find(s => s.id === selectedSUKey)?.name] : []).filter(Boolean);
+
+      for (const tName of targets) {
+        const matched = siteSUs.find(s =>
+          s.name.toLowerCase() === tName?.toLowerCase() ||
+          (tName && (tName.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(tName.toLowerCase())))
+        );
+        if (matched) {
+          void reportHistoryService.trackReport({
+            reportId: currentRecord?.id,
+            suId: matched.suId || matched.id,
+            suName: matched.name,
+            suReference: matched.portRef,
+            site: selectedSite,
+            reportName: `Incident Report — ${irReport?.ref || documentTitle || 'Incident'}`,
+            reportType: 'Incident Report',
+            reportCategory: 'Safeguarding & Incidents',
+            fileFormat: 'docx',
+            fileName: name,
+            fileBlob: blob,
+            status: 'Downloaded',
+            metadata: { incidentRef: irReport?.ref, date: irReport?.date }
+          });
+        }
+      }
     } catch (err: any) {
       console.error(err);
       showToast(`Couldn't create the Word file – ${err?.message || 'try "Copy text" instead'}`, 'error');

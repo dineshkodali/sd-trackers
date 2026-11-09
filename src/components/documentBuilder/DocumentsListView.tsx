@@ -20,6 +20,7 @@ import {
   downloadBlob,
   fetchDocumentAuditTrail,
 } from '../../services/documentBuilderService';
+import { reportHistoryService } from '../../services/reportHistoryService';
 import { useApp } from '../../context/AppContext';
 
 interface DocumentsListViewProps {
@@ -93,6 +94,31 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
       const res = await generateDocument(recordId, format);
       if (res.success && res.blob) {
         downloadBlob(res.blob, res.filename || `document.${format}`);
+
+        // Track download against Service User if linked
+        const rec = records.find(r => r.id === recordId);
+        if (rec) {
+          const fv = rec.fieldValues || {};
+          const suName = fv.resident || fv.suName || fv.name || fv.subjectName || (rec as any).su_name;
+          const suId = fv.suId || (rec as any).su_id || (rec as any).suId;
+          if (suId || suName) {
+            void reportHistoryService.trackReport({
+              reportId: rec.id,
+              suId: suId || rec.id,
+              suName: suName || 'Resident',
+              suReference: fv.portRef || fv.portOrNassRef || (rec as any).su_reference,
+              site: rec.site,
+              reportName: rec.title,
+              reportType: rec.category || 'HO Report',
+              reportCategory: rec.category || 'Operations',
+              fileFormat: format,
+              fileName: res.filename || `${rec.title}.${format}`,
+              fileBlob: res.blob,
+              status: 'Downloaded',
+              metadata: { documentNumber: rec.documentNumber }
+            });
+          }
+        }
       } else {
         setActionError(res.error || `Failed to download ${format.toUpperCase()}`);
       }
@@ -104,10 +130,8 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
   };
 
   const handleDelete = async (record: DocumentBuilderRecord) => {
-    const isAdmin = ['Super Admin', 'Admin', 'Regional Manager'].includes(currentUserRole);
-
-    if (record.status === 'final' && !isAdmin) {
-      alert('Only Administrators can delete finalized documents.');
+    if (currentUserRole !== 'Super Admin') {
+      alert('Permission Denied: Only Super Admin can delete report records.');
       return;
     }
 
@@ -340,13 +364,15 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
                           <History className="w-3.5 h-3.5" />
                         </button>
 
-                        <button
-                          onClick={() => handleDelete(rec)}
-                          className="p-1.5 text-[#94a3b8] hover:text-red-600 hover:bg-red-50 rounded-xs transition-colors"
-                          title="Delete Report"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {currentUserRole === 'Super Admin' && (
+                          <button
+                            onClick={() => handleDelete(rec)}
+                            className="p-1.5 text-[#94a3b8] hover:text-red-600 hover:bg-red-50 rounded-xs transition-colors"
+                            title="Super Admin: Delete Report"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

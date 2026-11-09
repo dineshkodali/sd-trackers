@@ -162,6 +162,8 @@ export const ENTITY_REGISTRY: Record<string, EntityDef> = {
   service_user_support: { page: 'Service Users - Support', table: 'service_user_support', alias: true },
   suDocuments: { page: 'Service Users - Documents', table: 'service_user_documents' },
   service_user_documents: { page: 'Service Users - Documents', table: 'service_user_documents', alias: true },
+  suReportHistory: { page: 'Service Users - Report History', table: 'service_user_report_history', read: 'suEditor', write: 'suEditor', remove: 'superadmin' },
+  service_user_report_history: { page: 'Service Users - Report History', table: 'service_user_report_history', read: 'suEditor', write: 'suEditor', remove: 'superadmin', alias: true },
 
   // Property Master entities
   properties: { page: 'Properties Master', table: 'properties' },
@@ -528,6 +530,7 @@ export const TABLE_SITE_COLUMN: Record<string, string> = {
   doc_builder: 'site',
   ho_report_records: 'site',
   ho_report_audit_logs: 'site',
+  service_user_report_history: 'site',
   email_notification_logs: 'site',
   audit_trails: 'site',
   finance_bills: 'site_id',
@@ -1802,6 +1805,18 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
     return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
+  }
+
+  // Deletion and metadata modification protection for Service User Report History
+  if (def.table === 'service_user_report_history' && req.user?.role !== 'Super Admin') {
+    const allowedKeys = new Set(['downloadCount', 'download_count', 'lastDownloadedAt', 'last_downloaded_at', 'downloadHistory', 'download_history', 'updatedAt', 'updated_at']);
+    const attemptedKeys = Object.keys(req.body).filter(k => !allowedKeys.has(k));
+    if (attemptedKeys.length > 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'Permission Denied: Only Super Admin has permission to modify report metadata or archive status.'
+      });
+    }
   }
   sanitizeWriteBody(req, def, true);
   const redactedRole = req.user?.role;

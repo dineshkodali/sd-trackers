@@ -125,6 +125,7 @@ export const KNOWN_TABLES = Array.from(
     'ho_report_templates',
     'ho_report_records',
     'ho_report_audit_logs',
+    'service_user_report_history',
     'user_page_permissions',
     'page_access_audit',
     'audit_logs',

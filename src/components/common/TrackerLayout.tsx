@@ -51,7 +51,7 @@ export const TrackerHeader: React.FC<{
           <p className="text-xs text-neutral-500">{description}</p>
         </div>
       </div>
-      {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
+      {actions && <div className="flex items-center gap-2 flex-wrap sm:justify-end shrink-0">{actions}</div>}
     </div>
     {tabs}
     {summary}

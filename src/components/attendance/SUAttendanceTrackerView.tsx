@@ -1,5 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { IconPlus as Plus, IconSearch as Search, IconPencil as Pencil, IconHistory as History, IconX as X, IconLock as Lock, IconTrash as Trash2, IconCalendarCheck as CalendarCheck, IconEye as Eye } from '@tabler/icons-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  IconPlus as Plus, IconSearch as Search, IconPencil as Pencil, IconHistory as History,
+  IconX as X, IconLock as Lock, IconTrash as Trash2, IconCalendarCheck as CalendarCheck,
+  IconEye as Eye, IconChevronDown as ChevronDown, IconDownload as Download,
+  IconFileText as FileText, IconFileSpreadsheet as FileSpreadsheet, IconCalendar as Calendar
+} from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import {
   suTrackerService, type AttendanceRecord, type AbsenceFollowUp, type SuDirectoryRow
@@ -8,11 +13,14 @@ import { canEditSuTrackers, canViewAttendanceNotes, formatUkDate } from '../../u
 import {
   addDays, todayIso, dayCounts, currentAbsenceEpisode, DEFAULT_ABSENCE_POLICY, type AttendanceEntry
 } from '../../utils/attendanceLogic';
-import { SiteFilterSelect, ResetFiltersButton, TrackerExport, filterInputCls, type TrackerExportColumn } from '../common/TrackerToolbar';
+import { SiteFilterSelect, ResetFiltersButton, filterInputCls, type TrackerExportColumn } from '../common/TrackerToolbar';
 import {
   TrackerHeader, TabSwitcher, CustomizeTableButton, PrimaryButton, TablePanel, SortableTh, ActionsTh, actionsTdCls, EmptyRow, SkeletonRows,
   theadRowCls, tbodyCls, tdCls, AuditAccountability
 } from '../common/TrackerLayout';
+import { ExportModal, type ExportFormat, type ExportOrientation, type ExportScope } from '../common/ExportModal';
+import { exportTableToCsv } from '../../utils/csvExport';
+import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
@@ -53,7 +61,7 @@ const REC_SORT: Record<string, (x: RecRow) => string> = {
 };
 
 export const SUAttendanceTrackerView: React.FC = () => {
-  const { sites, isSitePermitted, currentUserRole, currentUserName, defaultSiteFilter, canDeleteRecord, requestConfirmation } = useApp();
+  const { sites, isSitePermitted, currentUserRole, currentUserName, defaultSiteFilter, canDeleteRecord, requestConfirmation, canPageAction, activePage } = useApp();
   const canEdit = canEditSuTrackers(currentUserRole);
   const canSeeNotes = canViewAttendanceNotes(currentUserRole);
   const { columns, visibleColumns, saveColumns, resetToDefault } = useTableSchema<any>('suAttendance', ATTENDANCE_TABLE_COLUMNS);
@@ -326,6 +334,113 @@ export const SUAttendanceTrackerView: React.FC = () => {
     { id: 'last', label: 'Last Action', defaultSelected: true, get: f => f.lastActionAt ? new Date(f.lastActionAt).toLocaleString('en-GB') : '—' }
   ];
 
+  const allRecRows = useMemo(() => records.filter(r => byId.has(r.suId)).map(r => ({ r, d: byId.get(r.suId)! })), [records, byId]);
+  const allFuRows = useMemo(() => followUps.filter(f => byId.has(f.suId)), [followUps, byId]);
+
+  const [exportModal, setExportModal] = useState<{
+    open: boolean;
+    mode: 'roll' | 'records' | 'followups';
+    defaultFormat: ExportFormat;
+  }>({ open: false, mode: 'roll', defaultFormat: 'pdf' });
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const openExport = (mode: 'roll' | 'records' | 'followups', format: ExportFormat = 'pdf') => {
+    setExportModal({ open: true, mode, defaultFormat: format });
+    setIsExportMenuOpen(false);
+  };
+
+  const buildRollExport = (scope: ExportScope, selected?: string[]) => {
+    const cols = selected && selected.length > 0 ? rollExportCols.filter(c => selected.includes(c.id)) : rollExportCols;
+    const rows = scope === 'filtered' ? rollRows : directory;
+    return {
+      headers: cols.map(c => c.label),
+      rows: rows.map(r => cols.map(c => String(c.get(r) ?? '')))
+    };
+  };
+
+  const buildRecordsExport = (scope: ExportScope, selected?: string[], start?: string, end?: string) => {
+    const cols = selected && selected.length > 0 ? recExportCols.filter(c => selected.includes(c.id)) : recExportCols;
+    let rows = allRecRows;
+    if (scope === 'filtered') rows = recRows;
+    else if (scope === 'custom' && start && end) {
+      rows = allRecRows.filter(x => {
+        const d = (x.r.attendanceDate || '').slice(0, 10);
+        return d >= start && d <= end;
+      });
+    }
+    return {
+      headers: cols.map(c => c.label),
+      rows: rows.map(r => cols.map(c => String(c.get(r) ?? '')))
+    };
+  };
+
+  const buildFuExport = (scope: ExportScope, selected?: string[], start?: string, end?: string) => {
+    const cols = selected && selected.length > 0 ? fuExportCols.filter(c => selected.includes(c.id)) : fuExportCols;
+    let rows = allFuRows;
+    if (scope === 'filtered') rows = fuRows;
+    else if (scope === 'custom' && start && end) {
+      rows = allFuRows.filter(f => {
+        const d = (String(f.absenceStartDate) || '').slice(0, 10);
+        return d >= start && d <= end;
+      });
+    }
+    return {
+      headers: cols.map(c => c.label),
+      rows: rows.map(r => cols.map(c => String(c.get(r) ?? '')))
+    };
+  };
+
+  const handlePerformExport = ({
+    format, scope, orientation = 'landscape', startDate, endDate, selectedColumns, isCompact
+  }: {
+    format: ExportFormat; scope: ExportScope; orientation: ExportOrientation; startDate?: string; endDate?: string; selectedColumns?: string[]; isCompact?: boolean;
+  }) => {
+    if (exportModal.mode === 'roll') {
+      const { headers, rows } = buildRollExport(scope, selectedColumns);
+      const filename = `SU_Daily_Roll_${rollDate}`;
+      if (format === 'csv') exportTableToCsv({ filename: `${filename}.csv`, headers, rows });
+      else exportTableToPdf({ filename: `${filename}.pdf`, title: `SU Daily Attendance Roll - ${formatUkDate(rollDate)}`, headers, rows, orientation, isCompact });
+    } else if (exportModal.mode === 'records') {
+      const { headers, rows } = buildRecordsExport(scope, selectedColumns, startDate, endDate);
+      const filename = 'SU_Attendance_Records';
+      if (format === 'csv') exportTableToCsv({ filename: `${filename}.csv`, headers, rows });
+      else exportTableToPdf({ filename: `${filename}.pdf`, title: 'SU Attendance Records Registry', headers, rows, orientation, isCompact });
+    } else {
+      const { headers, rows } = buildFuExport(scope, selectedColumns, startDate, endDate);
+      const filename = 'SU_Absence_Followups';
+      if (format === 'csv') exportTableToCsv({ filename: `${filename}.csv`, headers, rows });
+      else exportTableToPdf({ filename: `${filename}.pdf`, title: 'Absence Follow-ups Registry', headers, rows, orientation, isCompact });
+    }
+  };
+
+  const getExportPreviewData = ({
+    scope, startDate, endDate, selectedColumns
+  }: {
+    scope: ExportScope; startDate?: string; endDate?: string; selectedColumns?: string[]; orientation: ExportOrientation; isCompact: boolean;
+  }) => {
+    if (exportModal.mode === 'roll') {
+      const { headers, rows } = buildRollExport(scope, selectedColumns);
+      return { headers, rows: rows.slice(0, 5) };
+    }
+    if (exportModal.mode === 'records') {
+      const { headers, rows } = buildRecordsExport(scope, selectedColumns, startDate, endDate);
+      return { headers, rows: rows.slice(0, 5) };
+    }
+    const { headers, rows } = buildFuExport(scope, selectedColumns, startDate, endDate);
+    return { headers, rows: rows.slice(0, 5) };
+  };
+
 
   const rollCell = (key: string, d: SuDirectoryRow, rec: AttendanceRecord | undefined): React.ReactNode => {
     switch (key) {
@@ -359,13 +474,6 @@ export const SUAttendanceTrackerView: React.FC = () => {
     }
   };
 
-  const dateField = (label: string, value: string, onChange: (v: string) => void, max?: string) => (
-    <label className="flex flex-1 min-w-[130px] items-center gap-1 text-[11px] text-neutral-500">
-      <span className="whitespace-nowrap">{label}</span>
-      <input type="date" className={filterInputCls} value={value} max={max} onChange={e => { onChange(e.target.value); setPage(1); }} aria-label={label} />
-    </label>
-  );
-
   return (
     <div className="space-y-4">
       <TrackerHeader
@@ -376,52 +484,147 @@ export const SUAttendanceTrackerView: React.FC = () => {
         actions={
           <>
             {currentUserRole === 'Super Admin' && <CustomizeTableButton onClick={() => setIsSchemaOpen(true)} />}
-            {tab === 'roll' && (
-              <>
-                <TrackerExport<SuDirectoryRow>
-                  buttonLabel="Export Daily Roll"
-                  moduleName="SU Daily Roll"
-                  filename={`SU_Daily_Roll_${rollDate}`}
-                  title={`SU Daily Attendance Roll - ${formatUkDate(rollDate)}`}
-                  allRows={directory}
-                  filteredRows={rollRows}
-                  columns={rollExportCols}
-                />
-                <TrackerExport<RecRow>
-                  buttonLabel="Export Attendance Records"
-                  moduleName="SU Attendance"
-                  filename="SU_Attendance_Records"
-                  title="SU Attendance Records Registry"
-                  allRows={records.filter(r => byId.has(r.suId)).map(r => ({ r, d: byId.get(r.suId)! }))}
-                  filteredRows={recRows}
-                  dateOf={x => x.r.attendanceDate}
-                  columns={recExportCols}
-                />
-              </>
-            )}
-            {tab === 'records' && (
-              <TrackerExport<RecRow>
-                buttonLabel="Export Attendance Records"
-                moduleName="SU Attendance"
-                filename="SU_Attendance_Records"
-                title="SU Attendance Records Registry"
-                allRows={records.filter(r => byId.has(r.suId)).map(r => ({ r, d: byId.get(r.suId)! }))}
-                filteredRows={recRows}
-                dateOf={x => x.r.attendanceDate}
-                columns={recExportCols}
-              />
-            )}
-            {tab === 'followups' && (
-              <TrackerExport<AbsenceFollowUp>
-                buttonLabel="Export Follow-ups"
-                moduleName="Absence Follow-ups"
-                filename="SU_Absence_Followups"
-                title="Absence Follow-ups Registry"
-                allRows={followUps.filter(f => byId.has(f.suId))}
-                filteredRows={fuRows}
-                dateOf={f => String(f.absenceStartDate).slice(0, 10)}
-                columns={fuExportCols}
-              />
+            {canPageAction(activePage, 'export') && (
+              <div className="relative inline-block text-left" ref={exportDropdownRef}>
+                <div className="inline-flex items-stretch h-8">
+                  <button
+                    type="button"
+                    onClick={() => openExport(tab, 'pdf')}
+                    className="flex items-center gap-1.5 px-3 text-xs font-semibold rounded-l-xs border border-r-0 border-[#8a8886] bg-white hover:bg-[#edebe9] text-[#323130] transition-colors cursor-pointer"
+                    title="Export attendance data"
+                  >
+                    <Download className="w-3.5 h-3.5 text-inherit" />
+                    <span>Export</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsExportMenuOpen(prev => !prev)}
+                    className="inline-flex w-7 items-center justify-center text-xs font-semibold rounded-r-xs border border-[#8a8886] bg-white hover:bg-[#edebe9] text-[#323130] transition-colors cursor-pointer"
+                    title="Export options & formats"
+                    aria-expanded={isExportMenuOpen}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {isExportMenuOpen && (
+                  <div className="absolute right-0 mt-1 w-64 bg-white border border-[#edebe9] rounded-xs shadow-lg py-1 z-30 animate-in fade-in duration-100 text-xs text-[#323130]">
+                    {tab === 'roll' && (
+                      <>
+                        <div className="px-3 py-1.5 text-[10px] font-bold text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9]">
+                          Daily Roll ({formatUkDate(rollDate)})
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openExport('roll', 'pdf')}
+                          className="w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-[#f3f8fd] text-[#323130] transition-colors cursor-pointer"
+                        >
+                          <FileText className="w-4 h-4 text-[#7f6000]" />
+                          <div>
+                            <div className="font-semibold">Export Daily Roll (PDF)...</div>
+                            <div className="text-[10px] text-[#605e5c]">Formatted roll for {formatUkDate(rollDate)}</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openExport('roll', 'csv')}
+                          className="w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-[#f3f8fd] text-[#323130] transition-colors cursor-pointer"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-[#107c10]" />
+                          <div>
+                            <div className="font-semibold">Export Daily Roll (CSV)...</div>
+                            <div className="text-[10px] text-[#605e5c]">Excel / data spreadsheet</div>
+                          </div>
+                        </button>
+                        <div className="my-1 border-t border-[#edebe9]" />
+                        <div className="px-3 py-1.5 text-[10px] font-bold text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9]">
+                          Attendance Records
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openExport('records', 'pdf')}
+                          className="w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-[#faf9f8] text-[#0d9488] transition-colors cursor-pointer font-medium text-[11px]"
+                        >
+                          <Calendar className="w-4 h-4 text-amber-600" />
+                          <div>
+                            <div className="font-semibold text-[#0d9488]">Export Attendance History...</div>
+                            <div className="text-[10px] text-[#605e5c]">Custom Date Range, presets & full scope</div>
+                          </div>
+                        </button>
+                      </>
+                    )}
+
+                    {tab === 'records' && (
+                      <>
+                        <div className="px-3 py-1.5 text-[10px] font-bold text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9]">
+                          Attendance Records
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openExport('records', 'pdf')}
+                          className="w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-[#f3f8fd] text-[#323130] transition-colors cursor-pointer"
+                        >
+                          <FileText className="w-4 h-4 text-[#7f6000]" />
+                          <div>
+                            <div className="font-semibold">Export as PDF...</div>
+                            <div className="text-[10px] text-[#605e5c]">Portrait / Landscape document</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openExport('records', 'csv')}
+                          className="w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-[#f3f8fd] text-[#323130] transition-colors cursor-pointer"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-[#107c10]" />
+                          <div>
+                            <div className="font-semibold">Export as CSV...</div>
+                            <div className="text-[10px] text-[#605e5c]">Excel / data spreadsheet</div>
+                          </div>
+                        </button>
+                        <div className="my-1 border-t border-[#edebe9]" />
+                        <button
+                          type="button"
+                          onClick={() => openExport('records', 'pdf')}
+                          className="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-[#faf9f8] text-[#0d9488] transition-colors font-medium text-[11px] cursor-pointer"
+                        >
+                          <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Custom Date Range / Full Scope...</span>
+                        </button>
+                      </>
+                    )}
+
+                    {tab === 'followups' && (
+                      <>
+                        <div className="px-3 py-1.5 text-[10px] font-bold text-[#605e5c] uppercase tracking-wider border-b border-[#edebe9]">
+                          Absence Follow-ups
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openExport('followups', 'pdf')}
+                          className="w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-[#f3f8fd] text-[#323130] transition-colors cursor-pointer"
+                        >
+                          <FileText className="w-4 h-4 text-[#7f6000]" />
+                          <div>
+                            <div className="font-semibold">Export as PDF...</div>
+                            <div className="text-[10px] text-[#605e5c]">Follow-ups report</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openExport('followups', 'csv')}
+                          className="w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-[#f3f8fd] text-[#323130] transition-colors cursor-pointer"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-[#107c10]" />
+                          <div>
+                            <div className="font-semibold">Export as CSV...</div>
+                            <div className="text-[10px] text-[#605e5c]">Excel spreadsheet</div>
+                          </div>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {canEdit && <PrimaryButton onClick={() => setEditFor({})} label="+ Record Attendance" />}
           </>
@@ -461,14 +664,14 @@ export const SUAttendanceTrackerView: React.FC = () => {
             )}
             {tab === 'roll' && (
               <>
-                <div className="flex items-center gap-1">
+                <div className="inline-flex items-stretch border border-[#e5e5e5] rounded-xs bg-white overflow-hidden shadow-2xs h-7">
                   <button
                     type="button"
                     onClick={() => { setRollDate(todayIso()); setPage(1); }}
-                    className={`px-2 py-1 text-[11px] font-semibold rounded-xs border transition-colors cursor-pointer whitespace-nowrap ${
+                    className={`h-full px-2.5 text-[11px] font-semibold transition-colors cursor-pointer border-r border-[#e5e5e5] whitespace-nowrap flex items-center ${
                       rollDate === todayIso()
-                        ? 'bg-[#0d9488] text-white border-[#0d9488]'
-                        : 'bg-white hover:bg-neutral-50 text-neutral-700 border-[#e5e5e5]'
+                        ? 'bg-[#0d9488] text-white'
+                        : 'bg-white hover:bg-neutral-50 text-neutral-700'
                     }`}
                   >
                     Today
@@ -476,15 +679,25 @@ export const SUAttendanceTrackerView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => { setRollDate(addDays(todayIso(), -1)); setPage(1); }}
-                    className={`px-2 py-1 text-[11px] font-semibold rounded-xs border transition-colors cursor-pointer whitespace-nowrap ${
+                    className={`h-full px-2.5 text-[11px] font-semibold transition-colors cursor-pointer border-r border-[#e5e5e5] whitespace-nowrap flex items-center ${
                       rollDate === addDays(todayIso(), -1)
-                        ? 'bg-[#0d9488] text-white border-[#0d9488]'
-                        : 'bg-white hover:bg-neutral-50 text-neutral-700 border-[#e5e5e5]'
+                        ? 'bg-[#0d9488] text-white border-r-[#0d9488]'
+                        : 'bg-white hover:bg-neutral-50 text-neutral-700'
                     }`}
                   >
                     Yesterday
                   </button>
-                  {dateField('Date', rollDate, v => setRollDate(v || todayIso()), todayIso())}
+                  <div className="flex items-center gap-1.5 px-2 h-full bg-[#fbfbfa]">
+                    <span className="text-[10px] text-neutral-400 uppercase font-semibold">Date:</span>
+                    <input
+                      type="date"
+                      value={rollDate}
+                      max={todayIso()}
+                      onChange={e => { setRollDate(e.target.value || todayIso()); setPage(1); }}
+                      className="text-[11px] text-[#242424] bg-transparent outline-none cursor-pointer p-0"
+                      aria-label="Roll Date"
+                    />
+                  </div>
                 </div>
                 <select className={filterInputCls} value={rollStatus} onChange={e => { setRollStatus(e.target.value as any); setPage(1); }} aria-label="Status">
                   <option value="all">All Statuses</option><option>Present</option><option>Absent</option><option>Not recorded</option>
@@ -510,8 +723,25 @@ export const SUAttendanceTrackerView: React.FC = () => {
                   <option value="all">All Historic Records</option>
                   <option value="custom">Custom Date Range</option>
                 </select>
-                {dateField('From', recFrom, v => { setRecFrom(v); setDatePreset('custom'); })}
-                {dateField('To', recTo, v => { setRecTo(v); setDatePreset('custom'); })}
+                <div className="inline-flex items-center gap-1.5 px-2 border border-[#e5e5e5] rounded-xs bg-[#fbfbfa] h-7 text-[11px]">
+                  <span className="text-neutral-400 text-[10px] uppercase font-semibold">From:</span>
+                  <input
+                    type="date"
+                    value={recFrom}
+                    onChange={e => { setRecFrom(e.target.value); setDatePreset('custom'); setPage(1); }}
+                    className="bg-transparent text-[11px] text-[#242424] outline-none cursor-pointer p-0"
+                    aria-label="From Date"
+                  />
+                  <span className="text-neutral-300">—</span>
+                  <span className="text-neutral-400 text-[10px] uppercase font-semibold">To:</span>
+                  <input
+                    type="date"
+                    value={recTo}
+                    onChange={e => { setRecTo(e.target.value); setDatePreset('custom'); setPage(1); }}
+                    className="bg-transparent text-[11px] text-[#242424] outline-none cursor-pointer p-0"
+                    aria-label="To Date"
+                  />
+                </div>
                 <select className={filterInputCls} value={recStatus} onChange={e => { setRecStatus(e.target.value); setPage(1); }} aria-label="Attendance status">
                   <option value="all">All Statuses</option><option>Present</option><option>Absent</option>
                 </select>
@@ -620,6 +850,58 @@ export const SUAttendanceTrackerView: React.FC = () => {
         <FollowUpDialog followUp={followUpFor} row={byId.get(followUpFor.suId)} user={currentUserName} canEdit={canEdit}
           onClose={() => setFollowUpFor(null)} onSaved={() => { setFollowUpFor(null); load(); }} />
       )}
+
+      <ExportModal
+        isOpen={exportModal.open}
+        onClose={() => setExportModal(prev => ({ ...prev, open: false }))}
+        title={
+          exportModal.mode === 'roll'
+            ? `Export Daily Attendance Roll (${formatUkDate(rollDate)})`
+            : exportModal.mode === 'records'
+              ? 'Export SU Attendance Records'
+              : 'Export Absence Follow-ups Registry'
+        }
+        moduleName={
+          exportModal.mode === 'roll'
+            ? 'SU Daily Roll'
+            : exportModal.mode === 'records'
+              ? 'SU Attendance'
+              : 'Absence Follow-ups'
+        }
+        defaultFormat={exportModal.defaultFormat}
+        defaultOrientation="landscape"
+        totalRecordCount={
+          exportModal.mode === 'roll'
+            ? directory.length
+            : exportModal.mode === 'records'
+              ? allRecRows.length
+              : allFuRows.length
+        }
+        filteredRecordCount={
+          exportModal.mode === 'roll'
+            ? rollRows.length
+            : exportModal.mode === 'records'
+              ? recRows.length
+              : fuRows.length
+        }
+        dateRangeRecordCount={
+          exportModal.mode === 'records'
+            ? (s, e) => allRecRows.filter(x => { const d = x.r.attendanceDate; return (!s || d >= s) && (!e || d <= e); }).length
+            : exportModal.mode === 'followups'
+              ? (s, e) => allFuRows.filter(f => { const d = String(f.absenceStartDate).slice(0, 10); return (!s || d >= s) && (!e || d <= e); }).length
+              : undefined
+        }
+        availableColumns={
+          (exportModal.mode === 'roll'
+            ? rollExportCols
+            : exportModal.mode === 'records'
+              ? recExportCols
+              : fuExportCols
+          ).map(({ id, label, defaultSelected }) => ({ id, label, defaultSelected }))
+        }
+        getPreviewData={getExportPreviewData}
+        onExport={handlePerformExport}
+      />
 
       <TableSchemaEditorModal<any>
         isOpen={isSchemaOpen}

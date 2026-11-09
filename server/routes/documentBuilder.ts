@@ -9,6 +9,7 @@
 import { Router, Request, Response } from 'express';
 import { generateDocx } from './documentBuilderDocx.js';
 import { generatePdf } from './documentBuilderPdf.js';
+import { trackReportHistoryDirect } from './reportHistory.js';
 import {
   getTemplates,
   getTemplateById,
@@ -46,6 +47,10 @@ const ADMIN_ROLES = new Set(['Super Admin', 'Admin', 'Regional Manager', 'Operat
 
 function isManagerOrAdmin(role: string): boolean {
   return ADMIN_ROLES.has(role);
+}
+
+function isSuperAdmin(role: string): boolean {
+  return role === 'Super Admin';
 }
 
 /** True when the caller may see a record belonging to `site`. */
@@ -364,9 +369,9 @@ router.delete('/records/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Document not found' });
     }
 
-    // Strict RBAC: finalized records can only be deleted by Admin/Super Admin
-    if (existing.status === 'final' && !isManagerOrAdmin(author.role)) {
-      return res.status(403).json({ success: false, error: 'Only Administrators can delete finalized documents' });
+    // Strict RBAC: finalized records and report history can only be deleted by Super Admin
+    if (existing.status === 'final' && !isSuperAdmin(author.role)) {
+      return res.status(403).json({ success: false, error: 'Only Super Admin can permanently delete finalized document records' });
     }
 
     // Non-admin can only delete their own draft
@@ -484,16 +489,41 @@ async function handleGenerateRequest(req: Request, res: Response) {
     const safeTitle = (docData.title || 'document').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_') || 'document';
     const filename = `${safeTitle}.${format}`;
 
+    let outBuffer: Buffer;
     if (format === 'docx') {
-      const buffer = await generateDocx(docData);
+      const b = await generateDocx(docData);
+      outBuffer = Buffer.from(b);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.send(Buffer.from(buffer));
+      res.send(outBuffer);
     } else {
-      const buffer = await generatePdf(docData);
+      outBuffer = await generatePdf(docData);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.send(buffer);
+      res.send(outBuffer);
+    }
+
+    // Auto-track report file in service_user_report_history if linked to a Service User
+    const suId = body.suId || record?.suId || (record as any)?.su_id || docData.fieldValues?.suId;
+    const suName = body.suName || record?.suName || (record as any)?.su_name || docData.fieldValues?.resident || docData.fieldValues?.suName || docData.fieldValues?.name;
+    const suRef = body.suReference || record?.suReference || (record as any)?.su_reference || docData.fieldValues?.portRef;
+
+    if (suId && suName) {
+      trackReportHistoryDirect({
+        reportId: record?.id,
+        suId,
+        suName,
+        suReference: suRef,
+        site: docData.site,
+        reportName: docData.title,
+        reportType: docData.templateName || 'HO Report',
+        fileFormat: format,
+        fileName: filename,
+        buffer: outBuffer,
+        status: 'Downloaded',
+        author,
+        metadata: { documentNumber: docData.documentNumber }
+      }).catch(e => console.warn('[DocumentBuilder] Report history auto-track notice:', e.message));
     }
   } catch (err: any) {
     console.error(`[DocumentBuilder] Generate ${format} error:`, err.message);
