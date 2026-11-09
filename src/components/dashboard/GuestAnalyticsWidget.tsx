@@ -9,9 +9,12 @@ import {
 } from '../../utils/guestStats';
 
 interface Props {
-  /** The Dashboard's own site filter, so these figures follow it. */
+  /** The Dashboard's or Parent's site filter, so these figures follow it. */
   siteFilter: string;
-  onNavigate: (page: string) => void;
+  onNavigate?: (page: string) => void;
+  onSelectFilter?: (filter: Partial<GuestFilter>) => void;
+  date?: string;
+  onDateChange?: (date: string) => void;
 }
 
 interface Slice { id: string; label: string; value: number; color: string; filter: Partial<GuestFilter>; note?: string }
@@ -57,10 +60,19 @@ const Legend: React.FC<{ slices: Slice[]; onPick: (s: Slice) => void }> = ({ sli
 
 const tooltipStyle = { fontSize: 12, borderRadius: 2, border: '1px solid #e1dfdd', boxShadow: 'none' } as const;
 
-export const GuestAnalyticsWidget: React.FC<Props> = ({ siteFilter, onNavigate }) => {
+export const GuestAnalyticsWidget: React.FC<Props> = ({ 
+  siteFilter, 
+  onNavigate,
+  onSelectFilter,
+  date: dateProp,
+  onDateChange
+}) => {
   const { dailyRegisterRecords, isSitePermitted, liveDataStatus } = useApp();
   const { ctx, loading: familiesLoading, error: familyError, reload } = useGuestContext();
-  const [date, setDate] = useState<string>(today);
+  const [internalDate, setInternalDate] = useState<string>(today);
+
+  const date = dateProp ?? internalDate;
+  const setDate = onDateChange ?? setInternalDate;
 
   const dataReady = liveDataStatus.state === 'live' || liveDataStatus.state === 'degraded';
 
@@ -71,8 +83,12 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({ siteFilter, onNavigate }
   const stats = useMemo(() => computeGuestStats(guests), [guests]);
 
   const open = (filter: Partial<GuestFilter>) => {
+    if (onSelectFilter) {
+      onSelectFilter(filter);
+      return;
+    }
     saveRegisterFilterIntent({ filter: { ...NO_GUEST_FILTER, ...filter }, site: siteFilter, date });
-    onNavigate('dailyRegisters');
+    onNavigate?.('dailyRegisters');
   };
 
   const gender: Slice[] = [
@@ -191,7 +207,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({ siteFilter, onNavigate }
             onClick={() => open({})}
             className="text-xs font-semibold text-[#0d9488] hover:text-[#0f766e] flex items-center gap-1.5 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-3 py-1.5 rounded-xs cursor-pointer"
           >
-            <span>Open Daily Register</span>
+            <span>{onSelectFilter ? 'View in Daily Register' : 'Open Daily Register'}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>

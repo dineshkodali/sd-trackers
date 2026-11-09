@@ -70,34 +70,26 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   return (
     <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs mb-4 p-3.5">
       <div className="flex flex-wrap items-end gap-3 text-xs">
-        {/* Hotel / Site */}
+        {/* Hotel / Site (Centralized from Top Nav Bar) */}
         <div className="flex-1 min-w-[150px]">
           <div className="flex items-center justify-between mb-1">
             <label className="font-semibold text-[#605e5c]">Hotel / Site</label>
-            {isSiteLocked && (
-              <span className="flex items-center gap-0.5 text-[10px] text-amber-700 font-semibold">
-                <Lock className="w-2.5 h-2.5" /> Locked
-              </span>
-            )}
+            <span className="flex items-center gap-0.5 text-[10px] text-teal-700 font-semibold bg-teal-50 px-1 py-0.5 rounded border border-teal-200">
+              <Lock className="w-2.5 h-2.5" /> Top Bar
+            </span>
           </div>
-          <select
+          <div
             id="filter-site"
-            value={siteFilter}
-            onChange={e => setSiteFilter(e.target.value)}
-            disabled={isSiteLocked}
-            className={`w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] focus:outline-2 focus:outline-[#71afe5] ${
-              isSiteLocked ? 'bg-[#faf9f8] cursor-not-allowed opacity-80' : 'cursor-pointer'
-            }`}
+            className="w-full p-2 border border-[#d1d5db] rounded-xs bg-[#fbfbfa] text-[#0f766e] font-semibold text-xs flex items-center justify-between shadow-2xs"
+            title="Controlled centrally by the top navigation bar"
           >
-            {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
-              <option value="all">
-                {canAccessAllSites() ? `All Sites (${allowedSites.length})` : `All Assigned Sites (${allowedSites.length})`}
-              </option>
-            )}
-            {allowedSites.map((s, idx) => (
-              <option key={`${s}-${idx}`} value={s}>{s}</option>
-            ))}
-          </select>
+            <span className="truncate">
+              {siteFilter === 'all' || siteFilter === 'All Sites' || !siteFilter
+                ? (canAccessAllSites() ? `All Sites (${allowedSites.length})` : `All Assigned Sites (${allowedSites.length})`)
+                : siteFilter}
+            </span>
+            <span className="text-[10px] text-neutral-400 font-normal">Active</span>
+          </div>
         </div>
 
         {/* Month */}

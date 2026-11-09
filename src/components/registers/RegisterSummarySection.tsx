@@ -2,17 +2,25 @@ import React, { useMemo } from 'react';
 import { IconBuilding as Building, IconBed as Bed, IconUsers as Users, IconStack2 as Layers, IconCircleCheck as CheckCircle2, IconShieldCheck as ShieldCheck } from '@tabler/icons-react';
 import { DailyRegisterRecord, DailyRegisterRoom } from '../../types';
 import { roomKey } from '../../utils/roomAllocation';
+import { GuestAnalyticsWidget } from '../dashboard/GuestAnalyticsWidget';
+import { GuestFilter } from '../../utils/guestStats';
 
 interface RegisterSummarySectionProps {
   rooms: DailyRegisterRoom[];
   records: DailyRegisterRecord[];
   selectedSite: string;
+  selectedDate?: string;
+  onDateChange?: (date: string) => void;
+  onSelectFilter?: (filter: Partial<GuestFilter>) => void;
 }
 
 export const RegisterSummarySection: React.FC<RegisterSummarySectionProps> = ({
   rooms,
   records,
-  selectedSite
+  selectedSite,
+  selectedDate,
+  onDateChange,
+  onSelectFilter
 }) => {
   const activeRooms = useMemo(() => {
     return selectedSite === 'all'
@@ -192,6 +200,14 @@ export const RegisterSummarySection: React.FC<RegisterSummarySectionProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Guest Demographic & Household Analytics */}
+      <GuestAnalyticsWidget
+        siteFilter={selectedSite}
+        date={selectedDate}
+        onDateChange={onDateChange}
+        onSelectFilter={onSelectFilter}
+      />
 
       {/* Room Type Breakdown Table */}
       <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-xs p-5 space-y-4">

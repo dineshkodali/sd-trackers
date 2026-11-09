@@ -25,33 +25,31 @@ import {
 } from '../../utils/guestStats';
 
 export type DailyRegisterTab = 
+  | 'dailyRegister'
+  | 'summary'
   | 'stats'
   | 'roomList'
-  | 'userGuide'
-  | 'dailyRegister'
-  | 'validation'
-  | 'languages'
   | 'newArrivals'
   | 'families'
-  | 'summary';
+  | 'languages'
+  | 'validation'
+  | 'userGuide';
 
 interface SheetTabConfig {
   id: DailyRegisterTab;
   label: string;
-  pillClass?: string;
-  isUnderline?: boolean;
 }
 
 const SHEET_TABS: SheetTabConfig[] = [
+  { id: 'dailyRegister', label: 'Daily Register' },
+  { id: 'summary', label: 'Summary & Guest Statistics' },
   { id: 'stats', label: 'Live Register Statistics' },
-  { id: 'roomList', label: 'Room List', pillClass: 'bg-[#2563eb] text-white hover:bg-[#1d4ed8]' },
-  { id: 'userGuide', label: 'User Guide', pillClass: 'bg-[#9ca3af] text-white hover:bg-[#6b7280]' },
-  { id: 'dailyRegister', label: 'Daily Register', pillClass: 'bg-[#16a34a] text-white hover:bg-[#15803d]' },
-  { id: 'validation', label: 'Cross Checks & Validation', pillClass: 'bg-[#d1d5db] text-[#1f2937] hover:bg-[#9ca3af]' },
-  { id: 'languages', label: 'Language Summary' },
+  { id: 'roomList', label: 'Room List' },
   { id: 'newArrivals', label: 'New Arrivals' },
   { id: 'families', label: 'Family Groups' },
-  { id: 'summary', label: 'Summary', pillClass: 'bg-[#f59e0b] text-white hover:bg-[#d97706]' }
+  { id: 'languages', label: 'Language Summary' },
+  { id: 'validation', label: 'Cross Checks & Validation' },
+  { id: 'userGuide', label: 'User Guide' }
 ];
 
 export const LiveDailyRegistersView: React.FC = () => {
@@ -147,11 +145,8 @@ export const LiveDailyRegistersView: React.FC = () => {
     return isSitePermitted(wanted) ? wanted : defaultSiteFilter;
   });
 
-  // Follow the default site when it changes, but not on first render, so a site chosen on the Dashboard is kept.
-  const lastDefaultSite = React.useRef(defaultSiteFilter);
+  // Always keep selectedSite synchronized automatically with the central top nav bar site filter
   useEffect(() => {
-    if (lastDefaultSite.current === defaultSiteFilter) return;
-    lastDefaultSite.current = defaultSiteFilter;
     setSelectedSite(defaultSiteFilter);
   }, [defaultSiteFilter]);
 
@@ -361,28 +356,31 @@ export const LiveDailyRegistersView: React.FC = () => {
           </div>
         </div>
 
-        {/* Spreadsheet Sheet Tabs */}
-        <div className="mt-3.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs p-1.5 flex items-center gap-1.5 overflow-x-auto">
+        {/* Professional Spreadsheet Sheet Tabs */}
+        <div className="mt-3.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xs p-1 flex items-center gap-1 overflow-x-auto shadow-2xs">
           {SHEET_TABS.map(tab => {
             const isActive = activeTab === tab.id;
             const badge = getTabBadge(tab.id);
-            const style = tab.pillClass
-              ? `${tab.pillClass} px-3 py-1 rounded shadow-xs ${isActive ? 'ring-2 ring-offset-1 ring-black/30 scale-[1.03]' : 'opacity-90 hover:opacity-100'}`
-              : tab.isUnderline
-              ? `px-2.5 py-1 border-b-2 rounded-t ${isActive ? 'border-[#16a34a] text-[#16a34a] font-bold bg-white/60' : 'border-[#16a34a]/60 text-[#323130] hover:text-black hover:bg-white/40'}`
-              : `px-2.5 py-1 rounded ${isActive ? 'bg-white text-[#242424] font-bold shadow-2xs' : 'text-[#605e5c] hover:text-[#242424] hover:bg-white/50'}`;
 
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${style}`}
+                className={`text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xs ${
+                  isActive
+                    ? 'bg-white text-[#0f766e] font-bold shadow-xs border border-[#99f6e4] ring-1 ring-[#0d9488]/20'
+                    : 'text-[#64748b] hover:text-[#0f172a] hover:bg-white/70 border border-transparent'
+                }`}
               >
                 <span>{tab.label}</span>
                 {badge !== undefined && badge > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    tab.pillClass ? 'bg-white/20 text-white' : tab.isUnderline ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-200 text-neutral-700'
-                  }`}>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      isActive
+                        ? 'bg-teal-100 text-teal-800'
+                        : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
                     {badge}
                   </span>
                 )}
@@ -412,26 +410,26 @@ export const LiveDailyRegistersView: React.FC = () => {
             )}
           </div>
 
-          {!isLockedToSingleSite ? (
-            <select
-              value={selectedSite}
-              onChange={e => setSelectedSite(e.target.value)}
-              className="w-full px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs text-[#242424] focus:bg-white focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] outline-hidden transition-all cursor-pointer"
-            >
-              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
-                <option value="all">
-                  {canAccessAllSites() ? 'All Hotels & Sites' : `All Assigned Sites (${allowedSites.length})`}
-                </option>
-              )}
-              {(canAccessAllSites() ? availableSites : (allowedSites || [])).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs" title="Locked to your assigned site">
-              <Lock className="w-3 h-3 text-[#0f766e]" />
-              <span className="font-semibold text-neutral-600">Site:</span>
-              <span className="font-bold text-[#0f766e] truncate">{assignedSite || 'Assigned Hotel'}</span>
+          {/* Centralized Static Property / Site Indicator (Synced with Top Nav Bar) */}
+          <div 
+            className="flex items-center justify-between gap-1.5 px-3 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs shadow-2xs"
+            title="Site filter is controlled centrally by the top navigation bar"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Building2 className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
+              <span className="text-neutral-500 font-medium">Site:</span>
+              <span className="font-bold text-[#0f766e] truncate">
+                {effectiveSite === 'all' || effectiveSite === 'All Sites' || !effectiveSite
+                  ? (canAccessAllSites() || (allowedSites && allowedSites.length > 1)
+                      ? (canAccessAllSites() ? `All Properties (${sites.length} Hotels)` : `All Assigned (${allowedSites?.length || 0} Sites)`)
+                      : 'All Sites')
+                  : effectiveSite}
+              </span>
             </div>
-          )}
+            <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 shrink-0 flex items-center gap-0.5">
+              <Lock className="w-2.5 h-2.5" /> Top Bar
+            </span>
+          </div>
 
           <div className="flex items-center gap-1.5">
             <input 
@@ -531,6 +529,12 @@ export const LiveDailyRegistersView: React.FC = () => {
             rooms={scopedRooms}
             records={scopedRecords}
             selectedSite={effectiveSite}
+            selectedDate={registerDate}
+            onDateChange={setRegisterDate}
+            onSelectFilter={(filter) => {
+              setGuestFilter(prev => ({ ...prev, ...filter }));
+              setActiveTab('dailyRegister');
+            }}
           />
         )}
 
