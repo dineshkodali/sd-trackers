@@ -57,6 +57,48 @@ export const SUOverviewTab: React.FC<SUOverviewTabProps> = ({
       </div>
     </div>
 
+    {/* Inspection & Safeguarding Quick Summary Card */}
+    <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-3.5 space-y-2.5">
+      <div className="flex items-center justify-between pb-2 border-b border-[#edebe9]">
+        <h4 className="text-xs font-bold text-[#242424] flex items-center gap-1.5">
+          <span>Inspection &amp; Safeguarding Status</span>
+        </h4>
+        <span className="text-[10px] font-semibold text-neutral-500">Inspection-Ready Profile</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div>
+          <span className="text-neutral-400 block text-[10px] uppercase font-bold tracking-wider">Vulnerable Status</span>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold mt-0.5 ${
+            serviceUser.vulnerable === 'Yes' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-neutral-100 text-neutral-700'
+          }`}>
+            {serviceUser.vulnerable === 'Yes' ? 'Yes (Vulnerable)' : 'No (Standard)'}
+          </span>
+        </div>
+        <div>
+          <span className="text-neutral-400 block text-[10px] uppercase font-bold tracking-wider">Evacuation Plan</span>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold mt-0.5 ${
+            serviceUser.personalEvacuationPlan?.startsWith('PEEP') ? 'bg-rose-100 text-rose-900 border border-rose-300 font-bold' : 'bg-teal-50 text-teal-800 border border-teal-200'
+          }`}>
+            {serviceUser.personalEvacuationPlan || 'GEEP – General Emergency Evacuation Plan'}
+          </span>
+        </div>
+        <div>
+          <span className="text-neutral-400 block text-[10px] uppercase font-bold tracking-wider">GP Registration</span>
+          <strong className="text-neutral-800 block mt-0.5 truncate" title={serviceUser.gpRegistration || 'Not registered'}>
+            {serviceUser.gpRegistration || '— (Unassigned)'}
+          </strong>
+        </div>
+        <div>
+          <span className="text-neutral-400 block text-[10px] uppercase font-bold tracking-wider">Disability</span>
+          <strong className="text-neutral-800 block mt-0.5 truncate" title={serviceUser.disabilityType || serviceUser.disabilityCategory || 'None'}>
+            {serviceUser.disabilityCategory && serviceUser.disabilityCategory !== 'None' 
+              ? `${serviceUser.disabilityCategory}${serviceUser.disabilityType ? ` (${serviceUser.disabilityType})` : ''}` 
+              : 'None recorded'}
+          </strong>
+        </div>
+      </div>
+    </div>
+
     <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-bold text-neutral-800 uppercase tracking-wider">
@@ -136,6 +178,38 @@ export const SUPersonalTab: React.FC<SUPersonalTabProps> = ({ serviceUser, conta
         <div>
           <span className="text-neutral-400 block text-[10px]">Referral / Arrival Date</span>
           <strong className="text-neutral-800">{serviceUser.arrivalDate || serviceUser.referralDate || '—'}</strong>
+        </div>
+      </div>
+
+      <h3 className="font-bold text-xs text-neutral-800 border-b pb-2 pt-2">Needs, Safeguarding &amp; Health</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div>
+          <span className="text-neutral-400 block text-[10px]">Vulnerable</span>
+          <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold mt-0.5 ${
+            serviceUser.vulnerable === 'Yes' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-neutral-100 text-neutral-700'
+          }`}>
+            {serviceUser.vulnerable === 'Yes' ? 'Yes' : 'No'}
+          </span>
+        </div>
+        <div>
+          <span className="text-neutral-400 block text-[10px]">Personal Evacuation Plan</span>
+          <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold mt-0.5 ${
+            serviceUser.personalEvacuationPlan?.startsWith('PEEP') ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-neutral-100 text-neutral-700'
+          }`}>
+            {serviceUser.personalEvacuationPlan || 'GEEP – General Emergency Evacuation Plan'}
+          </span>
+        </div>
+        <div>
+          <span className="text-neutral-400 block text-[10px]">GP Registration</span>
+          <strong className="text-neutral-800 block mt-0.5">{serviceUser.gpRegistration || '—'}</strong>
+        </div>
+        <div>
+          <span className="text-neutral-400 block text-[10px]">Disability Category</span>
+          <strong className="text-neutral-800 block mt-0.5">{serviceUser.disabilityCategory || 'None'}</strong>
+        </div>
+        <div className="col-span-2">
+          <span className="text-neutral-400 block text-[10px]">Disability Type / Notes</span>
+          <strong className="text-neutral-800 block mt-0.5">{serviceUser.disabilityType || '—'}</strong>
         </div>
       </div>
     </div>

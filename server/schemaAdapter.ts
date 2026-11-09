@@ -736,6 +736,12 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['referralDate', 'referral_date', 'text'],
     ['arrivalDate', 'arrival_date', 'text'],
     ['siteId', 'site_id', 'text'],
+    // Needs, Safeguarding & Inspection Fields
+    ['disabilityCategory', 'disability_category', 'text'],
+    ['disabilityType', 'disability_type', 'text'],
+    ['vulnerable', 'vulnerable', 'text'],
+    ['personalEvacuationPlan', 'personal_evacuation_plan', 'text'],
+    ['gpRegistration', 'gp_registration', 'text'],
     // Archive state is changed only by the approval workflow (database trigger refuses any other change)
     ['archiveStatus', 'archive_status', 'text'],
     ['archivedAt', 'archived_at', 'text'],
@@ -1618,6 +1624,7 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
     'preferred_name', 'date_of_birth', 'gender', 'nationality',
     'preferred_language', 'interpreter_required', 'status', 'external_reference',
     'case_reference', 'referral_date', 'arrival_date', 'site_id',
+    'disability_category', 'disability_type', 'vulnerable', 'personal_evacuation_plan', 'gp_registration',
     'archive_status', 'archived_at', 'archived_pre_status',
     'data', 'created_by', 'created_at', 'updated_at'
   ]),

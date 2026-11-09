@@ -87,6 +87,13 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
   const [supportPriority, setSupportPriority] = useState<'Low' | 'Medium' | 'High' | 'Critical'>('Medium');
   const [assignedStaff, setAssignedStaff] = useState('');
 
+  // Needs, Safeguarding & Inspection Fields
+  const [disabilityCategory, setDisabilityCategory] = useState<string>('None');
+  const [disabilityType, setDisabilityType] = useState<string>('');
+  const [vulnerable, setVulnerable] = useState<'Yes' | 'No'>('No');
+  const [personalEvacuationPlan, setPersonalEvacuationPlan] = useState<string>('GEEP – General Emergency Evacuation Plan');
+  const [gpRegistration, setGpRegistration] = useState<string>('');
+
   // Documents
   const [existingDocuments, setExistingDocuments] = useState<ServiceUserDocument[]>([]);
   const [newDocs, setNewDocs] = useState<Array<{ type: string; name: string; fileUrl: string; fileName: string }>>([]);
@@ -105,6 +112,8 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
     setHouseholdMembers([]); setSiteId(permittedSites[0]?.id || sites[0]?.id || '');
     setVulnerabilityFlags(''); setDietaryNeeds(''); setMedicalConditions(''); setMobilityNeeds('');
     setSupportPriority('Medium'); setAssignedStaff('');
+    setDisabilityCategory('None'); setDisabilityType(''); setVulnerable('No');
+    setPersonalEvacuationPlan('GEEP – General Emergency Evacuation Plan'); setGpRegistration('');
     setExistingDocuments([]); setNewDocs([]);
   };
 
@@ -126,6 +135,11 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
         setReferralDate(serviceUserToEdit.referralDate || '');
         setArrivalDate(serviceUserToEdit.arrivalDate || '');
         setSiteId(serviceUserToEdit.siteId || '');
+        setDisabilityCategory(serviceUserToEdit.disabilityCategory || 'None');
+        setDisabilityType(serviceUserToEdit.disabilityType || '');
+        setVulnerable((serviceUserToEdit.vulnerable as 'Yes' | 'No') || 'No');
+        setPersonalEvacuationPlan(serviceUserToEdit.personalEvacuationPlan || 'GEEP – General Emergency Evacuation Plan');
+        setGpRegistration(serviceUserToEdit.gpRegistration || '');
 
         // Preload contact, household, placement, support, and documents
         Promise.all([
@@ -248,7 +262,9 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
           // An archived Service User keeps their status: it changes only through an approved restore request
           status: serviceUserToEdit.status === 'Archived' ? 'Archived' : status,
           externalReference: externalReference.trim(), caseReference: caseReference.trim(),
-          referralDate, arrivalDate, siteId
+          referralDate, arrivalDate, siteId,
+          disabilityCategory, disabilityType: disabilityType.trim(),
+          vulnerable, personalEvacuationPlan, gpRegistration
         }, { siteId, propertyId, roomId });
         if (!res.success) throw new Error(res.error || 'Failed to update Service User.');
       } else {
@@ -257,7 +273,9 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
           preferredName: preferredName.trim(), dateOfBirth, gender, nationality, preferredLanguage,
           interpreterRequired, status: 'Active', externalReference: externalReference.trim(),
           caseReference: caseReference.trim(), referralDate: referralDate || arrivalDate,
-          arrivalDate, siteId
+          arrivalDate, siteId,
+          disabilityCategory, disabilityType: disabilityType.trim(),
+          vulnerable, personalEvacuationPlan, gpRegistration
         }, contactData, householdMembers, siteId && propertyId && roomId ? { siteId, propertyId, roomId } : undefined);
 
         if (!res.success || !res.record) throw new Error(res.error || 'Failed to create Service User.');
@@ -387,6 +405,11 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
                   mobilityNeeds={mobilityNeeds} setMobilityNeeds={setMobilityNeeds}
                   supportPriority={supportPriority} setSupportPriority={setSupportPriority}
                   assignedStaff={assignedStaff} setAssignedStaff={setAssignedStaff}
+                  disabilityCategory={disabilityCategory} setDisabilityCategory={setDisabilityCategory}
+                  disabilityType={disabilityType} setDisabilityType={setDisabilityType}
+                  vulnerable={vulnerable} setVulnerable={setVulnerable}
+                  personalEvacuationPlan={personalEvacuationPlan} setPersonalEvacuationPlan={setPersonalEvacuationPlan}
+                  gpRegistration={gpRegistration} setGpRegistration={setGpRegistration}
                 />
               )}
 

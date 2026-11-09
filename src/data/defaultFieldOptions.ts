@@ -94,6 +94,20 @@ export const FIELD_CATEGORIES_META: CategoryMeta[] = [
     description: 'Status of behavioral warning letters or tenancy notices issued',
     iconName: 'FileText'
   },
+  {
+    key: 'disabilityCategories',
+    name: 'Disability Categories',
+    department: 'Safeguarding',
+    description: 'Statutory disability categories and broad impairment classifications',
+    iconName: 'Accessibility'
+  },
+  {
+    key: 'disabilityTypes',
+    name: 'Disability Types & Specifics',
+    department: 'Safeguarding',
+    description: 'Specific disability conditions, physical accessibility, and sensory requirements',
+    iconName: 'HeartHandshake'
+  },
 
   // --- PEEP & GP registrations: staff add their own choices from the forms ---
   {
@@ -872,4 +886,26 @@ export const DEFAULT_FIELD_OPTIONS: CustomFieldOption[] = [
   { id: 'opt-peepassist-1', category: 'peepAssistance', label: 'No device required', value: 'No device required', color: 'teal', description: '', isActive: true, isSystem: false, order: 1 },
   { id: 'opt-peepassist-2', category: 'peepAssistance', label: 'Emergency evacuation chair required', value: 'Emergency evacuation chair required', color: 'teal', description: '', isActive: true, isSystem: false, order: 2 },
   { id: 'opt-peepassist-3', category: 'peepAssistance', label: 'Other assistance required', value: 'Other assistance required', color: 'teal', description: '', isActive: true, isSystem: false, order: 3 },
+
+  // Disability Categories
+  { id: 'opt-discat-1', category: 'disabilityCategories', label: 'Physical / Mobility', value: 'Physical / Mobility', color: 'blue', description: 'Mobility limitations, wheelchair or walking aid requirements', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-discat-2', category: 'disabilityCategories', label: 'Sensory Impairment', value: 'Sensory Impairment', color: 'purple', description: 'Visual, hearing, or sensory processing impairments', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-discat-3', category: 'disabilityCategories', label: 'Mental Health', value: 'Mental Health', color: 'amber', description: 'Long-term or acute mental health conditions', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-discat-4', category: 'disabilityCategories', label: 'Cognitive & Learning', value: 'Cognitive & Learning', color: 'teal', description: 'Learning disabilities, neurodiversity, or memory impairment', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-discat-5', category: 'disabilityCategories', label: 'Chronic Medical Condition', value: 'Chronic Medical Condition', color: 'rose', description: 'Long-term health conditions impacting daily activities', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-discat-6', category: 'disabilityCategories', label: 'Multiple Disabilities', value: 'Multiple Disabilities', color: 'indigo', description: 'Complex needs across multiple impairment categories', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-discat-7', category: 'disabilityCategories', label: 'None', value: 'None', color: 'slate', description: 'No recorded disability or accessibility requirements', isActive: true, isSystem: true, order: 7 },
+  { id: 'opt-discat-8', category: 'disabilityCategories', label: 'Other', value: 'Other', color: 'slate', description: 'Other unclassified disability or impairment', isActive: true, isSystem: false, order: 8 },
+
+  // Disability Types
+  { id: 'opt-distyp-1', category: 'disabilityTypes', label: 'Wheelchair User / Reduced Mobility', value: 'Wheelchair User / Reduced Mobility', color: 'blue', description: 'Requires wheelchair accessible facilities, ramp, or ground floor', isActive: true, isSystem: true, order: 1 },
+  { id: 'opt-distyp-2', category: 'disabilityTypes', label: 'Visual Impairment / Blind', value: 'Visual Impairment / Blind', color: 'purple', description: 'Severe visual limitation or registered blind', isActive: true, isSystem: true, order: 2 },
+  { id: 'opt-distyp-3', category: 'disabilityTypes', label: 'Hearing Impairment / Deaf', value: 'Hearing Impairment / Deaf', color: 'teal', description: 'Hearing loss, requires visual fire alarm or interpreter', isActive: true, isSystem: true, order: 3 },
+  { id: 'opt-distyp-4', category: 'disabilityTypes', label: 'Severe Mental Health / Complex PTSD', value: 'Severe Mental Health / Complex PTSD', color: 'amber', description: 'Requires psychiatric support or calm environment', isActive: true, isSystem: true, order: 4 },
+  { id: 'opt-distyp-5', category: 'disabilityTypes', label: 'Epilepsy / Seizure Disorder', value: 'Epilepsy / Seizure Disorder', color: 'rose', description: 'Emergency seizure protocol and medication required', isActive: true, isSystem: true, order: 5 },
+  { id: 'opt-distyp-6', category: 'disabilityTypes', label: 'Chronic Illness / Diabetes', value: 'Chronic Illness / Diabetes', color: 'red', description: 'Requires medication storage, regular clinic visits', isActive: true, isSystem: true, order: 6 },
+  { id: 'opt-distyp-7', category: 'disabilityTypes', label: 'Cognitive / Memory Impairment', value: 'Cognitive / Memory Impairment', color: 'indigo', description: 'Requires assisted orientation or reminder protocols', isActive: true, isSystem: true, order: 7 },
+  { id: 'opt-distyp-8', category: 'disabilityTypes', label: 'Autism Spectrum / Neurodivergent', value: 'Autism Spectrum / Neurodivergent', color: 'emerald', description: 'Sensory sensitivity or structured routine required', isActive: true, isSystem: true, order: 8 },
+  { id: 'opt-distyp-9', category: 'disabilityTypes', label: 'Speech / Communication Impairment', value: 'Speech / Communication Impairment', color: 'cyan', description: 'Alternative or non-verbal communication support needed', isActive: true, isSystem: true, order: 9 },
+  { id: 'opt-distyp-10', category: 'disabilityTypes', label: 'Other', value: 'Other', color: 'slate', description: 'Other specific disability condition', isActive: true, isSystem: false, order: 10 },
 ];

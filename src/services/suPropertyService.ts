@@ -161,6 +161,11 @@ export const suPropertyService = {
       referralDate: data.referralDate || new Date().toISOString().split('T')[0],
       arrivalDate: data.arrivalDate || new Date().toISOString().split('T')[0],
       siteId: initialPlacement?.siteId || data.siteId,
+      disabilityCategory: data.disabilityCategory || 'None',
+      disabilityType: data.disabilityType || '',
+      vulnerable: data.vulnerable || 'No',
+      personalEvacuationPlan: data.personalEvacuationPlan || 'GEEP – General Emergency Evacuation Plan',
+      gpRegistration: data.gpRegistration || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };

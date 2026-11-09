@@ -1,5 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { IconUsers as Users, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye } from '@tabler/icons-react';
+import { 
+  IconUsers as Users, 
+  IconEdit as Edit3, 
+  IconTrash as Trash2, 
+  IconEye as Eye,
+  IconChevronDown as ChevronDown,
+  IconChevronRight as ChevronRight,
+  IconShieldExclamation as ShieldAlert,
+  IconFlame as Flame,
+  IconStethoscope as Stethoscope,
+  IconClipboardCheck as ClipboardCheck
+} from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DailyRegisterRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
@@ -14,6 +25,8 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
 import { roomChoices } from '../../utils/interconnectingRooms';
 import { NO_GUEST_FILTER, buildGuests, emptyGuestContext, filterRegisterRecords, type GuestContext, type GuestFilter } from '../../utils/guestStats';
+import { suPropertyService } from '../../services/suPropertyService';
+import { ServiceUserMaster } from '../../types/masterData';
 
 interface DailyRegisterSectionProps {
   selectedSite: string;
@@ -72,6 +85,51 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<string>('roomNo');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Inspection & Service User Safeguarding Cross-reference
+  const [serviceUsers, setServiceUsers] = useState<ServiceUserMaster[]>([]);
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let active = true;
+    suPropertyService.getServiceUsers(selectedSite !== 'all' ? selectedSite : undefined)
+      .then(res => {
+        if (active && res.success && res.data) {
+          setServiceUsers(res.data);
+        }
+      })
+      .catch(err => console.warn('Could not load Service Users for Register:', err));
+    return () => { active = false; };
+  }, [selectedSite]);
+
+  const suByPortRef = useMemo(() => {
+    const map = new Map<string, ServiceUserMaster>();
+    serviceUsers.forEach(u => {
+      if (u.externalReference?.trim()) {
+        map.set(u.externalReference.trim().toLowerCase(), u);
+      }
+    });
+    return map;
+  }, [serviceUsers]);
+
+  const suByName = useMemo(() => {
+    const map = new Map<string, ServiceUserMaster>();
+    serviceUsers.forEach(u => {
+      const name = `${u.firstName} ${u.lastName}`.trim().toLowerCase();
+      if (name) map.set(name, u);
+    });
+    return map;
+  }, [serviceUsers]);
+
+  const toggleRowExpand = (e: React.SyntheticEvent, id: string) => {
+    e.stopPropagation();
+    setExpandedRowIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Modals
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
@@ -307,62 +365,197 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
                   </td>
                 </tr>
               ) : (
-                paginatedRecords.map(rec => (
-                  <tr key={rec.id} className="hover:bg-[#f0fdf4] transition-colors">
-                    <td className="p-2.5 font-mono font-bold text-[#0f766e]">{rec.roomNo}</td>
-                    <td className="p-2.5 text-[#605e5c]">{rec.floor || '—'}</td>
-                    <td className="p-2.5 font-mono text-indigo-700">{rec.portRef}</td>
-                    <td className="p-2.5 font-semibold text-[#242424]">{rec.name}</td>
-                    <td className="p-2.5 text-[#605e5c]">{rec.checkInDate || '—'}</td>
-                    <td className="p-2.5">{rec.nationality || '—'}</td>
-                    <td className="p-2.5">{rec.language || '—'}</td>
-                    <td className="p-2.5">{rec.gender || '—'}</td>
-                    <td className="p-2.5 text-[#605e5c]">{guestByRecord.get(rec.id)?.age ?? '—'}</td>
-                    <td className="p-2.5">{guestByRecord.get(rec.id)?.aspen ? <span className="inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-teal-50 text-[#0f766e]">Yes</span> : <span className="text-[#a19f9d]">—</span>}</td>
-                    <td className="p-2.5 text-[11px] text-[#605e5c]">
-                      {rec.singleBed || 0}S / {rec.doubleBed || 0}D / {(rec.singleBunk || 0) + (rec.doubleBunk || 0)}B
-                    </td>
-                    <td className="p-2.5">
-                      <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold ${
-                        rec.occupied === 'Yes' || !rec.occupied 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {rec.occupied || 'Yes'}
-                      </span>
-                    </td>
+                paginatedRecords.map(rec => {
+                  const matchedSu = (rec.portRef ? suByPortRef.get(rec.portRef.trim().toLowerCase()) : null) || 
+                    suByName.get(rec.name.trim().toLowerCase());
+                  const isExpanded = expandedRowIds.has(rec.id);
 
-                    <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => setViewingRecord(rec)}
-                          className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs"
-                          title="View Details"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        {canEditRecord() && (
+                  return (
+                    <React.Fragment key={rec.id}>
+                    <tr className="hover:bg-[#f0fdf4] transition-colors">
+                      <td className="p-2.5 font-mono font-bold text-[#0f766e]">
+                        <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => setEditingRecord(rec)}
-                            className="p-1 hover:bg-teal-50 text-[#0d9488] rounded-xs"
-                            title="Edit Record"
+                            type="button"
+                            onClick={(e) => toggleRowExpand(e, rec.id)}
+                            className="p-0.5 text-neutral-400 hover:text-[#0d9488] rounded hover:bg-neutral-100 transition-colors"
+                            title={isExpanded ? 'Collapse inspection dossier' : 'Expand inspection dossier'}
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
+                            {isExpanded ? (
+                              <ChevronDown className="w-3.5 h-3.5 text-[#0d9488]" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            )}
                           </button>
-                        )}
-                        {canDeleteRecord() && (
+                          <span>{rec.roomNo}</span>
+                        </div>
+                      </td>
+                      <td className="p-2.5 text-[#605e5c]">{rec.floor || '—'}</td>
+                      <td className="p-2.5 font-mono text-indigo-700">{rec.portRef}</td>
+                      <td className="p-2.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-[#242424]">{rec.name}</span>
+                          {matchedSu?.personalEvacuationPlan?.startsWith('PEEP') && (
+                            <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-300" title="Resident has an active Personal Emergency Evacuation Plan">
+                              <Flame className="w-2.5 h-2.5 text-rose-600" />
+                              <span>PEEP</span>
+                            </span>
+                          )}
+                          {matchedSu?.vulnerable === 'Yes' && (
+                            <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-semibold bg-amber-100 text-amber-800 border border-amber-300" title="Safeguarding Flag: Vulnerable resident">
+                              <ShieldAlert className="w-2.5 h-2.5 text-amber-600" />
+                              <span>VULN</span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-2.5 text-[#605e5c]">{rec.checkInDate || '—'}</td>
+                      <td className="p-2.5">{rec.nationality || '—'}</td>
+                      <td className="p-2.5">{rec.language || '—'}</td>
+                      <td className="p-2.5">{rec.gender || '—'}</td>
+                      <td className="p-2.5 text-[#605e5c]">{guestByRecord.get(rec.id)?.age ?? '—'}</td>
+                      <td className="p-2.5">{guestByRecord.get(rec.id)?.aspen ? <span className="inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-teal-50 text-[#0f766e]">Yes</span> : <span className="text-[#a19f9d]">—</span>}</td>
+                      <td className="p-2.5 text-[11px] text-[#605e5c]">
+                        {rec.singleBed || 0}S / {rec.doubleBed || 0}D / {(rec.singleBunk || 0) + (rec.doubleBunk || 0)}B
+                      </td>
+                      <td className="p-2.5">
+                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold ${
+                          rec.occupied === 'Yes' || !rec.occupied 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {rec.occupied || 'Yes'}
+                        </span>
+                      </td>
+
+                      <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => deleteDailyRegisterRecord(rec.id)}
-                            className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs"
-                            title="Delete Record"
+                            onClick={() => setViewingRecord(rec)}
+                            className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs"
+                            title="View Details"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {canEditRecord() && (
+                            <button
+                              onClick={() => setEditingRecord(rec)}
+                              className="p-1 hover:bg-teal-50 text-[#0d9488] rounded-xs"
+                              title="Edit Record"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canDeleteRecord() && (
+                            <button
+                              onClick={() => deleteDailyRegisterRecord(rec.id)}
+                              className="p-1 hover:bg-[#fdf3f4] text-[#a4262c] rounded-xs"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expandable Inspection & Safeguarding Review Row */}
+                    {isExpanded && (
+                      <tr className="bg-[#faf9f8] border-b border-[#e1dfdd]">
+                        <td colSpan={13} className="p-3.5 pl-8">
+                          <div className="bg-white border border-[#e5e5e5] rounded-xs p-3.5 space-y-3 shadow-2xs">
+                            <div className="flex items-center justify-between pb-2 border-b border-[#f0f0f0]">
+                              <div className="flex items-center gap-2">
+                                <ClipboardCheck className="w-4 h-4 text-[#0d9488]" />
+                                <span className="font-bold text-xs text-[#242424]">
+                                  Inspection &amp; Safeguarding Dossier — Room {rec.roomNo} • {rec.name}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-neutral-500 font-mono">
+                                Port Ref: {rec.portRef} • Check-In: {rec.checkInDate || '—'}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                              {/* 1. Room Specifications */}
+                              <div className="p-2.5 bg-[#fcfbf9] rounded-xs border border-[#eee] space-y-1">
+                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">
+                                  Room &amp; Bed Capacity
+                                </span>
+                                <p className="font-semibold text-[#242424]">Floor {rec.floor || 'Ground'} • {rec.roomMakeup || 'Standard Room'}</p>
+                                <p className="text-[11px] text-neutral-600">
+                                  Singles: <strong>{rec.singleBed || 0}</strong> • Doubles: <strong>{rec.doubleBed || 0}</strong> • Bunks: <strong>{(rec.singleBunk || 0) + (rec.doubleBunk || 0)}</strong> • Cots: <strong>{rec.cot || 0}</strong>
+                                </p>
+                              </div>
+
+                              {/* 2. Resident Profile */}
+                              <div className="p-2.5 bg-[#fcfbf9] rounded-xs border border-[#eee] space-y-1">
+                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">
+                                  Demographics
+                                </span>
+                                <p className="font-semibold text-[#242424]">{rec.gender || 'Not specified'} • {guestByRecord.get(rec.id)?.age ?? '—'} yrs (DOB: {rec.dob || '—'})</p>
+                                <p className="text-[11px] text-neutral-600">
+                                  {rec.nationality || '—'} • {rec.language || 'English'}
+                                </p>
+                                <p className="text-[11px] text-neutral-600">
+                                  Aspen Card: <strong>{guestByRecord.get(rec.id)?.aspen ? 'Active' : 'None recorded'}</strong>
+                                </p>
+                              </div>
+
+                              {/* 3. Safeguarding & Evacuation Link */}
+                              <div className="p-2.5 bg-[#fcfbf9] rounded-xs border border-[#eee] space-y-1">
+                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block flex items-center justify-between">
+                                  <span>Safeguarding &amp; Evacuation</span>
+                                  {matchedSu && <span className="text-[9px] text-teal-700 font-mono font-bold">{matchedSu.suReference}</span>}
+                                </span>
+                                {matchedSu ? (
+                                  <>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                        matchedSu.vulnerable === 'Yes' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-neutral-100 text-neutral-600'
+                                      }`}>
+                                        {matchedSu.vulnerable === 'Yes' ? 'Vulnerable Resident' : 'Standard Resident'}
+                                      </span>
+                                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                        matchedSu.personalEvacuationPlan?.startsWith('PEEP') ? 'bg-rose-100 text-rose-900 border border-rose-300 font-bold' : 'bg-teal-50 text-teal-800 border border-teal-200'
+                                      }`}>
+                                        {matchedSu.personalEvacuationPlan || 'GEEP Evacuation'}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-neutral-700 mt-1">
+                                      GP: <strong>{matchedSu.gpRegistration || 'Unregistered'}</strong>
+                                    </p>
+                                    <p className="text-[11px] text-neutral-700">
+                                      Disability: <strong>{matchedSu.disabilityCategory && matchedSu.disabilityCategory !== 'None' ? `${matchedSu.disabilityCategory}${matchedSu.disabilityType ? ` (${matchedSu.disabilityType})` : ''}` : 'None'}</strong>
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p className="text-[11px] text-neutral-400 italic">
+                                    No matched Service User Master record found for Port Ref: {rec.portRef}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* 4. Operational Notes */}
+                              <div className="p-2.5 bg-[#fcfbf9] rounded-xs border border-[#eee] space-y-1">
+                                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">
+                                  Occupancy &amp; Handover Notes
+                                </span>
+                                <p className="text-[11px] text-neutral-700">
+                                  Occupied: <strong>{rec.occupied || 'Yes'}</strong> • Void: <strong>{rec.isVoid || 'No'}{rec.voidReason ? ` (${rec.voidReason})` : ''}</strong>
+                                </p>
+                                <p className="text-[11px] text-neutral-600 italic bg-white p-1.5 rounded border border-[#e5e5e5] line-clamp-3">
+                                  {rec.suComments || 'No operational notes logged for this guest.'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>

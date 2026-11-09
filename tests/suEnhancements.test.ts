@@ -37,6 +37,27 @@ test('archive state is readable on a Service User', () => {
   assert.equal(su.archiveStatus, 'Archived');
 });
 
+test('service user safeguarding, evacuation and GP fields round-trip cleanly', () => {
+  const record = {
+    id: 'su-test-101',
+    suReference: 'SU-00101',
+    firstName: 'Amira',
+    lastName: 'Hassan',
+    status: 'Active',
+    vulnerable: 'Yes',
+    personalEvacuationPlan: 'PEEP – Personal Emergency Evacuation Plan',
+    gpRegistration: 'Ranworth Surgery',
+    disabilityCategory: 'Physical / Mobility',
+    disabilityType: 'Wheelchair user'
+  };
+  const back = roundTrip('service_users', record);
+  assert.equal(back.vulnerable, 'Yes');
+  assert.equal(back.personalEvacuationPlan, 'PEEP – Personal Emergency Evacuation Plan');
+  assert.equal(back.gpRegistration, 'Ranworth Surgery');
+  assert.equal(back.disabilityCategory, 'Physical / Mobility');
+  assert.equal(back.disabilityType, 'Wheelchair user');
+});
+
 test('roles: managers see everything, front-line staff see masked or blank identifiers', () => {
   assert.equal(isSuManager('General Manager'), true);
   assert.equal(isSuManager('Staff'), false);

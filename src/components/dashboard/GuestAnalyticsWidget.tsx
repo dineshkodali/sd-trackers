@@ -1,5 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { IconUsers as Users, IconArrowUpRight as ArrowUpRight, IconRefresh as RefreshCw } from '@tabler/icons-react';
+import { 
+  IconUsers as Users, 
+  IconArrowUpRight as ArrowUpRight, 
+  IconRefresh as RefreshCw,
+  IconWorld as Globe,
+  IconLanguage as Languages,
+  IconBuilding as Building,
+  IconTable as TableIcon,
+  IconChartBar as ChartBar
+} from '@tabler/icons-react';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useApp } from '../../context/AppContext';
 import { useGuestContext } from '../../hooks/useGuestContext';
@@ -23,7 +32,13 @@ const TEAL = '#0d9488';
 const BLUE = '#2563eb';
 const PURPLE = '#8764b8';
 const AMBER = '#d97706';
+const EMERALD = '#059669';
+const ROSE = '#e11d48';
+const INDIGO = '#4f46e5';
+const CYAN = '#0891b2';
 const GREY = '#a19f9d';
+
+const SLICE_COLORS = [TEAL, BLUE, PURPLE, AMBER, EMERALD, ROSE, INDIGO, CYAN, '#f59e0b', '#6366f1'];
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -70,6 +85,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
   const { dailyRegisterRecords, isSitePermitted, liveDataStatus } = useApp();
   const { ctx, loading: familiesLoading, error: familyError, reload } = useGuestContext();
   const [internalDate, setInternalDate] = useState<string>(today);
+  const [demographicView, setDemographicView] = useState<'matrix' | 'chart'>('matrix');
 
   const date = dateProp ?? internalDate;
   const setDate = onDateChange ?? setInternalDate;
@@ -116,6 +132,129 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
     { id: 'no', label: 'No card', value: stats.noAspen, color: GREY, filter: { aspen: 'no' } },
   ];
 
+  const { nationalitySlices, languageSlices, propertyBreakdown, totalWithNationality, totalWithLanguage } = useMemo(() => {
+    const natCounts: Record<string, number> = {};
+    const langCounts: Record<string, number> = {};
+    const propMap = new Map<string, {
+      hotel: string;
+      totalGuests: number;
+      nationalities: Record<string, number>;
+      languages: Record<string, number>;
+      adults: number;
+      children: number;
+      aspenHolders: number;
+    }>();
+
+    let withNat = 0;
+    let withLang = 0;
+
+    guests.forEach(g => {
+      const rec = g.record;
+      const nat = (rec.nationality || '').trim() || 'Unspecified';
+      const lang = (rec.language || '').trim() || 'Unspecified';
+      const hotel = (rec.hotel || '').trim() || 'Unassigned Property';
+
+      if (nat !== 'Unspecified') withNat++;
+      if (lang !== 'Unspecified') withLang++;
+
+      natCounts[nat] = (natCounts[nat] || 0) + 1;
+
+      // Handle compound or split languages
+      if (lang.includes('/') || lang.includes(',')) {
+        const parts = lang.split(/[\/,]/).map(s => s.trim()).filter(Boolean);
+        parts.forEach(p => {
+          langCounts[p] = (langCounts[p] || 0) + 1;
+        });
+      } else {
+        langCounts[lang] = (langCounts[lang] || 0) + 1;
+      }
+
+      if (!propMap.has(hotel)) {
+        propMap.set(hotel, {
+          hotel,
+          totalGuests: 0,
+          nationalities: {},
+          languages: {},
+          adults: 0,
+          children: 0,
+          aspenHolders: 0
+        });
+      }
+      const p = propMap.get(hotel)!;
+      p.totalGuests++;
+      p.nationalities[nat] = (p.nationalities[nat] || 0) + 1;
+      p.languages[lang] = (p.languages[lang] || 0) + 1;
+      if (g.ageCategory === 'child') p.children++; else p.adults++;
+      if (g.aspen) p.aspenHolders++;
+    });
+
+    const sortedNats = Object.entries(natCounts).sort((a, b) => b[1] - a[1]);
+    const natSlices: Slice[] = sortedNats.slice(0, 6).map(([label, value], idx) => ({
+      id: `nat-${label}`,
+      label,
+      value,
+      color: SLICE_COLORS[idx % SLICE_COLORS.length],
+      filter: {},
+      note: stats.total > 0 ? `${Math.round((value / stats.total) * 100)}%` : ''
+    }));
+    const otherNatCount = sortedNats.slice(6).reduce((sum, item) => sum + item[1], 0);
+    if (otherNatCount > 0) {
+      natSlices.push({
+        id: 'nat-other',
+        label: `Other (${sortedNats.length - 6} countries)`,
+        value: otherNatCount,
+        color: GREY,
+        filter: {},
+        note: stats.total > 0 ? `${Math.round((otherNatCount / stats.total) * 100)}%` : ''
+      });
+    }
+
+    const sortedLangs = Object.entries(langCounts).sort((a, b) => b[1] - a[1]);
+    const langSlices: Slice[] = sortedLangs.slice(0, 6).map(([label, value], idx) => ({
+      id: `lang-${label}`,
+      label,
+      value,
+      color: SLICE_COLORS[(idx + 2) % SLICE_COLORS.length],
+      filter: {},
+      note: stats.total > 0 ? `${Math.round((value / stats.total) * 100)}%` : ''
+    }));
+    const otherLangCount = sortedLangs.slice(6).reduce((sum, item) => sum + item[1], 0);
+    if (otherLangCount > 0) {
+      langSlices.push({
+        id: 'lang-other',
+        label: `Other (${sortedLangs.length - 6} languages)`,
+        value: otherLangCount,
+        color: GREY,
+        filter: {},
+        note: stats.total > 0 ? `${Math.round((otherLangCount / stats.total) * 100)}%` : ''
+      });
+    }
+
+    const propsList = Array.from(propMap.values()).map(p => {
+      const topNats = Object.entries(p.nationalities)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([name, count]) => ({ name, count }));
+      const topLangs = Object.entries(p.languages)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([name, count]) => ({ name, count }));
+      return {
+        ...p,
+        topNats,
+        topLangs
+      };
+    }).sort((a, b) => b.totalGuests - a.totalGuests);
+
+    return {
+      nationalitySlices: natSlices,
+      languageSlices: langSlices,
+      propertyBreakdown: propsList,
+      totalWithNationality: withNat,
+      totalWithLanguage: withLang
+    };
+  }, [guests, stats.total]);
+
   const families = (b: '2' | '3' | '4' | '5+') => ({ value: stats.familiesBySize[b], note: `${stats.guestsBySize[b]} guests` });
   const cards: Array<{ id: string; label: string; value: number; note?: string; filter: Partial<GuestFilter> }> = [
     { id: 'total', label: 'Total guests', value: stats.total, filter: {} },
@@ -126,10 +265,10 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
     { id: 'adult', label: 'Adults', value: stats.adult, note: '18 to 64', filter: { age: 'adult' } },
     { id: 'elderly', label: 'Elderly', value: stats.elderly, note: '65 and over', filter: { age: 'elderly' } },
     { id: 'aspen', label: 'Aspen card holders', value: stats.aspenHolders, filter: { aspen: 'yes' } },
+    { id: 'nationalities', label: 'Recorded Nationalities', value: totalWithNationality, note: `${stats.total > 0 ? Math.round((totalWithNationality / stats.total) * 100) : 0}% recorded`, filter: {} },
+    { id: 'languages', label: 'Recorded Languages', value: totalWithLanguage, note: `${stats.total > 0 ? Math.round((totalWithLanguage / stats.total) * 100) : 0}% recorded`, filter: {} },
     { id: 'f2', label: 'Families of 2', ...families('2'), filter: { family: '2' } },
     { id: 'f3', label: 'Families of 3', ...families('3'), filter: { family: '3' } },
-    { id: 'f4', label: 'Families of 4', ...families('4'), filter: { family: '4' } },
-    { id: 'f5', label: 'Families of 5+', ...families('5+'), filter: { family: '5+' } },
   ];
 
   const siteLabel = siteFilter === 'all' || siteFilter === 'All Sites' ? 'All permitted sites' : siteFilter;
@@ -264,6 +403,143 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
               {donut(aspen, 'Aspen card')}
               <Legend slices={aspen} onPick={s => open(s.filter)} />
             </ChartCard>
+            <ChartCard title="Top Recorded Nationalities" total={totalWithNationality}>
+              {donut(nationalitySlices, 'Nationalities')}
+              <Legend slices={nationalitySlices} onPick={s => open({})} />
+            </ChartCard>
+            <ChartCard title="Top Spoken Languages" total={totalWithLanguage}>
+              {donut(languageSlices, 'Languages')}
+              <Legend slices={languageSlices} onPick={s => open({})} />
+            </ChartCard>
+          </div>
+
+          {/* Property Demographics & Language Matrix Section */}
+          <div className="mt-5 border-t border-[#edebe9] pt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <Building className="w-4 h-4 text-[#0d9488]" />
+                <h4 className="text-xs font-bold text-[#242424] uppercase tracking-wider">
+                  Property Demographics Matrix (Nationalities &amp; Languages per Property)
+                </h4>
+                <span className="text-[10px] bg-teal-50 text-teal-800 font-semibold px-2 py-0.5 rounded border border-teal-200">
+                  {propertyBreakdown.length} Properties
+                </span>
+              </div>
+              <div className="inline-flex bg-[#faf9f8] p-0.5 border border-[#edebe9] rounded text-xs self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setDemographicView('matrix')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                    demographicView === 'matrix'
+                      ? 'bg-white text-[#242424] font-semibold shadow-xs'
+                      : 'text-[#605e5c] hover:text-[#242424]'
+                  }`}
+                >
+                  <TableIcon className="w-3.5 h-3.5 text-[#0d9488]" />
+                  <span>Table Matrix</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDemographicView('chart')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                    demographicView === 'chart'
+                      ? 'bg-white text-[#242424] font-semibold shadow-xs'
+                      : 'text-[#605e5c] hover:text-[#242424]'
+                  }`}
+                >
+                  <ChartBar className="w-3.5 h-3.5 text-[#0078d4]" />
+                  <span>Property Chart</span>
+                </button>
+              </div>
+            </div>
+
+            {demographicView === 'matrix' ? (
+              <div className="overflow-x-auto border border-[#edebe9] rounded-xs">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold">
+                      <th className="p-2.5">Property / Hotel</th>
+                      <th className="p-2.5 text-center">Headcount</th>
+                      <th className="p-2.5">Top Nationalities</th>
+                      <th className="p-2.5">Top Spoken Languages</th>
+                      <th className="p-2.5 text-right">Age Split</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#edebe9] text-[#323130] bg-white">
+                    {propertyBreakdown.map(p => (
+                      <tr key={p.hotel} className="hover:bg-[#faf9f8] transition-colors">
+                        <td className="p-2.5 font-semibold text-[#242424]">
+                          <div className="flex items-center gap-1.5">
+                            <Building className="w-3.5 h-3.5 text-neutral-400" />
+                            <span>{p.hotel}</span>
+                          </div>
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <span className="font-bold text-[#0d9488] bg-teal-50 px-2 py-0.5 rounded border border-teal-200 text-xs">
+                            {p.totalGuests} SUs
+                          </span>
+                        </td>
+                        <td className="p-2.5">
+                          <div className="flex flex-wrap gap-1">
+                            {p.topNats.length > 0 ? (
+                              p.topNats.map(nat => (
+                                <span
+                                  key={nat.name}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-800 border border-blue-200"
+                                >
+                                  <span>{nat.name}</span>
+                                  <strong className="text-blue-900">({nat.count})</strong>
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-neutral-400 italic text-[11px]">Unrecorded</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-2.5">
+                          <div className="flex flex-wrap gap-1">
+                            {p.topLangs.length > 0 ? (
+                              p.topLangs.map(lang => (
+                                <span
+                                  key={lang.name}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-50 text-teal-800 border border-teal-200"
+                                >
+                                  <span>{lang.name}</span>
+                                  <strong className="text-teal-900">({lang.count})</strong>
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-neutral-400 italic text-[11px]">Unrecorded</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-2.5 text-right font-medium text-neutral-600 text-[11px]">
+                          <span>{p.adults} Adults · {p.children} Children</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="bg-white border border-[#edebe9] rounded-xs p-4 h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={propertyBreakdown} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edebe9" />
+                    <XAxis dataKey="hotel" tick={{ fontSize: 10, fill: '#605e5c' }} angle={-25} textAnchor="end" interval={0} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#605e5c' }} />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      formatter={(val: any, _name: any, item: any) => [
+                        `${val} guests · Top: ${item?.payload?.topNats?.[0]?.name || 'N/A'} (${item?.payload?.topLangs?.[0]?.name || 'N/A'})`,
+                        item?.payload?.hotel
+                      ]}
+                    />
+                    <Bar dataKey="totalGuests" fill={TEAL} radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         </>
       )}

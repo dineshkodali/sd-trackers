@@ -47,7 +47,7 @@ const SHEET_TABS: SheetTabConfig[] = [
   { id: 'roomList', label: 'Room List' },
   { id: 'newArrivals', label: 'New Arrivals' },
   { id: 'families', label: 'Family Groups' },
-  { id: 'languages', label: 'Language Summary' },
+  { id: 'languages', label: 'Nationality & Language Summary' },
   { id: 'validation', label: 'Cross Checks & Validation' },
   { id: 'userGuide', label: 'User Guide' }
 ];

@@ -1,8 +1,16 @@
 import React, { useRef } from 'react';
-import { IconHeartHandshake as HeartHandshake, IconFileText as FileText, IconCloudUpload as UploadCloud, IconTrash as Trash2, IconCircleCheck as CheckCircle2 } from '@tabler/icons-react';
-import { ServiceUserDocument } from '../../types/masterData';
+import { IconHeartHandshake as HeartHandshake, IconFileText as FileText, IconCloudUpload as UploadCloud, IconTrash as Trash2, IconCircleCheck as CheckCircle2, IconShieldExclamation as ShieldAlert, IconFlame as Flame, IconStethoscope as Stethoscope } from '@tabler/icons-react';
+import { 
+  ServiceUserDocument, 
+  DISABILITY_CATEGORY_OPTIONS, 
+  DEFAULT_DISABILITY_TYPE_OPTIONS,
+  GP_PRACTICE_OPTIONS, 
+  EVACUATION_PLAN_OPTIONS, 
+  VULNERABLE_OPTIONS 
+} from '../../types/masterData';
 import { useApp } from '../../context/AppContext';
 import { getUserDropdownOptions } from '../../utils/userSelectOptions';
+import { OptionSelect } from '../common/OptionSelect';
 
 export interface SUSupportNeedsSectionProps {
   vulnerabilityFlags: string;
@@ -17,6 +25,17 @@ export interface SUSupportNeedsSectionProps {
   setSupportPriority: (val: 'Low' | 'Medium' | 'High' | 'Critical') => void;
   assignedStaff: string;
   setAssignedStaff: (val: string) => void;
+  // Needs, Safeguarding & Inspection Fields
+  disabilityCategory?: string;
+  setDisabilityCategory?: (val: string) => void;
+  disabilityType?: string;
+  setDisabilityType?: (val: string) => void;
+  vulnerable?: 'Yes' | 'No';
+  setVulnerable?: (val: 'Yes' | 'No') => void;
+  personalEvacuationPlan?: string;
+  setPersonalEvacuationPlan?: (val: string) => void;
+  gpRegistration?: string;
+  setGpRegistration?: (val: string) => void;
 }
 
 export const SUSupportNeedsSection: React.FC<SUSupportNeedsSectionProps> = ({
@@ -31,13 +50,136 @@ export const SUSupportNeedsSection: React.FC<SUSupportNeedsSectionProps> = ({
   supportPriority,
   setSupportPriority,
   assignedStaff,
-  setAssignedStaff
+  setAssignedStaff,
+  disabilityCategory = 'None',
+  setDisabilityCategory,
+  disabilityType = '',
+  setDisabilityType,
+  vulnerable = 'No',
+  setVulnerable,
+  personalEvacuationPlan = 'GEEP – General Emergency Evacuation Plan',
+  setPersonalEvacuationPlan,
+  gpRegistration = '',
+  setGpRegistration
 }) => {
   const { users } = useApp();
   const userOptions = getUserDropdownOptions(users);
 
   return (
     <div className="space-y-4">
+      {/* Safeguarding, Evacuation & Health Profile (Core Inspection Fields) */}
+      <div className="p-3.5 bg-[#faf9f8] border border-[#e5e5e5] rounded-xs space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-[#f0f0f0]">
+          <h4 className="font-bold text-xs text-[#242424] flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4 text-[#0d9488]" />
+            <span>Inspection &amp; Safeguarding Profile</span>
+          </h4>
+          <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
+            Mandatory Inspection Standards
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Vulnerable Status */}
+          <div>
+            <label className="block text-neutral-600 font-semibold mb-1 flex items-center justify-between">
+              <span>Vulnerable Resident</span>
+              {vulnerable === 'Yes' && (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded">
+                  Flagged Vulnerable
+                </span>
+              )}
+            </label>
+            <select
+              value={vulnerable}
+              onChange={e => setVulnerable && setVulnerable(e.target.value as 'Yes' | 'No')}
+              className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] font-medium"
+            >
+              {VULNERABLE_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-neutral-400 mt-0.5">
+              Identifies residents requiring active safeguarding monitoring.
+            </p>
+          </div>
+
+          {/* Personal Evacuation Plan */}
+          <div>
+            <label className="block text-neutral-600 font-semibold mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 text-rose-600" />
+                <span>Personal Evacuation Plan</span>
+              </span>
+              {personalEvacuationPlan.startsWith('PEEP') && (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 bg-rose-100 text-rose-800 rounded">
+                  PEEP Required
+                </span>
+              )}
+            </label>
+            <select
+              value={personalEvacuationPlan}
+              onChange={e => setPersonalEvacuationPlan && setPersonalEvacuationPlan(e.target.value)}
+              className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] font-medium"
+            >
+              {EVACUATION_PLAN_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-neutral-400 mt-0.5">
+              PEEP is required for individuals needing emergency evacuation assistance.
+            </p>
+          </div>
+
+          {/* GP Registration */}
+          <div className="sm:col-span-2">
+            <OptionSelect
+              label="GP Registration"
+              category="gpPractices"
+              value={gpRegistration}
+              onChange={val => setGpRegistration && setGpRegistration(val)}
+              fallback={[...GP_PRACTICE_OPTIONS]}
+              placeholder="-- Select Registered GP Practice --"
+              allowAdd={true}
+            />
+            <p className="text-[10px] text-neutral-400 mt-0.5">
+              Assigned NHS GP medical practice. Click + Add to record additional GP practices.
+            </p>
+          </div>
+
+          {/* Disability Category */}
+          <div>
+            <OptionSelect
+              label="Disability Category"
+              category="disabilityCategories"
+              value={disabilityCategory}
+              onChange={val => setDisabilityCategory && setDisabilityCategory(val)}
+              fallback={[...DISABILITY_CATEGORY_OPTIONS]}
+              placeholder="Select Disability Category..."
+              allowAdd={true}
+            />
+            <p className="text-[10px] text-neutral-400 mt-0.5">
+              Broad statutory disability classification. All users can add and manage options.
+            </p>
+          </div>
+
+          {/* Disability Type */}
+          <div>
+            <OptionSelect
+              label="Disability Type / Specification"
+              category="disabilityTypes"
+              value={disabilityType}
+              onChange={val => setDisabilityType && setDisabilityType(val)}
+              fallback={[...DEFAULT_DISABILITY_TYPE_OPTIONS]}
+              placeholder="Select or add disability type..."
+              allowAdd={true}
+            />
+            <p className="text-[10px] text-neutral-400 mt-0.5">
+              Specific disability condition or physical accessibility need. Click + Add to create new types.
+            </p>
+          </div>
+        </div>
+      </div>
       <div className="p-3.5 bg-[#faf9f8] border border-[#e5e5e5] rounded-xs space-y-3">
         <h4 className="font-bold text-xs text-[#242424] flex items-center gap-1.5 pb-2 border-b border-[#f0f0f0]">
           <HeartHandshake className="w-3.5 h-3.5 text-[#0d9488]" />

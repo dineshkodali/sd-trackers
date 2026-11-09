@@ -2,6 +2,49 @@
  * SDTracker - Centralised Service User & Property Management Master Types
  */
 
+export const VULNERABLE_OPTIONS = ['No', 'Yes'] as const;
+export type VulnerableOption = (typeof VULNERABLE_OPTIONS)[number];
+
+export const EVACUATION_PLAN_OPTIONS = [
+  'PEEP – Personal Emergency Evacuation Plan',
+  'GEEP – General Emergency Evacuation Plan'
+] as const;
+export type EvacuationPlanOption = (typeof EVACUATION_PLAN_OPTIONS)[number];
+
+export const GP_PRACTICE_OPTIONS = [
+  'Ranworth Surgery',
+  'East Lynne Medical Centre',
+  'St James Surgery',
+  'Old Road Medical Practice'
+] as const;
+export type GpPracticeOption = (typeof GP_PRACTICE_OPTIONS)[number];
+
+export const DISABILITY_CATEGORY_OPTIONS = [
+  'None',
+  'Physical / Mobility',
+  'Sensory Impairment',
+  'Mental Health',
+  'Cognitive & Learning',
+  'Chronic Medical Condition',
+  'Multiple Disabilities',
+  'Other'
+] as const;
+export type DisabilityCategoryOption = (typeof DISABILITY_CATEGORY_OPTIONS)[number];
+
+export const DEFAULT_DISABILITY_TYPE_OPTIONS = [
+  'Wheelchair User / Reduced Mobility',
+  'Visual Impairment / Blind',
+  'Hearing Impairment / Deaf',
+  'Severe Mental Health / Complex PTSD',
+  'Epilepsy / Seizure Disorder',
+  'Chronic Illness / Diabetes',
+  'Cognitive / Memory Impairment',
+  'Autism Spectrum / Neurodivergent',
+  'Speech / Communication Impairment',
+  'Other'
+] as const;
+export type DisabilityTypeOption = (typeof DEFAULT_DISABILITY_TYPE_OPTIONS)[number];
+
 export interface ServiceUserMaster {
   id: string;
   suReference: string; // Human readable: e.g. SU-000001
@@ -23,6 +66,12 @@ export interface ServiceUserMaster {
   referralDate?: string;
   arrivalDate?: string;
   siteId?: string;
+  // Needs, Safeguarding & Inspection Fields
+  disabilityCategory?: string;
+  disabilityType?: string;
+  vulnerable?: 'Yes' | 'No' | string;
+  personalEvacuationPlan?: 'PEEP – Personal Emergency Evacuation Plan' | 'GEEP – General Emergency Evacuation Plan' | string;
+  gpRegistration?: string;
   createdAt?: string;
   updatedAt?: string;
 }

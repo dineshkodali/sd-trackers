@@ -476,6 +476,8 @@ export type FieldOptionCategory =
   | 'peepAssistance'
   | 'gpPractices'
   | 'gpPharmacies'
+  | 'disabilityCategories'
+  | 'disabilityTypes'
   | 'maintenanceStatuses'
   | 'propertyRoomTypes'
   | 'propertyStatuses'

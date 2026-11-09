@@ -2528,6 +2528,11 @@ CREATE TABLE IF NOT EXISTS public.service_users (
   referral_date DATE,
   arrival_date DATE,
   site_id TEXT REFERENCES public.sites(id) ON DELETE SET NULL,
+  disability_category TEXT DEFAULT 'None',
+  disability_type TEXT,
+  vulnerable TEXT NOT NULL DEFAULT 'No' CHECK (vulnerable IN ('Yes', 'No')),
+  personal_evacuation_plan TEXT NOT NULL DEFAULT 'GEEP – General Emergency Evacuation Plan' CHECK (personal_evacuation_plan IN ('PEEP – Personal Emergency Evacuation Plan', 'GEEP – General Emergency Evacuation Plan')),
+  gp_registration TEXT,
   data JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -2538,6 +2543,10 @@ CREATE INDEX IF NOT EXISTS idx_service_users_status ON public.service_users(stat
 CREATE INDEX IF NOT EXISTS idx_service_users_site_id ON public.service_users(site_id);
 CREATE INDEX IF NOT EXISTS idx_service_users_ref ON public.service_users(su_reference);
 CREATE INDEX IF NOT EXISTS idx_service_users_ext_ref ON public.service_users(external_reference);
+CREATE INDEX IF NOT EXISTS idx_service_users_vulnerable ON public.service_users(vulnerable);
+CREATE INDEX IF NOT EXISTS idx_service_users_pep ON public.service_users(personal_evacuation_plan);
+CREATE INDEX IF NOT EXISTS idx_service_users_disability_cat ON public.service_users(disability_category);
+CREATE INDEX IF NOT EXISTS idx_service_users_gp ON public.service_users(gp_registration);
 
 DROP TRIGGER IF EXISTS trg_service_users_updated_at ON public.service_users;
 CREATE TRIGGER trg_service_users_updated_at
