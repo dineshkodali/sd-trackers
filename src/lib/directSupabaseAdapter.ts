@@ -197,7 +197,19 @@ export const ENTITY_TABLE_MAP: Record<string, EntityMapping> = {
   foodConsumption: { table: 'food_consumption_reports' },
   food_consumption_reports: { table: 'food_consumption_reports' },
   foodBoxRequests: { table: 'food_box_requests' },
-  food_box_requests: { table: 'food_box_requests' }
+  food_box_requests: { table: 'food_box_requests' },
+
+  // HO Report Templates & Records
+  hoReportTemplates: { table: 'ho_report_templates' },
+  ho_report_templates: { table: 'ho_report_templates' },
+  hoReportRecords: { table: 'ho_report_records' },
+  ho_report_records: { table: 'ho_report_records' },
+  hoReportAuditLogs: { table: 'ho_report_audit_logs' },
+  ho_report_audit_logs: { table: 'ho_report_audit_logs' },
+
+  // Service User Report History (migration 031)
+  suReportHistory: { table: 'service_user_report_history' },
+  service_user_report_history: { table: 'service_user_report_history' }
 };
 
 /**

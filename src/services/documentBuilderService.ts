@@ -14,7 +14,7 @@ import type {
   DocumentBuilderApiResponse,
 } from '../types/documentBuilder';
 
-import { authHeaders } from './apiService';
+import { authHeaders, getApiUrl } from './apiService';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...authHeaders() };
@@ -83,7 +83,7 @@ async function apiFetch<T>(
 ): Promise<DocumentBuilderApiResponse<T>> {
   try {
     const authHeaders = await getAuthHeaders();
-    const res = await fetch(`/api/document-builder${path}`, {
+    const res = await fetch(getApiUrl(`/api/document-builder${path}`), {
       ...options,
       headers: { ...authHeaders, ...(options.headers || {}) },
     });
@@ -233,7 +233,7 @@ export async function generateDocument(
       ? `/api/document-builder/records/${recordId}/generate/${format}`
       : `/api/document-builder/generate/${format}`;
 
-    const res = await fetch(endpoint, {
+    const res = await fetch(getApiUrl(endpoint), {
       method: 'POST',
       headers: {
         ...authHeaders,

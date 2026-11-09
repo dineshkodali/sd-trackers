@@ -149,18 +149,22 @@ export function isDirectSupabaseActive(): boolean {
 
 export function enableDirectSupabaseFallback(): void {
   directFallbackActive = true;
+}
+
+export function clearDirectSupabaseFallback(): void {
+  directFallbackActive = false;
   if (typeof window !== 'undefined') {
     try {
-      sessionStorage.setItem('sd_direct_supabase', 'true');
+      sessionStorage.removeItem('sd_direct_supabase');
     } catch {}
   }
 }
 
 export function shouldPreferDirectSupabase(): boolean {
   if (typeof window !== 'undefined') {
+    // Only prefer direct mode if explicitly configured by the user/admin
     try {
-      if (sessionStorage.getItem('sd_direct_supabase') === 'true') {
-        directFallbackActive = true;
+      if (localStorage.getItem('sd_force_direct_mode') === 'true') {
         return true;
       }
     } catch {}
@@ -169,12 +173,9 @@ export function shouldPreferDirectSupabase(): boolean {
     const envVal = (import.meta as any).env?.VITE_API_URL || '';
     if (!envVal) {
       const host = window.location.hostname;
-      if (
-        host.endsWith('amplifyapp.com') ||
-        host.includes('amplify') ||
-        host.endsWith('sdcdms.co.uk') ||
-        host.includes('sdcdms')
-      ) {
+      // Only prefer direct mode on static AWS Amplify bucket URLs (amplifyapp.com)
+      // Never force direct mode on custom domains (e.g. sdcdms.co.uk) or local development
+      if (host.endsWith('amplifyapp.com') && !host.includes('sdcdms')) {
         return true;
       }
     }
@@ -225,38 +226,14 @@ export function getApiUrl(path: string): string {
   return base ? `${base}${cleanPath}` : cleanPath;
 }
 
-/**
- * On static hosting (Amplify / CloudFront / S3) there is no Express backend, so every
- * same-origin /api/* request can only come back as a 404 page. The app already falls back
- * to the direct Supabase path when such a call fails, so answer them locally with a JSON 503
- * instead of sending requests that clutter the network tab and the console with errors.
- */
-function installNoBackendApiGuard(): void {
-  if (typeof window === 'undefined') return;
-  const w = window as any;
-  if (w.__sdApiGuardInstalled) return;
-  w.__sdApiGuardInstalled = true;
-
-  const nativeFetch = window.fetch.bind(window);
-  window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    try {
-      const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-      const target = new URL(raw, window.location.origin);
-      const isLocalApi = target.origin === window.location.origin && target.pathname.startsWith('/api/');
-      if (isLocalApi && (shouldPreferDirectSupabase() || isDirectSupabaseActive()) && !getApiBaseUrl()) {
-        return Promise.resolve(new Response(
-          JSON.stringify({ success: false, error: 'Backend API is not available on this host; using direct database mode.' }),
-          { status: 503, headers: { 'Content-Type': 'application/json' } }
-        ));
-      }
-    } catch {
-      // fall through to the real fetch
+// Clear any stale direct Supabase session flags from earlier sessions
+if (typeof window !== 'undefined') {
+  try {
+    if (localStorage.getItem('sd_force_direct_mode') !== 'true') {
+      sessionStorage.removeItem('sd_direct_supabase');
     }
-    return nativeFetch(input, init);
-  };
+  } catch {}
 }
-
-installNoBackendApiGuard();
 
 /** Fast fetch with configurable timeout to prevent blocking on dead or static endpoints */
 export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 3000): Promise<Response> {

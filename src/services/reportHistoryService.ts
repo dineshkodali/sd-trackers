@@ -5,7 +5,7 @@
  * and Super Admin archive management.
  */
 
-import { authHeaders } from './apiService';
+import { authHeaders, getApiUrl } from './apiService';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 import type { ServiceUserReportRecord, TrackReportInput } from '../types/reportHistory';
 
@@ -94,7 +94,7 @@ export const reportHistoryService = {
         fileBase64 = await blobToBase64(input.fileBlob);
       }
 
-      const res = await fetch('/api/report-history/track', {
+      const res = await fetch(getApiUrl('/api/report-history/track'), {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -124,7 +124,7 @@ export const reportHistoryService = {
       const params = new URLSearchParams();
       if (options?.includeArchived) params.set('includeArchived', 'true');
 
-      const res = await fetch(`/api/report-history/su/${encodeURIComponent(suId)}?${params.toString()}`, {
+      const res = await fetch(getApiUrl(`/api/report-history/su/${encodeURIComponent(suId)}${params.toString() ? `?${params.toString()}` : ''}`), {
         headers
       });
 
@@ -145,7 +145,7 @@ export const reportHistoryService = {
   async downloadReport(record: ServiceUserReportRecord): Promise<{ success: boolean; error?: string }> {
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`/api/report-history/${encodeURIComponent(record.id)}/download`, {
+      const res = await fetch(getApiUrl(`/api/report-history/${encodeURIComponent(record.id)}/download`), {
         headers
       });
 
@@ -179,7 +179,7 @@ export const reportHistoryService = {
   ): Promise<{ success: boolean; data?: ServiceUserReportRecord; error?: string }> {
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`/api/report-history/${encodeURIComponent(id)}`, {
+      const res = await fetch(getApiUrl(`/api/report-history/${encodeURIComponent(id)}`), {
         method: 'PATCH',
         headers,
         body: JSON.stringify(updates)
@@ -205,7 +205,7 @@ export const reportHistoryService = {
   ): Promise<{ success: boolean; data?: ServiceUserReportRecord; error?: string }> {
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`/api/report-history/${encodeURIComponent(id)}/archive`, {
+      const res = await fetch(getApiUrl(`/api/report-history/${encodeURIComponent(id)}/archive`), {
         method: 'POST',
         headers,
         body: JSON.stringify({ archive })
@@ -228,7 +228,7 @@ export const reportHistoryService = {
   async deletePermanently(id: string): Promise<{ success: boolean; error?: string }> {
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`/api/report-history/${encodeURIComponent(id)}`, {
+      const res = await fetch(getApiUrl(`/api/report-history/${encodeURIComponent(id)}`), {
         method: 'DELETE',
         headers
       });
@@ -250,7 +250,7 @@ export const reportHistoryService = {
   async fetchAuditTrail(id: string): Promise<{ success: boolean; data: any[]; error?: string }> {
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`/api/report-history/${encodeURIComponent(id)}/audit`, {
+      const res = await fetch(getApiUrl(`/api/report-history/${encodeURIComponent(id)}/audit`), {
         headers
       });
 
