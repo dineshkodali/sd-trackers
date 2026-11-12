@@ -10,6 +10,7 @@ import { Sidebar } from './components/common/Sidebar';
 import { ConfirmationModal } from './components/common/ConfirmationModal';
 import { SessionLockModal } from './components/common/SessionLockModal';
 import { DashboardView } from './components/dashboard/DashboardView';
+import { OperationsDashboardView } from './components/operations/OperationsDashboardView';
 import { ReferralsView } from './components/referrals/ReferralsView';
 import { VulnerableView } from './components/vulnerable/VulnerableView';
 import { ChallengingView } from './components/challenging/ChallengingView';
@@ -242,6 +243,8 @@ function AppLayout() {
           : <AccessDeniedView pageName="Page Access Management" requiredRole="Super Admin" />;
       case 'dashboard':
         return <DashboardView />;
+      case 'operations':
+        return <OperationsDashboardView />;
       case 'referrals':
         return <ReferralsView isArchive={false} />;
       case 'referralsArchive':

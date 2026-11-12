@@ -2,7 +2,9 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconTool as Wrench, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconX as X, IconBook as BookOpen, IconFlame as Flame, IconHammer as Hammer, IconEye as Eye, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
-import { calculateDueDate, getPriorityRule } from '../../utils/maintenancePriority';
+import { calculateDueDate, getPriorityRule, getSlaInfo, slaLabel, formatDuration, nowTime, DUE_SOON_HOURS, isMaintenanceClosed } from '../../utils/maintenancePriority';
+import { useNavigationIntent } from '../../hooks/useNavigationIntent';
+import { IntentFilterBanner } from '../common/IntentFilterBanner';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';
 import { MAINTENANCE_CRITERIA_LIST, MaintenanceCriteria } from '../../data/maintenanceCriteria';
 import { Pagination } from '../common/Pagination';
@@ -32,7 +34,8 @@ const maintenanceExportColumns: ExportColumnOption[] = [
   { id: 'criteriaCode', label: 'HO Criteria Code' },
   { id: 'description', label: 'Defect Description' },
   { id: 'raisedBy', label: 'Raised By' },
-  { id: 'closeDueDate', label: 'Close Due Date' },
+  { id: 'closeDueDate', label: 'Complete By' },
+  { id: 'slaStatus', label: 'Complete By Status' },
   { id: 'defectStatus', label: 'Defect Status' },
   { id: 'action', label: 'Action' },
   { id: 'progress', label: 'Progress Details' },
@@ -81,6 +84,17 @@ export const MaintenanceTrackerView: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [actionFilter, setActionFilter] = useState<string>('all');
+  const [slaFilter, setSlaFilter] = useState<string>('all');
+  // Set when this page was opened from a link asking for open defects only (not Completed, not Closed).
+  const [openOnly, setOpenOnly] = useState<boolean>(false);
+
+  // The clock the Complete By status is measured against; refreshed every minute so a defect
+  // turns overdue on screen without a reload.
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Sync with active property switcher in Header
@@ -270,13 +284,32 @@ export const MaintenanceTrackerView: React.FC = () => {
     setEditLastSavedTime(null);
   };
 
+  // Opened from a link (e.g. the operations dashboard): apply its filters, replacing the page's own so the
+  // rows match the number that was clicked, and open the record if one was named.
+  useNavigationIntent('maintenance', intent => {
+    const f = intent.filters;
+    setSlaFilter(f.sla || 'all');
+    setPriorityFilter(f.priority || 'all');
+    setOpenOnly(f.open === '1');
+    setStatusFilter('all');
+    setActionFilter('all');
+    setSearchQuery('');
+    setCurrentPage(1);
+    if (intent.recordId) {
+      const target = maintenanceRecords.find(r => r.id === intent.recordId);
+      if (target) setViewRecord(target);
+    }
+  });
+
   // Filtered maintenance list
   const filteredRecords = useMemo(() => {
     return maintenanceRecords.filter(item => {
       if (!isSitePermitted(item.site, siteFilter)) return false;
+      if (openOnly && isMaintenanceClosed(item)) return false;
       if (priorityFilter !== 'all' && item.priority !== priorityFilter) return false;
       if (statusFilter !== 'all' && item.defectStatus !== statusFilter) return false;
       if (actionFilter !== 'all' && item.action !== actionFilter) return false;
+      if (slaFilter !== 'all' && getSlaInfo(item, now).state !== slaFilter) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return (
@@ -289,7 +322,7 @@ export const MaintenanceTrackerView: React.FC = () => {
       }
       return true;
     });
-  }, [maintenanceRecords, siteFilter, priorityFilter, statusFilter, actionFilter, searchQuery]);
+  }, [maintenanceRecords, siteFilter, priorityFilter, statusFilter, actionFilter, slaFilter, openOnly, now, searchQuery]);
 
   // Sort State
   const [sortField, setSortField] = useState<keyof MaintenanceRecord>('date');
@@ -331,8 +364,12 @@ export const MaintenanceTrackerView: React.FC = () => {
     const inProcess = filteredRecords.filter(r => r.defectStatus === 'In Process').length;
     const completed = filteredRecords.filter(r => r.defectStatus === 'Completed').length;
     const openActions = filteredRecords.filter(r => r.action === 'Open').length;
-    return { total, cat1Emergency, cat2Interim, inProcess, completed, openActions };
-  }, [filteredRecords]);
+    const sla = filteredRecords.map(r => getSlaInfo(r, now).state);
+    const overdue = sla.filter(x => x === 'overdue').length;
+    const dueSoon = sla.filter(x => x === 'due-soon').length;
+    const completedLate = sla.filter(x => x === 'completed-late').length;
+    return { total, cat1Emergency, cat2Interim, inProcess, completed, openActions, overdue, dueSoon, completedLate };
+  }, [filteredRecords, now]);
 
   // When selecting criteria in create form
   const handleSelectCriteria = (c: MaintenanceCriteria) => {
@@ -398,7 +435,8 @@ export const MaintenanceTrackerView: React.FC = () => {
 
     updateMaintenanceRecord(editingRecord.id, {
       ...editingRecord,
-      actualClosedDate
+      actualClosedDate,
+      actualClosedTime: isCompleting && !editingRecord.actualClosedDate && !editingRecord.actualClosedTime ? nowTime() : editingRecord.actualClosedTime
     });
 
     clearFormDraft(getDraftKeyMaintenanceEdit(editingRecord.id));
@@ -413,6 +451,7 @@ export const MaintenanceTrackerView: React.FC = () => {
       defectStatus: 'Completed',
       action: 'Closed',
       actualClosedDate: today,
+      actualClosedTime: nowTime(),
       progress: 'Work Completed & Inspected'
     });
   };
@@ -435,7 +474,8 @@ export const MaintenanceTrackerView: React.FC = () => {
     criteriaCode: { label: 'Criteria', getValue: r => r.criteriaCode || '—' },
     description: { label: 'Description', getValue: r => r.description },
     raisedBy: { label: 'Raised By', getValue: r => r.raisedBy },
-    closeDueDate: { label: 'Due Date', getValue: r => r.closeDueDate },
+    closeDueDate: { label: 'Complete By', getValue: r => r.closeDueDate || '—' },
+    slaStatus: { label: 'Complete By Status', getValue: r => slaLabel(getSlaInfo(r, now)) },
     defectStatus: { label: 'Defect Status', getValue: r => r.defectStatus },
     action: { label: 'Action', getValue: r => r.action },
     progress: { label: 'Progress', getValue: r => r.progress || '—' },
@@ -513,6 +553,7 @@ export const MaintenanceTrackerView: React.FC = () => {
           { label: 'Priority Filter', value: priorityFilter },
           { label: 'Defect Status', value: statusFilter },
           { label: 'Action Filter', value: actionFilter },
+          { label: 'Complete By Filter', value: slaFilter },
           { label: 'Export Scope', value: scope === 'all' ? 'All Records' : scope === 'filtered' ? 'Current Filtered View' : `${startDate} to ${endDate}` },
           { label: 'Page Layout', value: orientation },
           { label: 'Total Defects', value: dataToExport.length }
@@ -608,6 +649,22 @@ export const MaintenanceTrackerView: React.FC = () => {
     return MAINTENANCE_CRITERIA_LIST.filter(c => c.section === selectedCriteriaSection);
   }, [selectedCriteriaSection]);
 
+  // Complete By time with where the defect stands against it
+  const renderCompleteBy = (item: MaintenanceRecord) => {
+    const info = getSlaInfo(item, now);
+    const pill = 'ml-1.5 text-[9px] font-bold px-1 py-0.5 rounded';
+    return (
+      <span className="inline-flex items-center whitespace-nowrap" title={slaLabel(info)}>
+        <span className={`font-mono text-[11px] ${info.state === 'overdue' ? 'text-red-800 font-bold' : 'text-neutral-700'}`}>
+          {item.closeDueDate || '—'}
+        </span>
+        {info.state === 'overdue' && <span className={`${pill} bg-red-100 text-red-800`}>OVERDUE {formatDuration(info.ms!)}</span>}
+        {info.state === 'due-soon' && <span className={`${pill} bg-amber-100 text-amber-800`}>DUE IN {formatDuration(info.ms!)}</span>}
+        {info.state === 'completed-late' && <span className={`${pill} bg-neutral-200 text-neutral-700`}>LATE {formatDuration(info.ms!)}</span>}
+      </span>
+    );
+  };
+
   const renderColumnCell = (col: TableColumnConfig<MaintenanceRecord>, item: MaintenanceRecord) => {
     const val = (item as any)[col.key];
 
@@ -671,13 +728,7 @@ export const MaintenanceTrackerView: React.FC = () => {
     }
 
     if (col.key === 'closeDueDate') {
-      const isCat1 = item.priority === 'CAT 1';
-      const isClosed = item.defectStatus === 'Completed' || item.action === 'Closed';
-      return (
-        <span className={`px-1.5 py-0.5 rounded font-mono text-[11px] ${isCat1 && !isClosed ? 'bg-red-100 text-red-800 font-bold' : 'text-neutral-700'}`}>
-          {item.closeDueDate || '—'}
-        </span>
-      );
+      return renderCompleteBy(item);
     }
 
     if (col.key === 'defectStatus') {
@@ -689,7 +740,8 @@ export const MaintenanceTrackerView: React.FC = () => {
             updateMaintenanceRecord(item.id, {
               defectStatus: newStatus,
               action: newStatus === 'Completed' ? 'Closed' : item.action,
-              actualClosedDate: newStatus === 'Completed' ? (item.actualClosedDate || new Date().toISOString().slice(0, 10)) : item.actualClosedDate
+              actualClosedDate: newStatus === 'Completed' ? (item.actualClosedDate || new Date().toISOString().slice(0, 10)) : item.actualClosedDate,
+              actualClosedTime: newStatus === 'Completed' && !item.actualClosedDate && !item.actualClosedTime ? nowTime() : item.actualClosedTime
             });
           }}
           className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
@@ -716,7 +768,8 @@ export const MaintenanceTrackerView: React.FC = () => {
             updateMaintenanceRecord(item.id, {
               action: newAction,
               defectStatus: newAction === 'Closed' ? 'Completed' : item.defectStatus,
-              actualClosedDate: newAction === 'Closed' ? (item.actualClosedDate || new Date().toISOString().slice(0, 10)) : item.actualClosedDate
+              actualClosedDate: newAction === 'Closed' ? (item.actualClosedDate || new Date().toISOString().slice(0, 10)) : item.actualClosedDate,
+              actualClosedTime: newAction === 'Closed' && !item.actualClosedDate && !item.actualClosedTime ? nowTime() : item.actualClosedTime
             });
           }}
           className={`px-2 py-0.5 text-[11px] font-semibold rounded border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#0078d4] ${
@@ -848,7 +901,7 @@ export const MaintenanceTrackerView: React.FC = () => {
         </div>
 
         {/* Filter Bar integrated into the same card */}
-        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
@@ -913,11 +966,30 @@ export const MaintenanceTrackerView: React.FC = () => {
               <option value="Closed">Closed</option>
             </select>
           </div>
+
+          <div>
+            <select
+              id="filter-maintenance-complete-by"
+              aria-label="Filter by Complete By status"
+              value={slaFilter}
+              onChange={e => { setSlaFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              <option value="all">All Complete By Statuses</option>
+              <option value="overdue">Overdue</option>
+              <option value="due-soon">Due within {DUE_SOON_HOURS} hours</option>
+              <option value="on-track">On track</option>
+              <option value="completed-on-time">Completed on time</option>
+              <option value="completed-late">Completed late</option>
+            </select>
+          </div>
         </div>
       </div>
 
+      {openOnly && <IntentFilterBanner label="Showing open defects only (not Completed or Closed)" onClear={() => { setOpenOnly(false); setCurrentPage(1); }} />}
+
       {/* KPI Metric Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
         <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs shadow-xs">
           <div className="flex items-center justify-between text-[#605e5c] text-xs">
             <span>Total Tickets</span>
@@ -926,6 +998,36 @@ export const MaintenanceTrackerView: React.FC = () => {
           <div className="text-2xl font-bold text-[#242424] mt-1.5">{stats.total}</div>
           <div className="text-[11px] text-[#605e5c]">Across permitted sites</div>
         </div>
+
+        <button
+          type="button"
+          id="card-maintenance-overdue"
+          onClick={() => { setSlaFilter(slaFilter === 'overdue' ? 'all' : 'overdue'); setCurrentPage(1); }}
+          title="Show overdue defects"
+          className={`text-left border p-3 rounded-xs shadow-xs cursor-pointer transition-colors ${stats.overdue > 0 ? 'border-red-300 bg-red-50' : 'border-[#e1dfdd] bg-white'} ${slaFilter === 'overdue' ? 'ring-2 ring-red-400' : ''}`}
+        >
+          <div className={`flex items-center justify-between text-xs ${stats.overdue > 0 ? 'text-red-700' : 'text-[#605e5c]'}`}>
+            <span className="font-semibold">Overdue</span>
+            <AlertTriangle className={`w-3.5 h-3.5 ${stats.overdue > 0 ? 'text-red-600' : 'text-neutral-400'}`} />
+          </div>
+          <div className={`text-2xl font-bold mt-1.5 ${stats.overdue > 0 ? 'text-red-800' : 'text-[#242424]'}`}>{stats.overdue}</div>
+          <div className={`text-[11px] ${stats.overdue > 0 ? 'text-red-700 font-medium' : 'text-[#605e5c]'}`}>Past Complete By, still open</div>
+        </button>
+
+        <button
+          type="button"
+          id="card-maintenance-due-soon"
+          onClick={() => { setSlaFilter(slaFilter === 'due-soon' ? 'all' : 'due-soon'); setCurrentPage(1); }}
+          title={`Show defects due within ${DUE_SOON_HOURS} hours`}
+          className={`text-left border p-3 rounded-xs shadow-xs cursor-pointer transition-colors ${stats.dueSoon > 0 ? 'border-amber-200 bg-amber-50' : 'border-[#e1dfdd] bg-white'} ${slaFilter === 'due-soon' ? 'ring-2 ring-amber-400' : ''}`}
+        >
+          <div className={`flex items-center justify-between text-xs ${stats.dueSoon > 0 ? 'text-amber-800' : 'text-[#605e5c]'}`}>
+            <span className="font-semibold">Due in {DUE_SOON_HOURS} Hours</span>
+            <Clock className={`w-3.5 h-3.5 ${stats.dueSoon > 0 ? 'text-amber-600' : 'text-neutral-400'}`} />
+          </div>
+          <div className={`text-2xl font-bold mt-1.5 ${stats.dueSoon > 0 ? 'text-amber-800' : 'text-[#242424]'}`}>{stats.dueSoon}</div>
+          <div className={`text-[11px] ${stats.dueSoon > 0 ? 'text-amber-700' : 'text-[#605e5c]'}`}>Open, not yet overdue</div>
+        </button>
 
         <div className="bg-white border border-red-200 bg-red-50/40 p-3 rounded-xs shadow-xs">
           <div className="flex items-center justify-between text-red-700 text-xs">
@@ -960,7 +1062,7 @@ export const MaintenanceTrackerView: React.FC = () => {
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
           </div>
           <div className="text-2xl font-bold text-emerald-800 mt-1.5">{stats.completed}</div>
-          <div className="text-[11px] text-emerald-700">Verified & signed off</div>
+          <div className="text-[11px] text-emerald-700">{stats.completedLate > 0 ? `${stats.completedLate} closed late` : 'Verified & signed off'}</div>
         </div>
 
         <div className="bg-white border border-[#e1dfdd] p-3 rounded-xs shadow-xs">
@@ -999,7 +1101,7 @@ export const MaintenanceTrackerView: React.FC = () => {
                       { label: 'Priority', value: renderColumnCell({ key: 'priority' } as any, item) },
                       { label: 'Room / Unit', value: item.room },
                       { label: 'Report Date', value: item.date },
-                      { label: 'Due Date', value: item.closeDueDate }
+                      { label: 'Complete By', value: renderCompleteBy(item) }
                     ]}
                     canEdit={canEdit}
                     canDelete={canDelete}
@@ -1069,11 +1171,12 @@ export const MaintenanceTrackerView: React.FC = () => {
                   paginatedRecords.map(item => {
                     const isCat1 = item.priority === 'CAT 1';
                     const isClosed = item.defectStatus === 'Completed' || item.action === 'Closed';
+                    const isOverdue = getSlaInfo(item, now).state === 'overdue';
 
                     return (
                       <tr
                         key={item.id}
-                        className={`hover:bg-[#f3f2f1]/60 transition-colors ${isCat1 && !isClosed ? 'bg-red-50/20' : ''}`}
+                        className={`hover:bg-[#f3f2f1]/60 transition-colors ${isOverdue ? 'bg-red-50/60' : isCat1 && !isClosed ? 'bg-red-50/20' : ''}`}
                       >
                         {visibleMaintenanceColumns.map(col => (
                           <td key={String(col.key)} className="py-2.5 px-3 whitespace-nowrap">
@@ -1206,6 +1309,7 @@ export const MaintenanceTrackerView: React.FC = () => {
             ...editingRecord,
             ...data,
             actualClosedDate,
+            actualClosedTime: isCompleting && !data.actualClosedDate && !data.actualClosedTime ? nowTime() : data.actualClosedTime,
             attachments: Array.isArray(data.attachments) ? data.attachments : []
           });
           clearFormDraft(getDraftKeyMaintenanceEdit(editingRecord.id));

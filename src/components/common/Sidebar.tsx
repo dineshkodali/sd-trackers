@@ -247,6 +247,7 @@ export const Sidebar: React.FC = () => {
               Dashboard &amp; Daily Operations
             </div>
             <NavItem id="nav-dashboard" page="dashboard" label="Dashboard" icon={Compass} iconColor="text-[#0d9488]" badge={isNavActive('dashboard') ? 'ACTIVE' : null} badgeClass="bg-white/20 text-white text-[9px] font-semibold" active={isNavActive('dashboard')} onClick={handleNavClick} />
+            <NavItem id="nav-operations" page="operations" label="Operations Dashboard" icon={ClipboardList} iconColor="text-[#a4262c]" active={isNavActive('operations')} onClick={handleNavClick} />
             <NavItem id="nav-daily-registers" page="dailyRegisters" label="Live Daily Registers" icon={Building2} iconColor="text-blue-600" badge={scopedDailyRegisters.length || null} badgeClass="bg-blue-50 text-blue-800" active={isNavActive('dailyRegisters')} onClick={handleNavClick} />
           </div>
 

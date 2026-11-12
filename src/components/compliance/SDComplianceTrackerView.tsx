@@ -15,6 +15,10 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
+import { useNavigationIntent } from '../../hooks/useNavigationIntent';
+import { IntentFilterBanner } from '../common/IntentFilterBanner';
+import { splitList } from '../../utils/navigationIntent';
+import { complianceInfo, londonToday } from '../../utils/operationsRules';
 
 const complianceExportColumns: ExportColumnOption[] = [
   { id: 'siteName', label: 'Hotel / Site' },
@@ -92,8 +96,25 @@ export const SDComplianceTrackerView: React.FC = () => {
   const [editingRecord, setEditingRecord] = useState<SDComplianceRecord | null>(null);
   const [viewingRecord, setViewingRecord] = useState<SDComplianceRecord | null>(null);
 
+  // Set when opened from a link asking for certificates by expiry DATE (the status column is typed by hand and can be out of date).
+  const [expiryStates, setExpiryStates] = useState<string[]>([]);
+
+  useNavigationIntent('compliance', intent => {
+    setExpiryStates(splitList(intent.filters.expiry));
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setSearchQuery('');
+    setCurrentPage(1);
+    if (intent.recordId) {
+      const target = complianceRecords.find(r => r.id === intent.recordId);
+      if (target) setViewingRecord(target);
+    }
+  });
+
   const filteredRecords = useMemo(() => {
+    const today = londonToday();
     return complianceRecords.filter(r => {
+      if (expiryStates.length > 0 && !expiryStates.includes(complianceInfo(r.expiryDate, today).state)) return false;
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         r.complianceType.toLowerCase().includes(q) ||
@@ -110,7 +131,7 @@ export const SDComplianceTrackerView: React.FC = () => {
 
       return matchesSearch && matchesStatus && matchesType && matchesSite;
     });
-  }, [complianceRecords, isSitePermitted, searchQuery, statusFilter, typeFilter, siteFilter]);
+  }, [complianceRecords, isSitePermitted, searchQuery, statusFilter, typeFilter, siteFilter, expiryStates]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -300,6 +321,12 @@ export const SDComplianceTrackerView: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {expiryStates.length > 0 && (
+        <IntentFilterBanner
+          label={`Showing certificates by expiry date: ${expiryStates.map(s => ({ expired: 'expired', 'due-30': 'expiring within 30 days', 'due-90': 'expiring within 90 days' } as Record<string, string>)[s] || s).join(', ')}`}
+          onClear={() => { setExpiryStates([]); setCurrentPage(1); }}
+        />
+      )}
       {/* Top Banner, Header, Actions & Filters in ONE unified section */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

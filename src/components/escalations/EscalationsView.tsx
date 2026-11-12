@@ -16,6 +16,8 @@ import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
+import { useNavigationIntent } from '../../hooks/useNavigationIntent';
+import { IntentFilterBanner } from '../common/IntentFilterBanner';
 
 const escalationExportColumns: ExportColumnOption[] = [
   { id: 'dateOfIncident', label: 'Date of Incident' },
@@ -110,6 +112,23 @@ export const EscalationsView: React.FC = () => {
   const getIncidentNotes = (e: EscalationRecord) => e.incidentNotes || e.incidentSummary || (e as any).description || '';
   const getActionTaken = (e: EscalationRecord) => e.actionTaken || e.immediateAction || (e as any).resolutionNotes || '';
 
+  // Set when opened from a link asking for open escalations (anything not Resolved), optionally of one urgency.
+  const [openOnly, setOpenOnly] = useState<boolean>(false);
+  const [urgencyOnly, setUrgencyOnly] = useState<string>('');
+
+  useNavigationIntent('escalations', intent => {
+    setOpenOnly(intent.filters.open === '1');
+    setUrgencyOnly(intent.filters.urgency || '');
+    setWlFilter('all');
+    setStatusFilter('all');
+    setSearchQuery('');
+    setCurrentPage(1);
+    if (intent.recordId) {
+      const target = escalations.find(r => r.id === intent.recordId);
+      if (target) setViewRecord(target);
+    }
+  });
+
   const filteredData = useMemo(() => {
     return escalations.filter(e => {
       const eSite = getSiteName(e);
@@ -117,6 +136,8 @@ export const EscalationsView: React.FC = () => {
       const eStatus = e.status || 'Active';
 
       if (!isSitePermitted(eSite, siteFilter)) return false;
+      if (openOnly && eStatus === 'Resolved') return false;
+      if (urgencyOnly && e.urgency !== urgencyOnly) return false;
       if (wlFilter !== 'all' && eWl !== wlFilter) return false;
       if (statusFilter !== 'all' && eStatus !== statusFilter) return false;
 
@@ -137,7 +158,7 @@ export const EscalationsView: React.FC = () => {
       }
       return true;
     });
-  }, [escalations, siteFilter, wlFilter, statusFilter, searchQuery]);
+  }, [escalations, siteFilter, wlFilter, statusFilter, searchQuery, openOnly, urgencyOnly]);
 
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a: any, b: any) => {
@@ -490,6 +511,13 @@ export const EscalationsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {(openOnly || urgencyOnly) && (
+        <IntentFilterBanner
+          label={`Showing ${openOnly ? 'open (not Resolved) ' : ''}escalations${urgencyOnly ? ` with ${urgencyOnly} urgency` : ''}`}
+          onClear={() => { setOpenOnly(false); setUrgencyOnly(''); setCurrentPage(1); }}
+        />
+      )}
 
       {/* Main Table in a SEPARATE card */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs overflow-hidden shadow-2xs min-h-[520px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">

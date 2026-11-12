@@ -153,7 +153,7 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
   },
   {
     key: 'closeDueDate',
-    label: 'Close Due Date',
+    label: 'Complete By',
     type: 'text',
     placeholder: 'YYYY-MM-DD HH:MM',
     helperText: 'Calculated automatically from the selected priority; can be overridden.',

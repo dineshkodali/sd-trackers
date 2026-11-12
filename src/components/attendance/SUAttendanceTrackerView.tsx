@@ -24,6 +24,7 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
+import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
@@ -175,6 +176,16 @@ export const SUAttendanceTrackerView: React.FC = () => {
     setLoading(false);
   }, [sites, isSitePermitted, canEdit, currentUserName]);
   useEffect(() => { load(); }, [load]);
+
+  // Opened from a link naming an absence follow-up (e.g. the operations dashboard): show it once the data has loaded.
+  const [openFollowUpId, setOpenFollowUpId] = useState<string | null>(null);
+  useNavigationIntent('suAttendance', intent => setOpenFollowUpId(intent.recordId || null));
+  useEffect(() => {
+    if (!openFollowUpId || loading) return;
+    const fu = followUps.find(f => f.id === openFollowUpId);
+    if (fu) { setTab('followups'); setFuShow('all'); setFollowUpFor(fu); }
+    setOpenFollowUpId(null);
+  }, [openFollowUpId, loading, followUps]);
 
   // Every card, list and form works on the residents of the chosen site(s)
   const directory = useMemo(() => allDirectory.filter(r => isSitePermitted(r.siteName, siteFilter)), [allDirectory, siteFilter, isSitePermitted]);

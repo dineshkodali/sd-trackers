@@ -25,6 +25,7 @@ export const QuickJumpModal: React.FC<QuickJumpModalProps> = ({ isOpen, onClose 
 
   const modules = [
     { id: 'dashboard', name: 'Dashboard Overview', category: 'General', icon: LayoutDashboard, desc: 'Real-time operational summary & metrics' },
+    { id: 'operations', name: 'Operations Dashboard', category: 'General', icon: ClipboardList, desc: 'Overdue, due soon and needs attention across sites' },
     { id: 'referrals', name: 'Asylum Referrals', category: 'Resident Care', icon: Users, desc: 'Incoming referrals & placement tracking' },
     { id: 'vulnerable', name: 'Vulnerable SUs (SPCD)', category: 'Safeguarding', icon: Shield, desc: 'Safeguarding adults at risk register' },
     { id: 'challenging', name: 'Challenging Behavior SUs', category: 'Safeguarding', icon: AlertTriangle, desc: 'Risk assessments & behavior management' },

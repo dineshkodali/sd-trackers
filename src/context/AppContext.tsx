@@ -96,6 +96,7 @@ import { tableSchemaService } from '../services/tableSchemaService';
 import { migrateLegacyLocalData, hasLegacyLocalData, purgeAllLegacyLocalStorage } from '../services/legacyLocalDataMigration';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 import { diagnosticLogger, parseJwtPayload } from '../utils/diagnosticLogger';
+import { makeIntent, type NavigationIntent } from '../utils/navigationIntent';
 import { AuthBlockedInfo } from '../components/auth/AuthenticationBlockedView';
 import { realtimeService, RealtimeTableChangeEvent } from '../services/realtimeService';
 import { LEAD_OFFICER_ROLES, findUserForOfficer, officerLabelFor, hasAllSitesAccess } from '../utils/leadOfficerSync';
@@ -198,6 +199,12 @@ interface AppContextType {
   globalSearchFilter: string;
   setGlobalSearchFilter: (query: string) => void;
   navigateToPageWithSearch: (page: string, searchFilter?: string) => void;
+  /** Open a page already filtered and/or with a record open. The page picks it up through useNavigationIntent. */
+  navigateWithIntent: (page: string, opts?: { filters?: Record<string, string>; recordId?: string }) => void;
+  pendingIntent: NavigationIntent | null;
+  consumeIntent: (id: number) => void;
+  /** Re-read every module from the live database now (what the 5-minute poll does). Resolves when the sync has finished. */
+  refreshLiveData: () => Promise<void>;
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isMobileCompactView: boolean;
@@ -726,6 +733,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const [globalSearchFilter, setGlobalSearchFilter] = useState<string>('');
+
+  // "Open this page filtered / open this record" - held until the named page picks it up (see useNavigationIntent).
+  const [pendingIntent, setPendingIntent] = useState<NavigationIntent | null>(null);
+  const intentSeqRef = useRef(0);
+  const navigateWithIntent = useCallback((page: string, opts?: { filters?: Record<string, string>; recordId?: string }) => {
+    intentSeqRef.current += 1;
+    setPendingIntent(makeIntent(page, opts, Date.now(), intentSeqRef.current));
+    setActivePage(page);
+  }, [setActivePage]);
+  const consumeIntent = useCallback((id: number) => {
+    setPendingIntent(current => (current && current.id === id ? null : current));
+  }, []);
+
   const [selectedSite, setSelectedSite] = useState<string>('all');
   // Configuration starts at the built-in defaults and is replaced by the live
   // database values on the first sync. Operational records start empty.
@@ -2060,6 +2080,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     backgroundSyncRef.current = triggerBackgroundDeltaSync;
   }, [triggerBackgroundDeltaSync]);
+
+  const refreshLiveData = useCallback(async () => {
+    await backgroundSyncRef.current();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = smartCache.subscribeStats(stats => {
@@ -5899,6 +5923,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActivePage,
       globalSearchFilter,
       setGlobalSearchFilter,
+      navigateWithIntent,
+      pendingIntent,
+      consumeIntent,
+      refreshLiveData,
       navigateToPageWithSearch: (page: string, searchFilter?: string) => {
         setActivePage(page);
         if (searchFilter !== undefined) {

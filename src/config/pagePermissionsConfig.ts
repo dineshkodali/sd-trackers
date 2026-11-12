@@ -28,7 +28,7 @@ export type PagePermissionSet = Partial<Record<PageAction, boolean>>;
 /** pageId -> granted actions. Presence of any key means the user is restricted. */
 export type UserPagePermissions = Record<string, PagePermissionSet>;
 
-const READ_ONLY_PAGES = new Set(['dashboard']);
+const READ_ONLY_PAGES = new Set(['dashboard', 'operations']);
 const NO_CREATE_PAGES = new Set(['reports', 'audit', 'dailyRegisters']);
 const APPROVAL_PAGES = new Set(['financeApprovals', 'requests', 'finance', 'financeCreditCards', 'financeDeliveryNotes', 'suUsers', 'documentBuilder']);
 const EXPORT_PAGES_EXCLUDED = new Set(['roles', 'setupOptions', 'notifications', 'pageAccess']);

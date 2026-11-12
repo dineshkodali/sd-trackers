@@ -17,6 +17,7 @@ import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
 import { OptionSelect } from '../common/OptionSelect';
 import { TrackerDetails } from '../common/TrackerDetails';
+import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 
 const PEEP_MOBILITY_DEFAULTS = ['Independent', 'Walking aid / stick', 'Wheelchair user', 'Limited mobility', 'Visual impairment', 'Hearing impairment'];
 
@@ -107,6 +108,16 @@ export const PEEPTrackerView: React.FC = () => {
     setLoading(false);
   }, [sites, isSitePermitted]);
   useEffect(() => { load(); }, [load]);
+
+  // Opened from a link naming a plan (e.g. the operations dashboard): open it once the plans have loaded.
+  const [openPlanId, setOpenPlanId] = useState<string | null>(null);
+  useNavigationIntent('peepTracker', intent => setOpenPlanId(intent.recordId || null));
+  useEffect(() => {
+    if (!openPlanId || loading) return;
+    const plan = plans.find(p => p.id === openPlanId);
+    if (plan) setDialog({ mode: 'view', suId: plan.suId });
+    setOpenPlanId(null);
+  }, [openPlanId, loading, plans]);
 
   const today = todayIso();
   const rows = useMemo<PeepRow[]>(() => {

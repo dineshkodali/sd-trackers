@@ -3350,6 +3350,33 @@ ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS before_picture_u
 ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS before_picture_date TEXT;
 ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS after_picture_url TEXT;
 ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS after_picture_date TEXT;
+
+-- Maintenance "Complete By" as a real column (migration 033). The same value is still kept as
+-- closeDueDate in the JSON held in notes; stored times are UK wall-clock times.
+CREATE OR REPLACE FUNCTION public.sd_uk_local_to_timestamptz(p_value TEXT)
+RETURNS TIMESTAMPTZ LANGUAGE plpgsql IMMUTABLE SET search_path = public AS $$
+BEGIN
+  IF p_value IS NULL OR p_value !~ '^\d{4}-\d{2}-\d{2}([ T]\d{1,2}:\d{2})?' THEN
+    RETURN NULL;
+  END IF;
+  IF p_value ~ '^\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}' THEN
+    RETURN (replace(substring(p_value from '^\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}'), 'T', ' '))::timestamp AT TIME ZONE 'Europe/London';
+  END IF;
+  RETURN ((substring(p_value from '^\d{4}-\d{2}-\d{2}'))::date + TIME '23:59') AT TIME ZONE 'Europe/London';
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
+END;
+$$;
+ALTER TABLE public.maintenance_records ADD COLUMN IF NOT EXISTS complete_by TIMESTAMPTZ;
+UPDATE public.maintenance_records
+   SET complete_by = public.sd_uk_local_to_timestamptz(substring(notes from '"closeDueDate":"([^"]+)"'))
+ WHERE complete_by IS NULL
+   AND notes LIKE '{%'
+   AND notes LIKE '%"closeDueDate":"2%';
+CREATE INDEX IF NOT EXISTS idx_maintenance_records_complete_by
+  ON public.maintenance_records (complete_by)
+  WHERE complete_by IS NOT NULL AND defect_status IS DISTINCT FROM 'Completed';
+
 ALTER TABLE public.dispersal_records ADD COLUMN IF NOT EXISTS type_of_dispersal TEXT DEFAULT 'Dispersal';
 ALTER TABLE public.ir_records ADD COLUMN IF NOT EXISTS witnesses TEXT;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS further_updates TEXT;

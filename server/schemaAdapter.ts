@@ -1353,6 +1353,36 @@ const AUDIT_COLS = ['created_by', 'created_at', 'updated_at'];
 const specColumns = (table: string) => ['id', ...FIELD_SPECS[table].map(([, col]) => col), 'data', ...AUDIT_COLS];
 
 /** Columns each table is expected to have once db/schema.sql has been applied. */
+const londonFormat = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London', hourCycle: 'h23',
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+});
+
+/** Minutes Europe/London is ahead of UTC at the given instant (0 in winter, 60 in summer). */
+function londonOffsetMinutes(utcMs: number): number {
+  const p: Record<string, number> = {};
+  for (const part of londonFormat.formatToParts(new Date(utcMs))) if (part.type !== 'literal') p[part.type] = Number(part.value);
+  return Math.round((Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute) - Math.floor(utcMs / 60000) * 60000) / 60000);
+}
+
+/**
+ * A stored UK wall-clock time ('YYYY-MM-DD HH:MM' or 'YYYY-MM-DD', meaning the end of that day)
+ * as an ISO instant. The app runs in the browser and on the server, so the zone is fixed to
+ * Europe/London instead of taken from whichever machine does the save. Null when unreadable.
+ */
+export function londonLocalToIso(value: unknown): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(String(value ?? '').trim());
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const [h, mi] = m[4] !== undefined ? [Number(m[4]), Number(m[5])] : [23, 59];
+  const wall = Date.UTC(y, mo - 1, d, h, mi);
+  const check = new Date(wall);
+  if (isNaN(wall) || check.getUTCMonth() !== mo - 1 || check.getUTCDate() !== d || h > 23 || mi > 59) return null;
+  let utc = wall - londonOffsetMinutes(wall) * 60000;
+  utc = wall - londonOffsetMinutes(utc) * 60000;
+  return new Date(utc).toISOString();
+}
+
 export const TABLE_COLUMNS: Record<string, Set<string>> = {
   referrals: new Set([
     'id', 'site', 'su_name', 'su_port_reference', 'port_ref', 'room_number',
@@ -1377,7 +1407,7 @@ export const TABLE_COLUMNS: Record<string, Set<string>> = {
   maintenance_records: new Set([
     'id', 'site', 'room_or_area', 'defect_status', 'description',
     'contractor', 'contractor_quote', 'priority', 'reported_date',
-    'reported_time', 'completion_date', 'actual_closed_time', 'sign_off_status', 'notes', 'category', 'reported_by',
+    'reported_time', 'completion_date', 'actual_closed_time', 'complete_by', 'sign_off_status', 'notes', 'category', 'reported_by',
     'before_picture_url', 'before_picture_date', 'after_picture_url', 'after_picture_date',
     'attachments', 'attachment_url', 'file_url', 'data',
     'created_by', 'created_at', 'updated_at'
@@ -2105,6 +2135,9 @@ export function toDatabaseRow(
       dbRow.reported_by = record.raisedBy || record.reportedBy || record.loggedBy || '';
       dbRow.reported_time = record.reportedTime || '';
       dbRow.actual_closed_time = record.actualClosedTime || '';
+      // Typed copy of the Complete By time (also kept in the notes envelope below), so it can be
+      // indexed and compared in SQL. Left untouched when the record does not carry a due date.
+      if (record.closeDueDate !== undefined) dbRow.complete_by = londonLocalToIso(record.closeDueDate);
       dbRow.before_picture_url = record.beforePictureUrl || (Array.isArray(record.beforePictures) && record.beforePictures[0]?.url) || '';
       dbRow.before_picture_date = record.beforePictureDate || '';
       dbRow.after_picture_url = record.afterPictureUrl || (Array.isArray(record.afterPictures) && record.afterPictures[0]?.url) || '';

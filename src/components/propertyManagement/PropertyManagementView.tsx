@@ -6,6 +6,7 @@ import { PropertyMaster, PropertyRoom, Placement } from '../../types/masterData'
 import { propertyOccupancy, formatOccupancy, formatOccupancyPct, type PropertyOccupancy } from '../../utils/roomManagementLogic';
 import { PropertyFormModal } from './PropertyFormModal';
 import { PropertyProfileView } from './PropertyProfileView';
+import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 import { Pagination } from '../common/Pagination';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption } from '../common/ExportModal';
@@ -99,6 +100,19 @@ export const PropertyManagementView: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Opened from a link naming a property (e.g. a room inspection on the operations dashboard): open it once loaded.
+  // The request lapses after 15 seconds so it cannot open a property later by surprise.
+  const [openProperty, setOpenProperty] = useState<{ id: string; at: number } | null>(null);
+  useNavigationIntent('propertyManagement', intent => setOpenProperty(intent.recordId ? { id: intent.recordId, at: Date.now() } : null));
+  useEffect(() => {
+    if (!openProperty) return;
+    if (Date.now() - openProperty.at > 15000) { setOpenProperty(null); return; }
+    if (loading || properties.length === 0) return;
+    const target = properties.find(p => p.id === openProperty.id);
+    if (target) setSelectedProperty(target);
+    setOpenProperty(null);
+  }, [openProperty, loading, properties]);
 
   useEffect(() => { setSiteFilter(initialSiteFilter); }, [initialSiteFilter]);
   useEffect(() => { loadData(); }, [siteFilter]);

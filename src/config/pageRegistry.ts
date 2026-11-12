@@ -14,6 +14,12 @@ export const APP_PAGES_REGISTRY: AppModulePage[] = [
     description: 'Site activity, risk levels and property occupancy.'
   },
   {
+    id: 'operations',
+    title: 'Operations Dashboard',
+    category: 'Overview',
+    description: 'What is overdue, due soon and needs attention across sites: maintenance, compliance, reviews and escalations.'
+  },
+  {
     id: 'dailyRegisters',
     title: 'Live Daily Registers',
     category: 'Overview',

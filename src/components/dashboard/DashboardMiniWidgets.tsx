@@ -2,6 +2,7 @@ import React from 'react';
 import { IconArrowUpRight as ArrowUpRight, IconAlarm as Siren } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { DEFAULT_ROW_LIMIT } from '../../config/dashboardWidgets';
+import { getSlaInfo } from '../../utils/maintenancePriority';
 
 /**
  * Small list/count widgets built from data the app has already loaded for the signed-in
@@ -62,11 +63,13 @@ export const MaintenanceOpenWidget: React.FC<{ onNavigate: (p: string) => void }
   const state = useWidgetState('Maintenance Tracker');
   const open = maintenanceRecords.filter(r => r.defectStatus === 'In Process' && isSitePermitted(r.site, 'all'));
   const priorities = ['CAT 1', 'CAT 2 - Interim', 'CAT 2', 'CAT 3'] as const;
+  const overdue = open.filter(r => getSlaInfo(r).state === 'overdue').length;
   return (
     <WidgetShell title="Open maintenance" state={state} onOpen={() => onNavigate('maintenance')} openLabel="Maintenance tracker" empty={open.length === 0 ? 'No defects in process.' : null}>
       <p className="text-2xl font-semibold text-[#242424]">{open.length}</p>
       <p className="text-[#605e5c] mb-2">Defects in process</p>
       <ul className="divide-y divide-[#edebe9]">
+        <CountRow label="Overdue (past Complete By)" value={overdue} tone={overdue > 0 ? 'text-[#a4262c]' : undefined} />
         {priorities.map(p => (
           <CountRow key={p} label={p} value={open.filter(r => r.priority === p).length} tone={p === 'CAT 1' && open.some(r => r.priority === p) ? 'text-[#a4262c]' : undefined} />
         ))}
