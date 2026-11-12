@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { WelfareCheckRecord } from '../../types';
 import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';
 import { Pagination } from '../common/Pagination';
+import { CheckObligationsPanel } from '../checks/CheckObligationsPanel';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -415,6 +416,8 @@ export const WelfareChecksView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <CheckObligationsPanel type="welfare" onStart={canCreateRecord() ? handleOpenCreate : undefined} />
 
       {/* Main Table */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">

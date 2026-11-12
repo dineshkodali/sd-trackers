@@ -9,7 +9,8 @@ export type FieldType =
   | 'select' 
   | 'textarea' 
   | 'checkbox' 
-  | 'badge';
+  | 'badge'
+  | 'images';  // a gallery of photographs (RecordAttachment[]) with its own uploader
 
 export interface SelectOption {
   label: string;
@@ -46,4 +47,8 @@ export interface TableColumnConfig<T = any> {
   renderCell?: (value: any, record: T) => React.ReactNode;
   formatValue?: (value: any) => string;
   isCustom?: boolean;
+  /** Shown only when viewing a record (computed or copied from another field); never part of Add/Edit forms. */
+  viewOnly?: boolean;
+  /** For viewOnly columns: the value to show, worked out from the whole record. */
+  viewValue?: (record: any) => any;
 }

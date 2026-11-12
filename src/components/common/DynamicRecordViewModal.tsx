@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { IconX as X, IconEdit as Edit3, IconShieldCheck as ShieldCheck } from '@tabler/icons-react';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { AttachmentsSection } from './AttachmentsSection';
+import { EvidenceImagesSection } from './EvidenceImagesSection';
 
 interface DynamicRecordViewModalProps<T = any> {
   isOpen: boolean;
@@ -196,8 +197,16 @@ export function DynamicRecordViewModal<T = any>({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {secCols.map(col => {
                   const key = String(col.key);
-                  const isFullWidth = col.colSpan === 2 || col.type === 'textarea';
-                  const value = (record as any)[key];
+                  const isFullWidth = col.colSpan === 2 || col.type === 'textarea' || col.type === 'images';
+                  const value = col.viewValue ? col.viewValue(record) : (record as any)[key];
+
+                  if (col.type === 'images') {
+                    return (
+                      <div key={key} className="sm:col-span-2">
+                        <EvidenceImagesSection title={col.label} images={Array.isArray(value) ? value : []} readOnly emptyText={col.placeholder || 'No pictures recorded.'} />
+                      </div>
+                    );
+                  }
 
                   return (
                     <div key={key} className={isFullWidth ? 'sm:col-span-2 space-y-1' : 'space-y-1'}>

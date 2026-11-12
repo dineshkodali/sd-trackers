@@ -5009,3 +5009,74 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =====================================================================
+-- Transport records linked to Service Users, and the room-move table (migration 034)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS public.transport_room_move_requests (
+  id TEXT PRIMARY KEY,
+  su_id TEXT,
+  occupant_name TEXT,
+  request_id TEXT,
+  site_name TEXT,
+  current_room TEXT,
+  new_room TEXT,
+  occupant_ref TEXT,
+  requesting_staff TEXT,
+  request_date TEXT,
+  requested_move_date TEXT,
+  preferred_transport_time TEXT,
+  people_count INTEGER,
+  bags_count INTEGER,
+  transport_required BOOLEAN,
+  transport_type TEXT,
+  move_reason TEXT,
+  accessibility_requirements TEXT,
+  support_required TEXT,
+  estimated_cost NUMERIC,
+  approval_required BOOLEAN,
+  approval_status TEXT,
+  assigned_transport TEXT,
+  completion_status TEXT,
+  completion_date TEXT,
+  staff_comments TEXT,
+  notes TEXT,
+  attachments JSONB DEFAULT '[]'::jsonb,
+  attachment_url TEXT,
+  file_url TEXT,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.transport_room_move_requests ADD COLUMN IF NOT EXISTS su_id TEXT;
+ALTER TABLE public.transport_room_move_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.transport_room_move_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.transport_room_move_requests ADD COLUMN IF NOT EXISTS data JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.transport_room_move_requests ADD COLUMN IF NOT EXISTS occupant_name TEXT;
+ALTER TABLE public.public_transport_records      ADD COLUMN IF NOT EXISTS su_ids JSONB;
+ALTER TABLE public.transport_feedback            ADD COLUMN IF NOT EXISTS su_id TEXT;
+ALTER TABLE public.transport_feedback            ADD COLUMN IF NOT EXISTS su_name TEXT;
+ALTER TABLE public.transport_feedback            ADD COLUMN IF NOT EXISTS su_reference TEXT;
+ALTER TABLE public.transport_funding_requests    ADD COLUMN IF NOT EXISTS su_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_transport_room_move_su ON public.transport_room_move_requests(su_id);
+CREATE INDEX IF NOT EXISTS idx_transport_feedback_su ON public.transport_feedback(su_id);
+CREATE INDEX IF NOT EXISTS idx_transport_funding_su ON public.transport_funding_requests(su_id);
+
+DROP TRIGGER IF EXISTS trg_transport_room_move_requests_updated_at ON public.transport_room_move_requests;
+CREATE TRIGGER trg_transport_room_move_requests_updated_at
+  BEFORE UPDATE ON public.transport_room_move_requests
+  FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
+
+ALTER TABLE public.transport_room_move_requests ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.transport_room_move_requests FROM anon;
+GRANT ALL ON public.transport_room_move_requests TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.transport_room_move_requests TO authenticated;
+
+DROP POLICY IF EXISTS p_transport_room_move_requests_auth_all ON public.transport_room_move_requests;
+CREATE POLICY p_transport_room_move_requests_auth_all ON public.transport_room_move_requests
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';

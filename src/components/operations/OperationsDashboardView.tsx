@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IconRefresh as RefreshCw, IconSearch as Search } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { useOperationsData } from '../../hooks/useOperationsData';
+import { CheckObligationsPanel } from '../checks/CheckObligationsPanel';
 import {
   buildSnapshot, selectDeadlines, selectOverview, type AttentionItem, type DashboardPage, type DeadlineItem, type OpsInput, type OpsScope, type OverviewRow
 } from '../../utils/operationsSelectors';
@@ -77,7 +78,9 @@ export const OperationsDashboardView: React.FC = () => {
     escalations: canAccessPage('escalations'),
     peep: canAccessPage('peepTracker'),
     followUps: canAccessPage('suAttendance'),
-    property: canAccessPage('propertyManagement')
+    property: canAccessPage('propertyManagement'),
+    roomChecks: canAccessPage('roomChecks'),
+    welfareChecks: canAccessPage('welfareChecks')
   };
 
   const master = useOperationsData({ property: can.property, peep: can.peep, followUps: can.followUps });
@@ -423,6 +426,14 @@ export const OperationsDashboardView: React.FC = () => {
           )}
         </section>
       </div>
+
+      {/* Required checks: two Room / Welfare checks a month per room and resident (by the 10th and 25th) */}
+      {(can.roomChecks || can.welfareChecks) && (
+        <div className="grid grid-cols-1 gap-2">
+          {can.roomChecks && <CheckObligationsPanel type="room" defaultOpen siteName={siteFilter} onOpenPage={() => navigateWithIntent('roomChecks')} />}
+          {can.welfareChecks && <CheckObligationsPanel type="welfare" defaultOpen siteName={siteFilter} onOpenPage={() => navigateWithIntent('welfareChecks')} />}
+        </div>
+      )}
 
       {/* Operational overview + site comparison (below the fold) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-2">

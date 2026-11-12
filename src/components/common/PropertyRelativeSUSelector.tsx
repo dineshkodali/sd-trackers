@@ -124,7 +124,8 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
 
       map.set(normName, {
         id: `synth-${encodeURIComponent(normName)}`,
-        suReference: portRef || `SU-${Math.floor(Math.random() * 89999 + 10000)}`,
+        // A person seen only in a tracker record has no Service User record, so no invented reference is given.
+        suReference: portRef || '',
         externalReference: portRef || '',
         firstName,
         lastName,

@@ -92,12 +92,15 @@ export const UsersView: React.FC = () => {
     name: string;
     email: string;
     password: string;
+    /** Email a one-time setup link so the person chooses their own password (no password is typed or shown) */
+    sendInvite: boolean;
     role: RoleType;
     assignedSite: string;
   }>({
     name: '',
     email: '',
     password: '',
+    sendInvite: true,
     role: 'Staff',
     assignedSite: 'Pending Assignment'
   });
@@ -242,11 +245,11 @@ export const UsersView: React.FC = () => {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
-    if (!newUserFormData.name.trim() || !newUserFormData.email.trim() || !newUserFormData.password) {
-      setCreateError('Please complete all required fields (Name, Email, and Password).');
+    if (!newUserFormData.name.trim() || !newUserFormData.email.trim() || (!newUserFormData.sendInvite && !newUserFormData.password)) {
+      setCreateError(newUserFormData.sendInvite ? 'Please complete Name and Email.' : 'Please complete all required fields (Name, Email, and Password).');
       return;
     }
-    if (newUserFormData.password.length < 12) {
+    if (!newUserFormData.sendInvite && newUserFormData.password.length < 12) {
       setCreateError('Password must be at least 12 characters long.');
       return;
     }
@@ -261,7 +264,7 @@ export const UsersView: React.FC = () => {
       const res = await apiService.registerUser({
         name: newUserFormData.name.trim(),
         email: newUserFormData.email.trim().toLowerCase(),
-        password: newUserFormData.password,
+        ...(newUserFormData.sendInvite ? { sendInvite: true } : { password: newUserFormData.password }),
         role: newUserFormData.role,
         assignedSite: cleanAssignedSite,
         assignedSites: assignedSitesArray
@@ -273,7 +276,14 @@ export const UsersView: React.FC = () => {
         return;
       }
 
-      setCreateSuccessNotice(`User "${newUserFormData.name}" successfully created with role "${newUserFormData.role}"!`);
+      const invite = (res as any).invite as { sent: boolean; error?: string } | null | undefined;
+      setCreateSuccessNotice(
+        newUserFormData.sendInvite
+          ? (invite?.sent
+              ? `User "${newUserFormData.name}" created. A setup email was sent to ${newUserFormData.email.trim().toLowerCase()}.`
+              : `User "${newUserFormData.name}" created, but the setup email could not be sent${invite?.error ? ` (${invite.error})` : ''}. Use "Reset Password" on the user to send it again.`)
+          : `User "${newUserFormData.name}" successfully created with role "${newUserFormData.role}"!`
+      );
       await syncFromDatabase();
       setTimeout(() => {
         setIsCreatingUser(false);
@@ -283,10 +293,11 @@ export const UsersView: React.FC = () => {
           name: '',
           email: '',
           password: '',
+          sendInvite: true,
           role: 'Staff',
           assignedSite: 'Pending Assignment'
         });
-      }, 1100);
+      }, 2600);
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create user account.');
       setIsCreatingUser(false);
@@ -1276,18 +1287,34 @@ export const UsersView: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold text-[#323130] mb-1">Initial Password <span className="text-red-500">*</span></label>
+              <label className="flex items-start gap-2 text-[#323130]">
                 <input
-                  type="password"
-                  required
-                  minLength={12}
-                  placeholder="Minimum 12 characters"
-                  value={newUserFormData.password}
-                  onChange={e => setNewUserFormData({ ...newUserFormData, password: e.target.value })}
-                  className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs bg-white focus:outline-hidden focus:border-[#0d9488]"
+                  type="checkbox"
+                  checked={newUserFormData.sendInvite}
+                  onChange={e => setNewUserFormData({ ...newUserFormData, sendInvite: e.target.checked, password: '' })}
+                  className="mt-0.5"
                 />
-              </div>
+                <span>
+                  <span className="font-semibold">Email a setup link (recommended)</span>
+                  <span className="block text-[#605e5c]">The person chooses their own password from a one-time link. No password is typed or shown to anyone.</span>
+                </span>
+              </label>
+
+              {!newUserFormData.sendInvite && (
+                <div>
+                  <label className="block font-semibold text-[#323130] mb-1">Initial Password <span className="text-red-500">*</span></label>
+                  <input
+                    type="password"
+                    required
+                    minLength={12}
+                    autoComplete="new-password"
+                    placeholder="Minimum 12 characters"
+                    value={newUserFormData.password}
+                    onChange={e => setNewUserFormData({ ...newUserFormData, password: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-[#8a8886] rounded-xs bg-white focus:outline-hidden focus:border-[#0d9488]"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

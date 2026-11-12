@@ -348,6 +348,12 @@ export interface MaintenanceRecord {
   afterPictures?: RecordAttachment[];
   afterPictureUrl?: string;
   afterPictureDate?: string;
+  /** Evidence photographs. Kept strictly apart: "before work" and "after work" are never one gallery. Each image records who uploaded it and when. */
+  beforeImages?: RecordAttachment[];
+  afterImages?: RecordAttachment[];
+  initialCondition?: string;
+  completedWorkDetails?: string;
+  finalCondition?: string;
   notes?: string;
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
@@ -542,6 +548,8 @@ export interface PublicTransportRecord {
   reportingPerson?: string; // Reporting Staff Member (auto-populated logged-in user)
   reportingPersonId?: string; // Authenticated user ID
   suNames: string; // Service User Name(s)
+  /** Ids of the Service Users selected (the names above are kept for display and older records) */
+  suIds?: string[];
   portRefs: string; // Port Ref Number(s)
   accommodationAddress: string; // Accommodation Address
   appointmentDate: string; // Appointment Date
@@ -1111,6 +1119,10 @@ export interface TransportFeedbackRecord {
   staffPlace?: string; // Auto-retrieved staff place
   reportingPerson: string; // Reporting Staff Member
   reportingPersonId?: string; // Authenticated user ID
+  /** The Service User affected (optional): stored by id, with the name and reference as they were when the report was made */
+  suId?: string;
+  suName?: string;
+  suReference?: string;
   transportType: TransportFeedbackType;
   pickupLocation: string;
   dropLocation: string;
@@ -1182,6 +1194,8 @@ export interface TransportFundingRequestRecord {
   staffPlace?: string; // Auto-retrieved staff place
   reportingPerson?: string; // Reporting Staff Member
   reportingPersonId?: string; // Authenticated user ID
+  /** The Service User the request is for (id); mainAppRef / initials / groupMember are filled from their profile */
+  suId?: string;
   mainAppRef: string;
   mainAppInitials: string;
   groupMember?: string;
@@ -1255,6 +1269,9 @@ export interface TransportRoomMoveRecord {
   id: string;
   requestId: string;
   siteName: string;
+  /** The Service User being moved (id); occupantRef holds their reference as at the request */
+  suId?: string;
+  occupantName?: string;
   currentRoom: string;
   newRoom: string;
   occupantRef: string;

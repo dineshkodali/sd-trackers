@@ -8,6 +8,8 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { AttachmentsSection } from '../common/AttachmentsSection';
+import { ServiceUserPicker, ServiceUserNotice } from '../common/ServiceUserPicker';
+import { useServiceUserSelection } from '../../hooks/useServiceUserSelection';
 
 export const TRANSPORT_ISSUE_CATEGORIES = [
   'Aspen issue',
@@ -147,6 +149,14 @@ export const TransportFeedbackSection: React.FC<{ tabSwitcher?: React.ReactNode 
   };
 
   const [formData, setFormData] = useState<Partial<TransportFeedbackRecord>>(initialFormData);
+
+  // Service User affected (optional): chosen from the shared picker, stored by id
+  const suSelection = useServiceUserSelection({
+    fieldMap: { suName: 'fullName', suReference: p => p.externalReference || p.suReference },
+    getForm: () => formData as Record<string, unknown>,
+    apply: changes => setFormData(prev => ({ ...prev, ...changes }))
+  });
+  useEffect(() => { suSelection.reset(); }, [isCreateOpen, editingItem?.id]);
 
   // Filtered & Searched Data
   const filteredRecords = useMemo(() => {
@@ -736,6 +746,18 @@ export const TransportFeedbackSection: React.FC<{ tabSwitcher?: React.ReactNode 
                   </select>
                 </div>
 
+                {/* Service User affected (optional) */}
+                <div className="sm:col-span-2">
+                  <label className="font-semibold text-[#605e5c] block mb-1">Service User affected (optional)</label>
+                  <ServiceUserPicker
+                    value={formData.suId}
+                    legacyText={!formData.suId ? formData.suName : undefined}
+                    siteId={undefined}
+                    onChange={suSelection.select}
+                  />
+                  <ServiceUserNotice profile={suSelection.profile} skipped={suSelection.skippedFields} onRefill={suSelection.refillSkipped} />
+                </div>
+
                 {/* Issue Category */}
                 <div>
                   <label className="font-semibold text-[#605e5c] block mb-1">
@@ -1009,6 +1031,10 @@ export const TransportFeedbackSection: React.FC<{ tabSwitcher?: React.ReactNode 
                 <div>
                   <span className="text-neutral-400 block text-[11px]">Transport Type</span>
                   <span className="font-semibold text-[#242424]">{viewingItem.transportType}</span>
+                </div>
+                <div>
+                  <span className="text-neutral-400 block text-[11px]">Service User affected</span>
+                  <span className="font-semibold text-[#242424]">{viewingItem.suName ? `${viewingItem.suName}${viewingItem.suReference ? ` (${viewingItem.suReference})` : ''}` : '—'}</span>
                 </div>
                 <div>
                   <span className="text-neutral-400 block text-[11px]">Impact</span>

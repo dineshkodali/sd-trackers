@@ -1,4 +1,5 @@
 import type { MaintenancePriority } from '../types';
+import { londonNow, parseWall, wallMinutesBetween } from './operationsRules';
 
 export interface MaintenancePriorityRule {
   value: MaintenancePriority;
@@ -144,3 +145,107 @@ export const reportedAt = (date?: string, time?: string): Date => {
   }
   return new Date();
 };
+
+/* ------------------------------------------------------------------ Closing Timer and evidence rules */
+
+/** A job cannot be closed until at least one "after work" image has been uploaded. */
+export const REQUIRE_AFTER_IMAGE_TO_CLOSE = true;
+
+/** '45m', '2h 35m', '3h', '1d 4h', '3d 12h', '2d' - whole minutes in, short text out. */
+export function formatElapsed(totalMinutes: number): string {
+  const mins = Math.max(0, Math.round(totalMinutes));
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  if (hours < 24) return rem ? `${hours}h ${rem}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const h = hours % 24;
+  return h ? `${days}d ${h}h` : `${days}d`;
+}
+
+interface TimerRecord {
+  date?: string;
+  reportedTime?: string;
+  createdAt?: string;
+  closeDueDate?: string;
+  defectStatus?: string;
+  action?: string;
+  actualClosedDate?: string;
+  actualClosedTime?: string;
+}
+
+/** London wall time ('YYYY-MM-DD HH:MM') when the job was reported: the record's own date and time, else when it was created. */
+export function reportedWall(r: TimerRecord): string | null {
+  const hasTime = /^\d{1,2}:\d{2}$/.test(String(r.reportedTime || '').trim());
+  const direct = parseWall(r.date && hasTime ? `${r.date} ${String(r.reportedTime).trim()}` : r.date ? `${r.date} 00:00` : '');
+  if (direct) return direct;
+  if (r.createdAt) {
+    const d = new Date(r.createdAt);
+    if (!isNaN(d.getTime())) return londonNow(d).wall;
+  }
+  return null;
+}
+
+/** London wall time of closure, or null when the job is open or was closed without a recorded time. */
+export function closedWall(r: TimerRecord): string | null {
+  if (!isMaintenanceClosed(r)) return null;
+  const hasTime = /^\d{1,2}:\d{2}$/.test(String(r.actualClosedTime || '').trim());
+  if (!r.actualClosedDate || !hasTime) return null;
+  return parseWall(`${r.actualClosedDate} ${String(r.actualClosedTime).trim()}`);
+}
+
+export type ClosingTimer =
+  | { kind: 'elapsed'; minutes: number; label: string }            // still open: time since it was reported
+  | { kind: 'closed'; minutes: number; label: string }             // closed: reported to closed
+  | { kind: 'closed-no-time'; minutes: null; label: string }       // closed but the closing time was not recorded
+  | { kind: 'unknown'; minutes: null; label: string };
+
+/**
+ * The Closing Timer. Start = when the job was reported. Open jobs show the time elapsed so far; closed jobs show the
+ * fixed duration from report to closure. Uses London wall-clock time so it does not depend on the viewer's time zone.
+ */
+export function closingTimer(r: TimerRecord, now: Date = new Date()): ClosingTimer {
+  const start = reportedWall(r);
+  if (!start) return { kind: 'unknown', minutes: null, label: '—' };
+  if (isMaintenanceClosed(r)) {
+    const end = closedWall(r);
+    if (!end) return { kind: 'closed-no-time', minutes: null, label: 'Closed (time not recorded)' };
+    const minutes = Math.max(0, wallMinutesBetween(start, end));
+    return { kind: 'closed', minutes, label: `Closed in ${formatElapsed(minutes)}` };
+  }
+  const minutes = Math.max(0, wallMinutesBetween(start, londonNow(now).wall));
+  return { kind: 'elapsed', minutes, label: `Open ${formatElapsed(minutes)}` };
+}
+
+export type OverdueDuration =
+  | { kind: 'overdue'; minutes: number; label: string }        // open and past Complete By
+  | { kind: 'late'; minutes: number; label: string }           // closed after Complete By
+  | { kind: 'none'; minutes: null; label: string };
+
+/** How far past its Complete By time a job is (open) or was (closed late). */
+export function overdueDuration(r: TimerRecord, now: Date = new Date()): OverdueDuration {
+  const due = parseWall(r.closeDueDate);
+  if (!due) return { kind: 'none', minutes: null, label: '—' };
+  if (isMaintenanceClosed(r)) {
+    const end = closedWall(r);
+    if (!end) return { kind: 'none', minutes: null, label: '—' };
+    const late = wallMinutesBetween(due, end);
+    return late > 0 ? { kind: 'late', minutes: late, label: `Late by ${formatElapsed(late)}` } : { kind: 'none', minutes: null, label: '—' };
+  }
+  const over = wallMinutesBetween(due, londonNow(now).wall);
+  return over > 0 ? { kind: 'overdue', minutes: over, label: `Overdue by ${formatElapsed(over)}` } : { kind: 'none', minutes: null, label: '—' };
+}
+
+/**
+ * Why a change that closes a job must be refused, or null when it is fine. Only the moment of closing is checked, so
+ * jobs that were already closed before this rule are left alone.
+ */
+export function closeBlockedReason(
+  current: { defectStatus?: string; action?: string },
+  merged: { defectStatus?: string; action?: string; afterImages?: unknown[] }
+): string | null {
+  if (!REQUIRE_AFTER_IMAGE_TO_CLOSE) return null;
+  if (isMaintenanceClosed(current) || !isMaintenanceClosed(merged)) return null;
+  const hasAfter = Array.isArray(merged.afterImages) && merged.afterImages.length > 0;
+  return hasAfter ? null : 'Upload at least one "After work" image before closing this job.';
+}

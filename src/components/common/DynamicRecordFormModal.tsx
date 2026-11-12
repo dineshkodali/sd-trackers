@@ -4,6 +4,7 @@ import { TableColumnConfig, SelectOption } from '../../types/tableSchema';
 import { FieldOptionCategory } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { AttachmentsSection } from './AttachmentsSection';
+import { EvidenceImagesSection } from './EvidenceImagesSection';
 import { QuickOptionModal } from './QuickOptionModal';
 import { PropertyRelativeSUSelector } from './PropertyRelativeSUSelector';
 import { isUserAssignmentField, getUserDropdownOptions } from '../../utils/userSelectOptions';
@@ -363,7 +364,7 @@ export function DynamicRecordFormModal<T = any>({
   // Filter out internal system metadata fields, dedicated file attachment columns (managed by AttachmentsSection), and guarantee a locked Logged By field
   const formColumns = useMemo(() => {
     const activeCols = columns.filter(col => {
-      if (col.isSystemMetadata) return false;
+      if (col.isSystemMetadata || col.viewOnly) return false;
       const k = String(col.key).toLowerCase();
       if (
         k === 'attachments' ||
@@ -942,6 +943,22 @@ export function DynamicRecordFormModal<T = any>({
                             : (formData[key] ?? '');
                   const options = col.type === 'select' || isSite || isUserColumn(col) || isSiteManager ? resolveOptions(col) : [];
 
+                  // A photograph gallery (e.g. maintenance before / after work): its own uploader, never merged with another gallery.
+                  if (col.type === 'images') {
+                    return (
+                      <div key={key} className="sm:col-span-2">
+                        <EvidenceImagesSection
+                          title={col.label}
+                          images={Array.isArray(formData[key]) ? formData[key] : []}
+                          onChange={imgs => handleChange(key, imgs)}
+                          disabled={isReadOnly || isSubmitting}
+                          emptyText={col.placeholder}
+                        />
+                        {col.helperText && <p className="text-[10px] text-neutral-500 mt-1">{col.helperText}</p>}
+                      </div>
+                    );
+                  }
+
                   return (
                     <div 
                       key={key} 
@@ -1073,7 +1090,19 @@ export function DynamicRecordFormModal<T = any>({
                           onChange={(val, extra) => {
                             handleChange(key, val);
                             // Remember which Service User this record belongs to (by id, not by name)
-                            handleChange('suId', extra?.su?.id && !String(extra.su.id).startsWith('synth-') ? extra.su.id : '');
+                            const isMultiSelect = String(col.key).toLowerCase() === 'sunames' || col.label.toLowerCase().includes('(s)');
+                            if (isMultiSelect) {
+                              // Several people: keep every selected id (the names stay in the text field for display).
+                              const realId = extra?.su?.id && !String(extra.su.id).startsWith('synth-') ? String(extra.su.id) : '';
+                              const toggledName = extra?.su ? `${extra.su.firstName || ''} ${extra.su.lastName || ''}`.trim() : '';
+                              const nowSelected = String(val || '').split(',').map(s => s.trim()).filter(Boolean);
+                              let ids: string[] = Array.isArray(formData.suIds) ? [...formData.suIds] : [];
+                              if (nowSelected.length === 0) ids = [];
+                              else if (realId) ids = nowSelected.includes(toggledName) ? Array.from(new Set([...ids, realId])) : ids.filter(i => i !== realId);
+                              handleChange('suIds', ids);
+                            } else {
+                              handleChange('suId', extra?.su?.id && !String(extra.su.id).startsWith('synth-') ? extra.su.id : '');
+                            }
                             onServiceUserChange?.(extra?.su ? { id: extra.su.id, firstName: extra.su.firstName, lastName: extra.su.lastName } : null);
                             if (!extra && hasSingleSu) {
                               formColumns.forEach(c => { if (!isServiceUserColumn(c) && isSuProfileColumn(c)) handleChange(String(c.key), ''); });

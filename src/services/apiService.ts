@@ -1286,7 +1286,7 @@ export const apiService = {
     }
   },
 
-  async registerUser(userData: { email: string; password: string; name: string; role: string; assignedSite?: string; assignedSites?: string[] }): Promise<{
+  async registerUser(userData: { email: string; password?: string; sendInvite?: boolean; name: string; role: string; assignedSite?: string; assignedSites?: string[] }): Promise<{
     success?: boolean;
     user?: any;
     error?: string;
@@ -1317,6 +1317,9 @@ export const apiService = {
     } catch {}
 
     // Direct Supabase Fallback (AWS Amplify / Static Hosting)
+    if (!userData.password) {
+      return { error: 'A setup invitation needs the server (to send email). Enter an initial password instead, or run the server.' };
+    }
     const sb = getBrowserSupabaseClient();
     if (sb) {
       try {
@@ -1482,55 +1485,21 @@ export const apiService = {
     waitSeconds?: number;
   }> {
     const cleanEmail = (email || '').trim().toLowerCase();
+    let lastError = '';
 
-    // 1. In browser environments (such as AWS Amplify static hosting),
-    // prioritize direct Supabase cloud password recovery to avoid 404 / Failed to fetch
-    let lastSbError = '';
-    const sb = getBrowserSupabaseClient();
-    if (sb) {
-      try {
-        const redirectUrl = typeof window !== 'undefined'
-          ? `${window.location.origin}/reset-password`
-          : undefined;
-        const { error: sbErr } = await sb.auth.resetPasswordForEmail(cleanEmail, {
-          redirectTo: redirectUrl
-        });
-        if (!sbErr) {
-          return {
-            success: true,
-            message: `Password reset instructions sent to ${cleanEmail}. Please check your inbox.`
-          };
-        } else {
-          lastSbError = sbErr.message;
-          const waitMatch = sbErr.message.match(/after (\d+) seconds/i);
-          if (waitMatch) {
-            const wait = parseInt(waitMatch[1], 10);
-            return {
-              rateLimited: true,
-              waitSeconds: wait,
-              error: `Please wait ${wait} seconds before requesting another reset email.`
-            };
-          }
-          console.warn('[apiService] Browser Supabase reset note:', sbErr.message);
-        }
-      } catch (sbEx: any) {
-        lastSbError = sbEx.message || String(sbEx);
-        console.warn('[apiService] Browser Supabase reset error:', sbEx);
-      }
-    }
-
-    // 2. Fallback: Request via backend API endpoint (/api/auth/reset-password) ONLY if backend is configured
+    // 1. The server route first when a backend exists: it sends our own branded email whose link carries the token to this
+    //    app (not to a Supabase address), so it works regardless of the Supabase redirect list and survives mail scanners
+    //    that pre-open links. The email also contains a 6-digit code.
     const apiBase = getApiBaseUrl();
     if (apiBase) {
       try {
         const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : undefined;
-        const res = await fetch(getApiUrl('/api/auth/reset-password'), {
+        const res = await fetchWithTimeout(getApiUrl('/api/auth/reset-password'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: cleanEmail, origin })
-        });
+        }, 15000);
         const json = await parseApiResponse<any>(res);
-        // Surface rate-limit details from a 429 response
         if (res.status === 429 || json?.rateLimited) {
           return {
             rateLimited: true,
@@ -1538,16 +1507,37 @@ export const apiService = {
             error: json?.error || `Please wait ${json?.waitSeconds || 25} seconds before requesting another reset email.`
           };
         }
-        if (!res.ok || json?.error) {
-          return { error: json?.error || `HTTP ${res.status}` };
-        }
-        return { success: true, message: json?.message };
+        if (res.ok && !json?.error) return { success: true, message: json?.message };
+        lastError = json?.error || `HTTP ${res.status}`;
+        // A validation problem (bad address) will not be fixed by trying elsewhere.
+        if (res.status === 400) return { error: lastError };
       } catch (err: any) {
-        return { error: err.message || 'Failed to dispatch password recovery email.' };
+        lastError = err?.message || 'The server could not be reached.';
       }
     }
 
-    return { error: lastSbError || 'Unable to send password recovery email. Please verify the email address or try again later.' };
+    // 2. Direct Supabase mail (static hosting, or the server was unavailable). Needs the Supabase Site URL and
+    //    Redirect URL allow-list to include this origin.
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+        const { error: sbErr } = await sb.auth.resetPasswordForEmail(cleanEmail, { redirectTo: redirectUrl });
+        if (!sbErr) {
+          return { success: true, message: `Password reset instructions sent to ${cleanEmail}. Please check your inbox.` };
+        }
+        lastError = sbErr.message;
+        const waitMatch = sbErr.message.match(/after (d+) seconds/i);
+        if (waitMatch) {
+          const wait = parseInt(waitMatch[1], 10);
+          return { rateLimited: true, waitSeconds: wait, error: `Please wait ${wait} seconds before requesting another reset email.` };
+        }
+      } catch (sbEx: any) {
+        lastError = sbEx?.message || String(sbEx);
+      }
+    }
+
+    return { error: lastError || 'Unable to send the password recovery email. Please try again later.' };
   },
 
   /**
@@ -1557,70 +1547,45 @@ export const apiService = {
   async confirmResetPassword(payload: {
     email?: string;
     otpCode?: string;
-    tokenHash?: string;
     newPassword: string;
   }): Promise<{ success?: boolean; message?: string; error?: string }> {
-    // 1. Direct browser Supabase verify & update
-    let lastSbError = '';
-    const sb = getBrowserSupabaseClient();
-    if (sb) {
-      try {
-        if (payload.tokenHash) {
-          const { error: vErr } = await sb.auth.verifyOtp({
-            token_hash: payload.tokenHash,
-            type: 'recovery'
-          });
-          if (!vErr) {
-            const { error: uErr } = await sb.auth.updateUser({ password: payload.newPassword });
-            if (!uErr) {
-              return { success: true, message: 'Password updated successfully via Supabase.' };
-            }
-            return { error: uErr.message || 'Failed to update password.' };
-          } else {
-            lastSbError = vErr.message;
-          }
-        } else if (payload.email && payload.otpCode) {
-          const { error: vErr } = await sb.auth.verifyOtp({
-            email: payload.email.trim().toLowerCase(),
-            token: payload.otpCode.trim(),
-            type: 'recovery'
-          });
-          if (!vErr) {
-            const { error: uErr } = await sb.auth.updateUser({ password: payload.newPassword });
-            if (!uErr) {
-              return { success: true, message: 'Password updated successfully via Supabase.' };
-            }
-            return { error: uErr.message || 'Failed to update password.' };
-          } else {
-            lastSbError = vErr.message;
-          }
-        }
-      } catch (sbEx: any) {
-        lastSbError = sbEx.message || String(sbEx);
-        console.warn('[apiService] Browser Supabase confirmResetPassword note:', sbEx);
-      }
-    }
+    let lastError = '';
+    const email = (payload.email || '').trim().toLowerCase();
+    const token = (payload.otpCode || '').trim();
+    if (!email || !token) return { error: 'Enter your email address and the 6-digit code.' };
 
-    // 2. Fallback to server API /api/auth/confirm-reset-password ONLY if backend is configured
+    // Server first when a backend exists; it verifies the code and sets the password in one step.
     const apiBase = getApiBaseUrl();
     if (apiBase) {
       try {
-        const res = await fetch(getApiUrl('/api/auth/confirm-reset-password'), {
+        const res = await fetchWithTimeout(getApiUrl('/api/auth/confirm-reset-password'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+          body: JSON.stringify({ email, otpCode: token, newPassword: payload.newPassword })
+        }, 15000);
         const json = await parseApiResponse<any>(res);
-        if (!res.ok || json?.error) {
-          return { error: json?.error || `HTTP ${res.status}` };
-        }
-        return { success: true, message: json?.message };
+        if (res.ok && !json?.error) return { success: true, message: json?.message };
+        lastError = json?.error || `HTTP ${res.status}`;
+        if (res.status === 400 || res.status === 401 || res.status === 429) return { error: lastError };
       } catch (err: any) {
-        return { error: err.message || 'Failed to confirm password reset.' };
+        lastError = err?.message || 'The server could not be reached.';
       }
     }
 
-    return { error: lastSbError || 'Unable to confirm password reset. The verification code or link may have expired.' };
+    const sb = getBrowserSupabaseClient();
+    if (sb) {
+      try {
+        const { error: vErr } = await sb.auth.verifyOtp({ email, token, type: 'recovery' });
+        if (vErr) return { error: vErr.message };
+        const { error: uErr } = await sb.auth.updateUser({ password: payload.newPassword });
+        if (uErr) return { error: uErr.message || 'Failed to update password.' };
+        try { await sb.auth.signOut({ scope: 'global' }); } catch { /* password already changed */ }
+        return { success: true, message: 'Password updated.' };
+      } catch (sbEx: any) {
+        lastError = sbEx?.message || String(sbEx);
+      }
+    }
+    return { error: lastError || 'Unable to confirm the password reset. The code may have expired.' };
   },
 
   async fetchPasswordAuditLogs(): Promise<{ success?: boolean; logs?: any[]; error?: string }> {

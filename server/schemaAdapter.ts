@@ -26,6 +26,7 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
   public_transport_records: [
     ['approvalUrn', 'approval_urn', 'text'],
     ['suNames', 'su_names', 'text'],
+    ['suIds', 'su_ids', 'json'],
     ['portRefs', 'port_refs', 'text'],
     ['accommodationAddress', 'accommodation_address', 'text'],
     ['siteName', 'site_name', 'text'],
@@ -41,6 +42,9 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['fileUrl', 'file_url', 'text'],
   ],
   transport_feedback: [
+    ['suId', 'su_id', 'text'],
+    ['suName', 'su_name', 'text'],
+    ['suReference', 'su_reference', 'text'],
     ['siteName', 'site_name', 'text'],
     ['reportingPerson', 'reporting_person', 'text'],
     ['transportType', 'transport_type', 'text'],
@@ -81,6 +85,7 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
   ],
   transport_funding_requests: [
     ['siteName', 'site_name', 'text'],
+    ['suId', 'su_id', 'text'],
     ['mainAppRef', 'main_app_ref', 'text'],
     ['mainAppInitials', 'main_app_initials', 'text'],
     ['groupMember', 'group_member', 'text'],
@@ -141,6 +146,8 @@ export const FIELD_SPECS: Record<string, Array<[string, string, ColType]>> = {
     ['changedAt', 'changed_at', 'text'],
   ],
   transport_room_move_requests: [
+    ['suId', 'su_id', 'text'],
+    ['occupantName', 'occupant_name', 'text'],
     ['requestId', 'request_id', 'text'],
     ['siteName', 'site_name', 'text'],
     ['currentRoom', 'current_room', 'text'],
@@ -1352,7 +1359,6 @@ const REQUIRED_SPEC_COLUMNS: Record<string, Record<string, (record: any) => any>
 const AUDIT_COLS = ['created_by', 'created_at', 'updated_at'];
 const specColumns = (table: string) => ['id', ...FIELD_SPECS[table].map(([, col]) => col), 'data', ...AUDIT_COLS];
 
-/** Columns each table is expected to have once db/schema.sql has been applied. */
 const londonFormat = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Europe/London', hourCycle: 'h23',
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
@@ -1383,6 +1389,7 @@ export function londonLocalToIso(value: unknown): string | null {
   return new Date(utc).toISOString();
 }
 
+/** Columns each table is expected to have once db/schema.sql has been applied. */
 export const TABLE_COLUMNS: Record<string, Set<string>> = {
   referrals: new Set([
     'id', 'site', 'su_name', 'su_port_reference', 'port_ref', 'room_number',
@@ -2138,10 +2145,17 @@ export function toDatabaseRow(
       // Typed copy of the Complete By time (also kept in the notes envelope below), so it can be
       // indexed and compared in SQL. Left untouched when the record does not carry a due date.
       if (record.closeDueDate !== undefined) dbRow.complete_by = londonLocalToIso(record.closeDueDate);
-      dbRow.before_picture_url = record.beforePictureUrl || (Array.isArray(record.beforePictures) && record.beforePictures[0]?.url) || '';
-      dbRow.before_picture_date = record.beforePictureDate || '';
-      dbRow.after_picture_url = record.afterPictureUrl || (Array.isArray(record.afterPictures) && record.afterPictures[0]?.url) || '';
-      dbRow.after_picture_date = record.afterPictureDate || '';
+      // The galleries themselves (beforeImages / afterImages) travel in the notes envelope below. The typed columns keep the
+      // first image's link (never an embedded data: URI) and upload time, for reports that read the columns directly.
+      const imgLink = (list: any) => {
+        const u = Array.isArray(list) && list[0] ? (list[0].url || '') : '';
+        return typeof u === 'string' && !u.startsWith('data:') ? u : '';
+      };
+      const imgTime = (list: any) => (Array.isArray(list) && list[0]?.uploadedAt) || '';
+      dbRow.before_picture_url = record.beforePictureUrl || imgLink(record.beforeImages) || (Array.isArray(record.beforePictures) && record.beforePictures[0]?.url) || '';
+      dbRow.before_picture_date = record.beforePictureDate || imgTime(record.beforeImages) || '';
+      dbRow.after_picture_url = record.afterPictureUrl || imgLink(record.afterImages) || (Array.isArray(record.afterPictures) && record.afterPictures[0]?.url) || '';
+      dbRow.after_picture_date = record.afterPictureDate || imgTime(record.afterImages) || '';
 
       const knownMaintKeys = new Set([
         'id', 'site', 'assignedSite', 'siteName', 'room', 'roomNumber', 'location',

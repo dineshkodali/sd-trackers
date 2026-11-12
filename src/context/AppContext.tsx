@@ -97,6 +97,8 @@ import { migrateLegacyLocalData, hasLegacyLocalData, purgeAllLegacyLocalStorage 
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 import { diagnosticLogger, parseJwtPayload } from '../utils/diagnosticLogger';
 import { makeIntent, type NavigationIntent } from '../utils/navigationIntent';
+import { resolveRecovery } from '../auth/recoveryFlow';
+import { closeBlockedReason } from '../utils/maintenancePriority';
 import { AuthBlockedInfo } from '../components/auth/AuthenticationBlockedView';
 import { realtimeService, RealtimeTableChangeEvent } from '../services/realtimeService';
 import { LEAD_OFFICER_ROLES, findUserForOfficer, officerLabelFor, hasAllSitesAccess } from '../utils/leadOfficerSync';
@@ -1410,133 +1412,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearInterval(intervalId);
   }, [sessionToken, authProfile, currentUserRole]);
 
-  // Supabase Authentication & Password Recovery Handler
+  // Supabase Authentication & Password Recovery Handler.
+  // The one-time recovery token is exchanged exactly once, by resolveRecovery (src/auth/recoveryFlow.ts); this effect only
+  // reflects the outcome in app state. Do not exchange the token anywhere else.
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const supabase = getBrowserSupabaseClient();
-    if (supabase) {
-      // 1. Listen for Supabase Auth state changes (including PASSWORD_RECOVERY)
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          setIsPasswordRecoveryMode(true);
-          if (session?.access_token) {
-            setRecoveryAccessToken(session.access_token);
-          }
-          if (session?.user?.email) {
-            setRecoveryEmail(session.user.email);
-          }
-          if (window.location.pathname !== '/reset-password') {
-            window.history.replaceState(null, '', '/reset-password' + (window.location.hash || ''));
-            window.dispatchEvent(new Event('popstate'));
-          }
-        }
-      });
+    if (!supabase) return;
 
-      // 2. Direct inspection of URL fragment & query parameters
-      const hash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : '';
-      const search = window.location.search.startsWith('?') ? window.location.search.substring(1) : '';
-      const hashParams = new URLSearchParams(hash);
-      const searchParams = new URLSearchParams(search);
-
-      const type = hashParams.get('type') || searchParams.get('type');
-      const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
-      const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
-      const code = searchParams.get('code') || hashParams.get('code');
-      const errorDesc = searchParams.get('error_description') || hashParams.get('error_description') || hashParams.get('error');
-
-      // Surface friendly auth error if directed from Supabase or reset link
-      if (errorDesc && !accessToken) {
-        const decoded = decodeURIComponent(errorDesc).replace(/\+/g, ' ');
-        setAuthError(decoded);
-
-        // If this is an OTP expired or recovery error and user is not at /reset-password, forward cleanly
-        if ((hashParams.get('error_code') === 'otp_expired' || decoded.toLowerCase().includes('expired')) && window.location.pathname !== '/reset-password') {
-          window.history.replaceState(null, '', '/reset-password' + (window.location.hash || window.location.search));
-          window.dispatchEvent(new Event('popstate'));
-        }
-      }
-
-      // Handle Supabase PKCE authorization code exchange
-      if (code) {
-        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-          if (!error && data?.session) {
-            setIsPasswordRecoveryMode(true);
-            if (data.session.access_token) {
-              setRecoveryAccessToken(data.session.access_token);
-            }
-            if (data.session.user?.email) {
-              setRecoveryEmail(data.session.user.email);
-            }
-            if (window.location.pathname !== '/reset-password') {
-              window.history.replaceState(null, '', '/reset-password');
-              window.dispatchEvent(new Event('popstate'));
-            }
-          }
-        }).catch(err => console.warn('Supabase exchangeCodeForSession recovery error:', err));
-      }
-
-      // If user landed with recovery token_hash directly (e.g. from password reset email)
-      if (tokenHash && (type === 'recovery' || !type)) {
-        supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: 'recovery'
-        }).then(({ data, error }) => {
-          if (!error && data?.session) {
-            setIsPasswordRecoveryMode(true);
-            if (data.session.access_token) {
-              setRecoveryAccessToken(data.session.access_token);
-            }
-            if (data.session.user?.email) {
-              setRecoveryEmail(data.session.user.email);
-            }
-            if (window.location.pathname !== '/reset-password') {
-              window.history.replaceState(null, '', '/reset-password#access_token=' + data.session.access_token + '&type=recovery');
-              window.dispatchEvent(new Event('popstate'));
-            }
-          } else if (error) {
-            setAuthError(error.message || 'Password reset link is invalid or has expired.');
-            if (window.location.pathname !== '/reset-password') {
-              window.history.replaceState(null, '', '/reset-password#error=access_denied&error_code=otp_expired&error_description=' + encodeURIComponent(error.message || 'Password reset link is invalid or has expired.'));
-              window.dispatchEvent(new Event('popstate'));
-            }
-          }
-        }).catch(err => console.warn('Supabase verifyOtp recovery error:', err));
-      }
-
-      // If user landed with recovery access token (e.g. from server redirect or Supabase action link)
-      if (type === 'recovery' && accessToken) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
         setIsPasswordRecoveryMode(true);
-        setRecoveryAccessToken(accessToken);
-
+        if (session?.access_token) setRecoveryAccessToken(session.access_token);
+        if (session?.user?.email) setRecoveryEmail(session.user.email);
         if (window.location.pathname !== '/reset-password') {
-          window.history.replaceState(null, '', '/reset-password' + (window.location.hash || window.location.search));
+          window.history.replaceState(null, '', '/reset-password');
           window.dispatchEvent(new Event('popstate'));
         }
+      }
+    });
 
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || ''
-        }).then(({ data: { session } }) => {
-          if (session?.user?.email) {
-            setRecoveryEmail(session.user.email);
-          }
-        }).catch(err => console.warn('Supabase recovery setSession error:', err));
-
-        // Clean callback URL in address bar
-        if (window.location.pathname === '/auth/callback') {
+    resolveRecovery(supabase as any).then(result => {
+      if (result.status === 'ready') {
+        setIsPasswordRecoveryMode(true);
+        if (result.accessToken) setRecoveryAccessToken(result.accessToken);
+        if (result.email) setRecoveryEmail(result.email);
+        if (window.location.pathname !== '/reset-password') {
           window.history.replaceState(null, '', '/reset-password');
+          window.dispatchEvent(new Event('popstate'));
+        }
+      } else if (result.status === 'error') {
+        setAuthError(result.message);
+        if (window.location.pathname !== '/reset-password') {
+          window.history.replaceState(null, '', '/reset-password');
+          window.dispatchEvent(new Event('popstate'));
         }
       } else if (window.location.pathname === '/auth/callback') {
-        // If landed on /auth/callback without recovery params, clean URL to root
         window.history.replaceState(null, '', '/');
       }
+    });
 
-      return () => {
-        subscription?.unsubscribe();
-      };
-    }
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async (email: string, pass: string): Promise<boolean> => {
@@ -3474,12 +3393,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateMaintenanceRecord = useCallback((id: string, updates: Partial<MaintenanceRecord>) => {
     const current = maintenanceRecords.find(m => m.id === id);
     if (!current) return;
+    // A job cannot be closed without an "after work" picture. Only the moment of closing is checked.
+    const blocked = closeBlockedReason(current, { ...current, ...updates });
+    if (blocked) {
+      reportPersistFailure('Closing the maintenance job', blocked);
+      return;
+    }
     setMaintenanceRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...updates } : rec));
     persistUpdate('maintenance', 'Maintenance ticket changes', setMaintenanceRecords, current, updates, {
       action: 'UPDATE', module: 'Settings', targetItem: `Defect #${id}`, site: current.site,
       details: 'Updated maintenance ticket progress/status.'
     });
-  }, [maintenanceRecords, persistUpdate]);
+  }, [maintenanceRecords, persistUpdate, reportPersistFailure]);
 
   const deleteMaintenanceRecord = useCallback((id: string) => {
     const current = maintenanceRecords.find(m => m.id === id);

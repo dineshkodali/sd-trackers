@@ -10,6 +10,8 @@ import {
   SiteInfo 
 } from '../types';
 import { TableAttachmentCell } from '../components/common/TableAttachmentCell';
+import { ClosingTimerCell, OverdueDurationCell, EvidenceCountCell } from '../components/maintenance/MaintenanceCells';
+import { closingTimer, overdueDuration } from '../utils/maintenancePriority';
 import { getUserDropdownOptions } from '../utils/userSelectOptions';
 
 export const renderAttachmentCell = (val: any, record: any) =>
@@ -160,8 +162,18 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     section: 'Status & Progression'
   },
   {
+    key: 'closingTimer' as any,
+    label: 'Closing Timer',
+    type: 'text',
+    viewOnly: true,
+    viewValue: (r: any) => closingTimer(r).label,
+    visibleInTable: true,
+    renderCell: (_v: any, r: any) => React.createElement(ClosingTimerCell, { record: r }),
+    section: 'Status & Progression'
+  },
+  {
     key: 'defectStatus',
-    label: 'Defect Status',
+    label: 'Current Status',
     type: 'select',
     required: true,
     optionCategory: 'maintenanceStatuses',
@@ -175,6 +187,16 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
       'In Process': 'bg-sky-100 text-sky-800',
       'Completed': 'bg-emerald-100 text-emerald-800'
     },
+    section: 'Status & Progression'
+  },
+  {
+    key: 'overdueDuration' as any,
+    label: 'Overdue Duration',
+    type: 'text',
+    viewOnly: true,
+    viewValue: (r: any) => { const o = overdueDuration(r); return o.kind === 'none' ? '' : o.label; },
+    visibleInTable: true,
+    renderCell: (_v: any, r: any) => React.createElement(OverdueDurationCell, { record: r }),
     section: 'Status & Progression'
   },
   {
@@ -212,36 +234,57 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     section: 'Status & Progression'
   },
   {
-    key: 'beforePictures' as any,
-    label: 'Before Picture(s) (Reported/Open)',
-    type: 'text',
-    section: 'Photographs & Evidence',
-    placeholder: 'Upload when defect is first reported or opened',
+    key: 'originalDefect' as any,
+    label: 'Original reported defect',
+    type: 'textarea',
+    viewOnly: true,
+    viewValue: (r: any) => r?.description,
+    section: 'Before Work'
+  },
+  {
+    key: 'initialCondition',
+    label: 'Initial condition',
+    type: 'textarea',
+    colSpan: 2,
+    placeholder: 'Condition of the room or item when the defect was found',
+    section: 'Before Work'
+  },
+  {
+    key: 'beforeImages',
+    label: 'Before work pictures',
+    type: 'images',
+    defaultValue: () => [],
+    placeholder: 'No pictures yet. Add pictures of the defect before work begins.',
     visibleInTable: true,
-    renderCell: renderAttachmentCell
+    renderCell: (val: any, r: any) => React.createElement(EvidenceCountCell, { images: val, side: 'before', record: r }),
+    section: 'Before Work'
   },
   {
-    key: 'beforePictureDate',
-    label: 'Before Photo Date & Time',
-    type: 'text',
-    placeholder: 'YYYY-MM-DD HH:MM',
-    section: 'Photographs & Evidence'
+    key: 'completedWorkDetails',
+    label: 'Completed work details',
+    type: 'textarea',
+    colSpan: 2,
+    placeholder: 'What was done to fix the defect',
+    section: 'After Work'
   },
   {
-    key: 'afterPictures' as any,
-    label: 'After Picture(s) (Resolved/Closed)',
-    type: 'text',
-    section: 'Photographs & Evidence',
-    placeholder: 'Upload when defect is resolved and closed',
+    key: 'finalCondition',
+    label: 'Final condition',
+    type: 'textarea',
+    colSpan: 2,
+    placeholder: 'Condition of the room or item once the work was finished',
+    section: 'After Work'
+  },
+  {
+    key: 'afterImages',
+    label: 'After work pictures',
+    type: 'images',
+    defaultValue: () => [],
+    placeholder: 'No pictures yet. Add pictures once the work is finished; at least one is needed to close the job.',
+    helperText: 'At least one after-work picture is required before the job can be closed.',
     visibleInTable: true,
-    renderCell: renderAttachmentCell
-  },
-  {
-    key: 'afterPictureDate',
-    label: 'After Photo Date & Time',
-    type: 'text',
-    placeholder: 'YYYY-MM-DD HH:MM',
-    section: 'Photographs & Evidence'
+    renderCell: (val: any, r: any) => React.createElement(EvidenceCountCell, { images: val, side: 'after', record: r }),
+    section: 'After Work'
   },
   {
     key: 'notes',

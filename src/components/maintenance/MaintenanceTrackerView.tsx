@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconTool as Wrench, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconX as X, IconBook as BookOpen, IconFlame as Flame, IconHammer as Hammer, IconEye as Eye, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
-import { calculateDueDate, getPriorityRule, getSlaInfo, slaLabel, formatDuration, nowTime, DUE_SOON_HOURS, isMaintenanceClosed } from '../../utils/maintenancePriority';
+import { calculateDueDate, getPriorityRule, getSlaInfo, slaLabel, formatDuration, nowTime, DUE_SOON_HOURS, isMaintenanceClosed, closingTimer, overdueDuration, closeBlockedReason } from '../../utils/maintenancePriority';
 import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 import { IntentFilterBanner } from '../common/IntentFilterBanner';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';
@@ -36,6 +36,10 @@ const maintenanceExportColumns: ExportColumnOption[] = [
   { id: 'raisedBy', label: 'Raised By' },
   { id: 'closeDueDate', label: 'Complete By' },
   { id: 'slaStatus', label: 'Complete By Status' },
+  { id: 'closingTimer', label: 'Closing Timer' },
+  { id: 'overdueDuration', label: 'Overdue Duration' },
+  { id: 'beforeImageCount', label: 'Before Pictures' },
+  { id: 'afterImageCount', label: 'After Pictures' },
   { id: 'defectStatus', label: 'Defect Status' },
   { id: 'action', label: 'Action' },
   { id: 'progress', label: 'Progress Details' },
@@ -476,6 +480,10 @@ export const MaintenanceTrackerView: React.FC = () => {
     raisedBy: { label: 'Raised By', getValue: r => r.raisedBy },
     closeDueDate: { label: 'Complete By', getValue: r => r.closeDueDate || '—' },
     slaStatus: { label: 'Complete By Status', getValue: r => slaLabel(getSlaInfo(r, now)) },
+    closingTimer: { label: 'Closing Timer', getValue: r => closingTimer(r, now).label },
+    overdueDuration: { label: 'Overdue Duration', getValue: r => overdueDuration(r, now).label },
+    beforeImageCount: { label: 'Before Pictures', getValue: r => (r.beforeImages || []).length },
+    afterImageCount: { label: 'After Pictures', getValue: r => (r.afterImages || []).length },
     defectStatus: { label: 'Defect Status', getValue: r => r.defectStatus },
     action: { label: 'Action', getValue: r => r.action },
     progress: { label: 'Progress', getValue: r => r.progress || '—' },
@@ -1301,6 +1309,9 @@ export const MaintenanceTrackerView: React.FC = () => {
         isEdit={true}
         onSave={(data) => {
           if (!editingRecord) return;
+          // Keep the form open and say why when a job is being closed without an after-work picture.
+          const blocked = closeBlockedReason(editingRecord, { ...editingRecord, ...data });
+          if (blocked) throw new Error(blocked);
           const isCompleting = data.defectStatus === 'Completed' || data.action === 'Closed';
           const actualClosedDate = isCompleting && !data.actualClosedDate
             ? new Date().toISOString().slice(0, 10)

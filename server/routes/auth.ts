@@ -365,12 +365,15 @@ async function syncPropertyUserAssignments(
 
 // POST /api/auth/signup — Creates user in Supabase Auth + profile + property_user_assignments
 router.post('/signup', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), async (req: Request, res: Response) => {
-  const { email, password, name, role = 'Staff' } = req.body;
+  const { email, name, role = 'Staff' } = req.body;
+  // An invitation means the person sets their own password from an emailed link; no password is typed or shown to anyone.
+  const sendInvite = req.body.sendInvite === true || (!req.body.password && req.body.sendInvite !== false);
+  const password: string = sendInvite ? randomTemporaryPassword() : req.body.password;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required.' });
   }
-  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+  if (!sendInvite && (!password || typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH)) {
     return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.` });
   }
 
@@ -419,6 +422,7 @@ router.post('/signup', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), asyn
       return res.status(400).json({ error: error.message });
     }
 
+    let inviteResult: { sent: boolean; error?: string } | null = null;
     if (data.user) {
       const userName = name || email.split('@')[0];
       // Upsert profile (the trigger also creates it; this guarantees role, status and assigned sites)
@@ -441,8 +445,10 @@ router.post('/signup', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), asyn
       // Invalidate token cache
       invalidateTokenCache();
 
-      // If SMTP configured, dispatch welcome notification
-      if (isSmtpConfigured()) {
+      // Invitation: the person sets their own password from an emailed link.
+      if (sendInvite) {
+        inviteResult = await sendSetupInvitation(admin, req, { email: cleanEmail, name: userName, role, sites: assignedSiteStr });
+      } else if (isSmtpConfigured()) {
         sendEmail({
           to: email,
           subject: 'SD Operations - Account Created',
@@ -458,7 +464,8 @@ router.post('/signup', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), asyn
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: inviteResult?.sent ? 'User created and a setup invitation was emailed.' : 'User registered successfully',
+      invite: inviteResult,
       user: {
         id: data.user.id,
         email: data.user.email,
@@ -472,6 +479,21 @@ router.post('/signup', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), asyn
     console.error('Signup error:', err);
     res.status(500).json({ error: err.message || 'Failed to create user account' });
   }
+});
+
+// POST /api/auth/resend-invite - send a new setup email to an existing user who has not set a password yet
+router.post('/resend-invite', requireAuth, requireRole(...LIFECYCLE_EDITOR_ROLES), async (req: Request, res: Response) => {
+  const cleanEmail = String(req.body?.email || '').trim().toLowerCase();
+  if (!isValidDomainEmail(cleanEmail).valid) return res.status(400).json({ error: 'A valid email address is required.' });
+  const admin = getSupabaseAdmin();
+  if (!admin) return res.status(503).json({ error: 'Authentication service is unavailable.' });
+  const { data: profile } = await admin.from('profiles').select('id, name, role, assigned_site').eq('email', cleanEmail).maybeSingle();
+  if (!profile) return res.status(404).json({ error: 'No user with that email address.' });
+  const denied = await guardSuperAdminChange(req, admin, { targetUserId: profile.id });
+  if (denied) return res.status(403).json({ error: denied });
+  const invite = await sendSetupInvitation(admin, req, { email: cleanEmail, name: profile.name, role: profile.role, sites: profile.assigned_site });
+  await savePasswordAuditLog({ adminEmail: req.user?.email || 'admin', targetEmail: cleanEmail, targetUserId: profile.id, action: 'RESET_PASSWORD', status: invite.sent ? 'SUCCESS' : 'FAILURE', error: invite.error });
+  return invite.sent ? res.json({ success: true, message: 'Setup invitation sent.' }) : res.status(502).json({ error: invite.error || 'The invitation could not be sent.' });
 });
 
 // POST /api/auth/bulk-import — Bulk creates or updates users in Supabase Auth + profiles
@@ -538,6 +560,12 @@ router.post('/bulk-import', requireAuth, requireRole('Super Admin', 'Admin'), as
           });
 
           let userId = data?.user?.id;
+
+          // A new account with no password in the file: send the person a setup link instead of leaving an unknown password.
+          if (!error && data?.user && !(u.password && String(u.password).trim().length >= MIN_PASSWORD_LENGTH)) {
+            const invite = await sendSetupInvitation(admin, req, { email: rawEmail, name, role, sites: assignedSite });
+            if (!invite.sent) console.warn(`[Auth] Bulk import: setup email not sent to ${rawEmail}: ${invite.error}`);
+          }
 
           if (error) {
             const isAlreadyRegistered =
@@ -737,6 +765,9 @@ router.post('/update-password', async (req: Request, res: Response) => {
       status: 'SUCCESS'
     });
 
+    // The old password is gone: end every session of this account, including the recovery session that made the change.
+    await revokeAllSessions(admin, token);
+
     return res.json({
       success: true,
       message: 'Password updated successfully! You can now log in with your new password.'
@@ -797,6 +828,61 @@ async function savePasswordAuditLog(entry: {
   }
 }
 
+/** Ends every session of the account the access token belongs to. Failure must never block the password change. */
+async function revokeAllSessions(admin: any, accessToken: string | null | undefined) {
+  if (!accessToken) return;
+  try { await admin.auth.admin.signOut(accessToken, 'global'); } catch (err: any) {
+    console.warn('[Auth] Could not revoke sessions after password change:', err?.message);
+  }
+}
+
+/** Limits reset emails per client address and per account (separate from the failed-login counters). */
+const RESET_WINDOW_MS = 15 * 60 * 1000;
+const RESET_MAX_PER_IP = 10;
+const RESET_MAX_PER_EMAIL = 3;
+const resetRequests = new Map<string, number[]>();
+function resetRetryAfter(ip: string, email: string): number {
+  const now = Date.now();
+  let retry = 0;
+  const limits: Array<[string, number]> = [[`ip:${ip}`, RESET_MAX_PER_IP], [`em:${email}`, RESET_MAX_PER_EMAIL]];
+  for (const [key, max] of limits) {
+    const hits = (resetRequests.get(key) || []).filter(t => now - t < RESET_WINDOW_MS);
+    if (hits.length >= max) retry = Math.max(retry, Math.ceil((hits[0] + RESET_WINDOW_MS - now) / 1000));
+    resetRequests.set(key, hits);
+  }
+  if (retry === 0) for (const [key] of limits) resetRequests.get(key)!.push(now);
+  if (resetRequests.size > 10_000) resetRequests.clear();
+  return retry;
+}
+
+const escapeHtml = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
+/**
+ * Account setup invitation: the person chooses their own password through the same one-time-link mechanism as a reset,
+ * so nobody ever has to be told a password. The link opens /reset-password in "setup" wording.
+ */
+export async function sendSetupInvitation(admin: any, req: Request, who: { email: string; name?: string; role?: string; sites?: string }): Promise<{ sent: boolean; error?: string }> {
+  if (!isSmtpConfigured()) return { sent: false, error: 'Email (SMTP) is not configured on the server, so the invitation could not be sent.' };
+  const email = who.email.trim().toLowerCase();
+  const baseUrl = ((process.env.APP_URL || process.env.PUBLIC_URL)?.trim().replace(/\/+$/, '')) || getAppBaseUrl(req);
+  const { data, error } = await admin.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: `${baseUrl}/reset-password` } });
+  const hashed = data?.properties?.hashed_token;
+  if (error || !hashed) return { sent: false, error: error?.message || 'Could not create the setup link.' };
+  const link = `${baseUrl}/reset-password?token_hash=${encodeURIComponent(hashed)}&type=recovery&setup=1&email=${encodeURIComponent(email)}`;
+  const result = await sendEmail({
+    to: email,
+    subject: 'SD Operations - Set up your account',
+    html: `<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+      <h2 style="margin: 0 0 12px 0; color: #0f172a;">Welcome to SD Operations</h2>
+      <p>Hello ${escapeHtml(who.name || email.split('@')[0])},</p>
+      <p>An account has been created for you${who.role ? ` with the role <strong>${escapeHtml(who.role)}</strong>` : ''}${who.sites ? ` for <strong>${escapeHtml(who.sites)}</strong>` : ''}.</p>
+      <p><a href="${link}" style="background:#0d9488;color:#fff;padding:10px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Set your password</a></p>
+      <p style="font-size:12px;color:#64748b;">This link can be used once and expires after a short time. If it has expired, open the sign-in page and choose "Forgot password" to get a new one.</p>
+    </div>`
+  });
+  return result.success ? { sent: true } : { sent: false, error: result.message };
+}
+
 // POST /api/auth/reset-password
 router.post('/reset-password', async (req: Request, res: Response) => {
   const { email } = req.body;
@@ -812,6 +898,12 @@ router.post('/reset-password', async (req: Request, res: Response) => {
   if (!emailValidation.valid) {
     await savePasswordAuditLog({ adminEmail, targetEmail: cleanEmail, action: 'RESET_PASSWORD', status: 'FAILURE', error: emailValidation.error });
     return res.status(400).json({ error: emailValidation.error });
+  }
+
+  const retryAfter = resetRetryAfter(req.ip || 'unknown', cleanEmail);
+  if (retryAfter > 0) {
+    res.setHeader('Retry-After', String(retryAfter));
+    return res.status(429).json({ rateLimited: true, waitSeconds: retryAfter, error: `Too many reset requests. Please wait ${Math.ceil(retryAfter / 60)} minute(s) and try again.` });
   }
 
   if (!isSupabaseConfigured()) {
@@ -1004,6 +1096,7 @@ router.post('/confirm-reset-password', async (req: Request, res: Response) => {
   try {
     let targetUserId: string | null = null;
     let targetEmail: string = email ? email.trim().toLowerCase() : '';
+    let otpSessionToken: string | null = null;
 
     if (otpCode && targetEmail) {
       // Mode 1: 6-digit OTP verification. Throttled per account and per IP so the
@@ -1036,6 +1129,7 @@ router.post('/confirm-reset-password', async (req: Request, res: Response) => {
 
       targetUserId = vData.user.id;
       targetEmail = vData.user.email || targetEmail;
+      otpSessionToken = vData.session?.access_token || null;
     } else if (tokenHash) {
       // Mode 2: Token hash verification
       const cleanHash = String(tokenHash).trim();
@@ -1091,6 +1185,7 @@ router.post('/confirm-reset-password', async (req: Request, res: Response) => {
       action: 'RESET_PASSWORD',
       status: 'SUCCESS'
     });
+    if (otpSessionToken) await revokeAllSessions(admin, otpSessionToken);
 
     return res.json({
       success: true,
@@ -1099,69 +1194,6 @@ router.post('/confirm-reset-password', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[Auth] confirm-reset-password exception:', err);
     return res.status(500).json({ error: err.message || 'An unexpected error occurred during password reset.' });
-  }
-});
-
-// POST /api/auth/update-password — Updates password for an authenticated session or recovery session
-router.post('/update-password', async (req: Request, res: Response) => {
-  const { password, accessToken } = req.body;
-  const token = accessToken || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.substring(7) : null);
-
-  if (!password || typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
-    return res.status(400).json({ error: `New password must be at least ${MIN_PASSWORD_LENGTH} characters long.` });
-  }
-
-  if (!token) {
-    return res.status(401).json({ error: 'Authentication token required.' });
-  }
-
-  if (!isSupabaseConfigured()) {
-    return res.status(503).json({ error: 'Database service is not configured.' });
-  }
-
-  const admin = getSupabaseAdmin();
-  const anon = getSupabaseAnon() || admin;
-  if (!admin || !anon) {
-    return res.status(503).json({ error: 'Supabase service unavailable.' });
-  }
-
-  try {
-    const { data: { user }, error: userError } = await anon.auth.getUser(token);
-    if (userError || !user) {
-      return res.status(401).json({ error: 'Invalid or expired session. Please request a new password reset link.' });
-    }
-
-    const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
-      password
-    });
-
-    if (updateError) {
-      await savePasswordAuditLog({
-        adminEmail: 'self-service-token',
-        targetEmail: user.email || user.id,
-        targetUserId: user.id,
-        action: 'UPDATE_PASSWORD',
-        status: 'FAILURE',
-        error: updateError.message
-      });
-      return res.status(400).json({ error: updateError.message });
-    }
-
-    await savePasswordAuditLog({
-      adminEmail: 'self-service-token',
-      targetEmail: user.email || user.id,
-      targetUserId: user.id,
-      action: 'UPDATE_PASSWORD',
-      status: 'SUCCESS'
-    });
-
-    return res.json({
-      success: true,
-      message: 'Password updated successfully. You can now sign in.'
-    });
-  } catch (err: any) {
-    console.error('[Auth] update-password exception:', err);
-    return res.status(500).json({ error: err.message || 'Failed to update password.' });
   }
 });
 

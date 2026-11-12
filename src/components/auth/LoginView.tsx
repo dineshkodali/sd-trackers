@@ -13,11 +13,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
   const { 
     login, 
     authError, 
-    authLoading,
-    isPasswordRecoveryMode,
-    setIsPasswordRecoveryMode,
-    recoveryAccessToken,
-    recoveryEmail
+    authLoading
   } = useApp();
 
   const [email, setEmail] = useState('');
@@ -31,13 +27,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
   const [resetEmail, setResetEmail] = useState('');
   const [resetStatusMessage, setResetStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
-
-  // Set New Password (Recovery) modal
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [recoverySubmitting, setRecoverySubmitting] = useState(false);
-  const [recoveryStatus, setRecoveryStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Supabase Auth service status
   const [authConfigured, setAuthConfigured] = useState<boolean>(true);
@@ -128,108 +117,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
       }
     } finally {
       setResetLoading(false);
-    }
-  };
-
-  const handleUpdateNewPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRecoveryStatus(null);
-
-    if (!newPassword || newPassword.length < 12) {
-      setRecoveryStatus({ type: 'error', text: 'New password must be at least 12 characters long.' });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setRecoveryStatus({ type: 'error', text: 'Passwords do not match. Please re-enter carefully.' });
-      return;
-    }
-
-    setRecoverySubmitting(true);
-    try {
-      const sb = getBrowserSupabaseClient();
-      let updated = false;
-
-      if (sb) {
-        const search = typeof window !== 'undefined' ? window.location.search || '' : '';
-        const hash = typeof window !== 'undefined' ? window.location.hash || '' : '';
-        const searchParams = new URLSearchParams(search.replace(/^\?/, ''));
-        const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
-        const urlTokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
-        const urlAccessToken = hashParams.get('access_token') || searchParams.get('access_token');
-        const effectiveToken = recoveryAccessToken || urlAccessToken;
-
-        // A. If token_hash is in URL, verify OTP first to establish recovery session
-        if (urlTokenHash) {
-          try {
-            const { data: vData, error: vErr } = await sb.auth.verifyOtp({
-              token_hash: urlTokenHash,
-              type: 'recovery'
-            });
-            if (!vErr && vData?.session) {
-              const { error: uErr } = await sb.auth.updateUser({ password: newPassword });
-              if (!uErr) updated = true;
-            }
-          } catch (vEx) {
-            console.warn('[Auth] verifyOtp exception:', vEx);
-          }
-        }
-
-        // B. If recovery access token is present, initialize session and update
-        if (!updated && effectiveToken) {
-          try {
-            await sb.auth.setSession({
-              access_token: effectiveToken,
-              refresh_token: ''
-            });
-          } catch {}
-          const { error: sbErr } = await sb.auth.updateUser({ password: newPassword });
-          if (!sbErr) updated = true;
-        }
-
-        // C. If active session already exists in client
-        if (!updated) {
-          const { error: sbErr } = await sb.auth.updateUser({ password: newPassword });
-          if (!sbErr) updated = true;
-        }
-      }
-
-      // 2. Fallback: Update via apiService if direct client update wasn't possible
-      if (!updated) {
-        const res = await apiService.updateUserPassword(newPassword, recoveryAccessToken || undefined);
-        if (res.error) {
-          if (res.error.toLowerCase().includes('failed to fetch') || res.error.toLowerCase().includes('unreachable') || res.error.toLowerCase().includes('session')) {
-            throw new Error('This password reset link has expired or has already been used. Please request a fresh reset link.');
-          }
-          throw new Error(res.error);
-        }
-      }
-
-      setRecoveryStatus({
-        type: 'success',
-        text: 'Password updated successfully! You can now sign in with your new credentials.'
-      });
-      if (recoveryEmail) {
-        setEmail(recoveryEmail);
-      }
-      setTimeout(() => {
-        setIsPasswordRecoveryMode(false);
-        setRecoveryStatus(null);
-        setNewPassword('');
-        setConfirmPassword('');
-        if (typeof window !== 'undefined') {
-          window.history.replaceState(null, '', '/');
-        }
-      }, 2500);
-    } catch (err: any) {
-      const msg = err.message || '';
-      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('unreachable')) {
-        setRecoveryStatus({ type: 'error', text: 'This password reset link has expired or is invalid. Please request a fresh reset link.' });
-      } else {
-        setRecoveryStatus({ type: 'error', text: msg || 'Failed to update password.' });
-      }
-    } finally {
-      setRecoverySubmitting(false);
     }
   };
 
@@ -439,132 +326,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
         </div>
       )}
 
-      {/* PASSWORD RECOVERY / SET NEW PASSWORD MODAL */}
-      {isPasswordRecoveryMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-[#1e293b] border border-teal-500/40 rounded-xs shadow-2xl w-full max-w-md overflow-hidden text-slate-200">
-            <div className="px-6 py-4 border-b border-slate-700/80 bg-slate-800/50 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xs bg-teal-500/20 text-teal-300 flex items-center justify-center border border-teal-500/30">
-                  <ShieldCheck className="w-4 h-4 text-teal-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Set New Password</h3>
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                  setIsPasswordRecoveryMode(false);
-                  setRecoveryStatus(null);
-                  if (typeof window !== 'undefined') {
-                    window.history.replaceState(null, '', '/');
-                  }
-                }} 
-                className="text-slate-400 hover:text-white transition-colors"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateNewPassword} className="p-6 space-y-4 text-xs">
-              {recoveryEmail ? (
-                <div className="p-2.5 rounded-xs bg-slate-800/80 border border-slate-700/70 text-slate-300 text-[11px]">
-                  Account: <span className="font-semibold text-white">{recoveryEmail}</span>
-                </div>
-              ) : (
-                <p className="text-slate-400 leading-relaxed">
-                  Enter your new password below. It must be at least 12 characters in length.
-                </p>
-              )}
-
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">
-                  New Password *
-                </label>
-                <div className="relative">
-                  <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    required
-                    minLength={12}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter at least 12 characters"
-                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-900 border border-slate-700 rounded-xs text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(prev => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-                  >
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">
-                  Confirm New Password *
-                </label>
-                <input
-                  type={showNewPassword ? 'text' : 'password'}
-                  required
-                  minLength={12}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter your new password"
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xs text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500"
-                />
-              </div>
-
-              {recoveryStatus && (
-                <div className={`p-3 rounded-xs flex items-start gap-2 ${
-                  recoveryStatus.type === 'error'
-                    ? 'bg-red-950/60 text-red-200 border border-red-500/50'
-                    : 'bg-teal-950/60 text-teal-200 border border-teal-500/50'
-                }`}>
-                  {recoveryStatus.type === 'error' ? (
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-                  )}
-                  <span className="font-medium">{recoveryStatus.text}</span>
-                </div>
-              )}
-
-              <div className="pt-3 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsPasswordRecoveryMode(false);
-                    setRecoveryStatus(null);
-                    if (typeof window !== 'undefined') {
-                      window.history.replaceState(null, '', '/');
-                    }
-                  }}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xs transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={recoverySubmitting}
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {recoverySubmitting ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Updating Password...</span>
-                    </>
-                  ) : (
-                    <span>Save &amp; Return to Login</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

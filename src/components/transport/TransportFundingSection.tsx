@@ -12,6 +12,8 @@ import { FundingWorkflowModal } from './FundingWorkflowModal';
 import { OysterUsageView } from './OysterCardsSection';
 import { suEnhancementsService, type OysterCard, type OysterTransaction } from '../../services/suEnhancementsService';
 import { availableCardsFor, formatMoney, isOysterMethod } from '../../utils/oysterLogic';
+import { ServiceUserPicker, ServiceUserNotice } from '../common/ServiceUserPicker';
+import { useServiceUserSelection } from '../../hooks/useServiceUserSelection';
 
 export const EXCEPTIONAL_CIRCUMSTANCE_OPTIONS = [
   'Serious medical condition or chronic illness',
@@ -182,6 +184,22 @@ export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }
 
   const [formData, setFormData] = useState<Partial<TransportFundingRequestRecord>>(emptyFormData);
 
+  // The Service User is chosen once; the reference, initials, name, phone and accommodation address come from their profile.
+  // Anything typed by hand is kept.
+  const suSelection = useServiceUserSelection({
+    fieldMap: {
+      mainAppRef: 'externalReference',
+      mainAppInitials: 'initials',
+      groupMember: 'fullName',
+      phone: 'phone',
+      accommodationAddress: p => [p.propertyAddressLine, p.propertyCity].filter(Boolean).join(', '),
+      accommodationPostcode: 'propertyPostcode'
+    },
+    getForm: () => formData as Record<string, unknown>,
+    apply: changes => setFormData(prev => ({ ...prev, ...changes }))
+  });
+  useEffect(() => { suSelection.reset(); }, [isWizardOpen]);
+
   // Site Scoped
   const siteScopedRecords = useMemo(() => {
     return transportFundingRequests.filter(r => isSitePermitted(r.siteName, 'all'));
@@ -252,6 +270,10 @@ export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }
 
   // Submit Wizard
   const handleWizardSubmit = (statusToSave: FundingRequestStatus = 'Submitted') => {
+    if (!formData.suId) {
+      alert('Choose the Service User this request is for.');
+      return;
+    }
     if (!formData.mainAppRef || !formData.mainAppInitials || !formData.appointmentDate) {
       alert('Please provide the Main App Reference, Initials, and Appointment Date.');
       return;
@@ -802,6 +824,16 @@ export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }
                     </div>
                   </div>
 
+                  <div className="mb-3">
+                    <label className="font-semibold text-[#605e5c] block mb-1">Service User *</label>
+                    <ServiceUserPicker
+                      value={formData.suId}
+                      legacyText={!formData.suId ? formData.groupMember || formData.mainAppRef : undefined}
+                      onChange={suSelection.select}
+                    />
+                    <ServiceUserNotice profile={suSelection.profile} skipped={suSelection.skippedFields} onRefill={suSelection.refillSkipped} />
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="font-semibold text-[#605e5c] block mb-1">
@@ -811,7 +843,7 @@ export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }
                         type="text"
                         placeholder="e.g. APP-90214 / CR0-84812"
                         value={formData.mainAppRef || ''}
-                        onChange={(e) => setFormData(p => ({ ...p, mainAppRef: e.target.value }))}
+                        onChange={(e) => { suSelection.touch('mainAppRef'); setFormData(p => ({ ...p, mainAppRef: e.target.value })); }}
                         className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-mono text-xs focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden"
                         required
                       />
@@ -825,7 +857,7 @@ export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }
                         type="text"
                         placeholder="e.g. A.Z."
                         value={formData.mainAppInitials || ''}
-                        onChange={(e) => setFormData(p => ({ ...p, mainAppInitials: e.target.value }))}
+                        onChange={(e) => { suSelection.touch('mainAppInitials'); setFormData(p => ({ ...p, mainAppInitials: e.target.value })); }}
                         className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] font-semibold text-xs focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden"
                         required
                       />
@@ -839,7 +871,7 @@ export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }
                         type="text"
                         placeholder="Full name of service user traveling"
                         value={formData.groupMember || ''}
-                        onChange={(e) => setFormData(p => ({ ...p, groupMember: e.target.value }))}
+                        onChange={(e) => { suSelection.touch('groupMember'); setFormData(p => ({ ...p, groupMember: e.target.value })); }}
                         className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden"
                       />
                     </div>
@@ -852,7 +884,7 @@ export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }
                         type="tel"
                         placeholder="+44 7..."
                         value={formData.phone || ''}
-                        onChange={(e) => setFormData(p => ({ ...p, phone: e.target.value }))}
+                        onChange={(e) => { suSelection.touch('phone'); setFormData(p => ({ ...p, phone: e.target.value })); }}
                         className="w-full p-2 border border-[#8a8886] rounded-xs bg-white text-[#323130] text-xs focus:border-[#8764b8] focus:ring-1 focus:ring-[#8764b8] outline-hidden"
                       />
                     </div>
