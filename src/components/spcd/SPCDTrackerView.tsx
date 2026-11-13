@@ -4,6 +4,7 @@ import { IconClipboardList as ClipboardList, IconPlus as Plus, IconTrash as Tras
 import { useApp } from '../../context/AppContext';
 import { SPCDRecord } from '../../types';
 import { Pagination } from '../common/Pagination';
+import { serialNo, serviceUserFirst } from '../common/TrackerLayout';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -110,6 +111,8 @@ export const SPCDTrackerView: React.FC = () => {
     saveColumns: handleSaveSpcdColumns,
     resetToDefault: handleResetSpcdColumns
   } = useTableSchema<SPCDRecord>('spcd', spcdTableConfig);
+  // Standard order: S.No., then the Service User, then the rest as configured.
+  const orderedSpcdColumns = React.useMemo(() => serviceUserFirst(visibleSpcdColumns), [visibleSpcdColumns]);
   const [isSchemaEditorOpen, setIsSchemaEditorOpen] = useState<boolean>(false);
 
   // Modals
@@ -564,7 +567,8 @@ export const SPCDTrackerView: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold select-none">
-                {visibleSpcdColumns.map(col => (
+                <th className="py-2.5 px-3 w-12 whitespace-nowrap">S.No.</th>
+                {orderedSpcdColumns.map(col => (
                   <th
                     key={String(col.key)}
                     onClick={() => handleSort(col.key as any)}
@@ -608,16 +612,17 @@ export const SPCDTrackerView: React.FC = () => {
             <tbody className="divide-y divide-[#edebe9] text-[#242424]">
               {paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleSpcdColumns.length + (activeTab === 'archived' ? 3 : 1)} className="py-8 text-center text-[#605e5c]">
+                  <td colSpan={orderedSpcdColumns.length + (activeTab === 'archived' ? 4 : 2)} className="py-8 text-center text-[#605e5c]">
                     <ClipboardList className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
                     <p className="font-semibold">No {activeTab === 'current' ? 'active' : 'archived'} SPCD records found.</p>
                     <p className="text-[11px] text-neutral-400 mt-0.5">Click "Add SPCD Case Entry" to register new service user case updates.</p>
                   </td>
                 </tr>
               ) : (
-                paginatedRecords.map(item => (
+                paginatedRecords.map((item, itemIndex) => (
                   <tr key={item.id} className="hover:bg-[#f3f2f1]/60 transition-colors">
-                    {visibleSpcdColumns.map(col => (
+                    <td className="py-2.5 px-3 text-neutral-500 tabular-nums">{serialNo(itemIndex, currentPage, pageSize)}</td>
+                    {orderedSpcdColumns.map(col => (
                       <td key={String(col.key)} className="py-2.5 px-3">
                         {renderColumnCell(col, item)}
                       </td>
@@ -730,7 +735,6 @@ export const SPCDTrackerView: React.FC = () => {
           date: new Date().toISOString().slice(0, 10),
           siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? (assignedSite || (allowedSites && allowedSites[0])) : (siteFilter !== 'all' ? siteFilter : ((allowedSites && allowedSites[0]) || assignedSite)),
           staffReporting: loggedInUserName,
-          suDob: '1990-01-01',
           sgReview: 'Pending Safeguarding Lead Review',
           attachments: []
         }}
@@ -747,7 +751,7 @@ export const SPCDTrackerView: React.FC = () => {
             raisedBy: reporter,
             suName: data.suName || '',
             suPortReference: data.suPortReference || '',
-            suDob: data.suDob || '1990-01-01',
+            suDob: data.suDob || '',
             briefDescriptionActionTaken: data.briefDescriptionActionTaken || '',
             followUpNotes: data.followUpNotes || '',
             updates: data.updates || '',

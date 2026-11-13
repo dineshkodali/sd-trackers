@@ -48,6 +48,8 @@ export interface TableColumnConfig<T = any> {
   formatValue?: (value: any) => string;
   isCustom?: boolean;
   /** Shown only when viewing a record (computed or copied from another field); never part of Add/Edit forms. */
+  /** Which Service User profile value fills this field when a person is picked (replaces guessing from the field name) */
+  suField?: 'dob' | 'portRef' | 'room' | 'nationality' | 'language' | 'address';
   viewOnly?: boolean;
   /** For viewOnly columns: the value to show, worked out from the whole record. */
   viewValue?: (record: any) => any;

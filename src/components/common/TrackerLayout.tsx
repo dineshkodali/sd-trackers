@@ -8,22 +8,51 @@ import { Pagination } from './Pagination';
  */
 export interface TrackerTab { id: string; label: string }
 
-export const TabSwitcher: React.FC<{ tabs: TrackerTab[]; active: string; onChange: (id: string) => void; label?: string }> = ({ tabs, active, onChange, label = 'Sections' }) => (
-  <div role="tablist" aria-label={label} className="flex items-center gap-1 border-b border-[#e5e5e5] mt-3 -mx-1 overflow-x-auto">
-    {tabs.map(t => (
-      <button
-        key={t.id}
-        type="button"
-        role="tab"
-        aria-selected={active === t.id}
-        onClick={() => onChange(t.id)}
-        className={`px-4 py-2 text-xs font-semibold border-b-2 whitespace-nowrap cursor-pointer transition-colors ${active === t.id ? 'border-[#0d9488] text-teal-800' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
-      >
-        {t.label}
-      </button>
-    ))}
-  </div>
-);
+export const TabSwitcher: React.FC<{ tabs: TrackerTab[]; active: string; onChange: (id: string) => void; label?: string; idPrefix?: string }> = ({ tabs, active, onChange, label = 'Sections', idPrefix = 'tab' }) => {
+  // Arrow keys, Home and End move between tabs (roving tabindex), as the WAI-ARIA tabs pattern asks.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let next = -1;
+    if (e.key === 'ArrowRight') next = (index + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = tabs.length - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    onChange(tabs[next].id);
+    requestAnimationFrame(() => document.getElementById(`${idPrefix}-${tabs[next].id}`)?.focus());
+  };
+  return (
+    <div role="tablist" aria-label={label} className="flex items-center gap-1 border-b border-[#e5e5e5] mt-3 -mx-1 overflow-x-auto">
+      {tabs.map((t, i) => (
+        <button
+          key={t.id}
+          id={`${idPrefix}-${t.id}`}
+          type="button"
+          role="tab"
+          aria-selected={active === t.id}
+          tabIndex={active === t.id ? 0 : -1}
+          onClick={() => onChange(t.id)}
+          onKeyDown={e => onKeyDown(e, i)}
+          className={`px-4 py-2 text-xs font-semibold border-b-2 whitespace-nowrap cursor-pointer transition-colors ${active === t.id ? 'border-[#0d9488] text-teal-800' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+/** Serial number shown in the S.No. column: continues across pages and follows the filtered list. */
+export const serialNo = (index: number, page: number, pageSize: number): number => (Math.max(1, page) - 1) * pageSize + index + 1;
+
+/** Puts the Service User column first (after S.No.), leaving every other column where the table's own order has it. */
+export function serviceUserFirst<C extends { key: unknown }>(columns: C[], serviceUserKeys: string[] = ['suName', 'serviceUserName', 'residentName']): C[] {
+  const i = columns.findIndex(c => serviceUserKeys.includes(String(c.key)));
+  return i <= 0 ? columns : [columns[i], ...columns.slice(0, i), ...columns.slice(i + 1)];
+}
+
+export const SerialTh: React.FC = () => <th className="p-2.5 w-12 whitespace-nowrap">S.No.</th>;
+export const SerialTd: React.FC<{ n: number }> = ({ n }) => <td className="p-2.5 text-neutral-500 tabular-nums">{n}</td>;
 
 export const TrackerHeader: React.FC<{
   icon: React.ReactNode;

@@ -910,6 +910,7 @@ export const spcdTableConfig: TableColumnConfig<SPCDRecord>[] = [
     key: 'suPortReference',
     label: "SU's Port Reference",
     type: 'text',
+    suField: 'portRef',
     required: true,
     placeholder: 'e.g. 10/123456 or PR-001',
     section: 'Service User & Location'
@@ -918,6 +919,7 @@ export const spcdTableConfig: TableColumnConfig<SPCDRecord>[] = [
     key: 'suDob',
     label: "SU's DOB",
     type: 'date',
+    suField: 'dob',
     section: 'Service User & Location'
   },
   {

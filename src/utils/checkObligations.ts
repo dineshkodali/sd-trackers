@@ -144,6 +144,11 @@ export function occupiedEnough(periods: Occupancy[], w: CheckWindow, minDays: nu
 
 export interface ResponsiblePerson { name: string; source: 'property manager' | 'site lead officer' | 'site manager' | 'none' }
 
+/** Who was in a room, and when (taken from placements; a person can appear more than once). */
+export interface RoomOccupant { suId: string; name: string; reference: string; start: string; end: string | null }
+
+export type OccupancyState = 'occupied' | 'vacated' | 'vacant';
+
 export interface CheckObligation {
   key: string;
   type: CheckType;
@@ -167,6 +172,12 @@ export interface CheckObligation {
   visitId: string | null;
   /** Days after the deadline: for completed_late the lateness, for overdue the days overdue so far; otherwise null */
   daysLate: number | null;
+  /** Rooms only: who is in the room as at the reference date (today, or month end for a past month) */
+  occupancy?: OccupancyState;
+  /** Rooms only: when the last occupant left, if the room was occupied earlier in the month but is empty now */
+  vacatedOn?: string | null;
+  /** Rooms only: the date the occupant names are as at */
+  occupantAsAt?: string;
 }
 
 export interface CheckSubject {
@@ -180,6 +191,8 @@ export interface CheckSubject {
   suName: string;
   suReference: string;
   occupancy: Occupancy[];
+  /** Rooms only: everyone who has had a placement in the room */
+  occupants?: RoomOccupant[];
 }
 
 /**
@@ -252,6 +265,7 @@ export function buildSubjects(input: CheckInput): CheckSubject[] {
   const out: CheckSubject[] = [];
 
   const byRoom = new Map<string, Occupancy[]>();
+  const occupantsByRoom = new Map<string, RoomOccupant[]>();
   const bySu = new Map<string, { occ: Occupancy[]; last: Placement }>();
   for (const p of input.placements) {
     const range = placementRange(p);
@@ -259,6 +273,15 @@ export function buildSubjects(input: CheckInput): CheckSubject[] {
     const room = roomById.get(p.roomId);
     if (room && !isPlaceholderRoom(room) && !isOutOfUse(room.status)) {
       byRoom.set(p.roomId, [...(byRoom.get(p.roomId) || []), range]);
+      const person = suById.get(p.suId);
+      // A placement whose person record is missing still means the room is occupied; it just has no name to show.
+      occupantsByRoom.set(p.roomId, [...(occupantsByRoom.get(p.roomId) || []), {
+        suId: p.suId,
+        name: person ? [person.firstName, person.lastName].filter(Boolean).join(' ') : '',
+        reference: person ? (person.externalReference || person.suReference || '') : '',
+        start: range.start,
+        end: range.end
+      }]);
     }
     const cur = bySu.get(p.suId);
     bySu.set(p.suId, { occ: [...(cur?.occ || []), range], last: !cur || String(p.startDate) > String(cur.last.startDate) ? p : cur.last });
@@ -268,7 +291,7 @@ export function buildSubjects(input: CheckInput): CheckSubject[] {
     const room = roomById.get(roomId)!;
     const property = propertyById.get(room.propertyId);
     const siteId = (property?.siteId && resolveSite(property.siteId)) || '';
-    out.push({ id: roomId, type: 'room', siteId, propertyId: room.propertyId, roomId, roomNumber: room.roomNumber, suId: '', suName: '', suReference: '', occupancy });
+    out.push({ id: roomId, type: 'room', siteId, propertyId: room.propertyId, roomId, roomNumber: room.roomNumber, suId: '', suName: '', suReference: '', occupancy, occupants: occupantsByRoom.get(roomId) || [] });
   }
   for (const [suId, { occ, last }] of bySu) {
     const su = suById.get(suId);
@@ -280,6 +303,24 @@ export function buildSubjects(input: CheckInput): CheckSubject[] {
     });
   }
   return out;
+}
+
+/**
+ * Who is in a room on `asAt`. Everyone whose placement covers that date (shared rooms list all of them). If nobody does,
+ * the room is "vacated" when someone was there earlier in the month, otherwise "vacant". A past check is never given
+ * today's occupant: the caller passes the reference date for the month being shown.
+ */
+export function occupantsAsAt(occupants: RoomOccupant[], asAt: string, monthStart: string): {
+  state: OccupancyState; people: RoomOccupant[]; vacatedOn: string | null;
+} {
+  const here = occupants.filter(o => o.start <= asAt && (!o.end || o.end >= asAt));
+  if (here.length > 0) {
+    const seen = new Set<string>();
+    return { state: 'occupied', people: here.filter(o => (seen.has(o.suId) ? false : (seen.add(o.suId), true))), vacatedOn: null };
+  }
+  const earlier = occupants.filter(o => o.start <= asAt && o.end && o.end >= monthStart).sort((a, b) => String(b.end).localeCompare(String(a.end)));
+  if (earlier.length > 0) return { state: 'vacated', people: [earlier[0]], vacatedOn: earlier[0].end };
+  return { state: 'vacant', people: [], vacatedOn: null };
 }
 
 /**
@@ -313,6 +354,9 @@ export function buildObligations(input: CheckInput, month: string, type: CheckTy
       : [occupiedEnough(s.occupancy, windows[0], settings.minOccupiedDays), occupiedEnough(s.occupancy, windows[1], settings.minOccupiedDays)];
     if (!reqs[0] && !reqs[1]) continue;
 
+    const asAt = month === monthOf(today) ? today : lastDayOfMonth(month);
+    const occ = type === 'room' ? occupantsAsAt(s.occupants || [], asAt, windows[0].start) : null;
+    const roomPeople = occ ? occ.people : [];
     const allocation = allocateVisits(windows, reqs, visitsBySubject.get(s.id) || []);
     const site = siteById.get(s.siteId);
     const property = propertyById.get(s.propertyId);
@@ -326,7 +370,11 @@ export function buildObligations(input: CheckInput, month: string, type: CheckTy
         key: `${type}|${s.id}|${month}|${w.period}`,
         type, month, period: w.period, deadline: w.deadline, status,
         siteId: s.siteId, siteName: site?.name || '', propertyId: s.propertyId, propertyName: property?.propertyName || '',
-        roomId: s.roomId, roomNumber: s.roomNumber, suId: s.suId, suName: s.suName, suReference: s.suReference,
+        roomId: s.roomId, roomNumber: s.roomNumber,
+        suId: occ ? (roomPeople[0]?.suId || '') : s.suId,
+        suName: occ ? roomPeople.map(x => x.name).filter(Boolean).join(', ') : s.suName,
+        suReference: occ ? roomPeople.map(x => x.reference).filter(Boolean).join(', ') : s.suReference,
+        occupancy: occ?.state, vacatedOn: occ?.vacatedOn ?? null, occupantAsAt: occ ? asAt : undefined,
         responsible,
         visitDate: done?.visit.date || null, completedBy: done?.visit.completedBy || '', visitId: done?.visit.id || null,
         daysLate: done ? (done.onTime ? null : daysBetween(w.deadline, done.visit.date)) : (status === 'overdue' ? daysBetween(w.deadline, today) : null)
@@ -352,6 +400,9 @@ export interface CheckRow {
   suName: string;
   suReference: string;
   responsible: ResponsiblePerson;
+  /** Rooms only: occupied / vacated / vacant as at the reference date, and when the last occupant left */
+  occupancy?: OccupancyState;
+  vacatedOn?: string | null;
   first: CheckObligation | null;
   second: CheckObligation | null;
   overall: 'complete' | 'incomplete';
@@ -364,7 +415,7 @@ export function toRows(obligations: CheckObligation[]): CheckRow[] {
     const subjectKey = `${o.type}|${o.type === 'room' ? o.roomId : o.suId}`;
     let row = map.get(subjectKey);
     if (!row) {
-      row = { subjectKey, type: o.type, siteId: o.siteId, siteName: o.siteName, propertyName: o.propertyName, roomNumber: o.roomNumber, suId: o.suId, suName: o.suName, suReference: o.suReference, responsible: o.responsible, first: null, second: null, overall: 'incomplete' };
+      row = { subjectKey, type: o.type, siteId: o.siteId, siteName: o.siteName, propertyName: o.propertyName, roomNumber: o.roomNumber, suId: o.suId, suName: o.suName, suReference: o.suReference, responsible: o.responsible, occupancy: o.occupancy, vacatedOn: o.vacatedOn, first: null, second: null, overall: 'incomplete' };
       map.set(subjectKey, row);
     }
     if (o.period === 1) row.first = o; else row.second = o;

@@ -260,3 +260,37 @@ Decisions Q1-Q16 were not answered, so the recommended defaults were used. Chang
 - Supabase dashboard settings for reset emails (site URL, redirect allow-list, SMTP, template, OTP expiry) have not been verified.
 - Nothing has been exercised in a browser.
 - Room / Welfare / Food still use `SiteServiceUserSelector` (not migrated to the shared picker).
+
+---
+
+## Phase plan: navigation, Service User integrity, tables and forms (awaiting approval)
+
+Audit documents: `SDTRACKER_SU_DATA_INTEGRITY_AUDIT.md`, `SDTRACKER_GLOBAL_FORM_STANDARD.md`, `SDTRACKER_TABLE_AND_NAVIGATION_STANDARD.md`, `SDTRACKER_ROUTE_AUDIT.md`. Nothing below is implemented.
+
+| Step | Work | Risk | Depends on |
+|---|---|---|---|
+| 1 | Room Checks occupant fix in `checkObligations.ts` (occupants per room, stored occupant on history) + tests | Low | none |
+| 2 | SPCD DOB: `suField` mapping in `DynamicRecordFormModal`, remove `1990-01-01` default/fallback, London-date helper | Low-medium (shared modal; ~20 forms inherit) | 1 not required |
+| 3 | `TabSwitcher` keyboard/ARIA + `useTabState`; move Room/Welfare onto `TrackerHeader` tabs, filters become chips | Low | none |
+| 4 | Serial and Service User column helpers in `TrackerLayout`; apply to Room, Welfare, SPCD first | Low | 1 |
+| 5 | Migrate `SiteServiceUserSelector` forms (Room, Welfare, Food Surveys) to `ServiceUserField` | Medium | 2 |
+| 6 | `StandardModal`/`ModalFormSection`/`FormField`/`FormValidation`; apply to the Dynamic modal, Room and Welfare forms, then others gradually | Medium | 2 |
+| 7 | Server-side per-table validators on write routes | Medium (must not reject legacy data) | 6 |
+| 8 | Route table, `?tab`/`?month`/`?record`, guard restored page | Medium | 3 |
+
+Decisions needed: (a) tab names for Room/Welfare, (b) whether shared rooms list every occupant or the primary, (c) whether S.No. is added to every Service User table now or module by module, (d) whether server-side validation may reject (strict) or only warn (log) at first.
+
+### Status after approval (steps implemented)
+Defaults used for the open decisions: tab names "Required checks" / "Inspection log" (Welfare: "Welfare log"); shared rooms list every resident; S.No. added module by module (Room Checks, Welfare Checks, SPCD first); server validation not changed yet.
+
+| Step | State |
+|---|---|
+| 1 Room occupant fix | Done in `checkObligations.ts` (occupants per room as at today / month end, "Vacated", "Vacant", shared rooms, history keeps the occupant of that month); 4 new tests. |
+| 2 SPCD DOB | Done: columns declare `suField`; DOB, port reference fill from the profile; the `1990-01-01` default and fallback are removed. Not yet moved off the name-guessing for the other ~20 forms (they keep working as before). |
+| 3 Header tabs | Done for Room and Welfare: `TabSwitcher` inside the header card, keyboard arrows/Home/End, remembered per session (`useTabState`). Status chips are now filters only. |
+| 4 S.No. / Service User first | Done for Room (matrix and log), Welfare (matrix and log), SPCD. Helpers `serialNo`, `serviceUserFirst` in `TrackerLayout`; 3 tests. Other tables not yet changed. |
+| 5 Selector migration | Not started (Room, Welfare, Food Surveys still use `SiteServiceUserSelector`). |
+| 6 Shared modal/field components | Not started. |
+| 7 Server validation | Not started. |
+| 8 Route table | Only per-page tab memory done; no URL changes. |
+Not verified in a browser.

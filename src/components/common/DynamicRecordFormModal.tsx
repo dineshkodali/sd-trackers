@@ -339,7 +339,7 @@ export function DynamicRecordFormModal<T = any>({
   const isSuProfileColumn = (col: TableColumnConfig<T>): boolean => {
     const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
     return ['portref', 'portrefs', 'portreference', 'portornassref', 'nassref', 'roomno', 'roomnumber', 'roomorflatno', 'flatnumber',
-      'dob', 'sudob', 'dateofbirth', 'nationality', 'preferredlanguage'].includes(key) || isDobColumn(col);
+      'dob', 'sudob', 'dateofbirth', 'nationality', 'preferredlanguage'].includes(key) || isDobColumn(col) || !!col.suField;
   };
   const singleSuColumn = (cols: TableColumnConfig<T>[]) => {
     const suCols = cols.filter(isServiceUserColumn);
@@ -1117,6 +1117,13 @@ export function DynamicRecordFormModal<T = any>({
                                 });
                               }
                               const derived: Record<string, string | undefined> = { dob: extra.dob, nationality: extra.nationality, language: extra.language };
+                              // Columns that declare which profile value they hold are filled directly, whatever their key is called.
+                              const byField: Record<string, string | undefined> = {
+                                dob: extra.dob ? String(extra.dob).slice(0, 10) : undefined,
+                                portRef: extra.portRef, room: extra.roomNumber, nationality: extra.nationality,
+                                language: extra.language, address: extra.address
+                              };
+                              formColumns.forEach(c => { if (c.suField && byField[c.suField]) handleChange(String(c.key), byField[c.suField]); });
               const derivedKeys: Record<string, string[]> = {
                 dob: ['dob', 'dateofbirth'],
                 nationality: ['nationality', 'country'],

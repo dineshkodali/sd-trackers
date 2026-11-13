@@ -40,6 +40,8 @@ export interface CheckObligationsState {
   rows: CheckRow[];
   totals: CheckTotals | null;
   unmatched: UnmatchedVisit[];
+  /** Service User id -> full name, for labelling saved checks */
+  suNameById: Map<string, string>;
   reload: () => void;
 }
 
@@ -82,5 +84,7 @@ export function useCheckObligations(type: CheckType, month: string, now: Date, e
   const rows = useMemo(() => (computed ? toRows(computed.result.obligations) : []), [computed]);
   const totals = useMemo(() => (computed ? summarise(computed.result.obligations) : null), [computed]);
 
-  return { loading, error, result: computed?.result ?? null, rows, totals, unmatched: computed?.unmatched ?? [], reload: () => run(true) };
+  const suNameById = useMemo(() => new Map((master?.serviceUsers || []).map(su => [su.id, [su.firstName, su.lastName].filter(Boolean).join(' ')])), [master]);
+
+  return { loading, error, result: computed?.result ?? null, rows, totals, unmatched: computed?.unmatched ?? [], suNameById, reload: () => run(true) };
 }

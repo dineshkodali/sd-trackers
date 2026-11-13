@@ -237,3 +237,54 @@ test('month helpers', () => {
   assert.equal(lastDayOfMonth('2028-02'), '2028-02-29');
   assert.equal(previousMonth('2026-01'), '2025-12');
 });
+
+/* ----------------------------------------------------------------- who is in the room */
+
+test('an occupied room shows its current resident, not "vacant"', () => {
+  const rows = toRows(buildObligations(estate(), '2026-11', 'room', AFTER_25TH).obligations);
+  const r401 = rows.find(r => r.roomNumber === '401')!;
+  assert.equal(r401.occupancy, 'occupied');
+  assert.equal(r401.suName, 'Amina Khan');
+  assert.equal(r401.suReference, 'PR-1');
+  assert.equal(r401.suId, 'su1');
+  // a placement whose resident record does not exist yields no invented name
+  const r403 = rows.find(r => r.roomNumber === '403')!;
+  assert.equal(r403.occupancy, 'occupied');
+  assert.equal(r403.suName, '');
+});
+
+test('a shared room lists every resident in it', () => {
+  const input = estate({
+    placements: [
+      { id: 'a', suId: 'su1', siteId: 'site-1', propertyId: 'p1', roomId: 'r401', status: 'Active', startDate: '2026-09-01' },
+      { id: 'b', suId: 'su2', siteId: 'site-1', propertyId: 'p1', roomId: 'r401', status: 'Active', startDate: '2026-10-01' }
+    ] as any
+  });
+  const r = toRows(buildObligations(input, '2026-11', 'room', AFTER_25TH).obligations)[0];
+  assert.equal(r.suName, 'Amina Khan, Ben Ode');
+  assert.equal(r.suReference, 'PR-1, PR-2');
+});
+
+test('a room emptied mid-month is "vacated" and names the last resident, not a later one', () => {
+  const input = estate({
+    placements: [{ id: 'a', suId: 'su1', siteId: 'site-1', propertyId: 'p1', roomId: 'r401', status: 'Completed', startDate: '2026-09-01', endDate: '2026-11-14' }] as any
+  });
+  const r = toRows(buildObligations(input, '2026-11', 'room', AFTER_25TH).obligations)[0];
+  assert.equal(r.occupancy, 'vacated');
+  assert.equal(r.vacatedOn, '2026-11-14');
+  assert.equal(r.suName, 'Amina Khan');
+});
+
+test('history: a past month names who was there then, not who is there now', () => {
+  const input = estate({
+    placements: [
+      { id: 'old', suId: 'su1', siteId: 'site-1', propertyId: 'p1', roomId: 'r401', status: 'Completed', startDate: '2026-05-01', endDate: '2026-08-20' },
+      { id: 'new', suId: 'su2', siteId: 'site-1', propertyId: 'p1', roomId: 'r401', status: 'Active', startDate: '2026-08-25' }
+    ] as any,
+    roomVisits: []
+  });
+  const jul = toRows(buildObligations(input, '2026-07', 'room', AFTER_25TH).obligations)[0];
+  assert.equal(jul.suName, 'Amina Khan');
+  const nov = toRows(buildObligations(input, '2026-11', 'room', AFTER_25TH).obligations)[0];
+  assert.equal(nov.suName, 'Ben Ode');
+});

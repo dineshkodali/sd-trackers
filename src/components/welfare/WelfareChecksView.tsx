@@ -1,12 +1,14 @@
 import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { IconHeartHandshake as HeartHandshake, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconBuilding as Building2, IconUser as User, IconActivity as Activity, IconStethoscope as Stethoscope, IconHome as Home, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock, IconAlertOctagon as AlertOctagon, IconAlertTriangle as AlertTriangle } from '@tabler/icons-react';
+import { IconHeartHandshake as HeartHandshake, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconBuilding as Building2, IconUser as User, IconActivity as Activity, IconStethoscope as Stethoscope, IconHome as Home, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock, IconAlertOctagon as AlertOctagon, IconAlertTriangle as AlertTriangle, IconClock as Clock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { WelfareCheckRecord } from '../../types';
 import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';
 import { Pagination } from '../common/Pagination';
 import { useCheckObligations } from '../../hooks/useCheckObligations';
+import { useTabState } from '../../hooks/useTabState';
+import { TabSwitcher, serialNo } from '../common/TrackerLayout';
 import { monthOptions, monthLabel } from '../checks/CheckObligationsPanel';
 import { londonNow } from '../../utils/operationsRules';
 import { monthWindows, isSatisfied, type CheckRow, type CheckObligation } from '../../utils/checkObligations';
@@ -84,7 +86,14 @@ export const WelfareChecksView: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(today.slice(0, 7));
 
   // Compliance Tabs: 'all' | 'completed' | 'pending' | 'overdue' | 'history'
-  const [complianceTab, setComplianceTab] = useState<'all' | 'completed' | 'pending' | 'overdue' | 'history'>('all');
+  // Page-level tabs (Required checks / Welfare log) are remembered for the session; the status chips are only a filter.
+  const [pageTab, setPageTab] = useTabState('welfareChecks', ['required', 'log'] as const, 'required');
+  const [statusChip, setStatusChip] = useState<'all' | 'completed' | 'pending' | 'overdue'>('all');
+  const complianceTab: 'all' | 'completed' | 'pending' | 'overdue' | 'history' = pageTab === 'log' ? 'history' : statusChip;
+  const setComplianceTab = (t: 'all' | 'completed' | 'pending' | 'overdue' | 'history') => {
+    if (t === 'history') setPageTab('log');
+    else { setPageTab('required'); setStatusChip(t); }
+  };
   const [compliancePage, setCompliancePage] = useState(1);
   const compliancePageSize = 10;
 
@@ -457,44 +466,39 @@ export const WelfareChecksView: React.FC = () => {
     if (!o) return <span className="text-neutral-400">—</span>;
     if (o.status === 'completed' || o.status === 'completed_late') {
       return (
-        <div>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-            <span>Done {fmt(o.visitDate)}</span>
-          </span>
-          {o.completedBy && <div className="text-[10px] text-neutral-500 mt-0.5 truncate max-w-[130px]">{o.completedBy}</div>}
-        </div>
+        <span
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 whitespace-nowrap cursor-default"
+          title={`Completed on ${fmt(o.visitDate)}${o.completedBy ? ` by ${o.completedBy}` : ''}`}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          <span>Done {fmt(o.visitDate)}</span>
+        </span>
       );
     }
     if (o.status === 'overdue') {
       return (
-        <div>
-          <button
-            type="button"
-            onClick={() => handleQuickResolve(row, period)}
-            title="Click to complete this overdue welfare check now"
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-bold bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 cursor-pointer shadow-2xs transition-colors group text-left"
-          >
-            <AlertOctagon className="w-3 h-3 text-red-600 shrink-0" />
-            <span className="group-hover:underline">Overdue ({o.daysLate ?? 1}d late)</span>
-          </button>
-          <div className="text-[10px] text-red-600 mt-0.5 font-medium">Due by {fmt(o.deadline)}</div>
-        </div>
-      );
-    }
-    return (
-      <div>
         <button
           type="button"
           onClick={() => handleQuickResolve(row, period)}
-          title="Click to record welfare check"
-          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 cursor-pointer transition-colors text-left"
+          title={`Overdue by ${o.daysLate ?? 1}d (Due ${fmt(o.deadline)}). Click to resolve now.`}
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-bold bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 cursor-pointer shadow-2xs transition-colors whitespace-nowrap"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
-          <span>Pending</span>
+          <AlertOctagon className="w-3.5 h-3.5 text-red-600 shrink-0" />
+          <span>Overdue ({o.daysLate ?? 1}d)</span>
         </button>
-        <div className="text-[10px] text-neutral-500 mt-0.5">Due by {fmt(o.deadline)}</div>
-      </div>
+      );
+    }
+    // Pending
+    return (
+      <button
+        type="button"
+        onClick={() => handleQuickResolve(row, period)}
+        title={`Pending welfare check: Due by ${fmt(o.deadline)}. Click to record.`}
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-medium bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 cursor-pointer transition-colors whitespace-nowrap"
+      >
+        <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+        <span>Due {fmt(o.deadline).slice(0, 5)}</span>
+      </button>
     );
   };
 
@@ -526,24 +530,24 @@ export const WelfareChecksView: React.FC = () => {
   const renderComplianceStatus = (row: CheckRow) => {
     if (row.overall === 'complete') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-          <span>Completed (2/2)</span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          <span>Completed</span>
         </span>
       );
     }
     if (row.first?.status === 'overdue' || row.second?.status === 'overdue') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-bold bg-red-50 text-red-800 border border-red-200">
-          <AlertOctagon className="w-3 h-3 text-red-600 shrink-0" />
-          <span>Overdue Action</span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-bold bg-red-50 text-red-800 border border-red-200 whitespace-nowrap">
+          <AlertOctagon className="w-3.5 h-3.5 text-red-600 shrink-0" />
+          <span>Overdue</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-        <span>Due / In Progress</span>
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
+        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+        <span>In Progress</span>
       </span>
     );
   };
@@ -605,6 +609,17 @@ export const WelfareChecksView: React.FC = () => {
             )}
           </div>
         </div>
+
+        <TabSwitcher
+          label="Welfare Checks views"
+          idPrefix="welfarechecks-tab"
+          active={pageTab}
+          onChange={id => { setPageTab(id as 'required' | 'log'); setCompliancePage(1); setCurrentPage(1); }}
+          tabs={[
+            { id: 'required', label: 'Required checks' },
+            { id: 'log', label: `Welfare log (${filteredRecords.length})` }
+          ]}
+        />
 
         {/* Filter Bar */}
         <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
@@ -721,7 +736,7 @@ export const WelfareChecksView: React.FC = () => {
       {/* Main Tabs Container */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
         <div className="px-3 py-2 border-b border-[#e5e5e5] bg-[#faf9f8] flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1 overflow-x-auto">
+          <div className={`flex items-center gap-1 overflow-x-auto ${complianceTab === 'history' ? 'hidden' : ''}`} role="group" aria-label="Filter by status">
             <button
               type="button"
               onClick={() => { setComplianceTab('all'); setCompliancePage(1); }}
@@ -771,18 +786,6 @@ export const WelfareChecksView: React.FC = () => {
                 </span>
               )}
             </button>
-            <div className="h-4 w-px bg-slate-300 mx-1" />
-            <button
-              type="button"
-              onClick={() => { setComplianceTab('history'); setCurrentPage(1); }}
-              className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                complianceTab === 'history'
-                  ? 'bg-white text-[#242424] border border-[#cbd5e1] shadow-2xs'
-                  : 'text-[#605e5c] hover:bg-[#f3f2f1]'
-              }`}
-            >
-              Raw Check History Logs ({filteredRecords.length})
-            </button>
           </div>
 
           <div className="text-[11px] text-[#605e5c]">
@@ -798,6 +801,7 @@ export const WelfareChecksView: React.FC = () => {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
+                  <th className="py-2.5 px-3 w-12 whitespace-nowrap">S.No.</th>
                   <th className="py-2.5 px-3">Service User</th>
                   <th className="py-2.5 px-3">Flat / Room No</th>
                   <th className="py-2.5 px-3">Property / Site</th>
@@ -813,20 +817,25 @@ export const WelfareChecksView: React.FC = () => {
               <tbody className="divide-y divide-[#f0f0f0]">
                 {paginatedComplianceRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-neutral-400">
+                    <td colSpan={11} className="py-12 text-center text-neutral-400">
                       <HeartHandshake className="w-8 h-8 mx-auto mb-2 text-neutral-300 opacity-60" />
                       <p className="font-medium text-xs">No service users found in this view</p>
                       <p className="text-[11px] mt-0.5">Every active resident in the selected site and month will appear here.</p>
                     </td>
                   </tr>
                 ) : (
-                  paginatedComplianceRows.map(row => {
+                  paginatedComplianceRows.map((row, rowIndex) => {
                     const hasOverdue = row.first?.status === 'overdue' || row.second?.status === 'overdue';
                     const lastChecked = row.second?.visitDate || row.first?.visitDate;
                     const lastOfficer = row.second?.completedBy || row.first?.completedBy;
+                    const assignedOfficer = row.responsible?.name || loggedInUserName;
+                    const overduePeriod: 1 | 2 = (row.first && !isSatisfied(row.first.status) && row.first.status === 'overdue') ? 1 : 2;
+                    const nextPeriod: 1 | 2 = (row.first && !isSatisfied(row.first.status)) ? 1 : 2;
+                    const latestRecord = recordedFor(row.second) || recordedFor(row.first);
 
                     return (
                       <tr key={row.subjectKey} className="group hover:bg-[#fbfbfa] transition-colors">
+                        <td className="py-2.5 px-3 text-neutral-500 tabular-nums">{serialNo(rowIndex, compliancePage, compliancePageSize)}</td>
                         <td className="py-2.5 px-3">
                           <div className="font-semibold text-neutral-800">{row.suName || 'Service User'}</div>
                           {row.suReference && <div className="text-[10px] text-teal-700 font-mono font-medium">{row.suReference}</div>}
@@ -842,42 +851,82 @@ export const WelfareChecksView: React.FC = () => {
                         <td className="py-2.5 px-3">{renderObligationCell(row.second, row, 2)}</td>
                         <td className="py-2.5 px-3 text-center">{renderFrequencyBadge(row)}</td>
                         <td className="py-2.5 px-3">{renderComplianceStatus(row)}</td>
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="font-medium text-neutral-800">{fmt(lastChecked) || '—'}</div>
-                          {lastOfficer && <div className="text-[10px] text-neutral-500 truncate max-w-[120px]">{lastOfficer}</div>}
                         </td>
-                        <td className="py-2.5 px-3 text-neutral-600">{row.responsible?.name || <span className="text-neutral-400">—</span>}</td>
-                        <td className="py-2.5 px-3 text-right">
-                          {hasOverdue ? (
-                            <button
-                              type="button"
-                              onClick={() => handleQuickResolve(row)}
-                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xs text-[11px] shadow-2xs transition-colors cursor-pointer"
-                            >
-                              Resolve Check {row.first && !isSatisfied(row.first.status) ? 1 : 2}
-                            </button>
+                        <td className="py-2.5 px-3">
+                          {lastOfficer ? (
+                            <div className="flex items-center gap-1.5 text-neutral-800 font-medium whitespace-nowrap" title={`Submitted by ${lastOfficer}`}>
+                              <User className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
+                              <span className="truncate max-w-[130px]">{lastOfficer}</span>
+                            </div>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleQuickResolve(row)}
-                              className="px-2 py-1 bg-white hover:bg-[#f3f2f1] text-[#0d9488] font-semibold rounded-xs text-[11px] border border-[#cbd5e1] transition-colors cursor-pointer"
-                            >
-                              {row.overall === 'complete' ? 'Record Extra Check' : `Record Check ${row.first && !isSatisfied(row.first.status) ? 1 : 2}`}
-                            </button>
+                            <div className="flex items-center gap-1.5 text-neutral-500 whitespace-nowrap" title={`Assigned: ${assignedOfficer}`}>
+                              <User className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                              <span className="truncate max-w-[130px]">{assignedOfficer}</span>
+                            </div>
                           )}
-                          <div className="mt-1 flex flex-col items-end gap-0.5">
-                            {([row.first, row.second] as Array<CheckObligation | null>).map((o, i) => {
-                              const rec = recordedFor(o);
-                              if (!rec) return null;
-                              return (
-                                <div key={i} className="flex items-center gap-0.5">
-                                  <span className="text-[10px] text-neutral-500 mr-0.5">Check {i + 1}</span>
-                                  <button type="button" onClick={() => handleOpenView(rec)} title={`View Check ${i + 1}`} className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
-                                  {canEditRecord() && <button type="button" onClick={() => handleOpenEdit(rec)} title={`Edit Check ${i + 1}`} className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded cursor-pointer"><Edit3 className="w-3.5 h-3.5" /></button>}
-                                  {canDeleteRecord() && <button type="button" onClick={() => deleteWelfareCheck(rec.id)} title={`Delete Check ${i + 1}`} className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
-                                </div>
-                              );
-                            })}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {hasOverdue ? (
+                              <button
+                                type="button"
+                                onClick={() => handleQuickResolve(row, overduePeriod)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xs text-[11px] shadow-2xs transition-colors cursor-pointer"
+                                title={`Resolve Overdue Check ${overduePeriod}`}
+                              >
+                                <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
+                                <span>Resolve Check {overduePeriod}</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleQuickResolve(row, nextPeriod)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-xs transition-colors cursor-pointer ${
+                                  row.overall === 'complete'
+                                    ? 'bg-white hover:bg-[#f3f2f1] text-[#0d9488] border border-[#cbd5e1]'
+                                    : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-2xs'
+                                }`}
+                                title={row.overall === 'complete' ? 'Record Extra Check' : `Record Check ${nextPeriod}`}
+                              >
+                                <Plus className="w-3.5 h-3.5 shrink-0" />
+                                <span>{row.overall === 'complete' ? 'Extra Check' : `Record Check ${nextPeriod}`}</span>
+                              </button>
+                            )}
+
+                            {latestRecord && (
+                              <div className="flex items-center gap-0.5 pl-1 border-l border-neutral-200">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenView(latestRecord)}
+                                  title="View Check Record"
+                                  className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                {canEditRecord() && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEdit(latestRecord)}
+                                    title="Edit Check Record"
+                                    className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                {canDeleteRecord() && (
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteWelfareCheck(latestRecord.id)}
+                                    title="Delete Check Record"
+                                    className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -895,6 +944,8 @@ export const WelfareChecksView: React.FC = () => {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
+                  <th className="py-2.5 px-3 w-12 whitespace-nowrap">S.No.</th>
+                  <th className="py-2.5 px-3">Service User</th>
                   {visibleColumns.map(col => {
                     const isSorted = sortKey === col.key;
                     return (
@@ -928,15 +979,19 @@ export const WelfareChecksView: React.FC = () => {
               <tbody className="divide-y divide-[#f0f0f0]">
                 {paginatedRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={visibleColumns.length + 2} className="py-12 text-center text-neutral-400">
+                    <td colSpan={visibleColumns.length + 4} className="py-12 text-center text-neutral-400">
                       <HeartHandshake className="w-8 h-8 mx-auto mb-2 text-neutral-300 opacity-60" />
                       <p className="font-medium text-xs">No welfare check records found</p>
                       <p className="text-[11px] mt-0.5">Click "New Welfare Check" to log an engagement.</p>
                     </td>
                   </tr>
                 ) : (
-                  paginatedRecords.map(rec => (
+                  paginatedRecords.map((rec, recIndex) => (
                     <tr key={rec.id} className="group hover:bg-[#fbfbfa] transition-colors">
+                      <td className="py-2.5 px-3 text-neutral-500 tabular-nums">{serialNo(recIndex, currentPage, pageSize)}</td>
+                      <td className="py-2.5 px-3 font-medium text-neutral-800">
+                        {((rec.serviceUserId || (rec as any).suId) && obligationsState.suNameById.get(rec.serviceUserId || (rec as any).suId)) || rec.portReference || <span className="text-neutral-400">—</span>}
+                      </td>
                       {visibleColumns.map(col => (
                         <td key={String(col.key)} className="py-2.5 px-3">
                           {renderColumnCell(col, rec)}
