@@ -305,3 +305,18 @@ Not verified in a browser.
 - **8 Routes:** `src/config/pageRoutes.ts` is the single page-id/address table (`/room-checks`, `/welfare-checks`, ...; dashboard `/`; `/su-users`, `/service-users`, `/property-management`, `/properties` unchanged; the page called `properties` is now `/site-properties`). Navigating pushes the page's address, Back/Forward and direct links open the page, and `?tab=` is read and written by `useTabState`. `?month=` and `?record=` are not done.
 - **Needs checking by whoever owns hosting:** refreshing or opening a direct link such as `/room-checks` works only if the host sends unknown paths to `index.html`. The Express server does; AWS Amplify needs the rewrite rule from the comment at the top of `amplify.yml` set in the Amplify console. `/su-users` already depended on this.
 - Not verified in a browser.
+
+### Status words and "closed needs proof" (in progress)
+Rule requested: anything not closed shows as Due / Pending / In progress; "Completed" (closed) is allowed only once the required proof (images, documents, notes) has been supplied.
+
+Done: Room Checks and Welfare Checks (and the Due & Missed panel) show 2/2 as **Completed** and 0/2 or 1/2 as **Due** (overdue ones as "Due · Overdue"). Maintenance already refuses to close without an after-work image.
+
+Not done - the rest needs a decision per module, because the status words and the proof differ:
+| Module | Closed value(s) today | Open values today | Proof that could be required |
+|---|---|---|---|
+| Maintenance | closed statuses | open | after-work image (enforced) |
+| Escalations | Resolved, Closed | Open, Under Review, Escalated | resolution notes / evidence |
+| Vulnerable SUs | Resolved | Active, Under Investigation, Awaiting Multi-Agency Review | closure notes |
+| SD-Compliance | Compliant | In Progress, Expiring Soon, Expired, Overdue | certificate / document |
+| Food box requests, MH complaint welfare, Public transport, Laundry, GP, Booklets, Room moves | Completed / Collected / Resolved / Attended | Pending / Queued / Scheduled / In progress... | varies |
+A shared close-guard (generalising `closeBlockedReason`) can enforce whichever proofs are chosen.

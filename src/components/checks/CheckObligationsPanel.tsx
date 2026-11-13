@@ -12,7 +12,7 @@ const TONE: Record<ObligationStatus, string> = {
   exempt: 'text-[#605e5c] bg-[#f3f2f1] border-[#e1dfdd]'
 };
 const LABEL: Record<ObligationStatus, string> = {
-  completed: 'Done', completed_late: 'Done late', pending: 'Pending', overdue: 'Overdue', exempt: 'Exempt'
+  completed: 'Done', completed_late: 'Done late', pending: 'Due', overdue: 'Overdue', exempt: 'Exempt'
 };
 const fmt = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '');
 

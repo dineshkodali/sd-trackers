@@ -624,7 +624,7 @@ export const RoomChecksView: React.FC = () => {
       <button
         type="button"
         onClick={() => handleQuickResolve(row, period)}
-        title={`Pending inspection: Due by ${fmt(o.deadline)}. Click to record.`}
+        title={`Due by ${fmt(o.deadline)}. Click to record.`}
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-medium bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 cursor-pointer transition-colors whitespace-nowrap"
       >
         <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
@@ -671,14 +671,14 @@ export const RoomChecksView: React.FC = () => {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-bold bg-red-50 text-red-800 border border-red-200 whitespace-nowrap">
           <AlertOctagon className="w-3.5 h-3.5 text-red-600 shrink-0" />
-          <span>Overdue</span>
+          <span>Due · Overdue</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
         <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-        <span>In Progress</span>
+        <span>Due</span>
       </span>
     );
   };
@@ -819,8 +819,8 @@ export const RoomChecksView: React.FC = () => {
               >
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed (2/2)</option>
-                <option value="pending">In Progress (1/2)</option>
-                <option value="not_started">Not Started (0/2)</option>
+                <option value="pending">Due · 1 of 2 done</option>
+                <option value="not_started">Due · none done (0/2)</option>
                 <option value="overdue">Overdue Action</option>
               </select>
             ) : (
@@ -863,14 +863,14 @@ export const RoomChecksView: React.FC = () => {
 
           <div className="bg-amber-50/50 border border-amber-200 rounded-xs p-2.5 flex flex-col justify-between">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> In Progress (1/2)
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> Due · 1 of 2 done
             </span>
             <div className="text-xl font-bold text-amber-800 tabular-nums mt-0.5">{complianceKpis.inProgress}</div>
           </div>
 
           <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2.5 flex flex-col justify-between">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c] flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" /> Not Started (0/2)
+              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" /> Due · none done (0/2)
             </span>
             <div className="text-xl font-bold text-[#605e5c] tabular-nums mt-0.5">{complianceKpis.notStarted}</div>
           </div>
@@ -932,7 +932,7 @@ export const RoomChecksView: React.FC = () => {
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
             >
-              Due / In Progress ({complianceKpis.inProgress + complianceKpis.notStarted})
+              Due ({complianceKpis.inProgress + complianceKpis.notStarted})
             </button>
             <button
               type="button"
