@@ -36,6 +36,20 @@ const welfareExportColumns: ExportColumnOption[] = [
   { id: 'status', label: 'Status', defaultSelected: true }
 ];
 
+const welfareComplianceExportColumns: ExportColumnOption[] = [
+  { id: 'sno', label: 'S.No.', defaultSelected: true },
+  { id: 'suName', label: 'Service User / Resident', defaultSelected: true },
+  { id: 'roomNumber', label: 'Flat / Room No', defaultSelected: true },
+  { id: 'suReference', label: 'Port Reference', defaultSelected: true },
+  { id: 'siteName', label: 'Property / Site', defaultSelected: true },
+  { id: 'check1', label: 'Check 1 (Target: 10th)', defaultSelected: true },
+  { id: 'check2', label: 'Check 2 (Target: 25th)', defaultSelected: true },
+  { id: 'frequency', label: 'Monthly Frequency', defaultSelected: true },
+  { id: 'complianceStatus', label: 'Compliance Status', defaultSelected: true },
+  { id: 'lastChecked', label: 'Last Checked', defaultSelected: true },
+  { id: 'assignedStaff', label: 'Assigned Staff / Officer', defaultSelected: true }
+];
+
 export const WelfareChecksView: React.FC = () => {
   const {
     defaultSiteFilter,
@@ -96,11 +110,12 @@ export const WelfareChecksView: React.FC = () => {
     else { setPageTab('required'); setStatusChip(t); }
   };
   const [compliancePage, setCompliancePage] = useState(1);
-  const compliancePageSize = 10;
+  const [compliancePageSize, setCompliancePageSize] = useState(10);
 
   // Real-time Monthly Obligation Calculation
-  const obligationsState = useCheckObligations('welfare', selectedMonth, now, true);
-  const windows = useMemo(() => monthWindows(selectedMonth, obligationsState.result?.settings), [selectedMonth, obligationsState.result]);
+  const obligationsMonth = selectedMonth === 'all' ? today.slice(0, 7) : selectedMonth;
+  const obligationsState = useCheckObligations('welfare', obligationsMonth, now, true);
+  const windows = useMemo(() => monthWindows(obligationsMonth, obligationsState.result?.settings), [obligationsMonth, obligationsState.result]);
 
   const allowedNames = useMemo(() => {
     if (canAccessAllSites()) return null;
@@ -110,7 +125,11 @@ export const WelfareChecksView: React.FC = () => {
   const filteredComplianceRows = useMemo(() => {
     return (obligationsState.rows || []).filter(r => {
       if (allowedNames && !allowedNames.has(r.siteName.toLowerCase())) return false;
-      if (siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites' && r.siteName.toLowerCase() !== siteFilter.toLowerCase()) return false;
+      if (siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites') {
+        const sf = siteFilter.toLowerCase();
+        const matchSite = r.siteName?.toLowerCase() === sf || r.propertyName?.toLowerCase() === sf;
+        if (!matchSite) return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const match =
@@ -119,7 +138,9 @@ export const WelfareChecksView: React.FC = () => {
           (r.roomNumber && r.roomNumber.toLowerCase().includes(q)) ||
           (r.siteName && r.siteName.toLowerCase().includes(q)) ||
           (r.propertyName && r.propertyName.toLowerCase().includes(q)) ||
-          (r.responsible?.name && r.responsible.name.toLowerCase().includes(q));
+          (r.responsible?.name && r.responsible.name.toLowerCase().includes(q)) ||
+          (r.first?.completedBy && r.first.completedBy.toLowerCase().includes(q)) ||
+          (r.second?.completedBy && r.second.completedBy.toLowerCase().includes(q));
         if (!match) return false;
       }
       return true;
@@ -127,17 +148,25 @@ export const WelfareChecksView: React.FC = () => {
   }, [obligationsState.rows, allowedNames, siteFilter, searchQuery]);
 
   const tabComplianceRows = useMemo(() => {
-    if (complianceTab === 'completed') {
+    const filter = statusChip !== 'all' ? statusChip : (statusFilter !== 'all' ? statusFilter : 'all');
+    if (filter === 'completed') {
       return filteredComplianceRows.filter(r => r.overall === 'complete');
     }
-    if (complianceTab === 'pending') {
+    if (filter === 'pending' || filter === 'in_progress') {
       return filteredComplianceRows.filter(r => r.overall === 'incomplete' && r.first?.status !== 'overdue' && r.second?.status !== 'overdue');
     }
-    if (complianceTab === 'overdue') {
+    if (filter === 'overdue') {
       return filteredComplianceRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue');
     }
+    if (filter === 'not_started') {
+      return filteredComplianceRows.filter(r => {
+        const isC1 = r.first?.status === 'completed' || r.first?.status === 'completed_late';
+        const isC2 = r.second?.status === 'completed' || r.second?.status === 'completed_late';
+        return !isC1 && !isC2 && r.first?.status !== 'overdue' && r.second?.status !== 'overdue';
+      });
+    }
     return filteredComplianceRows;
-  }, [filteredComplianceRows, complianceTab]);
+  }, [filteredComplianceRows, statusChip, statusFilter]);
 
   const complianceKpis = useMemo(() => {
     const total = filteredComplianceRows.length;
@@ -177,6 +206,16 @@ export const WelfareChecksView: React.FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<WelfareCheckRecord | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+
+  // View & Edit Context across Check 1 & Check 2
+  interface ViewContext {
+    row?: CheckRow | null;
+    rec1?: WelfareCheckRecord | null;
+    rec2?: WelfareCheckRecord | null;
+    activeCheck: 1 | 2;
+  }
+  const [viewContext, setViewContext] = useState<ViewContext | null>(null);
+  const [editRowContext, setEditRowContext] = useState<{ row?: CheckRow | null; rec1?: WelfareCheckRecord | null; rec2?: WelfareCheckRecord | null } | null>(null);
 
   // Table Customization Schema Hook
   const {
@@ -242,10 +281,11 @@ export const WelfareChecksView: React.FC = () => {
 
       const matchesSite = isSitePermitted(r.siteName, siteFilter);
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+      const matchesMonth = !selectedMonth || selectedMonth === 'all' || !r.checkDatetime || r.checkDatetime.startsWith(selectedMonth);
 
-      return matchesSearch && matchesSite && matchesStatus;
+      return matchesSearch && matchesSite && matchesStatus && matchesMonth;
     });
-  }, [accessibleRecords, searchQuery, siteFilter, statusFilter, isSitePermitted]);
+  }, [accessibleRecords, searchQuery, siteFilter, statusFilter, selectedMonth, isSitePermitted]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -322,6 +362,13 @@ export const WelfareChecksView: React.FC = () => {
 
   const handleOpenView = (rec: WelfareCheckRecord) => {
     setSelectedRecord(rec);
+    const period = Number((rec as any).data?.checkPeriod) === 2 ? 2 : 1;
+    setViewContext({
+      row: null,
+      rec1: period === 1 ? rec : null,
+      rec2: period === 2 ? rec : null,
+      activeCheck: period as 1 | 2
+    });
     setIsViewOpen(true);
   };
 
@@ -370,6 +417,57 @@ export const WelfareChecksView: React.FC = () => {
         filename: 'Welfare_Checks_Export.pdf',
         title: 'Welfare Checks Compliance Registry',
         subtitle: `Site Scope: ${siteFilter === 'all' ? 'All Sites' : siteFilter}`,
+        headers,
+        rows,
+        orientation: options.orientation || 'landscape'
+      });
+    }
+  };
+
+  const handlePerformComplianceExport = (options: {
+    format: 'csv' | 'pdf';
+    orientation: 'portrait' | 'landscape';
+    selectedColumns?: string[];
+  }) => {
+    const cols = options.selectedColumns && options.selectedColumns.length > 0
+      ? welfareComplianceExportColumns.filter(c => options.selectedColumns?.includes(c.id))
+      : welfareComplianceExportColumns;
+    const headers = cols.map(c => c.label);
+    const rows = tabComplianceRows.map((r, idx) => {
+      const isC1 = r.first?.status === 'completed' || r.first?.status === 'completed_late';
+      const isC2 = r.second?.status === 'completed' || r.second?.status === 'completed_late';
+      const count = (isC1 ? 1 : 0) + (isC2 ? 1 : 0);
+      const freq = `${count}/2`;
+      const statusText = r.overall === 'complete' ? 'Completed' : (r.first?.status === 'overdue' || r.second?.status === 'overdue' ? 'Overdue' : 'In Progress');
+      const c1Text = isC1 ? `Done ${fmt(r.first?.visitDate)}` : (r.first?.status === 'overdue' ? `Overdue (${r.first?.daysLate ?? 1}d late)` : `Due by ${fmt(windows[0].deadline)}`);
+      const c2Text = isC2 ? `Done ${fmt(r.second?.visitDate)}` : (r.second?.status === 'overdue' ? `Overdue (${r.second?.daysLate ?? 1}d late)` : `Due by ${fmt(windows[1].deadline)}`);
+      const lastChecked = r.second?.visitDate || r.first?.visitDate;
+      const staff = r.second?.completedBy || r.first?.completedBy || r.responsible?.name || loggedInUserName;
+
+      const rowMap: Record<string, string> = {
+        sno: String(idx + 1),
+        suName: r.suName || (r.occupancy === 'vacant' ? 'Vacant / Unoccupied' : 'Occupied'),
+        roomNumber: r.roomNumber || '',
+        suReference: r.suReference || '',
+        siteName: r.siteName || '',
+        check1: c1Text,
+        check2: c2Text,
+        frequency: freq,
+        complianceStatus: statusText,
+        lastChecked: fmt(lastChecked) || '—',
+        assignedStaff: staff
+      };
+      return cols.map(c => rowMap[c.id] ?? '');
+    });
+
+    const monthTitle = selectedMonth === 'all' ? 'All Months' : monthLabel(selectedMonth);
+    if (options.format === 'csv') {
+      exportTableToCsv({ filename: `Welfare_Checks_Compliance_${selectedMonth}.csv`, headers, rows });
+    } else {
+      exportTableToPdf({
+        filename: `Welfare_Checks_Compliance_${selectedMonth}.pdf`,
+        title: `Welfare Checks Monthly Compliance Report (${monthTitle})`,
+        subtitle: `Site Scope: ${siteFilter === 'all' ? 'All Sites' : siteFilter} • Status: ${statusFilter}`,
         headers,
         rows,
         orientation: options.orientation || 'landscape'
@@ -463,17 +561,47 @@ export const WelfareChecksView: React.FC = () => {
   };
   const recordedFor = (o: CheckObligation | null) => (o?.visitId ? welfareChecks.find(r => r.id === o.visitId) : undefined);
 
+  const handleOpenRowView = (row: CheckRow, preferredCheck: 1 | 2 = 1) => {
+    const rec1 = recordedFor(row.first) || null;
+    const rec2 = recordedFor(row.second) || null;
+    let active: 1 | 2 = preferredCheck;
+    if (preferredCheck === 2 && rec2) {
+      active = 2;
+    } else if (preferredCheck === 1 && rec1) {
+      active = 1;
+    } else if (rec1) {
+      active = 1;
+    } else if (rec2) {
+      active = 2;
+    }
+    const currentRec = active === 2 ? rec2 : rec1;
+    setViewContext({ row, rec1, rec2, activeCheck: active });
+    setSelectedRecord(currentRec || (rec1 || rec2 || null));
+    setIsViewOpen(true);
+  };
+
+  const handleOpenRowEdit = (row: CheckRow, preferredCheck: 1 | 2 = 1) => {
+    const rec1 = recordedFor(row.first) || null;
+    const rec2 = recordedFor(row.second) || null;
+    setEditRowContext({ row, rec1, rec2 });
+    const target = preferredCheck === 2 && rec2 ? rec2 : (rec1 || rec2);
+    if (!target) return;
+    handleOpenEdit(target);
+  };
+
   const renderObligationCell = (o: CheckObligation | null, row: CheckRow, period: 1 | 2) => {
     if (!o) return <span className="text-neutral-400">—</span>;
     if (o.status === 'completed' || o.status === 'completed_late') {
       return (
-        <span
-          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 whitespace-nowrap cursor-default"
-          title={`Completed on ${fmt(o.visitDate)}${o.completedBy ? ` by ${o.completedBy}` : ''}`}
+        <button
+          type="button"
+          onClick={() => handleOpenRowView(row, period)}
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap cursor-pointer transition-colors"
+          title={`Completed on ${fmt(o.visitDate)}${o.completedBy ? ` by ${o.completedBy}` : ''}. Click to view details.`}
         >
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           <span>Done {fmt(o.visitDate)}</span>
-        </span>
+        </button>
       );
     }
     if (o.status === 'overdue') {
@@ -587,9 +715,19 @@ export const WelfareChecksView: React.FC = () => {
               </button>
             )}
 
-            {complianceTab === 'history' && (
+            {pageTab === 'required' && (
               <ExportDropdown 
-                moduleName="Welfare Checks"
+                moduleName="Welfare Checks Compliance"
+                totalRecordCount={complianceObligations.length}
+                filteredRecordCount={tabComplianceRows.length}
+                availableColumns={welfareComplianceExportColumns}
+                onExport={handlePerformComplianceExport}
+              />
+            )}
+
+            {pageTab === 'log' && (
+              <ExportDropdown 
+                moduleName="Welfare Checks Log"
                 totalRecordCount={accessibleRecords.length}
                 filteredRecordCount={filteredRecords.length}
                 availableColumns={welfareExportColumns}
@@ -615,7 +753,13 @@ export const WelfareChecksView: React.FC = () => {
           label="Welfare Checks views"
           idPrefix="welfarechecks-tab"
           active={pageTab}
-          onChange={id => { setPageTab(id as 'required' | 'log'); setCompliancePage(1); setCurrentPage(1); }}
+          onChange={id => {
+            setPageTab(id as 'required' | 'log');
+            setStatusFilter('all');
+            setStatusChip('all');
+            setCompliancePage(1);
+            setCurrentPage(1);
+          }}
           tabs={[
             { id: 'required', label: 'Required checks' },
             { id: 'log', label: `Welfare log (${filteredRecords.length})` }
@@ -629,9 +773,10 @@ export const WelfareChecksView: React.FC = () => {
             <select
               aria-label="Welfare Check Month"
               value={selectedMonth}
-              onChange={e => { setSelectedMonth(e.target.value); setCompliancePage(1); }}
+              onChange={e => { setSelectedMonth(e.target.value); setCompliancePage(1); setCurrentPage(1); }}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs font-medium focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
+              <option value="all">All Months</option>
               {monthOptions(today).map(m => (
                 <option key={m} value={m}>{monthLabel(m)}</option>
               ))}
@@ -668,81 +813,107 @@ export const WelfareChecksView: React.FC = () => {
           </div>
 
           <div>
-            <select
-              value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); setCompliancePage(1); }}
-              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
-            >
-              <option value="all">All Statuses</option>
-              <option value="Completed">Completed</option>
-              <option value="Issues Identified">Issues Identified</option>
-              <option value="Follow-up Required">Follow-up Required</option>
-            </select>
+            {pageTab === 'required' ? (
+              <select
+                aria-label="Filter by Compliance Status"
+                value={statusFilter}
+                onChange={e => {
+                  const val = e.target.value;
+                  setStatusFilter(val);
+                  setStatusChip(val === 'not_started' ? 'all' : (val as any));
+                  setCompliancePage(1);
+                }}
+                className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all cursor-pointer"
+              >
+                <option value="all">All Statuses</option>
+                <option value="completed">Completed (2/2)</option>
+                <option value="pending">In Progress (1/2)</option>
+                <option value="not_started">Not Started (0/2)</option>
+                <option value="overdue">Overdue Action</option>
+              </select>
+            ) : (
+              <select
+                aria-label="Filter by Welfare Status"
+                value={statusFilter}
+                onChange={e => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all cursor-pointer"
+              >
+                <option value="all">All Statuses</option>
+                <option value="Completed">Completed</option>
+                <option value="Issues Identified">Issues Identified</option>
+                <option value="Follow-up Required">Follow-up Required</option>
+              </select>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Monthly Compliance KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total Residents</span>
-          <div className="text-xl font-bold text-[#242424] tabular-nums mt-0.5">{complianceKpis.total}</div>
-        </div>
-
-        <div className="bg-emerald-50/50 border border-emerald-200 rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" /> Completed (2/2)
-          </span>
-          <div className="flex items-baseline justify-between mt-0.5">
-            <span className="text-xl font-bold text-emerald-800 tabular-nums">{complianceKpis.completed}</span>
-            <span className="text-[10px] font-bold text-emerald-700 tabular-nums">{complianceKpis.pct}%</span>
+      {/* Monthly Compliance KPI Cards (Only for Required checks view) */}
+      {pageTab === 'required' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total Residents</span>
+            <div className="text-xl font-bold text-[#242424] tabular-nums mt-0.5">{complianceKpis.total}</div>
           </div>
-        </div>
 
-        <div className="bg-amber-50/50 border border-amber-200 rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> In Progress (1/2)
-          </span>
-          <div className="text-xl font-bold text-amber-800 tabular-nums mt-0.5">{complianceKpis.inProgress}</div>
-        </div>
-
-        <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c] flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" /> Not Started (0/2)
-          </span>
-          <div className="text-xl font-bold text-[#605e5c] tabular-nums mt-0.5">{complianceKpis.notStarted}</div>
-        </div>
-
-        <div className={`${complianceKpis.overdue > 0 ? 'bg-red-50/60 border-red-200' : 'bg-[#faf9f8] border-[#edebe9]'} rounded-xs p-2.5 flex flex-col justify-between`}>
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${complianceKpis.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'} flex items-center gap-1`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${complianceKpis.overdue > 0 ? 'bg-red-600 animate-pulse' : 'bg-neutral-400'}`} /> Overdue Action
-          </span>
-          <div className={`text-xl font-bold tabular-nums mt-0.5 ${complianceKpis.overdue > 0 ? 'text-red-700' : 'text-[#605e5c]'}`}>{complianceKpis.overdue}</div>
-        </div>
-
-        <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Monthly Progress</span>
-          <div className="mt-1">
-            <div className="flex justify-between items-center text-[10px] font-bold text-[#242424] mb-1">
-              <span>Rate</span>
-              <span className="tabular-nums">{complianceKpis.pct}%</span>
-            </div>
-            <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
-              <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${complianceKpis.pct}%` }} />
+          <div className="bg-emerald-50/50 border border-emerald-200 rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" /> Completed (2/2)
+            </span>
+            <div className="flex items-baseline justify-between mt-0.5">
+              <span className="text-xl font-bold text-emerald-800 tabular-nums">{complianceKpis.completed}</span>
+              <span className="text-[10px] font-bold text-emerald-700 tabular-nums">{complianceKpis.pct}%</span>
             </div>
           </div>
+
+          <div className="bg-amber-50/50 border border-amber-200 rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> In Progress (1/2)
+            </span>
+            <div className="text-xl font-bold text-amber-800 tabular-nums mt-0.5">{complianceKpis.inProgress}</div>
+          </div>
+
+          <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" /> Not Started (0/2)
+            </span>
+            <div className="text-xl font-bold text-[#605e5c] tabular-nums mt-0.5">{complianceKpis.notStarted}</div>
+          </div>
+
+          <div className={`${complianceKpis.overdue > 0 ? 'bg-red-50/60 border-red-200' : 'bg-[#faf9f8] border-[#edebe9]'} rounded-xs p-2.5 flex flex-col justify-between`}>
+            <span className={`text-[10px] font-semibold uppercase tracking-wider ${complianceKpis.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'} flex items-center gap-1`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${complianceKpis.overdue > 0 ? 'bg-red-600 animate-pulse' : 'bg-neutral-400'}`} /> Overdue Action
+            </span>
+            <div className={`text-xl font-bold tabular-nums mt-0.5 ${complianceKpis.overdue > 0 ? 'text-red-700' : 'text-[#605e5c]'}`}>{complianceKpis.overdue}</div>
+          </div>
+
+          <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Monthly Progress</span>
+            <div className="mt-1">
+              <div className="flex justify-between items-center text-[10px] font-bold text-[#242424] mb-1">
+                <span>Rate</span>
+                <span className="tabular-nums">{complianceKpis.pct}%</span>
+              </div>
+              <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
+                <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${complianceKpis.pct}%` }} />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Tabs Container */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
         <div className="px-3 py-2 border-b border-[#e5e5e5] bg-[#faf9f8] flex flex-wrap items-center justify-between gap-2">
-          <div className={`flex items-center gap-1 overflow-x-auto ${complianceTab === 'history' ? 'hidden' : ''}`} role="group" aria-label="Filter by status">
+          <div className={`flex items-center gap-1 overflow-x-auto ${pageTab !== 'required' ? 'hidden' : ''}`} role="group" aria-label="Filter by status">
             <button
               type="button"
-              onClick={() => { setComplianceTab('all'); setCompliancePage(1); }}
+              onClick={() => { setStatusChip('all'); setStatusFilter('all'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                complianceTab === 'all'
+                statusChip === 'all' && statusFilter === 'all'
                   ? 'bg-white text-[#0d9488] border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -751,9 +922,9 @@ export const WelfareChecksView: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setComplianceTab('completed'); setCompliancePage(1); }}
+              onClick={() => { setStatusChip('completed'); setStatusFilter('completed'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                complianceTab === 'completed'
+                statusChip === 'completed' || statusFilter === 'completed'
                   ? 'bg-white text-emerald-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -762,9 +933,9 @@ export const WelfareChecksView: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setComplianceTab('pending'); setCompliancePage(1); }}
+              onClick={() => { setStatusChip('pending'); setStatusFilter('pending'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                complianceTab === 'pending'
+                statusChip === 'pending' || statusFilter === 'pending'
                   ? 'bg-white text-amber-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -773,9 +944,9 @@ export const WelfareChecksView: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setComplianceTab('overdue'); setCompliancePage(1); }}
+              onClick={() => { setStatusChip('overdue'); setStatusFilter('overdue'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                complianceTab === 'overdue'
+                statusChip === 'overdue' || statusFilter === 'overdue'
                   ? 'bg-white text-red-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-red-700 hover:bg-red-50'
               }`}
@@ -790,29 +961,29 @@ export const WelfareChecksView: React.FC = () => {
           </div>
 
           <div className="text-[11px] text-[#605e5c]">
-            {complianceTab === 'history'
+            {pageTab === 'log'
               ? `Showing ${paginatedRecords.length} of ${filteredRecords.length} historical logs`
               : `Showing ${paginatedComplianceRows.length} of ${tabComplianceRows.length} resident check obligations`}
           </div>
         </div>
 
         {/* Tab 1-4: Monthly Compliance Obligation Table */}
-        {complianceTab !== 'history' && (
+        {pageTab === 'required' && (
           <div className="overflow-x-auto flex-1 custom-scrollbar">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
                   <th className="py-2.5 px-3 w-12 whitespace-nowrap">S.No.</th>
-                  <th className="py-2.5 px-3">Service User</th>
-                  <th className="py-2.5 px-3">Flat / Room No</th>
-                  <th className="py-2.5 px-3">Property / Site</th>
-                  <th className="py-2.5 px-3">Check 1 (by {fmt(windows[0].deadline).slice(0, 5)})</th>
-                  <th className="py-2.5 px-3">Check 2 (by {fmt(windows[1].deadline).slice(0, 5)})</th>
-                  <th className="py-2.5 px-3 text-center">Frequency</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Last Checked</th>
-                  <th className="py-2.5 px-3">Assigned Staff</th>
-                  <th className="py-2.5 px-3 text-right">Actions</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Service User</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Flat / Room No</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Property / Site</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Check 1 (by {fmt(windows[0].deadline).slice(0, 5)})</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Check 2 (by {fmt(windows[1].deadline).slice(0, 5)})</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap">Frequency</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Status</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Last Checked</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Assigned Staff</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[240px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0f0f0]">
@@ -836,26 +1007,26 @@ export const WelfareChecksView: React.FC = () => {
 
                     return (
                       <tr key={row.subjectKey} className="group hover:bg-[#fbfbfa] transition-colors">
-                        <td className="py-2.5 px-3 text-neutral-500 tabular-nums">{serialNo(rowIndex, compliancePage, compliancePageSize)}</td>
+                        <td className="py-2.5 px-3 text-neutral-500 tabular-nums whitespace-nowrap">{serialNo(rowIndex, compliancePage, compliancePageSize)}</td>
                         <td className="py-2.5 px-3">
                           <div className="font-semibold text-neutral-800">{row.suName || 'Service User'}</div>
                           {row.suReference && <div className="text-[10px] text-teal-700 font-mono font-medium">{row.suReference}</div>}
                         </td>
-                        <td className="py-2.5 px-3 font-bold text-neutral-800">{row.roomNumber || '—'}</td>
+                        <td className="py-2.5 px-3 font-bold text-neutral-800 whitespace-nowrap">{row.roomNumber || '—'}</td>
                         <td className="py-2.5 px-3">
                           <div className="font-medium text-neutral-800">{row.siteName}</div>
                           {row.propertyName && row.propertyName !== row.siteName && (
                             <div className="text-[10px] text-neutral-500">{row.propertyName}</div>
                           )}
                         </td>
-                        <td className="py-2.5 px-3">{renderObligationCell(row.first, row, 1)}</td>
-                        <td className="py-2.5 px-3">{renderObligationCell(row.second, row, 2)}</td>
-                        <td className="py-2.5 px-3 text-center">{renderFrequencyBadge(row)}</td>
-                        <td className="py-2.5 px-3">{renderComplianceStatus(row)}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">{renderObligationCell(row.first, row, 1)}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">{renderObligationCell(row.second, row, 2)}</td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">{renderFrequencyBadge(row)}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">{renderComplianceStatus(row)}</td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="font-medium text-neutral-800">{fmt(lastChecked) || '—'}</div>
                         </td>
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           {lastOfficer ? (
                             <div className="flex items-center gap-1.5 text-neutral-800 font-medium whitespace-nowrap" title={`Submitted by ${lastOfficer}`}>
                               <User className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
@@ -868,13 +1039,13 @@ export const WelfareChecksView: React.FC = () => {
                             </div>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap min-w-[240px]">
+                          <div className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                             {hasOverdue ? (
                               <button
                                 type="button"
                                 onClick={() => handleQuickResolve(row, overduePeriod)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xs text-[11px] shadow-2xs transition-colors cursor-pointer"
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xs text-xs shadow-2xs transition-colors cursor-pointer whitespace-nowrap shrink-0 min-w-[135px]"
                                 title={`Resolve Overdue Check ${overduePeriod}`}
                               >
                                 <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
@@ -884,7 +1055,7 @@ export const WelfareChecksView: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleQuickResolve(row, nextPeriod)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-xs transition-colors cursor-pointer ${
+                                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 min-w-[135px] ${
                                   row.overall === 'complete'
                                     ? 'bg-white hover:bg-[#f3f2f1] text-[#0d9488] border border-[#cbd5e1]'
                                     : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-2xs'
@@ -896,38 +1067,40 @@ export const WelfareChecksView: React.FC = () => {
                               </button>
                             )}
 
-                            {latestRecord && (
-                              <div className="flex items-center gap-0.5 pl-1 border-l border-neutral-200">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenView(latestRecord)}
-                                  title="View Check Record"
-                                  className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-                                {canEditRecord() && (
+                            <div className="inline-flex items-center justify-end gap-0.5 w-[76px] shrink-0">
+                              {latestRecord && (
+                                <div className="inline-flex items-center gap-0.5 pl-1.5 border-l border-neutral-200">
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenEdit(latestRecord)}
-                                    title="Edit Check Record"
-                                    className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                    onClick={() => handleOpenRowView(row)}
+                                    title="View Checks (Check 1 & Check 2)"
+                                    className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
                                   >
-                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <Eye className="w-3.5 h-3.5" />
                                   </button>
-                                )}
-                                {canDeleteRecord() && (
-                                  <button
-                                    type="button"
-                                    onClick={() => deleteWelfareCheck(latestRecord.id)}
-                                    title="Delete Check Record"
-                                    className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
+                                  {canEditRecord() && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenRowEdit(row)}
+                                      title="Edit Checks"
+                                      className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  {canDeleteRecord() && (
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteWelfareCheck(latestRecord.id)}
+                                      title="Delete Check Record"
+                                      className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -940,13 +1113,13 @@ export const WelfareChecksView: React.FC = () => {
         )}
 
         {/* Tab 5: Raw Check History Logs */}
-        {complianceTab === 'history' && (
+        {pageTab === 'log' && (
           <div className="overflow-x-auto flex-1 custom-scrollbar">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
                   <th className="py-2.5 px-3 w-12 whitespace-nowrap">S.No.</th>
-                  <th className="py-2.5 px-3">Service User</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Service User</th>
                   {visibleColumns.map(col => {
                     const isSorted = sortKey === col.key;
                     return (
@@ -1040,25 +1213,29 @@ export const WelfareChecksView: React.FC = () => {
         )}
 
         {/* Pagination Footer */}
-        <div className="px-3 py-2 border-t border-[#f0f0f0] flex items-center justify-between shrink-0">
-          {complianceTab !== 'history' ? (
-            <Pagination
-              currentPage={compliancePage}
-              totalItems={tabComplianceRows.length}
-              pageSize={compliancePageSize}
-              onPageChange={setCompliancePage}
-              onPageSizeChange={() => {}}
-            />
-          ) : (
-            <Pagination
-              currentPage={currentPage}
-              totalItems={filteredRecords.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
-            />
-          )}
-        </div>
+        {pageTab === 'required' ? (
+          <Pagination
+            currentPage={compliancePage}
+            totalItems={tabComplianceRows.length}
+            pageSize={compliancePageSize}
+            onPageSizeChange={size => {
+              setCompliancePageSize(size);
+              setCompliancePage(1);
+            }}
+            onPageChange={setCompliancePage}
+          />
+        ) : (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredRecords.length}
+            pageSize={pageSize}
+            onPageSizeChange={size => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       {/* CREATE / EDIT MODAL */}
@@ -1071,17 +1248,55 @@ export const WelfareChecksView: React.FC = () => {
           submitLabel={isEditing ? 'Save Changes' : 'Submit Welfare Check'}
           error={Object.keys(formErrors).length > 0 ? 'Some required details are missing. Check the fields marked in red.' : undefined}
           banner={
-          <div className={`px-6 py-2 border-b text-xs flex flex-wrap items-center gap-x-3 gap-y-1 ${recording ? 'bg-teal-50 border-teal-100 text-teal-900' : 'bg-neutral-50 border-[#e5e5e5] text-neutral-600'}`}>
-            {recording ? (
-              <>
-                <span className="font-bold">Recording Check {recording.period} of 2{recording.month ? ` · ${monthLabel(recording.month)}` : ''}</span>
-                {recording.deadline && <span>due by {recording.deadline.split('-').reverse().join('/')}</span>}
-                <span className="text-[11px] opacity-80">Saved against this check; the check date decides whether it counts as on time.</span>
-              </>
-            ) : (
-              <span>Free-standing check: it counts toward Check 1 (1st–{windows[0].deadline.slice(8)}th) or Check 2 (until the {windows[1].deadline.slice(8)}th) by its check date.</span>
-            )}
-          </div>
+            <div className={`px-6 py-2 border-b text-xs flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 ${recording ? 'bg-teal-50 border-teal-100 text-teal-900' : 'bg-neutral-50 border-[#e5e5e5] text-neutral-600'}`}>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {recording ? (
+                  <>
+                    <span className="font-bold">
+                      {isEditing ? 'Editing' : 'Recording'} Check {recording.period} of 2{recording.month ? ` · ${monthLabel(recording.month)}` : ''}
+                    </span>
+                    {recording.deadline && <span>due by {recording.deadline.split('-').reverse().join('/')}</span>}
+                    <span className="text-[11px] opacity-80">Saved against this check; the check date decides whether it counts as on time.</span>
+                  </>
+                ) : (
+                  <span>
+                    {isEditing ? 'Editing free-standing check' : 'Free-standing check'}: it counts toward Check 1 (1st–{windows[0].deadline.slice(8)}th) or Check 2 (until the {windows[1].deadline.slice(8)}th) by its check date.
+                  </span>
+                )}
+              </div>
+
+              {isEditing && editRowContext?.row && editRowContext.rec1 && editRowContext.rec2 && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[11px] font-semibold text-neutral-700">Switch check:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editRowContext.rec1) handleOpenEdit(editRowContext.rec1);
+                    }}
+                    className={`px-2 py-0.5 rounded-xs text-[11px] font-semibold transition-colors cursor-pointer ${
+                      formData.id === editRowContext.rec1.id
+                        ? 'bg-[#0d9488] text-white shadow-2xs'
+                        : 'bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-300'
+                    }`}
+                  >
+                    Check 1 ({fmt((editRowContext.rec1.checkDatetime || '').slice(0, 10))})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editRowContext.rec2) handleOpenEdit(editRowContext.rec2);
+                    }}
+                    className={`px-2 py-0.5 rounded-xs text-[11px] font-semibold transition-colors cursor-pointer ${
+                      formData.id === editRowContext.rec2.id
+                        ? 'bg-[#0d9488] text-white shadow-2xs'
+                        : 'bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-300'
+                    }`}
+                  >
+                    Check 2 ({fmt((editRowContext.rec2.checkDatetime || '').slice(0, 10))})
+                  </button>
+                </div>
+              )}
+            </div>
           }
         >
             <div className="grid grid-cols-1 gap-6">
@@ -1477,113 +1692,272 @@ export const WelfareChecksView: React.FC = () => {
         </StandardModal>
       )}
 
-      {/* DETAIL VIEW MODAL */}
-      {isViewOpen && selectedRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-3 sm:p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-[#e1dfdd] bg-[#faf9f8] flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <HeartHandshake className="w-5 h-5 text-[#0d9488]" />
-                <div>
-                  <h3 className="text-sm font-bold text-[#242424]">Welfare Check — {selectedRecord.portReference}</h3>
-                  <p className="text-[11px] text-neutral-500">{selectedRecord.siteName} • {selectedRecord.checkDatetime ? new Date(selectedRecord.checkDatetime).toLocaleString() : ''}</p>
+      {/* DETAIL VIEW MODAL (Supports Check 1 & Check 2) */}
+      {isViewOpen && (viewContext?.row || selectedRecord) && (() => {
+        const row = viewContext?.row;
+        const activeCheck = viewContext?.activeCheck || 1;
+        const displayedRecord = row ? (activeCheck === 2 ? viewContext.rec2 : viewContext.rec1) : selectedRecord;
+        const activeObligation = row ? (activeCheck === 2 ? row.second : row.first) : null;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-3 sm:p-4">
+            <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-[#e1dfdd] bg-[#faf9f8] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-xs">
+                    <HeartHandshake className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-[#242424]">
+                        {row
+                          ? `${row.suName || row.suReference || 'Resident'} — Monthly Welfare Compliance`
+                          : `Welfare Check — ${selectedRecord?.portReference}`}
+                      </h3>
+                      {row && renderFrequencyBadge(row)}
+                    </div>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">
+                      {row
+                        ? `${row.siteName} • Room/Flat ${row.roomNumber} • ${monthLabel(selectedMonth)}`
+                        : `${selectedRecord?.siteName} • ${checkLabelOf(selectedRecord!)}`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {displayedRecord && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold border bg-teal-50 text-[#0d9488] border-teal-200">
+                      {displayedRecord.status || 'Completed'}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsViewOpen(false)}
+                    className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
+                  >
+                    <CloseIcon className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsViewOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
-              >
-                <CloseIcon className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="p-6 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-neutral-50 p-3 rounded-xs border border-neutral-200">
-                <div>
-                  <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Port Reference</span>
-                  <span className="font-mono font-bold text-[#0d9488]">{selectedRecord.portReference}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Room / Flat</span>
-                  <span className="font-semibold">{selectedRecord.flatNumber || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Officer</span>
-                  <span>{selectedRecord.officerName || 'Staff'}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Cohort</span>
-                  <span>{selectedRecord.familyOrIndividual}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Contact Method</span>
-                  <span>{selectedRecord.contactMethod}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Status</span>
-                  <span className="font-semibold text-teal-700">{selectedRecord.status}</span>
-                </div>
-              </div>
+              {/* Check 1 & Check 2 Tabs Header when viewing a row */}
+              {row && (
+                <div className="px-6 pt-3 pb-0 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewContext(prev => prev ? ({ ...prev, activeCheck: 1 }) : null)}
+                      className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                        activeCheck === 1
+                          ? 'border-[#0d9488] text-[#0d9488] bg-white rounded-t-xs shadow-2xs'
+                          : 'border-transparent text-neutral-600 hover:text-neutral-900'
+                      }`}
+                    >
+                      <span>Check 1 (Target: 10th)</span>
+                      {viewContext.rec1 ? (
+                        <span className="inline-flex items-center px-1.5 py-0.2 rounded-xs text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                          Done {fmt((viewContext.rec1.checkDatetime || '').slice(0, 10))}
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center px-1.5 py-0.2 rounded-xs text-[10px] font-semibold ${
+                          row.first?.status === 'overdue' ? 'bg-red-100 text-red-800' : 'bg-neutral-200 text-neutral-700'
+                        }`}>
+                          {row.first?.status === 'overdue' ? 'Overdue' : 'Pending'}
+                        </span>
+                      )}
+                    </button>
 
-              {/* Health section */}
-              <div className="p-3 border border-neutral-200 rounded-xs space-y-2">
-                <h4 className="font-semibold text-neutral-800 flex items-center gap-1.5">
-                  <Stethoscope className="w-3.5 h-3.5 text-[#0d9488]" /> Health &amp; Well-being Summary
-                </h4>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <p><strong>GP Registered:</strong> {selectedRecord.gpRegistered ? `Yes (${selectedRecord.gpDetails || 'Details recorded'})` : 'No'}</p>
-                  <p><strong>Physical Health Change:</strong> {selectedRecord.physicalHealthChange ? 'Yes — Changes flagged' : 'No'}</p>
-                  <p><strong>Mental Health Change:</strong> {selectedRecord.mentalHealthChange ? 'Yes — Changes flagged' : 'No'}</p>
-                  <p><strong>Window Restrictors Intact:</strong> {selectedRecord.windowRestrictorsIntact ? 'Yes' : 'No'}</p>
-                  <p><strong>Smoke Alarms Working:</strong> {selectedRecord.smokeAlarmsWorking ? 'Yes' : 'No'}</p>
-                </div>
-                {selectedRecord.physicalHealthDetails && (
-                  <p className="text-[11px] bg-red-50 p-2 rounded border border-red-200 text-red-800">
-                    <strong>Physical Details:</strong> {selectedRecord.physicalHealthDetails}
-                  </p>
-                )}
-                {selectedRecord.mentalHealthDetails && (
-                  <p className="text-[11px] bg-red-50 p-2 rounded border border-red-200 text-red-800">
-                    <strong>Mental Health Details:</strong> {selectedRecord.mentalHealthDetails}
-                  </p>
-                )}
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setViewContext(prev => prev ? ({ ...prev, activeCheck: 2 }) : null)}
+                      className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                        activeCheck === 2
+                          ? 'border-[#0d9488] text-[#0d9488] bg-white rounded-t-xs shadow-2xs'
+                          : 'border-transparent text-neutral-600 hover:text-neutral-900'
+                      }`}
+                    >
+                      <span>Check 2 (Target: 25th)</span>
+                      {viewContext.rec2 ? (
+                        <span className="inline-flex items-center px-1.5 py-0.2 rounded-xs text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                          Done {fmt((viewContext.rec2.checkDatetime || '').slice(0, 10))}
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center px-1.5 py-0.2 rounded-xs text-[10px] font-semibold ${
+                          row.second?.status === 'overdue' ? 'bg-red-100 text-red-800' : 'bg-neutral-200 text-neutral-700'
+                        }`}>
+                          {row.second?.status === 'overdue' ? 'Overdue' : 'Pending'}
+                        </span>
+                      )}
+                    </button>
+                  </div>
 
-              {/* Maintenance */}
-              {selectedRecord.maintenanceIssues && (
-                <div className="p-3 border border-amber-200 bg-amber-50/40 rounded-xs">
-                  <h4 className="font-semibold text-amber-900 flex items-center gap-1.5">
-                    <Home className="w-3.5 h-3.5 text-amber-700" /> Maintenance Issues Noted
-                  </h4>
-                  <p className="text-xs text-amber-950 mt-1">{selectedRecord.maintenanceIssues}</p>
+                  <span className="text-[11px] text-neutral-500 hidden sm:inline-block">
+                    Twice-Monthly Schedule • 10th &amp; 25th
+                  </span>
                 </div>
               )}
 
-              {/* Safeguarding Confidential Concerns */}
-              {canViewSafeguarding && selectedRecord.safeguardingConcerns ? (
-                <div className="p-3 border-2 border-red-300 bg-red-50/50 rounded-xs space-y-1">
-                  <div className="flex items-center gap-1.5 text-red-800 font-bold uppercase tracking-wider text-[10px]">
-                    <ShieldAlert className="w-4 h-4 text-red-600" />
-                    <span>RESTRICTED INTERNAL SAFEGUARDING NOTES</span>
-                  </div>
-                  <p className="text-xs text-red-950 whitespace-pre-wrap">{selectedRecord.safeguardingConcerns}</p>
-                </div>
-              ) : null}
-            </div>
+              {/* View Body */}
+              <div className="p-6 space-y-4 overflow-y-auto text-xs">
+                {displayedRecord ? (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-neutral-50 p-3 rounded-xs border border-neutral-200">
+                      <div>
+                        <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Port Reference</span>
+                        <span className="font-mono font-bold text-[#0d9488] text-sm">{displayedRecord.portReference || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Room / Flat</span>
+                        <span className="font-semibold text-neutral-800">{displayedRecord.flatNumber || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Inspection Schedule</span>
+                        <span className="font-semibold text-[#0d9488]">
+                          Check {activeCheck} of 2 ({activeCheck === 1 ? 'Target: 10th' : 'Target: 25th'})
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Date &amp; Time</span>
+                        <span className="font-medium text-neutral-800">
+                          {displayedRecord.checkDatetime ? new Date(displayedRecord.checkDatetime).toLocaleString('en-GB') : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Officer</span>
+                        <span className="font-medium text-neutral-800">{displayedRecord.officerName || 'Staff'}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Cohort</span>
+                        <span className="font-medium text-neutral-800">{displayedRecord.familyOrIndividual}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Contact Method</span>
+                        <span className="font-medium text-neutral-800">{displayedRecord.contactMethod}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500 block text-[10px] uppercase font-semibold">Status</span>
+                        <span className="font-semibold text-teal-700">{displayedRecord.status}</span>
+                      </div>
+                    </div>
 
-            <div className="px-6 py-3 border-t border-[#e1dfdd] bg-[#faf9f8] flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsViewOpen(false)}
-                className="px-4 py-1.5 bg-neutral-800 hover:bg-neutral-900 text-white rounded-xs transition-colors cursor-pointer text-xs"
-              >
-                Close View
-              </button>
+                    {/* Health section */}
+                    <div className="p-3.5 border border-neutral-200 rounded-xs space-y-2.5">
+                      <h4 className="font-semibold text-neutral-800 flex items-center gap-1.5 pb-1 border-b border-neutral-200">
+                        <Stethoscope className="w-3.5 h-3.5 text-[#0d9488]" /> Health &amp; Well-being Summary (Check {activeCheck})
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px]">
+                        <p><strong>GP Registered:</strong> {displayedRecord.gpRegistered ? `Yes (${displayedRecord.gpDetails || 'Details recorded'})` : 'No'}</p>
+                        <p><strong>Welfare Engagement:</strong> {displayedRecord.wantsWelfareEngagement ? 'Yes — Accepted' : 'No — Declined'}</p>
+                        <p><strong>Physical Health Change:</strong> {displayedRecord.physicalHealthChange ? 'Yes — Changes flagged' : 'No'}</p>
+                        <p><strong>Mental Health Change:</strong> {displayedRecord.mentalHealthChange ? 'Yes — Changes flagged' : 'No'}</p>
+                        <p><strong>Window Restrictors Intact:</strong> {displayedRecord.windowRestrictorsIntact ? 'Yes' : 'No'}</p>
+                        <p><strong>Smoke Alarms Working:</strong> {displayedRecord.smokeAlarmsWorking ? 'Yes' : 'No'}</p>
+                      </div>
+                      {displayedRecord.physicalHealthDetails && (
+                        <p className="text-[11px] bg-red-50 p-2 rounded border border-red-200 text-red-800">
+                          <strong>Physical Health Details:</strong> {displayedRecord.physicalHealthDetails}
+                        </p>
+                      )}
+                      {displayedRecord.mentalHealthDetails && (
+                        <p className="text-[11px] bg-red-50 p-2 rounded border border-red-200 text-red-800">
+                          <strong>Mental Health Details:</strong> {displayedRecord.mentalHealthDetails}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Maintenance */}
+                    {displayedRecord.maintenanceIssues && (
+                      <div className="p-3 border border-amber-200 bg-amber-50/40 rounded-xs">
+                        <h4 className="font-semibold text-amber-900 flex items-center gap-1.5">
+                          <Home className="w-3.5 h-3.5 text-amber-700" /> Maintenance Issues Noted
+                        </h4>
+                        <p className="text-xs text-amber-950 mt-1">{displayedRecord.maintenanceIssues}</p>
+                      </div>
+                    )}
+
+                    {/* Safeguarding Confidential Concerns */}
+                    {canViewSafeguarding && displayedRecord.safeguardingConcerns ? (
+                      <div className="p-3 border-2 border-red-300 bg-red-50/50 rounded-xs space-y-1">
+                        <div className="flex items-center gap-1.5 text-red-800 font-bold uppercase tracking-wider text-[10px]">
+                          <ShieldAlert className="w-4 h-4 text-red-600" />
+                          <span>RESTRICTED INTERNAL SAFEGUARDING NOTES</span>
+                        </div>
+                        <p className="text-xs text-red-950 whitespace-pre-wrap">{displayedRecord.safeguardingConcerns}</p>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  /* When this check has NOT been recorded yet */
+                  <div className="p-8 text-center border-2 border-dashed border-neutral-200 rounded-xs bg-[#faf9f8] space-y-3">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-neutral-800">
+                        Welfare Check {activeCheck} Not Completed Yet
+                      </h4>
+                      <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">
+                        This resident has not had Welfare Check {activeCheck} recorded for {monthLabel(selectedMonth)}.
+                        Target deadline is {fmt(activeObligation?.deadline || '')}.
+                      </p>
+                      {activeObligation?.status === 'overdue' && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xs bg-red-50 border border-red-200 text-red-800 text-xs font-bold">
+                          <AlertOctagon className="w-4 h-4 text-red-600" />
+                          <span>Check {activeCheck} is overdue by {activeObligation.daysLate ?? 1} day(s)!</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {canCreateRecord() && row && (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsViewOpen(false);
+                            handleQuickResolve(row, activeCheck);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white font-medium text-xs rounded-xs shadow-2xs transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Record Welfare Check {activeCheck} Now</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-3 border-t border-[#e1dfdd] bg-[#faf9f8] flex items-center justify-between">
+                <div>
+                  {displayedRecord && canEditRecord() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsViewOpen(false);
+                        handleOpenEdit(displayedRecord);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-neutral-50 text-neutral-700 border border-neutral-300 rounded-xs text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Edit This Check</span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsViewOpen(false)}
+                  className="px-4 py-1.5 bg-neutral-800 hover:bg-neutral-900 text-white rounded-xs transition-colors cursor-pointer text-xs font-medium"
+                >
+                  Close View
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       {/* Table Customization Modal for Super Admin */}
       <TableSchemaEditorModal<WelfareCheckRecord>
         isOpen={isSchemaModalOpen}

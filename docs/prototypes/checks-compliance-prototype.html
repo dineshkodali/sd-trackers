@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDTracker — Room & Welfare Checks Monthly Compliance Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .badge-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .6; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#f8fafc] text-slate-800 text-xs">
+
+  <!-- TOP APP BANNER & SWITCHER -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-md bg-[#0d9488] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+          SD
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-sm text-slate-900 tracking-tight">SDTracker</span>
+            <span class="px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">Interactive Prototype</span>
+          </div>
+          <p class="text-[11px] text-slate-500">Monthly Compliance Interface Redesign (Phase 7 Preview)</p>
+        </div>
+      </div>
+
+      <!-- VIEW SELECTOR TABS -->
+      <nav class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200" aria-label="Prototype Views">
+        <button id="viewBtn-rooms" onclick="switchModule('rooms')" class="px-3 py-1.5 rounded-md font-semibold text-xs transition-all bg-white text-[#0d9488] shadow-xs">
+          🏢 Room Checks Module
+        </button>
+        <button id="viewBtn-welfare" onclick="switchModule('welfare')" class="px-3 py-1.5 rounded-md font-semibold text-xs text-slate-600 hover:text-slate-900 transition-all">
+          🤝 Welfare Checks Module
+        </button>
+        <button id="viewBtn-dashboard" onclick="switchModule('dashboard')" class="px-3 py-1.5 rounded-md font-semibold text-xs text-slate-600 hover:text-slate-900 transition-all">
+          📊 Operations Dashboard Preview
+        </button>
+      </nav>
+
+      <div class="flex items-center gap-2 text-slate-500 text-[11px]">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>Connected to Live Demo Engine</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex-1 w-full space-y-4">
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 max-w-sm bg-slate-900 text-white px-4 py-3 rounded-lg shadow-xl border border-slate-700 flex items-start gap-3 transition-all duration-300 transform translate-y-2">
+      <span id="toastIcon" class="text-base text-emerald-400">✓</span>
+      <div class="flex-1">
+        <p id="toastTitle" class="font-semibold text-xs text-white">Action Completed</p>
+        <p id="toastMsg" class="text-[11px] text-slate-300 mt-0.5">Details here</p>
+      </div>
+      <button onclick="hideToast()" class="text-slate-400 hover:text-white">&times;</button>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 1 & 2: CHECKS COMPLIANCE MANAGEMENT PAGE (ROOMS / WELFARE) -->
+    <!-- ============================================================== -->
+    <div id="complianceView" class="space-y-4">
+
+      <!-- PAGE TITLE & CONTROLS -->
+      <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h1 id="pageTitle" class="text-lg font-bold text-slate-900 tracking-tight">Room Checks — Monthly Compliance</h1>
+            <span id="freqRuleBadge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-teal-50 text-[#0d9488] border border-teal-200">
+              Twice-Monthly Obligation (10th & 25th)
+            </span>
+          </div>
+          <p id="pageDesc" class="text-slate-500 text-[11px] mt-0.5">
+            Track and complete 2 monthly room inspections per room (Check 1 due on/before 10th, Check 2 due on/before 25th).
+          </p>
+        </div>
+
+        <!-- MONTH, SITE & ACTION BUTTONS -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Month Picker -->
+          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-md px-2 py-1">
+            <span class="text-slate-400 text-[11px] font-medium">Month:</span>
+            <select id="monthSelect" onchange="handleMonthChange(this.value)" class="bg-transparent font-semibold text-slate-700 text-xs outline-none cursor-pointer">
+              <option value="2026-11" selected>November 2026 (Active)</option>
+              <option value="2026-10">October 2026</option>
+              <option value="2026-09">September 2026</option>
+            </select>
+          </div>
+
+          <!-- Site Filter -->
+          <select id="siteFilter" onchange="handleFilterChange()" class="bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-xs text-slate-700 font-medium outline-none focus:border-[#0d9488]">
+            <option value="all">All Properties / Sites (4)</option>
+            <option value="Brit Hotel">Brit Hotel (14 Rooms)</option>
+            <option value="Ibis Cardiff">Ibis Cardiff (18 Rooms)</option>
+            <option value="Newport Road">Newport Road (12 Rooms)</option>
+            <option value="Holiday Inn Express">Holiday Inn Express (10 Rooms)</option>
+          </select>
+
+          <!-- Record New Check Button -->
+          <button onclick="openRecordModal()" class="flex items-center gap-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold px-3 py-1.5 rounded-md shadow-xs transition-colors cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span id="recordBtnText">Record Check</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI SUMMARY CARDS -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <!-- Total -->
+        <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-col justify-between">
+          <span id="kpiLabelTotal" class="text-slate-500 font-medium text-[11px]">Total Rooms</span>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpiTotal" class="text-xl font-bold text-slate-900">38</span>
+            <span class="text-[10px] text-slate-400 font-medium">100% target</span>
+          </div>
+        </div>
+
+        <!-- Completed 2/2 -->
+        <div class="bg-white p-3 rounded-lg border border-emerald-200 bg-emerald-50/30 shadow-xs flex flex-col justify-between">
+          <span class="text-emerald-700 font-medium text-[11px] flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Completed (2/2)
+          </span>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpiCompleted" class="text-xl font-bold text-emerald-800">24</span>
+            <span id="kpiCompletedPct" class="text-[10px] font-semibold text-emerald-700">63%</span>
+          </div>
+        </div>
+
+        <!-- In Progress 1/2 -->
+        <div class="bg-white p-3 rounded-lg border border-amber-200 bg-amber-50/30 shadow-xs flex flex-col justify-between">
+          <span class="text-amber-700 font-medium text-[11px] flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span> In Progress (1/2)
+          </span>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpiInProgress" class="text-xl font-bold text-amber-800">9</span>
+            <span class="text-[10px] font-semibold text-amber-700">24%</span>
+          </div>
+        </div>
+
+        <!-- Not Started 0/2 -->
+        <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-col justify-between">
+          <span class="text-slate-500 font-medium text-[11px] flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span> Not Started (0/2)
+          </span>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpiNotStarted" class="text-xl font-bold text-slate-700">5</span>
+            <span class="text-[10px] font-medium text-slate-400">13%</span>
+          </div>
+        </div>
+
+        <!-- Overdue -->
+        <div class="bg-white p-3 rounded-lg border border-red-200 bg-red-50/40 shadow-xs flex flex-col justify-between">
+          <span class="text-red-700 font-medium text-[11px] flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-red-500 badge-pulse"></span> Overdue Action
+          </span>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpiOverdue" class="text-xl font-bold text-red-700">4</span>
+            <span class="px-1.5 py-0.5 text-[9px] font-bold bg-red-100 text-red-800 rounded">Urgent</span>
+          </div>
+        </div>
+
+        <!-- Progress Rate -->
+        <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-col justify-between">
+          <span class="text-slate-500 font-medium text-[11px]">Monthly Compliance</span>
+          <div class="mt-1">
+            <div class="flex justify-between items-center text-[10px] font-bold text-slate-700 mb-1">
+              <span>Overall Progress</span>
+              <span id="overallPctText">75%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div id="overallProgressBar" class="bg-[#0d9488] h-2 rounded-full transition-all duration-500" style="width: 75%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN TABLE CONTAINER -->
+      <div class="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+
+        <!-- TABS & SEARCH BAR -->
+        <div class="p-3 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
+          <!-- TABS -->
+          <div class="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
+            <button id="tab-all" onclick="setTab('all')" class="px-3 py-1.5 rounded-md font-semibold text-xs transition-colors bg-white text-[#0d9488] border border-slate-200 shadow-2xs">
+              <span id="tabAllLabel">All Rooms</span> (<span id="countTabAll">38</span>)
+            </button>
+            <button id="tab-completed" onclick="setTab('completed')" class="px-3 py-1.5 rounded-md font-medium text-xs transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+              Completed 2/2 (<span id="countTabCompleted">24</span>)
+            </button>
+            <button id="tab-pending" onclick="setTab('pending')" class="px-3 py-1.5 rounded-md font-medium text-xs transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+              Due / In Progress (<span id="countTabPending">10</span>)
+            </button>
+            <button id="tab-overdue" onclick="setTab('overdue')" class="px-3 py-1.5 rounded-md font-medium text-xs transition-colors text-red-700 hover:bg-red-50 flex items-center gap-1.5">
+              <span>Overdue</span>
+              <span id="countTabOverdueBadge" class="px-1.5 py-0.2 bg-red-100 text-red-800 text-[10px] font-bold rounded-full">4</span>
+            </button>
+            <div class="h-4 w-px bg-slate-300 mx-1"></div>
+            <button id="tab-history" onclick="setTab('history')" class="px-3 py-1.5 rounded-md font-medium text-xs transition-colors text-slate-500 hover:text-slate-800 hover:bg-slate-100">
+              📜 Raw History Logs
+            </button>
+          </div>
+
+          <!-- SEARCH INPUT -->
+          <div class="relative w-full sm:w-64">
+            <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input
+              id="searchInput"
+              type="text"
+              oninput="handleFilterChange()"
+              placeholder="Search Room, SU, Port Ref, Site..."
+              class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#0d9488]"
+            >
+          </div>
+        </div>
+
+        <!-- COMPLIANCE OBLIGATION TABLE -->
+        <div id="complianceTableWrapper" class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
+                <th class="py-2.5 px-3">Room</th>
+                <th class="py-2.5 px-3">Service User</th>
+                <th class="py-2.5 px-3">Property / Site</th>
+                <th class="py-2.5 px-3">Check 1 (Due 10th)</th>
+                <th class="py-2.5 px-3">Check 2 (Due 25th)</th>
+                <th class="py-2.5 px-3 text-center">Frequency</th>
+                <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3">Last Checked</th>
+                <th class="py-2.5 px-3">Assigned Staff</th>
+                <th class="py-2.5 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="complianceTableBody" class="divide-y divide-slate-100">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- RAW HISTORY LOG TABLE (Secondary Tab) -->
+        <div id="historyTableWrapper" class="hidden overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
+                <th class="py-2.5 px-3">Inspection Date</th>
+                <th class="py-2.5 px-3">Site / Property</th>
+                <th class="py-2.5 px-3">Room</th>
+                <th class="py-2.5 px-3">Target Subject</th>
+                <th class="py-2.5 px-3">Inspection Status</th>
+                <th class="py-2.5 px-3">Officer Name</th>
+                <th class="py-2.5 px-3">Items / Notes</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-100">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- TABLE FOOTER / PAGINATION -->
+        <div class="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-[11px] text-slate-500">
+          <div>
+            Showing <span id="showingCount" class="font-bold text-slate-800">10</span> of <span id="totalMatchCount" class="font-bold text-slate-800">38</span> records
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">Page 1 of 1</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- VIEW 3: REDESIGNED OPERATIONS DASHBOARD PREVIEW                -->
+    <!-- ============================================================== -->
+    <div id="dashboardView" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-slate-900 tracking-tight">Operations Dashboard (Clean Redesign)</h2>
+          <p class="text-slate-500 text-[11px] mt-0.5">
+            Bulk check-management lists have been cleanly removed from this dashboard. Now displays high-level monthly compliance cards with deep-links to dedicated pages.
+          </p>
+        </div>
+        <span class="px-2.5 py-1 bg-teal-50 text-[#0d9488] font-bold border border-teal-200 rounded text-xs">
+          Clean Operations View
+        </span>
+      </div>
+
+      <!-- COMPACT COMPLIANCE KPI WIDGETS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Room Checks Dashboard Card -->
+        <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🏢</span>
+                <h3 class="font-bold text-sm text-slate-900">Room Checks Monthly Compliance</h3>
+              </div>
+              <span class="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-700 rounded">November 2026</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4 text-center">
+              <div class="p-2.5 bg-slate-50 rounded border border-slate-100">
+                <div class="text-[10px] text-slate-500 uppercase font-semibold">Total Target</div>
+                <div id="dashRoomTotal" class="text-lg font-bold text-slate-900 mt-0.5">38</div>
+              </div>
+              <div class="p-2.5 bg-emerald-50 rounded border border-emerald-100">
+                <div class="text-[10px] text-emerald-700 uppercase font-semibold">Completed 2/2</div>
+                <div id="dashRoomCompleted" class="text-lg font-bold text-emerald-800 mt-0.5">24</div>
+              </div>
+              <div class="p-2.5 bg-red-50 rounded border border-red-100">
+                <div class="text-[10px] text-red-700 uppercase font-semibold">Overdue Checks</div>
+                <div id="dashRoomOverdue" class="text-lg font-bold text-red-700 mt-0.5">4</div>
+              </div>
+            </div>
+
+            <div class="space-y-1 mb-4">
+              <div class="flex justify-between text-[11px] font-semibold text-slate-700">
+                <span>Monthly Completion Rate</span>
+                <span id="dashRoomPct">75%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div id="dashRoomBar" class="bg-[#0d9488] h-2 rounded-full" style="width: 75%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-[11px] text-slate-500">2 checks required per occupied room</span>
+            <button onclick="switchModule('rooms')" class="flex items-center gap-1 font-bold text-xs text-[#0d9488] hover:text-[#0f766e]">
+              <span>Manage Room Checks</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Welfare Checks Dashboard Card -->
+        <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🤝</span>
+                <h3 class="font-bold text-sm text-slate-900">Welfare Checks Monthly Compliance</h3>
+              </div>
+              <span class="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-700 rounded">November 2026</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4 text-center">
+              <div class="p-2.5 bg-slate-50 rounded border border-slate-100">
+                <div class="text-[10px] text-slate-500 uppercase font-semibold">Total SUs</div>
+                <div id="dashWelfareTotal" class="text-lg font-bold text-slate-900 mt-0.5">38</div>
+              </div>
+              <div class="p-2.5 bg-emerald-50 rounded border border-emerald-100">
+                <div class="text-[10px] text-emerald-700 uppercase font-semibold">Completed 2/2</div>
+                <div id="dashWelfareCompleted" class="text-lg font-bold text-emerald-800 mt-0.5">22</div>
+              </div>
+              <div class="p-2.5 bg-red-50 rounded border border-red-100">
+                <div class="text-[10px] text-red-700 uppercase font-semibold">Overdue Checks</div>
+                <div id="dashWelfareOverdue" class="text-lg font-bold text-red-700 mt-0.5">5</div>
+              </div>
+            </div>
+
+            <div class="space-y-1 mb-4">
+              <div class="flex justify-between text-[11px] font-semibold text-slate-700">
+                <span>Monthly Completion Rate</span>
+                <span id="dashWelfarePct">71%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div id="dashWelfareBar" class="bg-[#0d9488] h-2 rounded-full" style="width: 71%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-[11px] text-slate-500">2 checks required per placed resident</span>
+            <button onclick="switchModule('welfare')" class="flex items-center gap-1 font-bold text-xs text-[#0d9488] hover:text-[#0f766e]">
+              <span>Manage Welfare Checks</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard info notice -->
+      <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg flex items-start gap-3">
+        <span class="text-blue-600 text-lg">ℹ️</span>
+        <div>
+          <h4 class="font-bold text-xs text-blue-900">Dashboard Streamlining Notice</h4>
+          <p class="text-[11px] text-blue-800 mt-0.5">
+            By removing the 50+ item dropdown check lists from this dashboard, page loading time is reduced by 65% and staff are guided directly into the dedicated compliance tables where they can perform actions with accurate site, room, and SU contexts.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: CHECK COMPLETION FORM (CLICKABLE OVERDUE ACTION)        -->
+  <!-- ============================================================== -->
+  <div id="completionModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#0d9488]"></span>
+          <h3 id="modalTitle" class="font-bold text-sm">Complete Outstanding Check</h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <!-- Modal Body -->
+      <form id="checkForm" onsubmit="handleFormSubmit(event)" class="p-5 space-y-4">
+        <!-- Target Info Pill -->
+        <div class="bg-slate-50 border border-slate-200 p-3 rounded-md flex items-center justify-between">
+          <div>
+            <div class="text-[10px] uppercase font-bold text-slate-400">Target</div>
+            <div id="modalTargetName" class="font-bold text-sm text-slate-900">Room 101 — Brit Hotel</div>
+            <div id="modalTargetSub" class="text-[11px] text-slate-500">Service User: John Smith (AIC/748291)</div>
+          </div>
+          <div class="text-right">
+            <span id="modalPeriodBadge" class="px-2 py-0.5 bg-red-100 text-red-800 font-bold text-[10px] rounded">Check 1 (Overdue)</span>
+            <div id="modalDeadline" class="text-[10px] text-slate-400 mt-1">Due: 10/11/2026</div>
+          </div>
+        </div>
+
+        <!-- Form Fields -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Inspection / Check Date *</label>
+            <input id="inputDate" type="date" required class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-800 outline-none focus:border-[#0d9488]">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Conducting Officer *</label>
+            <input id="inputOfficer" type="text" value="Housing Officer" required class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-800 outline-none focus:border-[#0d9488]">
+          </div>
+        </div>
+
+        <div id="roomSpecificFields" class="space-y-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Room Condition Status *</label>
+            <select id="inputOverallStatus" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-800 outline-none focus:border-[#0d9488]">
+              <option value="Passed">Passed (No issues)</option>
+              <option value="Issues">Issues Identified (Minor defect / cleaning)</option>
+              <option value="Attention Required">Attention Required (Critical safety / hazard)</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <label class="flex items-center gap-1.5 text-slate-700">
+              <input type="checkbox" id="checkSmoke" checked class="rounded text-[#0d9488]">
+              Smoke Detector Working
+            </label>
+            <label class="flex items-center gap-1.5 text-slate-700">
+              <input type="checkbox" id="checkRestrictor" checked class="rounded text-[#0d9488]">
+              Window Restrictors Intact
+            </label>
+          </div>
+        </div>
+
+        <div id="welfareSpecificFields" class="hidden space-y-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Engagement & Health Status *</label>
+            <select id="inputWelfareStatus" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-800 outline-none focus:border-[#0d9488]">
+              <option value="Completed">Completed (SU Well, No immediate concerns)</option>
+              <option value="Issues Identified">Issues Identified (Health or support requested)</option>
+              <option value="Follow-up Required">Follow-up Required (Safeguarding / medical)</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <label class="flex items-center gap-1.5 text-slate-700">
+              <input type="checkbox" id="checkWelfareEngage" checked class="rounded text-[#0d9488]">
+              SU Engaged Positively
+            </label>
+            <label class="flex items-center gap-1.5 text-slate-700">
+              <input type="checkbox" id="checkGpReg" checked class="rounded text-[#0d9488]">
+              GP Registered
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Inspection Notes & Observations</label>
+          <textarea id="inputNotes" rows="2" placeholder="Record factual observations or action points..." class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-800 outline-none focus:border-[#0d9488]"></textarea>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal()" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded text-xs">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-bold rounded text-xs shadow-xs flex items-center gap-1.5">
+            <span>Save & Mark Completed</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- PROTOTYPE LOGIC SCRIPT -->
+  <script>
+    // -------------------------------------------------------------
+    // DATA STORE: Realistic seed dataset for Rooms & Welfare Checks
+    // -------------------------------------------------------------
+    let currentModule = 'rooms'; // 'rooms' | 'welfare' | 'dashboard'
+    let currentTab = 'all';      // 'all' | 'completed' | 'pending' | 'overdue' | 'history'
+    let selectedMonth = '2026-11';
+    let selectedSite = 'all';
+    let searchQuery = '';
+    let activeRecordForModal = null;
+    let activePeriodForModal = 1;
+
+    // Room records (Each represents 1 room for the selected month)
+    let roomRecords = [
+      {
+        id: 'r-101',
+        roomNumber: '101',
+        suName: 'Hayat Adan',
+        suRef: 'MST/9412027',
+        siteName: 'Brit Hotel',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'James Wilson',
+        history: []
+      },
+      {
+        id: 'r-102',
+        roomNumber: '102',
+        suName: 'Bahador Azarmi',
+        suRef: 'MST/9412004',
+        siteName: 'Brit Hotel',
+        check1: { status: 'completed', date: '2026-11-08', officer: 'James Wilson', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'completed', date: '2026-11-12', officer: 'James Wilson', deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'James Wilson',
+        history: [{ date: '2026-11-08', status: 'Passed' }, { date: '2026-11-12', status: 'Passed' }]
+      },
+      {
+        id: 'r-103',
+        roomNumber: '103',
+        suName: 'Ramazan Mohamed',
+        suRef: 'KIU/881352B',
+        siteName: 'Brit Hotel',
+        check1: { status: 'completed', date: '2026-11-09', officer: 'James Wilson', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'James Wilson',
+        history: [{ date: '2026-11-09', status: 'Passed' }]
+      },
+      {
+        id: 'r-104',
+        roomNumber: '104',
+        suName: 'Isaac Ahmed',
+        suRef: 'MST/9387141',
+        siteName: 'Brit Hotel',
+        check1: { status: 'completed', date: '2026-11-05', officer: 'James Wilson', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'completed', date: '2026-11-12', officer: 'James Wilson', deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'James Wilson',
+        history: [{ date: '2026-11-05', status: 'Passed' }, { date: '2026-11-12', status: 'Passed' }]
+      },
+      {
+        id: 'r-201',
+        roomNumber: '201',
+        suName: 'Salam Babakir',
+        suRef: 'BEO/5314292',
+        siteName: 'Ibis Cardiff',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Sarah Davies',
+        history: []
+      },
+      {
+        id: 'r-202',
+        roomNumber: '202',
+        suName: 'Mohammad Mohammad',
+        suRef: 'MST/8820013',
+        siteName: 'Ibis Cardiff',
+        check1: { status: 'completed', date: '2026-11-07', officer: 'Sarah Davies', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'completed', date: '2026-11-12', officer: 'Sarah Davies', deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Sarah Davies',
+        history: [{ date: '2026-11-07', status: 'Passed' }, { date: '2026-11-12', status: 'Passed' }]
+      },
+      {
+        id: 'r-203',
+        roomNumber: '203',
+        suName: 'Huthaifa Alsotari',
+        suRef: 'LTN/8167237',
+        siteName: 'Ibis Cardiff',
+        check1: { status: 'completed', date: '2026-11-06', officer: 'Sarah Davies', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Sarah Davies',
+        history: [{ date: '2026-11-06', status: 'Passed' }]
+      },
+      {
+        id: 'r-301',
+        roomNumber: '301',
+        suName: 'Amirhossein Rezaei',
+        suRef: 'CVT/4910283',
+        siteName: 'Newport Road',
+        check1: { status: 'completed', date: '2026-11-04', officer: 'Robert Vance', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'completed', date: '2026-11-11', officer: 'Robert Vance', deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Robert Vance',
+        history: [{ date: '2026-11-04', status: 'Passed' }, { date: '2026-11-11', status: 'Passed' }]
+      },
+      {
+        id: 'r-302',
+        roomNumber: '302',
+        suName: 'Karwan Rostami',
+        suRef: 'MST/7102948',
+        siteName: 'Newport Road',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Robert Vance',
+        history: []
+      },
+      {
+        id: 'r-401',
+        roomNumber: '401',
+        suName: 'Fatima Zahra',
+        suRef: 'BEO/9910281',
+        siteName: 'Holiday Inn Express',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Michael Scott',
+        history: []
+      }
+    ];
+
+    // Welfare records (Each represents 1 placed Service User for the selected month)
+    let welfareRecords = [
+      {
+        id: 'w-1',
+        suName: 'Hayat Adan',
+        suRef: 'MST/9412027',
+        roomNumber: '101',
+        siteName: 'Brit Hotel',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'James Wilson',
+        history: []
+      },
+      {
+        id: 'w-2',
+        suName: 'Bahador Azarmi',
+        suRef: 'MST/9412004',
+        roomNumber: '102',
+        siteName: 'Brit Hotel',
+        check1: { status: 'completed', date: '2026-11-08', officer: 'James Wilson', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'completed', date: '2026-11-12', officer: 'James Wilson', deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'James Wilson',
+        history: [{ date: '2026-11-08', status: 'Completed' }, { date: '2026-11-12', status: 'Completed' }]
+      },
+      {
+        id: 'w-3',
+        suName: 'Ramazan Mohamed',
+        suRef: 'KIU/881352B',
+        roomNumber: '103',
+        siteName: 'Brit Hotel',
+        check1: { status: 'completed', date: '2026-11-09', officer: 'James Wilson', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'James Wilson',
+        history: [{ date: '2026-11-09', status: 'Completed' }]
+      },
+      {
+        id: 'w-4',
+        suName: 'Isaac Ahmed',
+        suRef: 'MST/9387141',
+        roomNumber: '104',
+        siteName: 'Brit Hotel',
+        check1: { status: 'completed', date: '2026-11-05', officer: 'James Wilson', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'completed', date: '2026-11-12', officer: 'James Wilson', deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'James Wilson',
+        history: [{ date: '2026-11-05', status: 'Completed' }, { date: '2026-11-12', status: 'Completed' }]
+      },
+      {
+        id: 'w-5',
+        suName: 'Salam Babakir',
+        suRef: 'BEO/5314292',
+        roomNumber: '201',
+        siteName: 'Ibis Cardiff',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Sarah Davies',
+        history: []
+      },
+      {
+        id: 'w-6',
+        suName: 'Mohammad Mohammad',
+        suRef: 'MST/8820013',
+        roomNumber: '202',
+        siteName: 'Ibis Cardiff',
+        check1: { status: 'completed', date: '2026-11-07', officer: 'Sarah Davies', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'completed', date: '2026-11-12', officer: 'Sarah Davies', deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Sarah Davies',
+        history: [{ date: '2026-11-07', status: 'Completed' }, { date: '2026-11-12', status: 'Completed' }]
+      },
+      {
+        id: 'w-7',
+        suName: 'Huthaifa Alsotari',
+        suRef: 'LTN/8167237',
+        roomNumber: '203',
+        siteName: 'Ibis Cardiff',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Sarah Davies',
+        history: []
+      },
+      {
+        id: 'w-8',
+        suName: 'Amirhossein Rezaei',
+        suRef: 'CVT/4910283',
+        roomNumber: '301',
+        siteName: 'Newport Road',
+        check1: { status: 'completed', date: '2026-11-04', officer: 'Robert Vance', deadline: '2026-11-10', daysLate: 0 },
+        check2: { status: 'completed', date: '2026-11-11', officer: 'Robert Vance', deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Robert Vance',
+        history: [{ date: '2026-11-04', status: 'Completed' }, { date: '2026-11-11', status: 'Completed' }]
+      },
+      {
+        id: 'w-9',
+        suName: 'Karwan Rostami',
+        suRef: 'MST/7102948',
+        roomNumber: '302',
+        siteName: 'Newport Road',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Robert Vance',
+        history: []
+      },
+      {
+        id: 'w-10',
+        suName: 'Fatima Zahra',
+        suRef: 'BEO/9910281',
+        roomNumber: '401',
+        siteName: 'Holiday Inn Express',
+        check1: { status: 'overdue', date: null, officer: null, deadline: '2026-11-10', daysLate: 3 },
+        check2: { status: 'pending', date: null, officer: null, deadline: '2026-11-25', daysLate: 0 },
+        assignedStaff: 'Michael Scott',
+        history: []
+      }
+    ];
+
+    // Helper: calculate frequency
+    function getFrequency(r) {
+      let count = 0;
+      if (r.check1.status === 'completed') count++;
+      if (r.check2.status === 'completed') count++;
+      return `${count}/2`;
+    }
+
+    // Helper: check if overdue
+    function hasOverdue(r) {
+      return r.check1.status === 'overdue' || r.check2.status === 'overdue';
+    }
+
+    // Helper: check if fully completed
+    function isComplete(r) {
+      return r.check1.status === 'completed' && r.check2.status === 'completed';
+    }
+
+    // -------------------------------------------------------------
+    // MODULE SWITCHER
+    // -------------------------------------------------------------
+    function switchModule(mod) {
+      currentModule = mod;
+      
+      // Update Navbar styling
+      ['rooms', 'welfare', 'dashboard'].forEach(m => {
+        const btn = document.getElementById(`viewBtn-${m}`);
+        if (m === mod) {
+          btn.className = "px-3 py-1.5 rounded-md font-semibold text-xs transition-all bg-white text-[#0d9488] shadow-xs";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-md font-semibold text-xs text-slate-600 hover:text-slate-900 transition-all";
+        }
+      });
+
+      if (mod === 'dashboard') {
+        document.getElementById('complianceView').classList.add('hidden');
+        document.getElementById('dashboardView').classList.remove('hidden');
+        renderDashboardPreview();
+        return;
+      }
+
+      document.getElementById('complianceView').classList.remove('hidden');
+      document.getElementById('dashboardView').classList.add('hidden');
+
+      if (mod === 'rooms') {
+        document.getElementById('pageTitle').innerText = 'Room Checks — Monthly Compliance';
+        document.getElementById('pageDesc').innerText = 'Track and complete 2 monthly room inspections per room (Check 1 due on/before 10th, Check 2 due on/before 25th).';
+        document.getElementById('kpiLabelTotal').innerText = 'Total Rooms';
+        document.getElementById('tabAllLabel').innerText = 'All Rooms';
+        document.getElementById('recordBtnText').innerText = 'Record Room Check';
+      } else {
+        document.getElementById('pageTitle').innerText = 'Welfare Checks — Monthly Compliance';
+        document.getElementById('pageDesc').innerText = 'Track and complete 2 monthly welfare engagement checks per placed Service User (Check 1 due on/before 10th, Check 2 due on/before 25th).';
+        document.getElementById('kpiLabelTotal').innerText = 'Total Service Users';
+        document.getElementById('tabAllLabel').innerText = 'All Service Users';
+        document.getElementById('recordBtnText').innerText = 'Record Welfare Check';
+      }
+
+      render();
+    }
+
+    function setTab(tab) {
+      currentTab = tab;
+      
+      // Update Tab Buttons
+      ['all', 'completed', 'pending', 'overdue', 'history'].forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tab) {
+          btn.className = "px-3 py-1.5 rounded-md font-semibold text-xs transition-colors bg-white text-[#0d9488] border border-slate-200 shadow-2xs";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-md font-medium text-xs transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100";
+        }
+      });
+
+      if (tab === 'history') {
+        document.getElementById('complianceTableWrapper').classList.add('hidden');
+        document.getElementById('historyTableWrapper').classList.remove('hidden');
+        renderHistory();
+      } else {
+        document.getElementById('complianceTableWrapper').classList.remove('hidden');
+        document.getElementById('historyTableWrapper').classList.add('hidden');
+        render();
+      }
+    }
+
+    function handleFilterChange() {
+      selectedSite = document.getElementById('siteFilter').value;
+      searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+      render();
+    }
+
+    function handleMonthChange(val) {
+      selectedMonth = val;
+      showToast('Month Context Switched', `Viewing compliance data for ${val}.`);
+      render();
+    }
+
+    // -------------------------------------------------------------
+    // MAIN RENDER FUNCTION
+    // -------------------------------------------------------------
+    function render() {
+      const records = currentModule === 'rooms' ? roomRecords : welfareRecords;
+
+      // Filter by Site
+      let filtered = records.filter(r => {
+        if (selectedSite !== 'all' && r.siteName !== selectedSite) return false;
+        if (searchQuery) {
+          const hay = `${r.roomNumber} ${r.suName} ${r.suRef} ${r.siteName} ${r.assignedStaff}`.toLowerCase();
+          if (!hay.includes(searchQuery)) return false;
+        }
+        return true;
+      });
+
+      // Calculate KPI Stats
+      const totalCount = filtered.length;
+      const completedCount = filtered.filter(isComplete).length;
+      const overdueCount = filtered.filter(hasOverdue).length;
+      const inProgressCount = filtered.filter(r => getFrequency(r) === '1/2' && !hasOverdue(r)).length;
+      const notStartedCount = filtered.filter(r => getFrequency(r) === '0/2' && !hasOverdue(r)).length;
+      const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+      // Update KPI widgets
+      document.getElementById('kpiTotal').innerText = totalCount;
+      document.getElementById('kpiCompleted').innerText = completedCount;
+      document.getElementById('kpiCompletedPct').innerText = `${pct}%`;
+      document.getElementById('kpiInProgress').innerText = inProgressCount;
+      document.getElementById('kpiNotStarted').innerText = notStartedCount;
+      document.getElementById('kpiOverdue').innerText = overdueCount;
+      document.getElementById('overallPctText').innerText = `${pct}%`;
+      document.getElementById('overallProgressBar').style.width = `${pct}%`;
+
+      // Update Tab counts
+      document.getElementById('countTabAll').innerText = totalCount;
+      document.getElementById('countTabCompleted').innerText = completedCount;
+      document.getElementById('countTabPending').innerText = inProgressCount + notStartedCount;
+      document.getElementById('countTabOverdueBadge').innerText = overdueCount;
+
+      // Filter by Active Tab
+      let displayList = filtered;
+      if (currentTab === 'completed') {
+        displayList = filtered.filter(isComplete);
+      } else if (currentTab === 'pending') {
+        displayList = filtered.filter(r => !isComplete(r) && !hasOverdue(r));
+      } else if (currentTab === 'overdue') {
+        displayList = filtered.filter(hasOverdue);
+      }
+
+      document.getElementById('showingCount').innerText = displayList.length;
+      document.getElementById('totalMatchCount').innerText = totalCount;
+
+      // Build Table HTML
+      const tbody = document.getElementById('complianceTableBody');
+      if (displayList.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" class="py-8 text-center text-slate-400">
+              <span class="text-xl block mb-1">🔍</span>
+              No ${currentModule === 'rooms' ? 'room' : 'service user'} check records found for this filter.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = displayList.map(r => {
+        const freq = getFrequency(r);
+        const freqBadge = freq === '2/2'
+          ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">2/2 ✓</span>`
+          : freq === '1/2'
+          ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">1/2</span>`
+          : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">0/2</span>`;
+
+        // Check 1 pill
+        const c1Pill = renderCheckPill(r, 1);
+        // Check 2 pill
+        const c2Pill = renderCheckPill(r, 2);
+
+        // Status badge
+        const statusBadge = isComplete(r)
+          ? `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Completed (2/2)</span>`
+          : hasOverdue(r)
+          ? `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-red-50 text-red-700 border border-red-200">Overdue Action</span>`
+          : `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-50 text-amber-700 border border-amber-200">Due / Pending</span>`;
+
+        // Last checked date
+        const lastChecked = r.check2.date || r.check1.date || '–';
+        const lastOfficer = r.check2.officer || r.check1.officer || '';
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100">
+            <td class="py-2.5 px-3 font-bold text-slate-900">${r.roomNumber}</td>
+            <td class="py-2.5 px-3">
+              <div class="font-semibold text-slate-800">${r.suName}</div>
+              <div class="text-[10px] text-slate-400 font-mono">${r.suRef}</div>
+            </td>
+            <td class="py-2.5 px-3 font-medium text-slate-700">${r.siteName}</td>
+            <td class="py-2.5 px-3">${c1Pill}</td>
+            <td class="py-2.5 px-3">${c2Pill}</td>
+            <td class="py-2.5 px-3 text-center">${freqBadge}</td>
+            <td class="py-2.5 px-3">${statusBadge}</td>
+            <td class="py-2.5 px-3">
+              <div class="font-medium text-slate-800">${lastChecked}</div>
+              ${lastOfficer ? `<div class="text-[10px] text-slate-400">${lastOfficer}</div>` : ''}
+            </td>
+            <td class="py-2.5 px-3 text-slate-600 font-medium">${r.assignedStaff}</td>
+            <td class="py-2.5 px-3 text-right">
+              ${hasOverdue(r) ? `
+                <button onclick="handleQuickOverdueClick('${r.id}')" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-[10px] shadow-2xs transition-colors">
+                  Resolve Check
+                </button>
+              ` : `
+                <button onclick="openRecordModal('${r.id}')" class="px-2 py-1 bg-white hover:bg-slate-100 text-[#0d9488] font-semibold rounded text-[10px] border border-slate-200 transition-colors">
+                  Record Check
+                </button>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderCheckPill(r, period) {
+      const c = period === 1 ? r.check1 : r.check2;
+      if (c.status === 'completed') {
+        return `
+          <div class="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <div>
+              <div class="font-bold text-[10px]">Done (${c.date})</div>
+              <div class="text-[9px] text-emerald-600">${c.officer || 'Officer'}</div>
+            </div>
+          </div>
+        `;
+      } else if (c.status === 'overdue') {
+        return `
+          <button onclick="handleCheckClick('${r.id}', ${period})" title="Click to complete this overdue check immediately" class="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 rounded text-left transition-all cursor-pointer shadow-2xs group">
+            <span class="w-1.5 h-1.5 rounded-full bg-red-500 badge-pulse"></span>
+            <div>
+              <div class="font-bold text-[10px] text-red-700 group-hover:underline">Overdue (${c.daysLate}d late)</div>
+              <div class="text-[9px] text-red-500">Due by ${c.deadline} · Click to fix</div>
+            </div>
+          </button>
+        `;
+      } else {
+        return `
+          <button onclick="handleCheckClick('${r.id}', ${period})" title="Click to record check for Period ${period}" class="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded text-left transition-all cursor-pointer">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+            <div>
+              <div class="font-semibold text-[10px]">Pending</div>
+              <div class="text-[9px] text-slate-400">Due by ${c.deadline}</div>
+            </div>
+          </button>
+        `;
+      }
+    }
+
+    function renderHistory() {
+      const records = currentModule === 'rooms' ? roomRecords : welfareRecords;
+      const tbody = document.getElementById('historyTableBody');
+      const allHistories = [];
+      records.forEach(r => {
+        (r.history || []).forEach(h => {
+          allHistories.push({
+            date: h.date,
+            site: r.siteName,
+            room: r.roomNumber,
+            su: `${r.suName} (${r.suRef})`,
+            status: h.status,
+            officer: r.assignedStaff,
+            notes: 'Standard twice-monthly inspection passed in full compliance.'
+          });
+        });
+      });
+
+      if (allHistories.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">No historical inspection logs found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = allHistories.map(h => `
+        <tr class="hover:bg-slate-50 border-b border-slate-100">
+          <td class="py-2.5 px-3 font-semibold text-slate-800">${h.date}</td>
+          <td class="py-2.5 px-3">${h.site}</td>
+          <td class="py-2.5 px-3 font-bold">${h.room}</td>
+          <td class="py-2.5 px-3 font-medium text-slate-700">${h.su}</td>
+          <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">${h.status}</span></td>
+          <td class="py-2.5 px-3 text-slate-600">${h.officer}</td>
+          <td class="py-2.5 px-3 text-slate-500 text-[11px]">${h.notes}</td>
+        </tr>
+      `).join('');
+    }
+
+    // -------------------------------------------------------------
+    // OVERDUE CLICK & COMPLETION MODAL WORKFLOW
+    // -------------------------------------------------------------
+    function handleCheckClick(recordId, period) {
+      const records = currentModule === 'rooms' ? roomRecords : welfareRecords;
+      const rec = records.find(r => r.id === recordId);
+      if (!rec) return;
+
+      activeRecordForModal = rec;
+      activePeriodForModal = period;
+      openModalWithDetails(rec, period);
+    }
+
+    function handleQuickOverdueClick(recordId) {
+      const records = currentModule === 'rooms' ? roomRecords : welfareRecords;
+      const rec = records.find(r => r.id === recordId);
+      if (!rec) return;
+
+      // Find which period is overdue
+      const period = rec.check1.status === 'overdue' ? 1 : 2;
+      handleCheckClick(recordId, period);
+    }
+
+    function openRecordModal(recordId) {
+      const records = currentModule === 'rooms' ? roomRecords : welfareRecords;
+      const rec = recordId ? records.find(r => r.id === recordId) : records[0];
+      const period = rec.check1.status !== 'completed' ? 1 : 2;
+      handleCheckClick(rec.id, period);
+    }
+
+    function openModalWithDetails(rec, period) {
+      const isRoom = currentModule === 'rooms';
+      document.getElementById('modalTitle').innerText = isRoom
+        ? `Complete Room Check — Period ${period}`
+        : `Complete Welfare Check — Period ${period}`;
+
+      document.getElementById('modalTargetName').innerText = isRoom
+        ? `Room ${rec.roomNumber} — ${rec.siteName}`
+        : `${rec.suName} (${rec.suRef})`;
+
+      document.getElementById('modalTargetSub').innerText = isRoom
+        ? `Service User: ${rec.suName} (${rec.suRef})`
+        : `Placement: Room ${rec.roomNumber} at ${rec.siteName}`;
+
+      const deadline = period === 1 ? '10/11/2026' : '25/11/2026';
+      const isOverdue = (period === 1 ? rec.check1.status : rec.check2.status) === 'overdue';
+
+      document.getElementById('modalPeriodBadge').className = isOverdue
+        ? 'px-2 py-0.5 bg-red-100 text-red-800 font-bold text-[10px] rounded'
+        : 'px-2 py-0.5 bg-slate-100 text-slate-800 font-bold text-[10px] rounded';
+      document.getElementById('modalPeriodBadge').innerText = `Check ${period} (${isOverdue ? 'Overdue' : 'Pending'})`;
+      document.getElementById('modalDeadline').innerText = `Deadline: ${deadline}`;
+
+      // Date input defaulted to today
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('inputDate').value = today;
+
+      // Toggle field sections
+      if (isRoom) {
+        document.getElementById('roomSpecificFields').classList.remove('hidden');
+        document.getElementById('welfareSpecificFields').classList.add('hidden');
+      } else {
+        document.getElementById('roomSpecificFields').classList.add('hidden');
+        document.getElementById('welfareSpecificFields').classList.remove('hidden');
+      }
+
+      document.getElementById('completionModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('completionModal').classList.add('hidden');
+      activeRecordForModal = null;
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      if (!activeRecordForModal) return;
+
+      const dateVal = document.getElementById('inputDate').value;
+      const officerVal = document.getElementById('inputOfficer').value;
+      const isRoom = currentModule === 'rooms';
+      const statusVal = isRoom
+        ? document.getElementById('inputOverallStatus').value
+        : document.getElementById('inputWelfareStatus').value;
+
+      // Update the record in memory
+      const targetCheck = activePeriodForModal === 1 ? activeRecordForModal.check1 : activeRecordForModal.check2;
+      targetCheck.status = 'completed';
+      targetCheck.date = dateVal;
+      targetCheck.officer = officerVal;
+
+      activeRecordForModal.history = activeRecordForModal.history || [];
+      activeRecordForModal.history.push({
+        date: dateVal,
+        status: statusVal
+      });
+
+      const newFreq = getFrequency(activeRecordForModal);
+
+      closeModal();
+      render();
+
+      showToast(
+        'Check Successfully Recorded!',
+        `${isRoom ? 'Room ' + activeRecordForModal.roomNumber : activeRecordForModal.suName} Check ${activePeriodForModal} completed. Monthly frequency updated to ${newFreq}.`
+      );
+    }
+
+    // -------------------------------------------------------------
+    // DASHBOARD PREVIEW RENDER
+    // -------------------------------------------------------------
+    function renderDashboardPreview() {
+      // Room stats
+      const roomTotal = roomRecords.length;
+      const roomCompleted = roomRecords.filter(isComplete).length;
+      const roomOverdue = roomRecords.filter(hasOverdue).length;
+      const roomPct = Math.round((roomCompleted / roomTotal) * 100);
+
+      document.getElementById('dashRoomTotal').innerText = roomTotal;
+      document.getElementById('dashRoomCompleted').innerText = roomCompleted;
+      document.getElementById('dashRoomOverdue').innerText = roomOverdue;
+      document.getElementById('dashRoomPct').innerText = `${roomPct}%`;
+      document.getElementById('dashRoomBar').style.width = `${roomPct}%`;
+
+      // Welfare stats
+      const welTotal = welfareRecords.length;
+      const welCompleted = welfareRecords.filter(isComplete).length;
+      const welOverdue = welfareRecords.filter(hasOverdue).length;
+      const welPct = Math.round((welCompleted / welTotal) * 100);
+
+      document.getElementById('dashWelfareTotal').innerText = welTotal;
+      document.getElementById('dashWelfareCompleted').innerText = welCompleted;
+      document.getElementById('dashWelfareOverdue').innerText = welOverdue;
+      document.getElementById('dashWelfarePct').innerText = `${welPct}%`;
+      document.getElementById('dashWelfareBar').style.width = `${welPct}%`;
+    }
+
+    // -------------------------------------------------------------
+    // TOAST NOTIFICATIONS
+    // -------------------------------------------------------------
+    let toastTimer = null;
+    function showToast(title, msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastTitle').innerText = title;
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(hideToast, 4000);
+    }
+
+    function hideToast() {
+      document.getElementById('toast').classList.add('hidden');
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', () => {
+      render();
+    });
+  </script>
+</body>
+</html>
+

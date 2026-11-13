@@ -1,0 +1,158 @@
+[
+  {
+    "id": "referral-intake",
+    "title": "Safeguarding referral: log, track, notify",
+    "steps": [
+      [
+        "03-safeguarding",
+        "referrals-01-list",
+        "1. Open referrals"
+      ],
+      [
+        "03-safeguarding",
+        "referrals-03-form",
+        "2. Log a new referral"
+      ],
+      [
+        "03-safeguarding",
+        "referrals-02-detail",
+        "3. Review the record"
+      ],
+      [
+        "01-navigation",
+        "03-notifications",
+        "4. Manager is notified"
+      ]
+    ]
+  },
+  {
+    "id": "arrival-room-allocation",
+    "title": "New arrival: check in and allocate across interconnecting rooms",
+    "steps": [
+      [
+        "04-operations",
+        "dailyRegisters-07-new-arrivals",
+        "1. Arrival waiting for a room"
+      ],
+      [
+        "04-operations",
+        "dailyRegisters-05-allocation",
+        "2. Pick rooms (family of 4)"
+      ],
+      [
+        "04-operations",
+        "dailyRegisters-03-room-list",
+        "3. Room List reflects it"
+      ],
+      [
+        "04-operations",
+        "dailyRegisters-02-guest-filters",
+        "4. Filter the register"
+      ]
+    ]
+  },
+  {
+    "id": "finance-approval",
+    "title": "Vendor invoice: capture, review, approve",
+    "steps": [
+      [
+        "05-finance",
+        "finance-03-form",
+        "1. Upload invoice"
+      ],
+      [
+        "05-finance",
+        "finance-02-detail",
+        "2. Review details"
+      ],
+      [
+        "05-finance",
+        "financeApprovals-01-list",
+        "3. Approver queue"
+      ],
+      [
+        "01-navigation",
+        "03-notifications",
+        "4. Submitter is notified"
+      ]
+    ]
+  },
+  {
+    "id": "change-request",
+    "title": "Locked record: request a change and sign it off",
+    "steps": [
+      [
+        "06-compliance",
+        "requests-03-form",
+        "1. Raise request"
+      ],
+      [
+        "06-compliance",
+        "requests-01-list",
+        "2. Appears in queue"
+      ],
+      [
+        "06-compliance",
+        "requests-05-decision",
+        "3. Manager decides"
+      ],
+      [
+        "01-navigation",
+        "03-notifications",
+        "4. Result notification"
+      ]
+    ]
+  },
+  {
+    "id": "archive-restore",
+    "title": "Archive a user: two-step confirmation and Super Admin restore",
+    "steps": [
+      [
+        "07-admin",
+        "users-01-active",
+        "1. Active users"
+      ],
+      [
+        "07-admin",
+        "users-04-archive-step-1",
+        "2. Archive: step 1"
+      ],
+      [
+        "07-admin",
+        "users-05-archive-step-2",
+        "3. Archive: step 2"
+      ],
+      [
+        "07-admin",
+        "users-02-archived",
+        "4. Restore (Super Admin)"
+      ]
+    ]
+  },
+  {
+    "id": "room-check",
+    "title": "Room check: inspect, grade, escalate",
+    "steps": [
+      [
+        "04-operations",
+        "roomChecks-01-list",
+        "1. Room checks"
+      ],
+      [
+        "04-operations",
+        "roomChecks-02-checklist",
+        "2. 30-point checklist"
+      ],
+      [
+        "04-operations",
+        "escalations-03-form",
+        "3. Escalate a failure"
+      ],
+      [
+        "04-operations",
+        "escalations-01-list",
+        "4. Track the escalation"
+      ]
+    ]
+  }
+]

@@ -21,17 +21,21 @@ export const Pagination: React.FC<PaginationProps> = ({
   const endItem = Math.min(totalItems, currentPage * pageSize);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[#faf9f8] border-t border-[#edebe9] text-xs text-[#605e5c]">
+    <div className="w-full flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[#faf9f8] border-t border-[#edebe9] text-xs text-[#605e5c]">
       <div className="flex items-center gap-2">
         <span>Rows per page:</span>
         <select
           id="select-page-size"
           value={pageSize}
-          onChange={e => onPageSizeChange(Number(e.target.value))}
-          className="px-2 py-1 bg-white border border-[#8a8886] rounded-xs text-[#323130] focus:outline-2 focus:outline-[#71afe5]"
-          title="Adjust page size to optimize rendering speed"
+          onChange={e => {
+            const newSize = Number(e.target.value);
+            onPageSizeChange(newSize);
+            onPageChange(1);
+          }}
+          className="px-2 py-1 bg-white border border-[#8a8886] rounded-xs text-[#323130] focus:outline-2 focus:outline-[#71afe5] cursor-pointer"
+          title="Adjust page size"
         >
-          <option value={10}>10 (Fastest)</option>
+          <option value={10}>10</option>
           <option value={25}>25</option>
           <option value={50}>50</option>
           <option value={100}>100</option>

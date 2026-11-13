@@ -1,0 +1,4249 @@
+{
+  "generatedFrom": "src/config/pageRegistry.ts + src/App.tsx + src/data/*",
+  "roles": {
+    "Super Admin": {
+      "canViewAllProperties": true,
+      "canCreateRecords": true,
+      "canEditRecords": true,
+      "canDeleteRecords": true,
+      "canArchiveRestore": true,
+      "canExportData": true,
+      "canManageProperties": true,
+      "canManageFiles": true,
+      "canManageUsers": true,
+      "canManageSettings": true,
+      "canManageFinance": true
+    },
+    "Admin": {
+      "canViewAllProperties": true,
+      "canCreateRecords": true,
+      "canEditRecords": true,
+      "canDeleteRecords": true,
+      "canArchiveRestore": true,
+      "canExportData": true,
+      "canManageProperties": true,
+      "canManageFiles": true,
+      "canManageUsers": true,
+      "canManageSettings": true,
+      "canManageFinance": true
+    },
+    "Regional Manager": {
+      "canViewAllProperties": true,
+      "canCreateRecords": true,
+      "canEditRecords": true,
+      "canDeleteRecords": false,
+      "canArchiveRestore": true,
+      "canExportData": true,
+      "canManageProperties": false,
+      "canManageFiles": true,
+      "canManageUsers": false,
+      "canManageSettings": false,
+      "canManageFinance": false
+    },
+    "General Manager": {
+      "canViewAllProperties": false,
+      "canCreateRecords": true,
+      "canEditRecords": true,
+      "canDeleteRecords": false,
+      "canArchiveRestore": true,
+      "canExportData": true,
+      "canManageProperties": false,
+      "canManageFiles": false,
+      "canManageUsers": false,
+      "canManageSettings": false,
+      "canManageFinance": false
+    },
+    "Area Manager": {
+      "canViewAllProperties": false,
+      "canCreateRecords": true,
+      "canEditRecords": true,
+      "canDeleteRecords": false,
+      "canArchiveRestore": true,
+      "canExportData": true,
+      "canManageProperties": false,
+      "canManageFiles": false,
+      "canManageUsers": false,
+      "canManageSettings": false,
+      "canManageFinance": false
+    },
+    "Staff": {
+      "canViewAllProperties": false,
+      "canCreateRecords": true,
+      "canEditRecords": true,
+      "canDeleteRecords": false,
+      "canArchiveRestore": false,
+      "canExportData": false,
+      "canManageProperties": false,
+      "canManageFiles": false,
+      "canManageUsers": false,
+      "canManageSettings": false,
+      "canManageFinance": false
+    }
+  },
+  "pages": [
+    {
+      "id": "dashboard",
+      "title": "Executive Dashboard",
+      "category": "Overview",
+      "description": "Site activity, risk levels and property occupancy.",
+      "registered": true,
+      "component": "DashboardView",
+      "file": "src/components/dashboard/DashboardView.tsx",
+      "loc": 819,
+      "siblingFiles": 13,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Record Type",
+        "Site / Hotel",
+        "Service User / Resident",
+        "Reference (Port / NASS / ID)",
+        "Status",
+        "Record Date",
+        "Details / Incident Notes"
+      ],
+      "modals": [
+        "QuickIncidentModal"
+      ],
+      "filterOptions": [
+        "All categories"
+      ],
+      "columns": []
+    },
+    {
+      "id": "dailyRegisters",
+      "title": "Live Daily Registers",
+      "category": "Overview",
+      "description": "Real-time property room makeup, occupancy tracking, new arrivals, and evictions.",
+      "registered": true,
+      "component": "LiveDailyRegistersView",
+      "file": "src/components/registers/LiveDailyRegistersView.tsx",
+      "loc": 568,
+      "siblingFiles": 16,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "daily_register_rooms",
+        "daily_register_records",
+        "new_arrivals_records",
+        "eviction_records"
+      ],
+      "pageActions": [
+        "view",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [
+        "Daily Register",
+        "Summary & Guest Statistics",
+        "Live Register Statistics",
+        "Room List",
+        "New Arrivals",
+        "Family Groups",
+        "Nationality & Language Summary",
+        "Cross Checks & Validation",
+        "User Guide"
+      ],
+      "viewFieldLabels": [
+        "Daily Register",
+        "Summary & Guest Statistics",
+        "Live Register Statistics",
+        "Room List",
+        "New Arrivals",
+        "Family Groups",
+        "Nationality & Language Summary",
+        "Cross Checks & Validation",
+        "User Guide"
+      ],
+      "modals": [
+        "InterconnectRoomsModal"
+      ],
+      "filterOptions": [
+        "All Rooms",
+        "Occupied Only",
+        "Vacant Only",
+        "Active Families",
+        "Closed Families",
+        "All Families",
+        "Any Relationship",
+        "Sort: Name",
+        "Sort: Newest",
+        "Sort: Most members",
+        "Relationship...",
+        "Not recorded",
+        "All ages",
+        "Children (under 18)"
+      ],
+      "columns": [
+        {
+          "key": "roomNo",
+          "label": "Room No.",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "floor",
+          "label": "Floor",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomMakeup",
+          "label": "Room Makeup",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "singleBed",
+          "label": "Single Bed",
+          "type": "number",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "doubleBed",
+          "label": "Double Bed",
+          "type": "number",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "singleBunk",
+          "label": "Single Bunk",
+          "type": "number",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "doubleBunk",
+          "label": "Double Bunk",
+          "type": "number",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "cot",
+          "label": "Cot",
+          "type": "number",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "suMakeup",
+          "label": "SU Make Up",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "portRef",
+          "label": "Port Ref",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "checkInDate",
+          "label": "Check In Date",
+          "type": "date",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "contactNo",
+          "label": "Contact No.",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "dob",
+          "label": "D.O.B.",
+          "type": "date",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "age",
+          "label": "Age",
+          "type": "number",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "ageGroup",
+          "label": "Age Group",
+          "type": "select",
+          "options": [
+            "0-17",
+            "18-25",
+            "26-40",
+            "41-60",
+            "60+"
+          ],
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "nationality",
+          "label": "Nationality",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "language",
+          "label": "Language",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "gender",
+          "label": "Gender",
+          "type": "select",
+          "options": [
+            "Male",
+            "Female",
+            "Other",
+            "Prefer not to say"
+          ],
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "aspenCard",
+          "label": "Aspen Card",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "suComments",
+          "label": "SU Comments",
+          "type": "textarea",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "availableToBook",
+          "label": "Available to Book",
+          "type": "select",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "isVoid",
+          "label": "Void",
+          "type": "select",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "voidReason",
+          "label": "Void Reason",
+          "type": "text",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "maintenanceDateFrom",
+          "label": "Maintenance Date From",
+          "type": "date",
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "allocationToBeReviewed",
+          "label": "Allocation to be Reviewed",
+          "type": "select",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "occupied",
+          "label": "Occupied",
+          "type": "select",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "set": "DAILY_REGISTER_TABLE_COLUMNS"
+        },
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "date",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "hotel",
+          "label": "Hotel",
+          "type": "select",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomNo",
+          "label": "Room No.",
+          "type": "text",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "floor",
+          "label": "Floor",
+          "type": "text",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomType",
+          "label": "Room Type",
+          "type": "select",
+          "options": [
+            "Single",
+            "Double",
+            "Twin",
+            "Family",
+            "Accessible",
+            "Studio"
+          ],
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "currentMaxOccupancy",
+          "label": "Current Max Occupancy",
+          "type": "number",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "currentOccupancy",
+          "label": "Current Occupancy",
+          "type": "number",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "suCohort",
+          "label": "SU Cohort",
+          "type": "select",
+          "options": [
+            "Single Male",
+            "Single Female",
+            "Family",
+            "Couples",
+            "Mother & Baby",
+            "Vulnerable Adult"
+          ],
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "bedspacesAvailable",
+          "label": "Bedspaces Available",
+          "type": "number",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "voidBedspaces",
+          "label": "Void Bedspaces",
+          "type": "number",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "voidReason",
+          "label": "Void Reason",
+          "type": "textarea",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "sizeSqm",
+          "label": "Size of Room (sq. metre, excluding bathroom)",
+          "type": "number",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "maxRoomType",
+          "label": "Max Room Type (Room Size & Inventory)",
+          "type": "text",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "potentialMaxCapacity",
+          "label": "Potential Max Capacity",
+          "type": "number",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "stepsToIncreaseCapacity",
+          "label": "Steps to Increase Capacity",
+          "type": "textarea",
+          "set": "ROOM_LIST_TABLE_COLUMNS"
+        },
+        {
+          "key": "portReference",
+          "label": "Port Reference",
+          "type": "text",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "dob",
+          "label": "Date of Birth",
+          "type": "date",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "country",
+          "label": "Country",
+          "type": "text",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "language",
+          "label": "Language",
+          "type": "text",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "contactNumber",
+          "label": "Contact Number",
+          "type": "text",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "checkInDate",
+          "label": "Check-in Date",
+          "type": "date",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "hotel",
+          "label": "Hotel",
+          "type": "select",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "room",
+          "label": "Room",
+          "type": "text",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "type": "text",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "aspenCard",
+          "label": "Aspen Card",
+          "type": "text",
+          "set": "NEW_ARRIVALS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "referrals",
+      "title": "SG Referrals Master",
+      "category": "Safeguarding",
+      "description": "Primary register for new resident arrivals, intake safeguarding, and property placements.",
+      "registered": true,
+      "component": "ReferralsView",
+      "file": "src/components/referrals/ReferralsView.tsx",
+      "loc": 903,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "isArchive={false} /",
+      "tables": [
+        "referrals"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Referral Council",
+        "Service User Name",
+        "Port / NASS Ref",
+        "Mosaic ID",
+        "Date of Birth",
+        "Raised By",
+        "Officer Leading (Hotel)",
+        "Referral Type",
+        "Status",
+        "Date Referred",
+        "Method of Referral",
+        "Acknowledgement",
+        "LA Response",
+        "LA Officer Leading",
+        "Actions Taken",
+        "SG Review & Notes"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Months",
+        "June 2026",
+        "May 2026",
+        "April 2026",
+        "March 2026",
+        "February 2026",
+        "January 2026",
+        "All Statuses"
+      ],
+      "columns": []
+    },
+    {
+      "id": "referralsArchive",
+      "title": "Archived SG Referrals",
+      "category": "Safeguarding",
+      "description": "Historical archive of departed or completed resident referrals.",
+      "registered": true,
+      "component": "ReferralsView",
+      "file": "src/components/referrals/ReferralsView.tsx",
+      "loc": 903,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "isArchive={true} /",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Referral Council",
+        "Service User Name",
+        "Port / NASS Ref",
+        "Mosaic ID",
+        "Date of Birth",
+        "Raised By",
+        "Officer Leading (Hotel)",
+        "Referral Type",
+        "Status",
+        "Date Referred",
+        "Method of Referral",
+        "Acknowledgement",
+        "LA Response",
+        "LA Officer Leading",
+        "Actions Taken",
+        "SG Review & Notes"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Months",
+        "June 2026",
+        "May 2026",
+        "April 2026",
+        "March 2026",
+        "February 2026",
+        "January 2026",
+        "All Statuses"
+      ],
+      "columns": []
+    },
+    {
+      "id": "vulnerable",
+      "title": "Vulnerable Residents",
+      "category": "Safeguarding",
+      "description": "High-dependency resident monitoring, medical conditions, and safeguarding plans.",
+      "registered": true,
+      "component": "VulnerableView",
+      "file": "src/components/vulnerable/VulnerableView.tsx",
+      "loc": 837,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "isArchive={false} /",
+      "tables": [
+        "vulnerable_residents"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Room / Flat No",
+        "Service User Name",
+        "Port / NASS Ref",
+        "Date of Birth",
+        "Demographic Group",
+        "Gender",
+        "Risk Level",
+        "Vulnerability Category",
+        "Safeguarding Actions",
+        "SG Team Update",
+        "Next Review Date",
+        "Raised By",
+        "Allocated Worker",
+        "Status"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Months",
+        "June 2026",
+        "May 2026",
+        "April 2026",
+        "March 2026",
+        "February 2026",
+        "January 2026",
+        "All Statuses"
+      ],
+      "columns": []
+    },
+    {
+      "id": "vulnerableArchive",
+      "title": "Archived Vulnerable SUs",
+      "category": "Safeguarding",
+      "description": "Historical records of formerly tracked vulnerable service users.",
+      "registered": true,
+      "component": "VulnerableView",
+      "file": "src/components/vulnerable/VulnerableView.tsx",
+      "loc": 837,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "isArchive={true} /",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Room / Flat No",
+        "Service User Name",
+        "Port / NASS Ref",
+        "Date of Birth",
+        "Demographic Group",
+        "Gender",
+        "Risk Level",
+        "Vulnerability Category",
+        "Safeguarding Actions",
+        "SG Team Update",
+        "Next Review Date",
+        "Raised By",
+        "Allocated Worker",
+        "Status"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Months",
+        "June 2026",
+        "May 2026",
+        "April 2026",
+        "March 2026",
+        "February 2026",
+        "January 2026",
+        "All Statuses"
+      ],
+      "columns": []
+    },
+    {
+      "id": "challenging",
+      "title": "Challenging Behavior SUs",
+      "category": "Safeguarding",
+      "description": "Incident escalation register, behavioral risk warnings, and police involvement logs.",
+      "registered": true,
+      "component": "ChallengingView",
+      "file": "src/components/challenging/ChallengingView.tsx",
+      "loc": 949,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "isArchive={false} /",
+      "tables": [
+        "challenging_behavior"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Log Date",
+        "Hotel / Site",
+        "Resident Name",
+        "PORT Reference",
+        "Date of Birth",
+        "Group",
+        "Gender",
+        "Raised By",
+        "Type of Issue",
+        "Incident Description",
+        "Date of Incident",
+        "Action Taken",
+        "Advice Given by SG Team",
+        "Follow-Up Required",
+        "Risk Factor",
+        "Follow-Up Notes",
+        "Comments",
+        "Review by SG Team",
+        "Status"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Months",
+        "June 2026",
+        "May 2026",
+        "April 2026",
+        "March 2026",
+        "February 2026",
+        "January 2026",
+        "All Statuses"
+      ],
+      "columns": []
+    },
+    {
+      "id": "challengingArchive",
+      "title": "Archived Challenging Incidents",
+      "category": "Safeguarding",
+      "description": "Historical archive of resolved behavioral incidents.",
+      "registered": true,
+      "component": "ChallengingView",
+      "file": "src/components/challenging/ChallengingView.tsx",
+      "loc": 949,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "isArchive={true} /",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Log Date",
+        "Hotel / Site",
+        "Resident Name",
+        "PORT Reference",
+        "Date of Birth",
+        "Group",
+        "Gender",
+        "Raised By",
+        "Type of Issue",
+        "Incident Description",
+        "Date of Incident",
+        "Action Taken",
+        "Advice Given by SG Team",
+        "Follow-Up Required",
+        "Risk Factor",
+        "Follow-Up Notes",
+        "Comments",
+        "Review by SG Team",
+        "Status"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Months",
+        "June 2026",
+        "May 2026",
+        "April 2026",
+        "March 2026",
+        "February 2026",
+        "January 2026",
+        "All Statuses"
+      ],
+      "columns": []
+    },
+    {
+      "id": "welfareChecks",
+      "title": "Welfare Checks",
+      "category": "Safeguarding",
+      "description": "Safeguarding welfare declarations, health screening, and resident contact checks.",
+      "registered": true,
+      "component": "WelfareChecksView",
+      "file": "src/components/welfare/WelfareChecksView.tsx",
+      "loc": 1086,
+      "siblingFiles": 3,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "welfare_checks"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Check Date & Time",
+        "Site / Hotel",
+        "Port Reference",
+        "Flat / Room No",
+        "Officer Name",
+        "Family / Individual",
+        "Wants Engagement",
+        "GP Registered",
+        "Physical Health Change",
+        "Mental Health Change",
+        "Status"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Statuses",
+        "Completed",
+        "Issues Identified",
+        "Follow-up Required",
+        "In Person - Flat / Room",
+        "In Person - Communal Area",
+        "Telephone",
+        "Other",
+        "In Person",
+        "Phone Call",
+        "WhatsApp",
+        "Individual",
+        "Family",
+        "Open"
+      ],
+      "columns": [
+        {
+          "key": "checkDatetime",
+          "label": "Date & Time",
+          "type": "text",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "portReference",
+          "label": "Port Ref",
+          "type": "text",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "flatNumber",
+          "label": "Flat / Room No",
+          "type": "text",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Property / Site",
+          "type": "select",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "officerName",
+          "label": "Conducting Officer",
+          "type": "text",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "locationType",
+          "label": "Location",
+          "type": "text",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "contactMethod",
+          "label": "Contact Method",
+          "type": "text",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "wantsWelfareEngagement",
+          "label": "Engagement Agreed",
+          "type": "checkbox",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "familyOrIndividual",
+          "label": "Family/Individual",
+          "type": "text",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "gpRegistered",
+          "label": "GP Registered",
+          "type": "checkbox",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "physicalHealthChange",
+          "label": "Health Change",
+          "type": "checkbox",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "mentalHealthChange",
+          "label": "Mental Health Change",
+          "type": "checkbox",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "maintenanceIssues",
+          "label": "Maintenance Issues",
+          "type": "textarea",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "otherWelfareIssues",
+          "label": "Welfare Notes",
+          "type": "textarea",
+          "set": "WELFARE_CHECKS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "rfaWelfare",
+      "title": "RFA Welfare Checks",
+      "category": "Safeguarding",
+      "description": "Room and flat welfare checks, with vulnerability categories.",
+      "registered": true,
+      "component": "RFAWelfareChecksView",
+      "file": "src/components/welfare/RFAWelfareChecksView.tsx",
+      "loc": 555,
+      "siblingFiles": 3,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "rfa_welfare_checks"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Check Date",
+        "Hotel / Site",
+        "Room / Flat No",
+        "Service User Name",
+        "Date of Birth",
+        "Demographic Group",
+        "Gender",
+        "Port / NASS Ref",
+        "Identified Vulnerability",
+        "Action Taken / Remedies",
+        "Migrant Help Ticket"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Assigned Sites",
+        "All Groups",
+        "Single Adult",
+        "Family",
+        "Couple",
+        "Vulnerable Adult",
+        "All Statuses",
+        "Open",
+        "Under Review",
+        "Escalated",
+        "Resolved",
+        "Closed",
+        "Completed",
+        "Issues Identified"
+      ],
+      "columns": [
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "date",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Hotel / Site",
+          "type": "select",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomOrFlatNo",
+          "label": "Room / Flat No",
+          "type": "text",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "name",
+          "label": "Resident Name",
+          "type": "text",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "dob",
+          "label": "Date of Birth",
+          "type": "date",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "portOrNassRef",
+          "label": "Port / NASS Ref",
+          "type": "text",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "vulnerability",
+          "label": "Vulnerability / Issue",
+          "type": "text",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "actionTaken",
+          "label": "Action Taken",
+          "type": "textarea",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "mhTicket",
+          "label": "MH Ticket Ref",
+          "type": "text",
+          "set": "RFA_WELFARE_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "mhComplaintWelfare",
+      "title": "MH-Complaint Welfare Checks",
+      "category": "Safeguarding",
+      "description": "Migrant Help complaint welfare checks, case investigations, and resident resolution tracking.",
+      "registered": true,
+      "component": "MHComplaintWelfareChecksView",
+      "file": "src/components/welfare/MHComplaintWelfareChecksView.tsx",
+      "loc": 513,
+      "siblingFiles": 3,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "mh_complaint_welfare_checks"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Complaint Date",
+        "Hotel / Property",
+        "Room / Flat",
+        "Service User Name",
+        "DOB",
+        "Port / NASS Reference",
+        "MH Ticket Reference",
+        "Category",
+        "Complaint Summary / Details",
+        "Action Taken & Interventions",
+        "Status",
+        "Duty Staff"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Statuses",
+        "Open",
+        "Under Review",
+        "Escalated",
+        "Resolved",
+        "Closed",
+        "All Assigned Sites",
+        "All Groups",
+        "Single Adult",
+        "Family",
+        "Couple",
+        "Vulnerable Adult",
+        "Completed",
+        "Issues Identified"
+      ],
+      "columns": [
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "date",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Hotel / Site",
+          "type": "select",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomOrFlatNo",
+          "label": "Room / Flat No",
+          "type": "text",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "name",
+          "label": "Resident Name",
+          "type": "text",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "dob",
+          "label": "Date of Birth",
+          "type": "date",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "portOrNassRef",
+          "label": "Port / NASS Ref",
+          "type": "text",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "mhTicketRef",
+          "label": "MH Complaint / Ticket Ref",
+          "type": "text",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "complaintDetails",
+          "label": "Complaint Details / Issue Description",
+          "type": "textarea",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "actionTaken",
+          "label": "Action Taken / Site Remedies",
+          "type": "textarea",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "dutyStaff",
+          "label": "Handled / Logged By",
+          "type": "text",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        },
+        {
+          "key": "notes",
+          "label": "Internal Notes",
+          "type": "textarea",
+          "set": "MH_COMPLAINT_WELFARE_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "gpAppointments",
+      "title": "GP Appointments",
+      "category": "Safeguarding",
+      "description": "Medical appointment attendance tracking, scheduled bookings, and DNA logs.",
+      "registered": true,
+      "component": "GPAppointmentsView",
+      "file": "src/components/gp/GPAppointmentsView.tsx",
+      "loc": 567,
+      "siblingFiles": 3,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "gp_appointments",
+        "gp_registrations"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Service User Name",
+        "Appointment Date",
+        "Time of Appointment",
+        "Status",
+        "Clinical / Case Comments",
+        "GP Appointments",
+        "GP Registrations"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Statuses",
+        "Scheduled",
+        "Attended",
+        "Did Not Attend (DNA)",
+        "Rescheduled",
+        "Cancelled",
+        "All Registrations",
+        "Complete (GP, pharmacy, NHS)",
+        "Missing GP practice",
+        "Missing pharmacy",
+        "Missing NHS number",
+        "Select Service User..."
+      ],
+      "columns": [
+        {
+          "key": "roomNo",
+          "label": "Room No",
+          "type": "text",
+          "set": "GP_APPOINTMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "portReference",
+          "label": "Port Reference",
+          "type": "text",
+          "set": "GP_APPOINTMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "suName",
+          "label": "Service User Name",
+          "type": "text",
+          "set": "GP_APPOINTMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Hotel Site",
+          "type": "select",
+          "set": "GP_APPOINTMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "referralSentOn",
+          "label": "Referral Sent On",
+          "type": "date",
+          "set": "GP_APPOINTMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "appointmentDate",
+          "label": "Appointment Date",
+          "type": "date",
+          "set": "GP_APPOINTMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "timeOfGp",
+          "label": "Time of GP",
+          "type": "text",
+          "set": "GP_APPOINTMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "comments",
+          "label": "Comments / Clinic Notes",
+          "type": "textarea",
+          "set": "GP_APPOINTMENTS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "peepTracker",
+      "title": "PEEP Tracker",
+      "category": "Safeguarding",
+      "description": "Personal Emergency Evacuation Plans: mobility, risk level, assistance and review dates.",
+      "registered": true,
+      "component": "PEEPTrackerView",
+      "file": "src/components/peep/PEEPTrackerView.tsx",
+      "loc": 532,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "peep_plans",
+        "peep_plan_history"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [],
+      "filterOptions": [
+        "All Risk Levels",
+        "All Review Statuses",
+        "Overdue",
+        "Up to date",
+        "All Rooms",
+        "Select Service User...",
+        "-- Select --"
+      ],
+      "columns": []
+    },
+    {
+      "id": "suAttendance",
+      "title": "SU Attendance Tracker",
+      "category": "Safeguarding",
+      "description": "Daily attendance, absence monitoring and 3 / 7 day follow-up.",
+      "registered": true,
+      "component": "SUAttendanceTrackerView",
+      "file": "src/components/attendance/SUAttendanceTrackerView.tsx",
+      "loc": 1084,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "su_attendance_records",
+        "absence_followups"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Port reference",
+        "Service User Name",
+        "DOB",
+        "Room No",
+        "Property / Site",
+        "Attendance Date",
+        "Attendance Status",
+        "Additional notes",
+        "Recorded By",
+        "Last Updated",
+        "Roll Date",
+        "Notes",
+        "Absent Since",
+        "Consecutive Days",
+        "Threshold Days",
+        "Follow-up Status",
+        "Assigned To",
+        "Due Date",
+        "Last Action",
+        "Daily Roll",
+        "Attendance Records"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Rooms",
+        "All Statuses",
+        "Last 30 Days",
+        "Last 7 Days",
+        "Today",
+        "Yesterday",
+        "This Month",
+        "Quarter (90 Days)",
+        "Year to Date (YTD)",
+        "All Historic Records",
+        "Custom Date Range",
+        "Open and in progress",
+        "All, including resolved",
+        "Select Service User..."
+      ],
+      "columns": []
+    },
+    {
+      "id": "documentBuilder",
+      "title": "HO Report Generator",
+      "category": "Safeguarding",
+      "description": "Official Home Office Incident Report (IR) document builder and export engine.",
+      "registered": true,
+      "component": "DocumentBuilderView",
+      "file": "src/components/documentBuilder/DocumentBuilderView.tsx",
+      "loc": 1579,
+      "siblingFiles": 9,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "ho_report_templates",
+        "ho_report_records",
+        "doc_builder"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export",
+        "approve"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [
+        "CreateOwnUploadModal",
+        "DocumentImportModal"
+      ],
+      "filterOptions": [
+        "Operations",
+        "Security",
+        "Maintenance",
+        "Health & Safety",
+        "Compliance",
+        "General",
+        "Safeguarding",
+        "Welfare",
+        "Facilities",
+        "Clinical",
+        "Select...",
+        "Text",
+        "Paragraph",
+        "Date"
+      ],
+      "columns": []
+    },
+    {
+      "id": "maintenance",
+      "title": "Maintenance Tracker",
+      "category": "Facilities & Welfare",
+      "description": "Property defect reports, emergency CAT 1 hazards, and contractor remediation.",
+      "registered": true,
+      "component": "MaintenanceTrackerView",
+      "file": "src/components/maintenance/MaintenanceTrackerView.tsx",
+      "loc": 1354,
+      "siblingFiles": 2,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "maintenance_records"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Report Date",
+        "Priority Category",
+        "Timescale",
+        "Location",
+        "Hotel / Site",
+        "Room / Unit",
+        "HO Criteria Code",
+        "Defect Description",
+        "Raised By",
+        "Close Due Date",
+        "Defect Status",
+        "Action",
+        "Progress Details",
+        "Actual Closed Date",
+        "Notes",
+        "All Standards (71 Criteria)"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Priorities",
+        "All Defect Statuses",
+        "All Actions",
+        "Open",
+        "Closed"
+      ],
+      "columns": []
+    },
+    {
+      "id": "spcd",
+      "title": "SPCD Tracker",
+      "category": "Facilities & Welfare",
+      "description": "Special Pest Control & Decontamination logs and resolution statuses.",
+      "registered": true,
+      "component": "SPCDTrackerView",
+      "file": "src/components/spcd/SPCDTrackerView.tsx",
+      "loc": 897,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "spcd_records"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Case Date",
+        "Hotel / Site",
+        "Room Number",
+        "Service User Name",
+        "PORT / NASS Ref",
+        "Date of Birth",
+        "Raised By",
+        "Action Taken / Description",
+        "Follow Up Notes",
+        "Case Updates",
+        "Safeguarding Review",
+        "Departure Date",
+        "Reason for Leaving"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "Notice to Quit / Evicted",
+        "Other Reason (Specify below)"
+      ],
+      "columns": []
+    },
+    {
+      "id": "irTracker",
+      "title": "IR Tracker (Incidents)",
+      "category": "Facilities & Welfare",
+      "description": "Property incidents, witness accounts and police logs.",
+      "registered": true,
+      "component": "IRTrackerView",
+      "file": "src/components/ir/IRTrackerView.tsx",
+      "loc": 479,
+      "siblingFiles": 2,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "ir_records"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [],
+      "filterOptions": [
+        "All Statuses"
+      ],
+      "columns": [
+        {
+          "key": "site",
+          "label": "SITE",
+          "type": "select",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "date",
+          "label": "DATE",
+          "type": "date",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "suName",
+          "label": "SU NAME",
+          "type": "text",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "portRef",
+          "label": "Port Ref",
+          "type": "text",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "incidentTime",
+          "label": "Incident Time",
+          "type": "text",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "witnesses",
+          "label": "Witnesses (Security, Welfare, Managers, SUs, etc.)",
+          "type": "textarea",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "irSummary",
+          "label": "IR SUMMARY",
+          "type": "textarea",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "inFor1stReview",
+          "label": "IN for 1st review",
+          "type": "text",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "ct1stReview",
+          "label": "CT 1ST Review",
+          "type": "text",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "inFor2ndReview",
+          "label": "In for 2nd review",
+          "type": "text",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        },
+        {
+          "key": "ct2ndReview",
+          "label": "CT 2nd review",
+          "type": "text",
+          "set": "IR_TRACKER_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "publicTransport",
+      "title": "Public Transport Tracker",
+      "category": "Facilities & Welfare",
+      "description": "Service user travel tickets, bus passes, and exceptional circumstances.",
+      "registered": true,
+      "component": "PublicTransportTrackerView",
+      "file": "src/components/transport/PublicTransportTrackerView.tsx",
+      "loc": 606,
+      "siblingFiles": 7,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "public_transport_records",
+        "transport_feedback",
+        "transport_challenges",
+        "transport_funding_requests",
+        "oyster_cards"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Approval URN",
+        "Service User Name(s)",
+        "Port Ref(s)",
+        "Accommodation Address",
+        "Appointment Date",
+        "Appointment Time",
+        "Appointment Location",
+        "Mode of Transport",
+        "Distance (Miles)",
+        "Status",
+        "Oyster Cards"
+      ],
+      "modals": [
+        "FundingWorkflowModal"
+      ],
+      "filterOptions": [
+        "All Modes",
+        "All Statuses",
+        "Any balance",
+        "Empty (£0.00)",
+        "Select property...",
+        "Select an available card...",
+        "All Status",
+        "Out now",
+        "Returned",
+        "Lost",
+        "Any balance difference",
+        "Calculable",
+        "Not calculable",
+        "All Reporting Periods"
+      ],
+      "columns": [
+        {
+          "key": "siteName",
+          "label": "Hotel / Site",
+          "type": "select",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteManager",
+          "label": "Site Manager",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "staffPlace",
+          "label": "Staff Place",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "reportingPerson",
+          "label": "Reporting Staff Member",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "approvalUrn",
+          "label": "Approval URN",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "suNames",
+          "label": "Service User Name(s)",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "portRefs",
+          "label": "Port Ref(s)",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "accommodationAddress",
+          "label": "Accommodation Address",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "appointmentDate",
+          "label": "Appointment Date",
+          "type": "date",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "appointmentTime",
+          "label": "Appointment Time",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "appointmentLocation",
+          "label": "Appointment Location",
+          "type": "text",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "distanceMiles",
+          "label": "Distance (Miles)",
+          "type": "number",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        },
+        {
+          "key": "exceptionalCircumstances",
+          "label": "Exceptional Circumstances",
+          "type": "textarea",
+          "set": "PUBLIC_TRANSPORT_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "dispersal",
+      "title": "Dispersal Sheet",
+      "category": "Facilities & Welfare",
+      "description": "Notice issuance, departure schedules, exit briefings, and relocation tracking.",
+      "registered": true,
+      "component": "DispersalSheetView",
+      "file": "src/components/dispersal/DispersalSheetView.tsx",
+      "loc": 26,
+      "siblingFiles": 3,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "dispersal_records"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [],
+      "filterOptions": [
+        "All Dispersal Types",
+        "NTV (Move on Completed)",
+        "Eviction",
+        "Dispersal",
+        "All Travelled Statuses",
+        "Travelled: Yes",
+        "Travelled: No",
+        "All Dispersal Cycles",
+        "Has 2nd Cycle",
+        "Single Cycle",
+        "All Statuses",
+        "Notice Issued",
+        "Pending Appeal",
+        "Evicted"
+      ],
+      "columns": [
+        {
+          "key": "sno",
+          "label": "S.No",
+          "type": "number",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Site / Hotel",
+          "type": "select",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "flatRoomNumber",
+          "label": "Flat / Room No",
+          "type": "text",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "suPortNassRef",
+          "label": "SU Port / NASS Ref",
+          "type": "text",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "reasonForDeparture",
+          "label": "Reason for Departure",
+          "type": "text",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "dateReceived",
+          "label": "Date Received",
+          "type": "text",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "dispersalDate",
+          "label": "Dispersal Date",
+          "type": "text",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "dateLeftProperty",
+          "label": "Date Left Property",
+          "type": "text",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "reasonFailedToTravel",
+          "label": "Reason Failed to Travel",
+          "type": "textarea",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "secondDispersalDate",
+          "label": "2nd Dispersal Date",
+          "type": "text",
+          "set": "DISPERSAL_TABLE_COLUMNS"
+        },
+        {
+          "key": "hotel",
+          "label": "Hotel",
+          "type": "select",
+          "set": "EVICTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomNo",
+          "label": "Room No.",
+          "type": "text",
+          "set": "EVICTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "portRef",
+          "label": "Port Ref",
+          "type": "text",
+          "set": "EVICTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "suName",
+          "label": "SU Name",
+          "type": "text",
+          "set": "EVICTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "noticeDate",
+          "label": "Notice Date",
+          "type": "date",
+          "set": "EVICTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "evictionDate",
+          "label": "Eviction Date",
+          "type": "date",
+          "set": "EVICTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "evictionReason",
+          "label": "Eviction Reason",
+          "type": "textarea",
+          "set": "EVICTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "type": "textarea",
+          "set": "EVICTION_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "booklets",
+      "title": "Booklet Inventory",
+      "category": "Facilities & Welfare",
+      "description": "Multi-lingual informational booklet collection and replenishment logs.",
+      "registered": true,
+      "component": "BookletCollectionView",
+      "file": "src/components/booklets/BookletCollectionView.tsx",
+      "loc": 606,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "booklet_collections"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Agent / Organisation",
+        "Booklet Title / Type",
+        "Language / Translation",
+        "Target Stock",
+        "Collected / Distributed",
+        "Received on Site",
+        "Status",
+        "Remarks & Notes"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Booklet Types",
+        "Migrant Help",
+        "Welcome Guides",
+        "Fire Safety",
+        "Medical Guides"
+      ],
+      "columns": [
+        {
+          "key": "hotelName",
+          "label": "Hotel / Site",
+          "type": "select",
+          "set": "BOOKLETS_TABLE_COLUMNS"
+        },
+        {
+          "key": "agentName",
+          "label": "Agent / Provider",
+          "type": "text",
+          "set": "BOOKLETS_TABLE_COLUMNS"
+        },
+        {
+          "key": "bookletType",
+          "label": "Booklet Type",
+          "type": "text",
+          "set": "BOOKLETS_TABLE_COLUMNS"
+        },
+        {
+          "key": "language",
+          "label": "Language",
+          "type": "text",
+          "set": "BOOKLETS_TABLE_COLUMNS"
+        },
+        {
+          "key": "numberForCollection",
+          "label": "Target / To Collect",
+          "type": "number",
+          "set": "BOOKLETS_TABLE_COLUMNS"
+        },
+        {
+          "key": "collectedBooklets",
+          "label": "Collected Booklets",
+          "type": "number",
+          "set": "BOOKLETS_TABLE_COLUMNS"
+        },
+        {
+          "key": "bookletsReceived",
+          "label": "Booklets Received",
+          "type": "number",
+          "set": "BOOKLETS_TABLE_COLUMNS"
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "type": "textarea",
+          "set": "BOOKLETS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "laundry",
+      "title": "Commercial Laundry Support",
+      "category": "Facilities & Welfare",
+      "description": "Weekly laundry cycle weights, contractor invoices, and variance flags.",
+      "registered": true,
+      "component": "LaundryView",
+      "file": "src/components/laundry/LaundryView.tsx",
+      "loc": 454,
+      "siblingFiles": 2,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "laundry_logs",
+        "daily_laundry_logs"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Date",
+        "Hotel / Property",
+        "House / Wing",
+        "Room No.",
+        "No of bags / Quantity Received",
+        "No of Batches",
+        "Done By",
+        "Remarks / Notes",
+        "Daily Laundry Log (Room by Room)"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Log Types",
+        "All Discrepancies",
+        "Discrepancy Flagged",
+        "100% Reconciled",
+        "Weekly Log (Max 7 Days)",
+        "Monthly Log"
+      ],
+      "columns": [
+        {
+          "key": "site",
+          "label": "Property / Hotel",
+          "type": "select",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "periodLabel",
+          "label": "Log Period",
+          "type": "text",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "dirtyLaundrySent",
+          "label": "Dirty Laundry Sent",
+          "type": "number",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "cleanLaundryReturned",
+          "label": "Clean Laundry Returned",
+          "type": "number",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "discrepanciesCount",
+          "label": "Discrepancies",
+          "type": "number",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "discrepancyDetails",
+          "label": "Discrepancy Details",
+          "type": "textarea",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "remarksActionsTaken",
+          "label": "Remarks / Actions Taken",
+          "type": "textarea",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "loggedBy",
+          "label": "Staff / Auditor",
+          "type": "text",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "startDate",
+          "label": "Date From",
+          "type": "date",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "endDate",
+          "label": "Date To",
+          "type": "date",
+          "set": "PROPERTY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "date",
+          "set": "DAILY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "site",
+          "label": "Property / Site",
+          "type": "select",
+          "set": "DAILY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "house",
+          "label": "House / Block",
+          "type": "text",
+          "set": "DAILY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomNo",
+          "label": "Room No.",
+          "type": "text",
+          "set": "DAILY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "quantityReceived",
+          "label": "No of bags/ Quantity Received",
+          "type": "text",
+          "set": "DAILY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "batches",
+          "label": "No of Batches",
+          "type": "text",
+          "set": "DAILY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "doneBy",
+          "label": "Done by",
+          "type": "text",
+          "set": "DAILY_LAUNDRY_TABLE_COLUMNS"
+        },
+        {
+          "key": "remarks",
+          "label": "Remarks / Notes",
+          "type": "textarea",
+          "set": "DAILY_LAUNDRY_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "housekeeping",
+      "title": "Housekeeping Log",
+      "category": "Facilities & Welfare",
+      "description": "Daily room cleaning logs, communal sanitisation audits, and housekeeping inspections.",
+      "registered": true,
+      "component": "HousekeepingView",
+      "file": "src/components/housekeeping/HousekeepingView.tsx",
+      "loc": 755,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "housekeeping_logs",
+        "housekeeping_room_logs"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Date",
+        "Hotel / Property",
+        "Communal Swept/Mopped",
+        "Windows Wiped",
+        "Furniture Dusted",
+        "Staff Toilets Disinfected",
+        "Mirrors Shined",
+        "Fridges Cleaned (Thu/Sun)",
+        "Lifts/Stairs Cleaned (Sat/Sun)",
+        "Offices Cleaned (Sun)",
+        "Inspected By"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "Yes",
+        "No",
+        "N/A"
+      ],
+      "columns": [
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "date",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "site",
+          "label": "Property / Site",
+          "type": "select",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "communalAreasSweptMopped",
+          "label": "All communal areas swept, vacuumed and mopped",
+          "type": "checkbox",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "windowsWiped",
+          "label": "All windows are wiped down",
+          "type": "checkbox",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "furnitureDusted",
+          "label": "All furniture is dusted and cleaned",
+          "type": "checkbox",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "staffToiletsCleaned",
+          "label": "All staff toilets thoroughly cleaned and disinfected",
+          "type": "checkbox",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "mirrorsCleaned",
+          "label": "All mirrors are cleaned and shined",
+          "type": "checkbox",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "fridgesCleaned",
+          "label": "Communal fridges cleaned (Thu & Sun)",
+          "type": "checkbox",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "liftsStairsCleaned",
+          "label": "All Lifts and stairs cleaned (Sat & Sun)",
+          "type": "checkbox",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "officesCleaned",
+          "label": "All offices cleaned (Sun)",
+          "type": "checkbox",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "inspectedBy",
+          "label": "Inspected / Signed off by",
+          "type": "text",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        },
+        {
+          "key": "notes",
+          "label": "Remarks & Follow-up",
+          "type": "textarea",
+          "set": "HOUSEKEEPING_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "food",
+      "title": "Hot Meals Tracker",
+      "category": "Facilities & Welfare",
+      "description": "Daily hot meal distribution, vendor buffet temperature logs, and quality scores.",
+      "registered": true,
+      "component": "FoodView",
+      "file": "src/components/food/FoodView.tsx",
+      "loc": 54,
+      "siblingFiles": 6,
+      "gate": null,
+      "deniedFor": null,
+      "props": "initialTab=\"vendor_buffet\" /",
+      "tables": [
+        "hot_food_logs"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hot Meals & Buffet Vendor Log",
+        "Service User Meals (B / L / D)"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Request Types",
+        "Request",
+        "Complaint",
+        "Special Box",
+        "Dietary Adjustment",
+        "All Statuses",
+        "Pending",
+        "Active",
+        "Resolved",
+        "Breakfast",
+        "Lunch",
+        "Dinner",
+        "Enter custom item...",
+        "Custom..."
+      ],
+      "columns": [
+        {
+          "key": "site",
+          "label": "Property / Hotel",
+          "type": "select",
+          "set": "FOOD_VENDOR_BUFFET_TABLE_COLUMNS"
+        },
+        {
+          "key": "weekRange",
+          "label": "Week Range",
+          "type": "text",
+          "set": "FOOD_VENDOR_BUFFET_TABLE_COLUMNS"
+        },
+        {
+          "key": "startDate",
+          "label": "Date From",
+          "type": "date",
+          "set": "FOOD_VENDOR_BUFFET_TABLE_COLUMNS"
+        },
+        {
+          "key": "endDate",
+          "label": "Date To",
+          "type": "date",
+          "set": "FOOD_VENDOR_BUFFET_TABLE_COLUMNS"
+        },
+        {
+          "key": "notes",
+          "label": "Compliance & Quality Notes",
+          "type": "textarea",
+          "set": "FOOD_VENDOR_BUFFET_TABLE_COLUMNS"
+        },
+        {
+          "key": "lastUpdatedBy",
+          "label": "Audited By",
+          "type": "text",
+          "set": "FOOD_VENDOR_BUFFET_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "foodConsumption",
+      "title": "Food Consumption (In & Out)",
+      "category": "Facilities & Welfare",
+      "description": "Daily meal consumption ratings, portion waste percentages, and special box requests.",
+      "registered": true,
+      "component": "FoodView",
+      "file": "src/components/food/FoodView.tsx",
+      "loc": 54,
+      "siblingFiles": 6,
+      "gate": null,
+      "deniedFor": null,
+      "props": "initialTab=\"consumption\" /",
+      "tables": [
+        "food_consumption_reports",
+        "food_box_requests"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hot Meals & Buffet Vendor Log",
+        "Service User Meals (B / L / D)"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Request Types",
+        "Request",
+        "Complaint",
+        "Special Box",
+        "Dietary Adjustment",
+        "All Statuses",
+        "Pending",
+        "Active",
+        "Resolved",
+        "Breakfast",
+        "Lunch",
+        "Dinner",
+        "Enter custom item...",
+        "Custom..."
+      ],
+      "columns": [
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "date",
+          "set": "FOOD_CONSUMPTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "site",
+          "label": "Property / Hotel",
+          "type": "select",
+          "set": "FOOD_CONSUMPTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "feedbackComments",
+          "label": "Feedback / Comments",
+          "type": "textarea",
+          "set": "FOOD_CONSUMPTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "reportedBy",
+          "label": "Reported / Inspected By",
+          "type": "text",
+          "set": "FOOD_CONSUMPTION_TABLE_COLUMNS"
+        },
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "date",
+          "set": "FOOD_BOX_REQUEST_TABLE_COLUMNS"
+        },
+        {
+          "key": "site",
+          "label": "Property / Site",
+          "type": "select",
+          "set": "FOOD_BOX_REQUEST_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomNo",
+          "label": "Room No.",
+          "type": "text",
+          "set": "FOOD_BOX_REQUEST_TABLE_COLUMNS"
+        },
+        {
+          "key": "reason",
+          "label": "Reason / Dietary Requirements",
+          "type": "textarea",
+          "set": "FOOD_BOX_REQUEST_TABLE_COLUMNS"
+        },
+        {
+          "key": "loggedBy",
+          "label": "Logged By",
+          "type": "text",
+          "set": "FOOD_BOX_REQUEST_TABLE_COLUMNS"
+        },
+        {
+          "key": "remarks",
+          "label": "Remarks / Action Taken",
+          "type": "textarea",
+          "set": "FOOD_BOX_REQUEST_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "foodSurveys",
+      "title": "Food Survey Checks",
+      "category": "Facilities & Welfare",
+      "description": "Resident meal satisfaction survey, dietary requirements, and 21-rating matrices.",
+      "registered": true,
+      "component": "FoodSurveysView",
+      "file": "src/components/food/FoodSurveysView.tsx",
+      "loc": 1041,
+      "siblingFiles": 6,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "food_surveys",
+        "food_meal_ratings"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Survey Date",
+        "Site / Hotel",
+        "Port Reference",
+        "House Officer",
+        "Overall Quality",
+        "Server Quality",
+        "Cleanliness",
+        "Overall Food Rating",
+        "Menu Diversity",
+        "Favourite Dish",
+        "Least Favourite Dish",
+        "1. Survey Details",
+        "2. 21 Meal Ratings Matrix",
+        "3. Service & Dining",
+        "4. Dishes & Dietary"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Overall Ratings",
+        "Adequate",
+        "Too Small",
+        "Too Large",
+        "All Request Types",
+        "Request",
+        "Complaint",
+        "Special Box",
+        "Dietary Adjustment",
+        "All Statuses",
+        "Pending",
+        "Active",
+        "Resolved",
+        "Breakfast"
+      ],
+      "columns": [
+        {
+          "key": "createdAt",
+          "label": "Survey Date",
+          "type": "date",
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Property / Site",
+          "type": "select",
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "portReference",
+          "label": "Port Ref",
+          "type": "text",
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "houseOfficerName",
+          "label": "House Officer",
+          "type": "text",
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "overallFoodQuality",
+          "label": "Food Quality",
+          "type": "select",
+          "options": [
+            "Excellent",
+            "Very good",
+            "Good",
+            "Fair",
+            "Poor"
+          ],
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "serverQuality",
+          "label": "Server Quality",
+          "type": "select",
+          "options": [
+            "Excellent",
+            "Very good",
+            "Good",
+            "Fair",
+            "Poor"
+          ],
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "diningAreaCleanliness",
+          "label": "Cleanliness",
+          "type": "select",
+          "options": [
+            "Excellent",
+            "Very good",
+            "Good",
+            "Fair",
+            "Poor"
+          ],
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "menuDiversity",
+          "label": "Menu Diversity",
+          "type": "select",
+          "options": [
+            "Excellent",
+            "Very good",
+            "Good",
+            "Fair",
+            "Poor"
+          ],
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "favouriteDish",
+          "label": "Liked Most",
+          "type": "text",
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "leastFavouriteDish",
+          "label": "Liked Least",
+          "type": "text",
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "suggestedDishes",
+          "label": "Suggestions",
+          "type": "textarea",
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        },
+        {
+          "key": "dietaryRequirements",
+          "label": "Dietary Requirements",
+          "type": "text",
+          "set": "FOOD_SURVEYS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "foodWastage",
+      "title": "Food Wastage Tracker",
+      "category": "Facilities & Welfare",
+      "description": "Portion surplus tracking, meal wastage auditing, and disposal compliance.",
+      "registered": true,
+      "component": "FoodWastageView",
+      "file": "src/components/food/FoodWastageView.tsx",
+      "loc": 1282,
+      "siblingFiles": 6,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "food_wastage_records"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Date",
+        "Meal Type",
+        "Food Item(s)",
+        "Quantity Wasted",
+        "Unit",
+        "Remarks / Notes",
+        "Rice / Biryani",
+        "Chicken Curry / Stew",
+        "Beef / Lamb Stew",
+        "Fish / Seafood Dish",
+        "Vegetable Curry / Daal",
+        "Pasta / Noodles",
+        "Bread / Naan / Rolls",
+        "Soup / Broth",
+        "Breakfast Items (Eggs/Beans)",
+        "Fresh Salad / Greens",
+        "Fruit / Fresh Produce",
+        "Dairy / Milk / Yoghurt"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "Breakfast",
+        "Lunch",
+        "Dinner",
+        "Breakfast (Morning Service)",
+        "Lunch (Midday Service)",
+        "Dinner (Evening Service)",
+        "-- Select Food Item --",
+        "All Request Types",
+        "Request",
+        "Complaint",
+        "Special Box",
+        "Dietary Adjustment",
+        "All Statuses",
+        "Pending"
+      ],
+      "columns": [
+        {
+          "key": "site",
+          "label": "SITE",
+          "type": "select",
+          "set": "FOOD_WASTAGE_TABLE_COLUMNS"
+        },
+        {
+          "key": "date",
+          "label": "DATE",
+          "type": "date",
+          "set": "FOOD_WASTAGE_TABLE_COLUMNS"
+        },
+        {
+          "key": "foodWastage",
+          "label": "FOOD ITEM",
+          "type": "text",
+          "set": "FOOD_WASTAGE_TABLE_COLUMNS"
+        },
+        {
+          "key": "quantity",
+          "label": "QUANTITY WASTED",
+          "type": "text",
+          "set": "FOOD_WASTAGE_TABLE_COLUMNS"
+        },
+        {
+          "key": "comments",
+          "label": "REMARKS",
+          "type": "textarea",
+          "set": "FOOD_WASTAGE_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "roomChecks",
+      "title": "Room Checks (30-Point Audit)",
+      "category": "Facilities & Welfare",
+      "description": "30-point room condition and safety inspection matrix with automated grading.",
+      "registered": true,
+      "component": "RoomChecksView",
+      "file": "src/components/room/RoomChecksView.tsx",
+      "loc": 965,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "room_checks",
+        "room_check_items"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Inspection Date",
+        "Site / Hotel",
+        "Room Number",
+        "AIC Reference",
+        "Inspecting Officer",
+        "Overall Status",
+        "Final Comments"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Inspection Statuses",
+        "Passed (No issues)",
+        "Issues Identified",
+        "Attention Required (Critical)"
+      ],
+      "columns": [
+        {
+          "key": "inspectionDate",
+          "label": "Date",
+          "type": "date",
+          "set": "ROOM_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Property / Site",
+          "type": "select",
+          "set": "ROOM_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "roomNumber",
+          "label": "Room No",
+          "type": "text",
+          "set": "ROOM_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "aicReference",
+          "label": "AIC Ref",
+          "type": "text",
+          "set": "ROOM_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "officerName",
+          "label": "Inspector",
+          "type": "text",
+          "set": "ROOM_CHECKS_TABLE_COLUMNS"
+        },
+        {
+          "key": "finalComments",
+          "label": "Comments",
+          "type": "textarea",
+          "set": "ROOM_CHECKS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "escalations",
+      "title": "Escalations Log",
+      "category": "Facilities & Welfare",
+      "description": "Cross-module critical incident alerts, SLA timers, and supervisor sign-offs.",
+      "registered": true,
+      "component": "EscalationsView",
+      "file": "src/components/escalations/EscalationsView.tsx",
+      "loc": 724,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "escalations"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Date of Incident",
+        "Site / Property",
+        "Resident Name",
+        "Port / NASS Ref",
+        "Submitted By",
+        "Incident Type",
+        "Urgency / Risk",
+        "WL Issued",
+        "Reported Authorities",
+        "Status",
+        "Action Taken",
+        "Incident Notes"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All WL Statuses",
+        "Yes",
+        "No",
+        "Warning Letter Issued",
+        "Notice to Quit",
+        "N/A",
+        "All Statuses",
+        "Active",
+        "Under Investigation",
+        "Awaiting Review",
+        "Resolved"
+      ],
+      "columns": [
+        {
+          "key": "dateOfIncident",
+          "label": "Date of Incident",
+          "type": "date",
+          "set": "ESCALATIONS_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Site / Property",
+          "type": "select",
+          "set": "ESCALATIONS_TABLE_COLUMNS"
+        },
+        {
+          "key": "suName",
+          "label": "Resident Name",
+          "type": "text",
+          "set": "ESCALATIONS_TABLE_COLUMNS"
+        },
+        {
+          "key": "suPortNassRef",
+          "label": "Port / NASS Ref",
+          "type": "text",
+          "set": "ESCALATIONS_TABLE_COLUMNS"
+        },
+        {
+          "key": "personReporting",
+          "label": "Submitted By",
+          "type": "text",
+          "set": "ESCALATIONS_TABLE_COLUMNS"
+        },
+        {
+          "key": "reportedAuthorities",
+          "label": "Reported Authorities",
+          "type": "text",
+          "set": "ESCALATIONS_TABLE_COLUMNS"
+        },
+        {
+          "key": "actionTaken",
+          "label": "Action Taken",
+          "type": "textarea",
+          "set": "ESCALATIONS_TABLE_COLUMNS"
+        },
+        {
+          "key": "incidentNotes",
+          "label": "Incident Notes",
+          "type": "textarea",
+          "set": "ESCALATIONS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "documents",
+      "title": "Proof Documents Repository",
+      "category": "Facilities & Welfare",
+      "description": "Secure digital proof storage for safeguarding compliance and certificates.",
+      "registered": true,
+      "component": "DocumentsView",
+      "file": "src/components/documents/DocumentsView.tsx",
+      "loc": 607,
+      "siblingFiles": 2,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "documents"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Document Title",
+        "Hotel / Site",
+        "Resident Name",
+        "Port Ref",
+        "Category",
+        "Format",
+        "Size (KB)",
+        "Confidentiality",
+        "Uploaded By",
+        "Upload Date",
+        "Notes"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Categories",
+        "Risk Assessment",
+        "Safeguarding Plan",
+        "Medical Assessment",
+        "Incident Report",
+        "Proof of Support",
+        "Consent Form"
+      ],
+      "columns": [
+        {
+          "key": "documentTitle",
+          "label": "Document Title",
+          "type": "text",
+          "set": "DOCUMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "site",
+          "label": "Hotel / Site",
+          "type": "select",
+          "set": "DOCUMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "suName",
+          "label": "Resident / Property",
+          "type": "text",
+          "set": "DOCUMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "refNumber",
+          "label": "Port Ref / Property Ref",
+          "type": "text",
+          "set": "DOCUMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "uploadedBy",
+          "label": "Uploaded By",
+          "type": "text",
+          "set": "DOCUMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "uploadDate",
+          "label": "Upload Date",
+          "type": "date",
+          "set": "DOCUMENTS_TABLE_COLUMNS"
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "type": "textarea",
+          "set": "DOCUMENTS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "finance",
+      "title": "Vendor Invoices",
+      "category": "Finance",
+      "description": "Commercial supplier invoices, line item reconciliation, and payment statuses.",
+      "registered": true,
+      "component": "VendorInvoicesView",
+      "file": "src/components/finance/VendorInvoicesView.tsx",
+      "loc": 814,
+      "siblingFiles": 8,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export",
+        "approve"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Bill / Invoice #",
+        "Property / Site",
+        "Supplier / Vendor",
+        "PO / Ref #",
+        "Invoice Date",
+        "Due Date",
+        "Subtotal (£)",
+        "VAT / Tax (£)",
+        "Total (£)",
+        "Status",
+        "Submitted By",
+        "Finance Sign-off",
+        "All Invoices",
+        "Pending Approval",
+        "Approved",
+        "Paid",
+        "Queries / Rejected"
+      ],
+      "modals": [
+        "FinanceBillDetailModal",
+        "FinanceBillModal",
+        "FinanceSupplierModal",
+        "FinanceVendorModal"
+      ],
+      "filterOptions": [
+        "Awaiting Approval (Primary)",
+        "All Pending Review",
+        "All Stages",
+        "Submitted",
+        "Under Review",
+        "Query Raised",
+        "Approved",
+        "Rejected",
+        "All Bill Types",
+        "Vendor Invoice",
+        "Credit Card Expense",
+        "Other Expense",
+        "Amount Discrepancy",
+        "Delivery Confirmation"
+      ],
+      "columns": [
+        {
+          "key": "billNumber",
+          "label": "Bill / Invoice #",
+          "type": "text",
+          "set": "FINANCE_INVOICES_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteId",
+          "label": "Site / Property",
+          "type": "select",
+          "set": "FINANCE_INVOICES_TABLE_COLUMNS"
+        },
+        {
+          "key": "purchaseReference",
+          "label": "PO / Ref #",
+          "type": "text",
+          "set": "FINANCE_INVOICES_TABLE_COLUMNS"
+        },
+        {
+          "key": "billDate",
+          "label": "Invoice Date",
+          "type": "date",
+          "set": "FINANCE_INVOICES_TABLE_COLUMNS"
+        },
+        {
+          "key": "dueDate",
+          "label": "Due Date",
+          "type": "date",
+          "set": "FINANCE_INVOICES_TABLE_COLUMNS"
+        },
+        {
+          "key": "subtotal",
+          "label": "Subtotal (£)",
+          "type": "number",
+          "set": "FINANCE_INVOICES_TABLE_COLUMNS"
+        },
+        {
+          "key": "taxAmount",
+          "label": "VAT / Tax (£)",
+          "type": "number",
+          "set": "FINANCE_INVOICES_TABLE_COLUMNS"
+        },
+        {
+          "key": "totalAmount",
+          "label": "Total (£)",
+          "type": "number",
+          "set": "FINANCE_INVOICES_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "financeCreditCards",
+      "title": "Credit Card Bills",
+      "category": "Finance",
+      "description": "Operational credit card expenditure logs and department expense receipts.",
+      "registered": true,
+      "component": "CreditCardBillsView",
+      "file": "src/components/finance/CreditCardBillsView.tsx",
+      "loc": 800,
+      "siblingFiles": 8,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export",
+        "approve"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Property / Site",
+        "Merchant / Store",
+        "Transaction Date",
+        "Amount (£)",
+        "Expense Reason",
+        "Status",
+        "Cardholder / Staff",
+        "All Card Expenses",
+        "Pending Approval",
+        "Approved",
+        "Paid",
+        "Queries / Rejected"
+      ],
+      "modals": [
+        "FinanceBillDetailModal",
+        "FinanceBillModal",
+        "FinanceSupplierModal",
+        "FinanceVendorModal"
+      ],
+      "filterOptions": [
+        "Awaiting Approval (Primary)",
+        "All Pending Review",
+        "All Stages",
+        "Submitted",
+        "Under Review",
+        "Query Raised",
+        "Approved",
+        "Rejected",
+        "All Bill Types",
+        "Vendor Invoice",
+        "Credit Card Expense",
+        "Other Expense",
+        "Amount Discrepancy",
+        "Delivery Confirmation"
+      ],
+      "columns": [
+        {
+          "key": "billNumber",
+          "label": "Receipt / Ref #",
+          "type": "text",
+          "set": "FINANCE_CREDIT_CARD_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteId",
+          "label": "Site / Property",
+          "type": "select",
+          "set": "FINANCE_CREDIT_CARD_TABLE_COLUMNS"
+        },
+        {
+          "key": "billDate",
+          "label": "Transaction Date",
+          "type": "date",
+          "set": "FINANCE_CREDIT_CARD_TABLE_COLUMNS"
+        },
+        {
+          "key": "totalAmount",
+          "label": "Amount (£)",
+          "type": "number",
+          "set": "FINANCE_CREDIT_CARD_TABLE_COLUMNS"
+        },
+        {
+          "key": "description",
+          "label": "Expense Reason",
+          "type": "textarea",
+          "set": "FINANCE_CREDIT_CARD_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "financeDeliveryNotes",
+      "title": "Delivery Notes",
+      "category": "Finance",
+      "description": "Site goods receipt notes, physical delivery verifications, and signed proofs.",
+      "registered": true,
+      "component": "DeliveryNotesView",
+      "file": "src/components/finance/DeliveryNotesView.tsx",
+      "loc": 762,
+      "siblingFiles": 8,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export",
+        "approve"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Delivery Note #",
+        "Delivery Site",
+        "Supplier / Courier",
+        "PO Reference",
+        "Delivery Date",
+        "Invoice Value (£)",
+        "Verification Status",
+        "Received By",
+        "Goods / Condition Notes",
+        "All Deliveries",
+        "Pending Approval",
+        "Verified & Approved",
+        "Invoiced / Paid",
+        "Queries / Rejected"
+      ],
+      "modals": [
+        "FinanceBillDetailModal",
+        "FinanceBillModal",
+        "FinanceSupplierModal",
+        "FinanceVendorModal"
+      ],
+      "filterOptions": [
+        "Awaiting Approval (Primary)",
+        "All Pending Review",
+        "All Stages",
+        "Submitted",
+        "Under Review",
+        "Query Raised",
+        "Approved",
+        "Rejected",
+        "All Bill Types",
+        "Vendor Invoice",
+        "Credit Card Expense",
+        "Other Expense",
+        "Amount Discrepancy",
+        "Delivery Confirmation"
+      ],
+      "columns": [
+        {
+          "key": "billNumber",
+          "label": "Delivery Note #",
+          "type": "text",
+          "set": "FINANCE_DELIVERY_NOTES_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteId",
+          "label": "Delivery Site",
+          "type": "select",
+          "set": "FINANCE_DELIVERY_NOTES_TABLE_COLUMNS"
+        },
+        {
+          "key": "purchaseReference",
+          "label": "PO Reference",
+          "type": "text",
+          "set": "FINANCE_DELIVERY_NOTES_TABLE_COLUMNS"
+        },
+        {
+          "key": "billDate",
+          "label": "Delivery Date",
+          "type": "date",
+          "set": "FINANCE_DELIVERY_NOTES_TABLE_COLUMNS"
+        },
+        {
+          "key": "totalAmount",
+          "label": "Invoice Value (£)",
+          "type": "number",
+          "set": "FINANCE_DELIVERY_NOTES_TABLE_COLUMNS"
+        },
+        {
+          "key": "description",
+          "label": "Goods / Condition Notes",
+          "type": "textarea",
+          "set": "FINANCE_DELIVERY_NOTES_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "financeApprovals",
+      "title": "Finance Approvals",
+      "category": "Finance",
+      "description": "Financial approval steps and payment release approvals.",
+      "registered": true,
+      "component": "FinanceApprovalsView",
+      "file": "src/components/finance/FinanceApprovalsView.tsx",
+      "loc": 558,
+      "siblingFiles": 8,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export",
+        "approve"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Bill Reference",
+        "Property / Site",
+        "Payee / Vendor",
+        "Type",
+        "Bill Date",
+        "Due Date",
+        "Payable (£)",
+        "Workflow Stage",
+        "Submitted By",
+        "Approved By"
+      ],
+      "modals": [
+        "FinanceBillDetailModal",
+        "FinanceBillModal",
+        "FinanceSupplierModal",
+        "FinanceVendorModal"
+      ],
+      "filterOptions": [
+        "Awaiting Approval (Primary)",
+        "All Pending Review",
+        "All Stages",
+        "Submitted",
+        "Under Review",
+        "Query Raised",
+        "Approved",
+        "Rejected",
+        "All Bill Types",
+        "Vendor Invoice",
+        "Credit Card Expense",
+        "Other Expense",
+        "Amount Discrepancy",
+        "Delivery Confirmation"
+      ],
+      "columns": [
+        {
+          "key": "billNumber",
+          "label": "Bill Reference",
+          "type": "text",
+          "set": "FINANCE_APPROVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteId",
+          "label": "Property / Site",
+          "type": "select",
+          "set": "FINANCE_APPROVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "billType",
+          "label": "Type",
+          "type": "text",
+          "set": "FINANCE_APPROVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "billDate",
+          "label": "Bill Date",
+          "type": "date",
+          "set": "FINANCE_APPROVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "dueDate",
+          "label": "Due Date",
+          "type": "date",
+          "set": "FINANCE_APPROVALS_TABLE_COLUMNS"
+        },
+        {
+          "key": "totalAmount",
+          "label": "Payable (£)",
+          "type": "number",
+          "set": "FINANCE_APPROVALS_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "compliance",
+      "title": "SD-Compliance Tracker",
+      "category": "Compliance & Community",
+      "description": "Statutory property compliance certificates, fire safety, gas, and electrical tests.",
+      "registered": true,
+      "component": "SDComplianceTrackerView",
+      "file": "src/components/compliance/SDComplianceTrackerView.tsx",
+      "loc": 584,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "compliance_records"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Certificate / Compliance Type",
+        "Contractor Name",
+        "Key Contact",
+        "Contractor Email",
+        "Issued Date",
+        "Expiry Date",
+        "Compliance Status",
+        "Action Taken / Remedies",
+        "Previous Contractor"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Statuses",
+        "All Compliance Types"
+      ],
+      "columns": [
+        {
+          "key": "srNo",
+          "label": "Sr No",
+          "type": "number",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        },
+        {
+          "key": "siteName",
+          "label": "Site / Hotel",
+          "type": "select",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        },
+        {
+          "key": "contractorName",
+          "label": "Contractor Name",
+          "type": "text",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        },
+        {
+          "key": "contractorKeyContact",
+          "label": "Contractor Contact",
+          "type": "text",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        },
+        {
+          "key": "contractorEmail",
+          "label": "Contractor Email",
+          "type": "text",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        },
+        {
+          "key": "issuedDate",
+          "label": "Issued Date",
+          "type": "date",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        },
+        {
+          "key": "expiryDate",
+          "label": "Expiry Date",
+          "type": "date",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        },
+        {
+          "key": "actionTaken",
+          "label": "Action Taken",
+          "type": "textarea",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        },
+        {
+          "key": "previousContractor",
+          "label": "Previous Contractor",
+          "type": "text",
+          "set": "SD_COMPLIANCE_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "vcsDirectory",
+      "title": "SD VCS Directory",
+      "category": "Compliance & Community",
+      "description": "Voluntary & Community Sector agency partners, contact directories, and services.",
+      "registered": true,
+      "component": "SDVCSDirectoryView",
+      "file": "src/components/vcs/SDVCSDirectoryView.tsx",
+      "loc": 690,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "vcs_agencies"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Hotel / Site",
+        "Agency Name",
+        "Support Category",
+        "Services Provided",
+        "Key Contact",
+        "Phone Number",
+        "Email Address",
+        "Location / Address",
+        "Operational Notes"
+      ],
+      "modals": [],
+      "filterOptions": [],
+      "columns": [
+        {
+          "key": "agencyName",
+          "label": "Agency / Organization",
+          "type": "text",
+          "set": "VCS_AGENCIES_TABLE_COLUMNS"
+        },
+        {
+          "key": "hotelName",
+          "label": "Hotel / Site",
+          "type": "select",
+          "set": "VCS_AGENCIES_TABLE_COLUMNS"
+        },
+        {
+          "key": "servicesProvided",
+          "label": "Services Provided",
+          "type": "text",
+          "set": "VCS_AGENCIES_TABLE_COLUMNS"
+        },
+        {
+          "key": "contactPerson",
+          "label": "Contact Person",
+          "type": "text",
+          "set": "VCS_AGENCIES_TABLE_COLUMNS"
+        },
+        {
+          "key": "contactNumber",
+          "label": "Contact Number",
+          "type": "text",
+          "set": "VCS_AGENCIES_TABLE_COLUMNS"
+        },
+        {
+          "key": "email",
+          "label": "Email Address",
+          "type": "text",
+          "set": "VCS_AGENCIES_TABLE_COLUMNS"
+        },
+        {
+          "key": "address",
+          "label": "Address",
+          "type": "text",
+          "set": "VCS_AGENCIES_TABLE_COLUMNS"
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "type": "textarea",
+          "set": "VCS_AGENCIES_TABLE_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "reports",
+      "title": "Reports & SharePoint Hub",
+      "category": "Compliance & Community",
+      "description": "Reports, data exports and live Excel workbook sync.",
+      "registered": true,
+      "component": "ReportsView",
+      "file": "src/components/reports/ReportsView.tsx",
+      "loc": 1043,
+      "siblingFiles": 2,
+      "gate": "(rolePermissions[currentUserRole]",
+      "deniedFor": "Admin or Regional Manager",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Reference Code / ID",
+        "Subject / Resident / Title",
+        "Site / Hotel Location",
+        "Category / Incident Type",
+        "Status",
+        "Date Registered",
+        "Priority / Urgency Level",
+        "Duty Officer",
+        "Authority / Contractor",
+        "Details / Action Summary"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Historic Records",
+        "Last 7 Days",
+        "Last 30 Days",
+        "This Quarter (90 Days)",
+        "Year to Date (YTD)",
+        "All (Active &amp; Archived)",
+        "Active &amp; Open Cases Only",
+        "Resolved &amp; Archived Only"
+      ],
+      "columns": []
+    },
+    {
+      "id": "audit",
+      "title": "Audit Security Trail",
+      "category": "Compliance & Community",
+      "description": "Immutable, tamper-evident cryptographic log of all system changes and writes.",
+      "registered": true,
+      "component": "AuditView",
+      "file": "src/components/audit/AuditView.tsx",
+      "loc": 947,
+      "siblingFiles": 1,
+      "gate": "(currentUserRole === 'Super Admin' || currentUserRole === 'Admin')",
+      "deniedFor": "Super Admin or Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Timestamp",
+        "Logged By / User",
+        "User Role",
+        "Module",
+        "Action Type",
+        "Target Item",
+        "Hotel / Site",
+        "Action Details"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Modules",
+        "Users (Staff Accounts & Roles)",
+        "Referrals",
+        "Vulnerable SUs",
+        "Challenging SUs",
+        "Maintenance Tracker",
+        "SPCD Records",
+        "Laundry",
+        "Hot Food",
+        "Escalations",
+        "Documents",
+        "Roles",
+        "Settings &amp; Requests",
+        "All Actions"
+      ],
+      "columns": []
+    },
+    {
+      "id": "requests",
+      "title": "Data Change Requests",
+      "category": "Compliance & Community",
+      "description": "Requests to change locked records. A manager must sign them off.",
+      "registered": true,
+      "component": "RequestsApprovalsView",
+      "file": "src/components/requests/RequestsApprovalsView.tsx",
+      "loc": 684,
+      "siblingFiles": 1,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [
+        "data_change_requests"
+      ],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export",
+        "approve"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Request ID",
+        "Hotel / Site",
+        "Tracker Module",
+        "Record Subject / Title",
+        "Request Type",
+        "Submitted By",
+        "Submitter Role",
+        "Status",
+        "Reason / Justification",
+        "Reviewed By",
+        "Review Remarks",
+        "Submission Date"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Statuses",
+        "Pending",
+        "Approved",
+        "Rejected",
+        "All Modules",
+        "Referrals",
+        "Vulnerable SUs",
+        "Challenging SUs",
+        "Maintenance",
+        "Laundry",
+        "Escalations",
+        "SPCD",
+        "Hot Food",
+        "Edit Correction"
+      ],
+      "columns": []
+    },
+    {
+      "id": "properties",
+      "title": "Properties Directory",
+      "category": "Admin & Governance",
+      "description": "Hotel and accommodation site profiles, rooms inventory, and property managers.",
+      "registered": true,
+      "component": "PropertiesView",
+      "file": "src/components/properties/PropertiesView.tsx",
+      "loc": 1082,
+      "siblingFiles": 1,
+      "gate": "canAccessPropertiesPage()",
+      "deniedFor": "Super Admin or Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "PID (Hotel Code)",
+        "Property / Site Name",
+        "City / Area",
+        "Address",
+        "Capacity",
+        "Lead Contact Officer",
+        "Contact Phone",
+        "Operational Status"
+      ],
+      "modals": [],
+      "filterOptions": [],
+      "columns": []
+    },
+    {
+      "id": "users",
+      "title": "Staff & User Accounts",
+      "category": "Admin & Governance",
+      "description": "User access directory, account provisioning, assigned sites, and credentials.",
+      "registered": true,
+      "component": "UsersView",
+      "file": "src/components/users/UsersView.tsx",
+      "loc": 1511,
+      "siblingFiles": 3,
+      "gate": "canAccessUsersPage()",
+      "deniedFor": "Super Admin or Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "Full Name",
+        "Email Address",
+        "Assigned Role",
+        "Assigned Hotels / Sites",
+        "Account Status",
+        "Last Active"
+      ],
+      "modals": [
+        "BulkUserActionModal",
+        "BulkUserImportModal"
+      ],
+      "filterOptions": [
+        "Super Admin",
+        "Admin",
+        "Regional Manager",
+        "General Manager",
+        "Area Manager",
+        "Staff",
+        "Active (Granted Access)",
+        "Inactive (Access Suspended)",
+        "Pending Assignment",
+        "All Sites (Global)",
+        "Active",
+        "Inactive"
+      ],
+      "columns": []
+    },
+    {
+      "id": "roles",
+      "title": "Roles & RBAC Matrix",
+      "category": "Admin & Governance",
+      "description": "Granular role permissions matrix, export permissions, and authority levels.",
+      "registered": true,
+      "component": "RolesView",
+      "file": "src/components/roles/RolesView.tsx",
+      "loc": 725,
+      "siblingFiles": 2,
+      "gate": "canManageRoles()",
+      "deniedFor": "Super Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [
+        "All Categories"
+      ],
+      "modals": [],
+      "filterOptions": [
+        "All Authorities",
+        "Copy permissions from…"
+      ],
+      "columns": []
+    },
+    {
+      "id": "setupOptions",
+      "title": "Field Options & Setup",
+      "category": "Admin & Governance",
+      "description": "System dropdown options, custom lookup lists, and category tags.",
+      "registered": true,
+      "component": "FieldOptionsSetupView",
+      "file": "src/components/setup/FieldOptionsSetupView.tsx",
+      "loc": 695,
+      "siblingFiles": 1,
+      "gate": "canManageRoles()",
+      "deniedFor": "Super Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [],
+      "filterOptions": [],
+      "columns": []
+    },
+    {
+      "id": "notifications",
+      "title": "Email Notifications Management",
+      "category": "Admin & Governance",
+      "description": "Automated SMTP email triggers, recipient rules, and incident notification alerts.",
+      "registered": true,
+      "component": "NotificationsManagementView",
+      "file": "src/components/notifications/NotificationsManagementView.tsx",
+      "loc": 1066,
+      "siblingFiles": 1,
+      "gate": "canManageSettings()",
+      "deniedFor": "Super Admin or Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [],
+      "filterOptions": [
+        "Safeguarding",
+        "Compliance &amp; Safety",
+        "Maintenance &amp; Repairs",
+        "Public Transport",
+        "Health &amp; Welfare",
+        "Operations &amp; Dispersal",
+        "Governance &amp; Security",
+        "All Status",
+        "All Thresholds",
+        "Critical Only",
+        "High &amp; Above",
+        "Medium &amp; Above",
+        "Low &amp; Above"
+      ],
+      "columns": []
+    },
+    {
+      "id": "suUsers",
+      "title": "Service Users Master",
+      "category": "Safeguarding",
+      "description": "Central master database for Service Users, placements, household, support, and profiles.",
+      "registered": true,
+      "component": "ServiceUsersView",
+      "file": "src/components/serviceUsers/ServiceUsersView.tsx",
+      "loc": 1018,
+      "siblingFiles": 17,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export",
+        "approve"
+      ],
+      "tabs": [
+        "Overview",
+        "Personal & Contact",
+        "Accommodation",
+        "PEEP",
+        "Education",
+        "Activity"
+      ],
+      "viewFieldLabels": [
+        "SU ID",
+        "Full Name",
+        "Port / HO Ref",
+        "Date of Birth",
+        "Gender",
+        "Nationality",
+        "Current Site",
+        "Current Property",
+        "Room",
+        "Status",
+        "Vulnerable",
+        "Personal Evacuation Plan",
+        "GP Registration",
+        "Disability Category",
+        "Disability Type"
+      ],
+      "modals": [
+        "MoveAccommodationModal",
+        "ServiceUserFormModal"
+      ],
+      "filterOptions": [
+        "All Statuses",
+        "Active",
+        "Pending",
+        "Inactive",
+        "Discharged",
+        "Archived",
+        "All Placements",
+        "Placed Only",
+        "Awaiting Placement Only",
+        "-- Select Target Site --",
+        "-- Select Property --",
+        "Internal Room Transfer",
+        "Safeguarding / Risk Mitigation",
+        "Family Reallocation / Capacity"
+      ],
+      "columns": []
+    },
+    {
+      "id": "propertyManagement",
+      "title": "Property Management",
+      "category": "Facilities & Welfare",
+      "description": "Central master database for sites, properties, rooms, facilities, assets, and compliance.",
+      "registered": true,
+      "component": "PropertyManagementView",
+      "file": "src/components/propertyManagement/PropertyManagementView.tsx",
+      "loc": 585,
+      "siblingFiles": 11,
+      "gate": null,
+      "deniedFor": null,
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [
+        "Core & Address",
+        "Ownership & Lease",
+        "Capacity & Specs",
+        "Compliance & Safety",
+        "Key Contacts",
+        "Overview",
+        "Property Details"
+      ],
+      "viewFieldLabels": [
+        "Property ID",
+        "Property Name",
+        "Site / Location",
+        "Full Address",
+        "Property Type",
+        "Rooms Count",
+        "Bed Capacity",
+        "Occupied Spaces",
+        "Occupancy Rate",
+        "Status"
+      ],
+      "modals": [
+        "AssetFormModal",
+        "ComplianceFormModal",
+        "PropertyFormModal"
+      ],
+      "filterOptions": [
+        "All Statuses",
+        "Active",
+        "Under Maintenance",
+        "Inactive",
+        "Archived",
+        "All Property Types",
+        "HMO",
+        "House",
+        "Apartment",
+        "Hostel",
+        "Commercial",
+        "Furniture (Bed, Desk, Chair)",
+        "Appliance (Fridge, Microwave)",
+        "Electronics (TV, Heater)"
+      ],
+      "columns": []
+    },
+    {
+      "id": "pageAccess",
+      "title": "Page Access Management",
+      "category": "Admin & Governance",
+      "description": "",
+      "registered": false,
+      "component": "PageAccessView",
+      "file": "src/components/roles/PageAccessView.tsx",
+      "loc": 407,
+      "siblingFiles": 2,
+      "gate": "currentUserRole === 'Super Admin'",
+      "deniedFor": "Super Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [],
+      "filterOptions": [
+        "Copy permissions from…",
+        "All Authorities"
+      ],
+      "columns": []
+    },
+    {
+      "id": "pageMaintenance",
+      "title": "Page Maintenance Mode",
+      "category": "Admin & Governance",
+      "description": "",
+      "registered": false,
+      "component": "PageMaintenanceManagerView",
+      "file": "src/components/maintenance/PageMaintenanceManagerView.tsx",
+      "loc": 48,
+      "siblingFiles": 2,
+      "gate": "currentUserRole === 'Super Admin'",
+      "deniedFor": "Super Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [],
+      "filterOptions": [
+        "All Priorities",
+        "All Defect Statuses",
+        "All Actions",
+        "Open",
+        "Closed"
+      ],
+      "columns": []
+    },
+    {
+      "id": "settings",
+      "title": "System Settings & Preferences",
+      "category": "Admin & Governance",
+      "description": "",
+      "registered": false,
+      "component": "SettingsView",
+      "file": "src/components/settings/SettingsView.tsx",
+      "loc": 533,
+      "siblingFiles": 3,
+      "gate": "canManageSettings()",
+      "deniedFor": "Super Admin or Admin",
+      "props": "/",
+      "tables": [],
+      "pageActions": [
+        "view",
+        "create",
+        "edit",
+        "delete",
+        "export"
+      ],
+      "tabs": [],
+      "viewFieldLabels": [],
+      "modals": [],
+      "filterOptions": [],
+      "columns": []
+    }
+  ]
+}

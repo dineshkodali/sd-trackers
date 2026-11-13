@@ -108,6 +108,20 @@ const roomExportColumns: ExportColumnOption[] = [
   { id: 'finalComments', label: 'Final Comments', defaultSelected: true }
 ];
 
+const roomComplianceExportColumns: ExportColumnOption[] = [
+  { id: 'sno', label: 'S.No.', defaultSelected: true },
+  { id: 'roomNumber', label: 'Room Number', defaultSelected: true },
+  { id: 'suName', label: 'Service User', defaultSelected: true },
+  { id: 'suReference', label: 'SU Reference', defaultSelected: true },
+  { id: 'siteName', label: 'Property / Site', defaultSelected: true },
+  { id: 'check1', label: 'Check 1 (Target: 10th)', defaultSelected: true },
+  { id: 'check2', label: 'Check 2 (Target: 25th)', defaultSelected: true },
+  { id: 'frequency', label: 'Monthly Frequency', defaultSelected: true },
+  { id: 'complianceStatus', label: 'Compliance Status', defaultSelected: true },
+  { id: 'lastChecked', label: 'Last Checked', defaultSelected: true },
+  { id: 'assignedStaff', label: 'Assigned / Done By', defaultSelected: true }
+];
+
 export const RoomChecksView: React.FC = () => {
   const {
     defaultSiteFilter,
@@ -173,14 +187,15 @@ export const RoomChecksView: React.FC = () => {
     else { setPageTab('required'); setStatusChip(t); }
   };
   const [compliancePage, setCompliancePage] = useState(1);
-  const compliancePageSize = 10;
+  const [compliancePageSize, setCompliancePageSize] = useState(10);
 
   // Which of the month's two checks the open form is recording (null for a free-standing check, counted by its date)
   const [recording, setRecording] = useState<{ period: 1 | 2; month: string; deadline: string } | null>(null);
 
   // Real-time Monthly Obligation Calculation
-  const obligationsState = useCheckObligations('room', selectedMonth, now, true);
-  const windows = useMemo(() => monthWindows(selectedMonth, obligationsState.result?.settings), [selectedMonth, obligationsState.result]);
+  const obligationsMonth = selectedMonth === 'all' ? today.slice(0, 7) : selectedMonth;
+  const obligationsState = useCheckObligations('room', obligationsMonth, now, true);
+  const windows = useMemo(() => monthWindows(obligationsMonth, obligationsState.result?.settings), [obligationsMonth, obligationsState.result]);
 
   const allowedNames = useMemo(() => {
     if (canAccessAllSites()) return null;
@@ -190,7 +205,11 @@ export const RoomChecksView: React.FC = () => {
   const filteredComplianceRows = useMemo(() => {
     return (obligationsState.rows || []).filter(r => {
       if (allowedNames && !allowedNames.has(r.siteName.toLowerCase())) return false;
-      if (siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites' && r.siteName.toLowerCase() !== siteFilter.toLowerCase()) return false;
+      if (siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites') {
+        const sf = siteFilter.toLowerCase();
+        const matchSite = r.siteName?.toLowerCase() === sf || r.propertyName?.toLowerCase() === sf;
+        if (!matchSite) return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const match =
@@ -199,7 +218,9 @@ export const RoomChecksView: React.FC = () => {
           (r.propertyName && r.propertyName.toLowerCase().includes(q)) ||
           (r.suName && r.suName.toLowerCase().includes(q)) ||
           (r.suReference && r.suReference.toLowerCase().includes(q)) ||
-          (r.responsible?.name && r.responsible.name.toLowerCase().includes(q));
+          (r.responsible?.name && r.responsible.name.toLowerCase().includes(q)) ||
+          (r.first?.completedBy && r.first.completedBy.toLowerCase().includes(q)) ||
+          (r.second?.completedBy && r.second.completedBy.toLowerCase().includes(q));
         if (!match) return false;
       }
       return true;
@@ -207,17 +228,25 @@ export const RoomChecksView: React.FC = () => {
   }, [obligationsState.rows, allowedNames, siteFilter, searchQuery]);
 
   const tabComplianceRows = useMemo(() => {
-    if (complianceTab === 'completed') {
+    const filter = statusChip !== 'all' ? statusChip : (statusFilter !== 'all' ? statusFilter : 'all');
+    if (filter === 'completed') {
       return filteredComplianceRows.filter(r => r.overall === 'complete');
     }
-    if (complianceTab === 'pending') {
+    if (filter === 'pending' || filter === 'in_progress') {
       return filteredComplianceRows.filter(r => r.overall === 'incomplete' && r.first?.status !== 'overdue' && r.second?.status !== 'overdue');
     }
-    if (complianceTab === 'overdue') {
+    if (filter === 'overdue') {
       return filteredComplianceRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue');
     }
+    if (filter === 'not_started') {
+      return filteredComplianceRows.filter(r => {
+        const isC1 = r.first?.status === 'completed' || r.first?.status === 'completed_late';
+        const isC2 = r.second?.status === 'completed' || r.second?.status === 'completed_late';
+        return !isC1 && !isC2 && r.first?.status !== 'overdue' && r.second?.status !== 'overdue';
+      });
+    }
     return filteredComplianceRows;
-  }, [filteredComplianceRows, complianceTab]);
+  }, [filteredComplianceRows, statusChip, statusFilter]);
 
   const complianceKpis = useMemo(() => {
     const total = filteredComplianceRows.length;
@@ -253,6 +282,16 @@ export const RoomChecksView: React.FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<RoomCheckRecord | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+
+  // View & Edit Context across Check 1 & Check 2
+  interface ViewContext {
+    row?: CheckRow | null;
+    rec1?: RoomCheckRecord | null;
+    rec2?: RoomCheckRecord | null;
+    activeCheck: 1 | 2;
+  }
+  const [viewContext, setViewContext] = useState<ViewContext | null>(null);
+  const [editRowContext, setEditRowContext] = useState<{ row?: CheckRow | null; rec1?: RoomCheckRecord | null; rec2?: RoomCheckRecord | null } | null>(null);
 
   // Table Customization Schema Hook
   const {
@@ -306,10 +345,11 @@ export const RoomChecksView: React.FC = () => {
 
       const matchesSite = isSitePermitted(r.siteName, siteFilter);
       const matchesStatus = statusFilter === 'all' || r.overallStatus === statusFilter;
+      const matchesMonth = !selectedMonth || selectedMonth === 'all' || !r.inspectionDate || r.inspectionDate.startsWith(selectedMonth);
 
-      return matchesSearch && matchesSite && matchesStatus;
+      return matchesSearch && matchesSite && matchesStatus && matchesMonth;
     });
-  }, [accessibleRecords, searchQuery, siteFilter, statusFilter, isSitePermitted]);
+  }, [accessibleRecords, searchQuery, siteFilter, statusFilter, selectedMonth, isSitePermitted]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
@@ -705,7 +745,13 @@ export const RoomChecksView: React.FC = () => {
           label="Room Checks views"
           idPrefix="roomchecks-tab"
           active={pageTab}
-          onChange={id => { setPageTab(id as 'required' | 'log'); setCompliancePage(1); setCurrentPage(1); }}
+          onChange={id => {
+            setPageTab(id as 'required' | 'log');
+            setStatusFilter('all');
+            setStatusChip('all');
+            setCompliancePage(1);
+            setCurrentPage(1);
+          }}
           tabs={[
             { id: 'required', label: 'Required checks' },
             { id: 'log', label: `Inspection log (${filteredRecords.length})` }
@@ -719,9 +765,10 @@ export const RoomChecksView: React.FC = () => {
             <select
               aria-label="Inspection Month"
               value={selectedMonth}
-              onChange={e => { setSelectedMonth(e.target.value); setCompliancePage(1); }}
+              onChange={e => { setSelectedMonth(e.target.value); setCompliancePage(1); setCurrentPage(1); }}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs font-medium focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
+              <option value="all">All Months</option>
               {monthOptions(today).map(m => (
                 <option key={m} value={m}>{monthLabel(m)}</option>
               ))}
@@ -758,81 +805,107 @@ export const RoomChecksView: React.FC = () => {
           </div>
 
           <div>
-            <select
-              value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); setCompliancePage(1); }}
-              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
-            >
-              <option value="all">All Statuses</option>
-              <option value="Passed">Passed (Completed)</option>
-              <option value="Issues">Issues Identified</option>
-              <option value="Attention Required">Attention Required</option>
-            </select>
+            {pageTab === 'required' ? (
+              <select
+                aria-label="Filter by Compliance Status"
+                value={statusFilter}
+                onChange={e => {
+                  const val = e.target.value;
+                  setStatusFilter(val);
+                  setStatusChip(val === 'not_started' ? 'all' : (val as any));
+                  setCompliancePage(1);
+                }}
+                className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all cursor-pointer"
+              >
+                <option value="all">All Statuses</option>
+                <option value="completed">Completed (2/2)</option>
+                <option value="pending">In Progress (1/2)</option>
+                <option value="not_started">Not Started (0/2)</option>
+                <option value="overdue">Overdue Action</option>
+              </select>
+            ) : (
+              <select
+                aria-label="Filter by Inspection Status"
+                value={statusFilter}
+                onChange={e => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all cursor-pointer"
+              >
+                <option value="all">All Statuses</option>
+                <option value="Passed">Passed (Completed)</option>
+                <option value="Issues">Issues Identified</option>
+                <option value="Attention Required">Attention Required</option>
+              </select>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Monthly Compliance KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total Rooms</span>
-          <div className="text-xl font-bold text-[#242424] tabular-nums mt-0.5">{complianceKpis.total}</div>
-        </div>
-
-        <div className="bg-emerald-50/50 border border-emerald-200 rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" /> Completed (2/2)
-          </span>
-          <div className="flex items-baseline justify-between mt-0.5">
-            <span className="text-xl font-bold text-emerald-800 tabular-nums">{complianceKpis.completed}</span>
-            <span className="text-[10px] font-bold text-emerald-700 tabular-nums">{complianceKpis.pct}%</span>
+      {/* Monthly Compliance KPI Cards (Only for Required checks view) */}
+      {pageTab === 'required' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total Rooms</span>
+            <div className="text-xl font-bold text-[#242424] tabular-nums mt-0.5">{complianceKpis.total}</div>
           </div>
-        </div>
 
-        <div className="bg-amber-50/50 border border-amber-200 rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> In Progress (1/2)
-          </span>
-          <div className="text-xl font-bold text-amber-800 tabular-nums mt-0.5">{complianceKpis.inProgress}</div>
-        </div>
-
-        <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c] flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" /> Not Started (0/2)
-          </span>
-          <div className="text-xl font-bold text-[#605e5c] tabular-nums mt-0.5">{complianceKpis.notStarted}</div>
-        </div>
-
-        <div className={`${complianceKpis.overdue > 0 ? 'bg-red-50/60 border-red-200' : 'bg-[#faf9f8] border-[#edebe9]'} rounded-xs p-2.5 flex flex-col justify-between`}>
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${complianceKpis.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'} flex items-center gap-1`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${complianceKpis.overdue > 0 ? 'bg-red-600 animate-pulse' : 'bg-neutral-400'}`} /> Overdue Action
-          </span>
-          <div className={`text-xl font-bold tabular-nums mt-0.5 ${complianceKpis.overdue > 0 ? 'text-red-700' : 'text-[#605e5c]'}`}>{complianceKpis.overdue}</div>
-        </div>
-
-        <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Monthly Progress</span>
-          <div className="mt-1">
-            <div className="flex justify-between items-center text-[10px] font-bold text-[#242424] mb-1">
-              <span>Rate</span>
-              <span className="tabular-nums">{complianceKpis.pct}%</span>
-            </div>
-            <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
-              <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${complianceKpis.pct}%` }} />
+          <div className="bg-emerald-50/50 border border-emerald-200 rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" /> Completed (2/2)
+            </span>
+            <div className="flex items-baseline justify-between mt-0.5">
+              <span className="text-xl font-bold text-emerald-800 tabular-nums">{complianceKpis.completed}</span>
+              <span className="text-[10px] font-bold text-emerald-700 tabular-nums">{complianceKpis.pct}%</span>
             </div>
           </div>
+
+          <div className="bg-amber-50/50 border border-amber-200 rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> In Progress (1/2)
+            </span>
+            <div className="text-xl font-bold text-amber-800 tabular-nums mt-0.5">{complianceKpis.inProgress}</div>
+          </div>
+
+          <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" /> Not Started (0/2)
+            </span>
+            <div className="text-xl font-bold text-[#605e5c] tabular-nums mt-0.5">{complianceKpis.notStarted}</div>
+          </div>
+
+          <div className={`${complianceKpis.overdue > 0 ? 'bg-red-50/60 border-red-200' : 'bg-[#faf9f8] border-[#edebe9]'} rounded-xs p-2.5 flex flex-col justify-between`}>
+            <span className={`text-[10px] font-semibold uppercase tracking-wider ${complianceKpis.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'} flex items-center gap-1`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${complianceKpis.overdue > 0 ? 'bg-red-600 animate-pulse' : 'bg-neutral-400'}`} /> Overdue Action
+            </span>
+            <div className={`text-xl font-bold tabular-nums mt-0.5 ${complianceKpis.overdue > 0 ? 'text-red-700' : 'text-[#605e5c]'}`}>{complianceKpis.overdue}</div>
+          </div>
+
+          <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Monthly Progress</span>
+            <div className="mt-1">
+              <div className="flex justify-between items-center text-[10px] font-bold text-[#242424] mb-1">
+                <span>Rate</span>
+                <span className="tabular-nums">{complianceKpis.pct}%</span>
+              </div>
+              <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
+                <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${complianceKpis.pct}%` }} />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Tabs Container */}
       <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
         <div className="px-3 py-2 border-b border-[#e5e5e5] bg-[#faf9f8] flex flex-wrap items-center justify-between gap-2">
-          <div className={`flex items-center gap-1 overflow-x-auto ${complianceTab === 'history' ? 'hidden' : ''}`} role="group" aria-label="Filter by status">
+          <div className={`flex items-center gap-1 overflow-x-auto ${pageTab !== 'required' ? 'hidden' : ''}`} role="group" aria-label="Filter by status">
             <button
               type="button"
-              onClick={() => { setComplianceTab('all'); setCompliancePage(1); }}
+              onClick={() => { setStatusChip('all'); setStatusFilter('all'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                complianceTab === 'all'
+                statusChip === 'all' && statusFilter === 'all'
                   ? 'bg-white text-[#0d9488] border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -841,9 +914,9 @@ export const RoomChecksView: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setComplianceTab('completed'); setCompliancePage(1); }}
+              onClick={() => { setStatusChip('completed'); setStatusFilter('completed'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                complianceTab === 'completed'
+                statusChip === 'completed' || statusFilter === 'completed'
                   ? 'bg-white text-emerald-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -852,9 +925,9 @@ export const RoomChecksView: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setComplianceTab('pending'); setCompliancePage(1); }}
+              onClick={() => { setStatusChip('pending'); setStatusFilter('pending'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                complianceTab === 'pending'
+                statusChip === 'pending' || statusFilter === 'pending'
                   ? 'bg-white text-amber-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -863,9 +936,9 @@ export const RoomChecksView: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setComplianceTab('overdue'); setCompliancePage(1); }}
+              onClick={() => { setStatusChip('overdue'); setStatusFilter('overdue'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                complianceTab === 'overdue'
+                statusChip === 'overdue' || statusFilter === 'overdue'
                   ? 'bg-white text-red-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-red-700 hover:bg-red-50'
               }`}
@@ -880,29 +953,29 @@ export const RoomChecksView: React.FC = () => {
           </div>
 
           <div className="text-[11px] text-[#605e5c]">
-            {complianceTab === 'history'
+            {pageTab === 'log'
               ? `Showing ${paginatedRecords.length} of ${filteredRecords.length} historical logs`
               : `Showing ${paginatedComplianceRows.length} of ${tabComplianceRows.length} room check obligations`}
           </div>
         </div>
 
         {/* Tab 1-4: Monthly Compliance Obligation Table */}
-        {complianceTab !== 'history' && (
+        {pageTab === 'required' && (
           <div className="overflow-x-auto flex-1 custom-scrollbar">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
                   <th className="py-2.5 px-3 w-12 whitespace-nowrap">S.No.</th>
-                  <th className="py-2.5 px-3">Service User</th>
-                  <th className="py-2.5 px-3">Room</th>
-                  <th className="py-2.5 px-3">Site / Property</th>
-                  <th className="py-2.5 px-3">Check 1 (by {fmt(windows[0].deadline).slice(0, 5)})</th>
-                  <th className="py-2.5 px-3">Check 2 (by {fmt(windows[1].deadline).slice(0, 5)})</th>
-                  <th className="py-2.5 px-3 text-center">Frequency</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Last Checked</th>
-                  <th className="py-2.5 px-3">Assigned Staff</th>
-                  <th className="py-2.5 px-3 text-right">Actions</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Service User</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Room</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Site / Property</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Check 1 (by {fmt(windows[0].deadline).slice(0, 5)})</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Check 2 (by {fmt(windows[1].deadline).slice(0, 5)})</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap">Frequency</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Status</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Last Checked</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Assigned Staff</th>
+                  <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[240px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0f0f0]">
@@ -926,7 +999,7 @@ export const RoomChecksView: React.FC = () => {
 
                     return (
                       <tr key={row.subjectKey} className="group hover:bg-[#fbfbfa] transition-colors">
-                        <td className="py-2.5 px-3 text-neutral-500 tabular-nums">{serialNo(rowIndex, compliancePage, compliancePageSize)}</td>
+                        <td className="py-2.5 px-3 text-neutral-500 tabular-nums whitespace-nowrap">{serialNo(rowIndex, compliancePage, compliancePageSize)}</td>
                         <td className="py-2.5 px-3">
                           {row.occupancy === 'vacant' ? (
                             <div className="font-medium text-neutral-400">Vacant</div>
@@ -942,21 +1015,21 @@ export const RoomChecksView: React.FC = () => {
                             </>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 font-bold text-neutral-800">{row.roomNumber}</td>
+                        <td className="py-2.5 px-3 font-bold text-neutral-800 whitespace-nowrap">{row.roomNumber}</td>
                         <td className="py-2.5 px-3">
                           <div className="font-medium text-neutral-800">{row.siteName}</div>
                           {row.propertyName && row.propertyName !== row.siteName && (
                             <div className="text-[10px] text-neutral-500">{row.propertyName}</div>
                           )}
                         </td>
-                        <td className="py-2.5 px-3">{renderObligationCell(row.first, row, 1)}</td>
-                        <td className="py-2.5 px-3">{renderObligationCell(row.second, row, 2)}</td>
-                        <td className="py-2.5 px-3 text-center">{renderFrequencyBadge(row)}</td>
-                        <td className="py-2.5 px-3">{renderComplianceStatus(row)}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">{renderObligationCell(row.first, row, 1)}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">{renderObligationCell(row.second, row, 2)}</td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">{renderFrequencyBadge(row)}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">{renderComplianceStatus(row)}</td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="font-medium text-neutral-800">{fmt(lastChecked) || '—'}</div>
                         </td>
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           {lastOfficer ? (
                             <div className="flex items-center gap-1.5 text-neutral-800 font-medium whitespace-nowrap" title={`Submitted by ${lastOfficer}`}>
                               <User className="w-3.5 h-3.5 text-[#0d9488] shrink-0" />
@@ -969,13 +1042,13 @@ export const RoomChecksView: React.FC = () => {
                             </div>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap min-w-[240px]">
+                          <div className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                             {hasOverdue ? (
                               <button
                                 type="button"
                                 onClick={() => handleQuickResolve(row, overduePeriod)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xs text-[11px] shadow-2xs transition-colors cursor-pointer"
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xs text-xs shadow-2xs transition-colors cursor-pointer whitespace-nowrap shrink-0 min-w-[135px]"
                                 title={`Resolve Overdue Check ${overduePeriod}`}
                               >
                                 <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
@@ -985,7 +1058,7 @@ export const RoomChecksView: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleQuickResolve(row, nextPeriod)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-xs transition-colors cursor-pointer ${
+                                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 min-w-[135px] ${
                                   row.overall === 'complete'
                                     ? 'bg-white hover:bg-[#f3f2f1] text-[#0d9488] border border-[#cbd5e1]'
                                     : 'bg-[#0d9488] hover:bg-[#0f766e] text-white shadow-2xs'
@@ -997,38 +1070,40 @@ export const RoomChecksView: React.FC = () => {
                               </button>
                             )}
 
-                            {latestRecord && (
-                              <div className="flex items-center gap-0.5 pl-1 border-l border-neutral-200">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenView(latestRecord)}
-                                  title="View Check Record"
-                                  className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-                                {canEditRecord() && (
+                            <div className="inline-flex items-center justify-end gap-0.5 w-[76px] shrink-0">
+                              {latestRecord && (
+                                <div className="inline-flex items-center gap-0.5 pl-1.5 border-l border-neutral-200">
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenEdit(latestRecord)}
-                                    title="Edit Check Record"
-                                    className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                    onClick={() => handleOpenView(latestRecord)}
+                                    title="View Check Record"
+                                    className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
                                   >
-                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <Eye className="w-3.5 h-3.5" />
                                   </button>
-                                )}
-                                {canDeleteRecord() && (
-                                  <button
-                                    type="button"
-                                    onClick={() => deleteRoomCheck(latestRecord.id)}
-                                    title="Delete Check Record"
-                                    className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
+                                  {canEditRecord() && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEdit(latestRecord)}
+                                      title="Edit Check Record"
+                                      className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  {canDeleteRecord() && (
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteRoomCheck(latestRecord.id)}
+                                      title="Delete Check Record"
+                                      className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -1041,13 +1116,13 @@ export const RoomChecksView: React.FC = () => {
         )}
 
         {/* Tab 5: Raw Inspection History Logs */}
-        {complianceTab === 'history' && (
+        {pageTab === 'log' && (
           <div className="overflow-x-auto flex-1 custom-scrollbar">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
                   <th className="py-2.5 px-3 w-12 whitespace-nowrap">S.No.</th>
-                  <th className="py-2.5 px-3">Service User</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Service User</th>
                   {visibleColumns.map(col => {
                     const isSorted = sortKey === col.key;
                     return (
@@ -1140,25 +1215,29 @@ export const RoomChecksView: React.FC = () => {
         )}
 
         {/* Pagination Footer */}
-        <div className="px-3 py-2 border-t border-[#f0f0f0] flex items-center justify-between shrink-0">
-          {complianceTab !== 'history' ? (
-            <Pagination
-              currentPage={compliancePage}
-              totalItems={tabComplianceRows.length}
-              pageSize={compliancePageSize}
-              onPageSizeChange={() => {}}
-              onPageChange={setCompliancePage}
-            />
-          ) : (
-            <Pagination
-              currentPage={currentPage}
-              totalItems={filteredRecords.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
-            />
-          )}
-        </div>
+        {pageTab === 'required' ? (
+          <Pagination
+            currentPage={compliancePage}
+            totalItems={tabComplianceRows.length}
+            pageSize={compliancePageSize}
+            onPageSizeChange={size => {
+              setCompliancePageSize(size);
+              setCompliancePage(1);
+            }}
+            onPageChange={setCompliancePage}
+          />
+        ) : (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredRecords.length}
+            pageSize={pageSize}
+            onPageSizeChange={size => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       {/* CREATE / EDIT 30-POINT INSPECTION MODAL */}
