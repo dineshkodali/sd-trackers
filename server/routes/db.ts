@@ -11,6 +11,7 @@ import { getSupabaseAdmin, isSupabaseConfigured, getSupabaseUrl, getSupabaseAnon
 import { runDatabaseMigrations, loadSchemaSql } from '../migrate.js';
 import { toDatabaseRow, fromDatabaseRow, TABLE_COLUMNS, DATA_TABLES, moduleLabelFor, resolveSiteId, resolveSiteName } from '../schemaAdapter.js';
 import { requireRole } from '../middleware/requireAuth.js';
+import { findWriteIssues, writeValidationMode, describeIssues } from '../writeValidation.js';
 import { getLiveSchema, getLiveColumns, invalidateLiveSchema } from '../liveSchema.js';
 import { seedReferenceData } from '../seed.js';
 import { INITIAL_ROLE_PERMISSIONS } from '../../src/data/initialData.js';
@@ -296,6 +297,23 @@ function sanitizeWriteBody(req: Request, def: EntityDef, isUpdate: boolean) {
   if (def.table === 'oyster_cards') body = sanitizeOysterCardBody(body, isUpdate, req.user);
   if (isUpdate) body = stripSensitiveUpdateFields(def.table, body, req.user?.role);
   req.body = body;
+}
+
+/**
+ * Checks the shape of a write body (see server/writeValidation.ts). Warn mode logs the table, field and rule - never the
+ * value - and lets the write continue; WRITE_VALIDATION=strict rejects it. Returns false when it has answered the request.
+ */
+function checkWriteBody(req: Request, res: Response, def: EntityDef): boolean {
+  const issues = findWriteIssues(req.body);
+  if (issues.length === 0) return true;
+  const detail = issues.map(i => `${i.field}:${i.rule}`).join(', ');
+  if (writeValidationMode() === 'strict') {
+    console.warn(`[write-validation] rejected write to ${def.table}: ${detail}`);
+    res.status(400).json({ success: false, error: describeIssues(issues) });
+    return false;
+  }
+  console.warn(`[write-validation] ${def.table} accepted with problems: ${detail}`);
+  return true;
 }
 
 function resolveEntity(req: Request, res: Response): EntityDef | null {
@@ -1698,6 +1716,7 @@ router.post('/:entity', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'Body must be a JSON object' });
   }
   sanitizeWriteBody(req, def, false);
+  if (!checkWriteBody(req, res, def)) return;
   req.body = freshIdIfAppendOnly(def, req.body);
   const createScopeError = await writeScopeError(client, req, def, [req.body]);
   if (createScopeError) return res.status(403).json({ success: false, error: createScopeError });
@@ -1825,6 +1844,7 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
     }
   }
   sanitizeWriteBody(req, def, true);
+  if (!checkWriteBody(req, res, def)) return;
   const redactedRole = req.user?.role;
   const sendJson = res.json.bind(res);
   res.json = ((payload: any) => sendJson(payload && payload.record ? { ...payload, record: redactSensitiveRows(def.table, [payload.record], redactedRole)[0] } : payload)) as typeof res.json;

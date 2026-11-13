@@ -1,3 +1,5 @@
+import { APP_PAGES_REGISTRY } from '../config/pageRegistry';
+import { pageForPath, pathForPage } from '../config/pageRoutes';
 import { isLifecycleEditor } from '../config/recordLifecycle';
 import { evaluateOverride, type PageAction, type UserPagePermissions } from '../config/pagePermissionsConfig';
 import { pageAccessService } from '../services/pageAccessService';
@@ -616,6 +618,9 @@ function deduplicateSites(rawSites: SiteInfo[]): SiteInfo[] {
   return result.length > 0 ? result : INITIAL_SITES;
 }
 
+/** Every page id the address bar can open (see src/config/pageRoutes.ts). */
+const KNOWN_PAGE_IDS: readonly string[] = APP_PAGES_REGISTRY.map(page => page.id);
+
 function getInitialAssignedSite(): string {
   const saved = loadStorage<string | null>('assigned_site', null);
   if (saved && saved !== 'Brit Hotel' && saved !== 'Pending Assignment') {
@@ -683,9 +688,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activePage, setActivePageRaw] = useState<string>(() => {
     try {
       if (typeof window !== 'undefined') {
-        const path = window.location.pathname.toLowerCase();
-        if (path === '/su-users' || path === '/service-users') return 'suUsers';
-        if (path === '/property-management' || path === '/properties') return 'propertyManagement';
+        const fromUrl = pageForPath(window.location.pathname, KNOWN_PAGE_IDS);
+        if (fromUrl && (fromUrl !== 'dashboard' || window.location.pathname === '/')) {
+          // "/" alone is the default entry point: let the last page of this session win over it
+          if (!(fromUrl === 'dashboard' && window.sessionStorage?.getItem('sg_tracker_active_page'))) return fromUrl;
+        }
         if (window.sessionStorage) {
           const saved = sessionStorage.getItem('sg_tracker_active_page');
           if (saved && typeof saved === 'string' && saved.trim()) {
@@ -711,23 +718,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActivePageRaw(page);
     try {
       if (typeof window !== 'undefined') {
-        if (page === 'suUsers') {
-          if (window.location.pathname !== '/su-users' && window.location.pathname !== '/service-users') {
-            window.history.pushState(null, '', '/su-users');
-          }
-        } else if (page === 'propertyManagement') {
-          if (window.location.pathname !== '/property-management' && window.location.pathname !== '/properties') {
-            window.history.pushState(null, '', '/property-management');
-          }
-        } else {
-          if (
-            window.location.pathname === '/su-users' ||
-            window.location.pathname === '/service-users' ||
-            window.location.pathname === '/property-management' ||
-            window.location.pathname === '/properties'
-          ) {
-            window.history.pushState(null, '', '/');
-          }
+        // Same page (including its old alias): leave the address, and any ?tab=, as it is.
+        if (pageForPath(window.location.pathname, KNOWN_PAGE_IDS) !== page) {
+          window.history.pushState(null, '', pathForPage(page));
         }
         if (window.sessionStorage) {
           sessionStorage.setItem('sg_tracker_active_page', page);
@@ -739,11 +732,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     const handlePopState = () => {
-      const path = window.location.pathname.toLowerCase();
-      if (path === '/su-users' || path === '/service-users') {
-        setActivePageRaw('suUsers');
-      } else if (path === '/property-management' || path === '/properties') {
-        setActivePageRaw('propertyManagement');
+      const page = pageForPath(window.location.pathname, KNOWN_PAGE_IDS);
+      if (page) {
+        setActivePageRaw(page);
+        try { sessionStorage.setItem('sg_tracker_active_page', page); } catch { /* storage blocked */ }
       }
     };
     window.addEventListener('popstate', handlePopState);
