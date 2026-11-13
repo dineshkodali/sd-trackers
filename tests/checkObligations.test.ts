@@ -288,3 +288,30 @@ test('history: a past month names who was there then, not who is there now', () 
   const nov = toRows(buildObligations(input, '2026-11', 'room', AFTER_25TH).obligations)[0];
   assert.equal(nov.suName, 'Ben Ode');
 });
+
+/* ----------------------------------------------------------------- status filters */
+
+import { matchesDueFilter, doneCount, dueCounts } from '../src/utils/checkObligations.ts';
+
+test('the filters sort rooms by checks done, even when an open check is overdue', () => {
+  const rows = toRows(buildObligations(estate(), '2026-11', 'room', AFTER_25TH).obligations);
+  const by = (n: string) => rows.find(r => r.roomNumber === n)!;
+  assert.equal(doneCount(by('401')), 1);       // check 1 done, check 2 overdue
+  assert.equal(doneCount(by('402')), 2);
+  assert.equal(doneCount(by('403')), 0);       // both overdue
+  assert.equal(matchesDueFilter(by('401'), 'one_done'), true);     // used to be missed because check 2 was overdue
+  assert.equal(matchesDueFilter(by('403'), 'none_done'), true);    // same
+  assert.equal(matchesDueFilter(by('402'), 'completed'), true);
+  assert.equal(matchesDueFilter(by('402'), 'pending'), false);
+  assert.equal(matchesDueFilter(by('401'), 'pending'), true);
+  assert.equal(matchesDueFilter(by('403'), 'overdue'), true);
+  assert.equal(matchesDueFilter(by('402'), 'overdue'), false);
+  assert.deepEqual(dueCounts(rows), { total: 3, completed: 1, oneDone: 1, noneDone: 1, due: 2, overdue: 2 });
+});
+
+test('the filters partition the rows: completed + one done + none done = all', () => {
+  const rows = toRows(buildObligations(estate(), '2026-11', 'room', new Date('2026-11-12T12:00:00Z')).obligations);
+  const c = dueCounts(rows);
+  assert.equal(c.completed + c.oneDone + c.noneDone, c.total);
+  assert.equal(c.due, c.oneDone + c.noneDone);
+});

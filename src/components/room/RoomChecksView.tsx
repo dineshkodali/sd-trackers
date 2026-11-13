@@ -11,7 +11,7 @@ import { useTabState } from '../../hooks/useTabState';
 import { TabSwitcher, serialNo } from '../common/TrackerLayout';
 import { monthOptions, monthLabel } from '../checks/CheckObligationsPanel';
 import { londonNow } from '../../utils/operationsRules';
-import { monthWindows, isSatisfied, type CheckRow, type CheckObligation } from '../../utils/checkObligations';
+import { monthWindows, isSatisfied, matchesDueFilter, dueCounts, type DueFilter, type CheckRow, type CheckObligation } from '../../utils/checkObligations';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -180,9 +180,9 @@ export const RoomChecksView: React.FC = () => {
   // Compliance Tabs: 'all' | 'completed' | 'pending' | 'overdue' | 'history'
   // Page-level tabs (Required checks / Inspection log) are remembered for the session; the status chips are only a filter.
   const [pageTab, setPageTab] = useTabState('roomChecks', ['required', 'log'] as const, 'required');
-  const [statusChip, setStatusChip] = useState<'all' | 'completed' | 'pending' | 'overdue'>('all');
-  const complianceTab: 'all' | 'completed' | 'pending' | 'overdue' | 'history' = pageTab === 'log' ? 'history' : statusChip;
-  const setComplianceTab = (t: 'all' | 'completed' | 'pending' | 'overdue' | 'history') => {
+  const [statusChip, setStatusChip] = useState<DueFilter>('all');
+  const complianceTab: DueFilter | 'history' = pageTab === 'log' ? 'history' : statusChip;
+  const setComplianceTab = (t: DueFilter | 'history') => {
     if (t === 'history') setPageTab('log');
     else { setPageTab('required'); setStatusChip(t); }
   };
@@ -227,43 +227,16 @@ export const RoomChecksView: React.FC = () => {
     });
   }, [obligationsState.rows, allowedNames, siteFilter, searchQuery]);
 
-  const tabComplianceRows = useMemo(() => {
-    const filter = statusChip !== 'all' ? statusChip : (statusFilter !== 'all' ? statusFilter : 'all');
-    if (filter === 'completed') {
-      return filteredComplianceRows.filter(r => r.overall === 'complete');
-    }
-    if (filter === 'pending' || filter === 'in_progress') {
-      return filteredComplianceRows.filter(r => r.overall === 'incomplete' && r.first?.status !== 'overdue' && r.second?.status !== 'overdue');
-    }
-    if (filter === 'overdue') {
-      return filteredComplianceRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue');
-    }
-    if (filter === 'not_started') {
-      return filteredComplianceRows.filter(r => {
-        const isC1 = r.first?.status === 'completed' || r.first?.status === 'completed_late';
-        const isC2 = r.second?.status === 'completed' || r.second?.status === 'completed_late';
-        return !isC1 && !isC2 && r.first?.status !== 'overdue' && r.second?.status !== 'overdue';
-      });
-    }
-    return filteredComplianceRows;
-  }, [filteredComplianceRows, statusChip, statusFilter]);
+  // Rows are kept by how many of the month's two checks are done (see matchesDueFilter), not by guessing from overdue flags.
+  const tabComplianceRows = useMemo(
+    () => filteredComplianceRows.filter(r => matchesDueFilter(r, statusChip)),
+    [filteredComplianceRows, statusChip]
+  );
 
   const complianceKpis = useMemo(() => {
-    const total = filteredComplianceRows.length;
-    const completed = filteredComplianceRows.filter(r => r.overall === 'complete').length;
-    const inProgress = filteredComplianceRows.filter(r => {
-      const isC1 = r.first?.status === 'completed' || r.first?.status === 'completed_late';
-      const isC2 = r.second?.status === 'completed' || r.second?.status === 'completed_late';
-      return (isC1 !== isC2) && r.first?.status !== 'overdue' && r.second?.status !== 'overdue';
-    }).length;
-    const notStarted = filteredComplianceRows.filter(r => {
-      const isC1 = r.first?.status === 'completed' || r.first?.status === 'completed_late';
-      const isC2 = r.second?.status === 'completed' || r.second?.status === 'completed_late';
-      return !isC1 && !isC2 && r.first?.status !== 'overdue' && r.second?.status !== 'overdue';
-    }).length;
-    const overdue = filteredComplianceRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue').length;
-    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { total, completed, inProgress, notStarted, overdue, pct };
+    const c = dueCounts(filteredComplianceRows);
+    const pct = c.total > 0 ? Math.round((c.completed / c.total) * 100) : 0;
+    return { total: c.total, completed: c.completed, inProgress: c.oneDone, notStarted: c.noneDone, overdue: c.overdue, pct };
   }, [filteredComplianceRows]);
 
   const paginatedComplianceRows = useMemo(() => {
@@ -808,19 +781,18 @@ export const RoomChecksView: React.FC = () => {
             {pageTab === 'required' ? (
               <select
                 aria-label="Filter by Compliance Status"
-                value={statusFilter}
+                value={statusChip}
                 onChange={e => {
-                  const val = e.target.value;
-                  setStatusFilter(val);
-                  setStatusChip(val === 'not_started' ? 'all' : (val as any));
+                  setStatusChip(e.target.value as DueFilter);
                   setCompliancePage(1);
                 }}
                 className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all cursor-pointer"
               >
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed (2/2)</option>
-                <option value="pending">Due · 1 of 2 done</option>
-                <option value="not_started">Due · none done (0/2)</option>
+                <option value="pending">Due (0/2 or 1/2)</option>
+                <option value="one_done">Due · 1 of 2 done</option>
+                <option value="none_done">Due · none done (0/2)</option>
                 <option value="overdue">Overdue Action</option>
               </select>
             ) : (
@@ -905,7 +877,7 @@ export const RoomChecksView: React.FC = () => {
               type="button"
               onClick={() => { setStatusChip('all'); setStatusFilter('all'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                statusChip === 'all' && statusFilter === 'all'
+                statusChip === 'all'
                   ? 'bg-white text-[#0d9488] border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -916,7 +888,7 @@ export const RoomChecksView: React.FC = () => {
               type="button"
               onClick={() => { setStatusChip('completed'); setStatusFilter('completed'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                statusChip === 'completed' || statusFilter === 'completed'
+                statusChip === 'completed'
                   ? 'bg-white text-emerald-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -927,7 +899,7 @@ export const RoomChecksView: React.FC = () => {
               type="button"
               onClick={() => { setStatusChip('pending'); setStatusFilter('pending'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
-                statusChip === 'pending' || statusFilter === 'pending'
+                statusChip === 'pending'
                   ? 'bg-white text-amber-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#605e5c] hover:bg-[#f3f2f1]'
               }`}
@@ -938,7 +910,7 @@ export const RoomChecksView: React.FC = () => {
               type="button"
               onClick={() => { setStatusChip('overdue'); setStatusFilter('overdue'); setCompliancePage(1); }}
               className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
-                statusChip === 'overdue' || statusFilter === 'overdue'
+                statusChip === 'overdue'
                   ? 'bg-white text-red-800 border border-[#cbd5e1] shadow-2xs'
                   : 'text-red-700 hover:bg-red-50'
               }`}

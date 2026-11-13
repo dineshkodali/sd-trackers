@@ -527,3 +527,37 @@ export function welfareChecksToVisits(
   }
   return { visits, unmatched };
 }
+
+/* ------------------------------------------------------------------ filtering rows by how many checks are done */
+
+export type DueFilter = 'all' | 'completed' | 'pending' | 'one_done' | 'none_done' | 'overdue';
+
+/** How many of the month's two checks are done (on time or late): 0, 1 or 2. */
+export const doneCount = (row: Pick<CheckRow, 'first' | 'second'>): 0 | 1 | 2 =>
+  ((row.first && isSatisfied(row.first.status) ? 1 : 0) + (row.second && isSatisfied(row.second.status) ? 1 : 0)) as 0 | 1 | 2;
+
+export const hasOverdue = (row: Pick<CheckRow, 'first' | 'second'>): boolean =>
+  row.first?.status === 'overdue' || row.second?.status === 'overdue';
+
+/**
+ * Which rows a status filter keeps. The count of checks done decides it, whether or not one of the open checks is also
+ * overdue (an overdue check is still a check that is due):
+ *   completed 2/2 · pending = due (0/2 or 1/2) · one_done 1/2 · none_done 0/2 · overdue = any check overdue.
+ */
+export function matchesDueFilter(row: Pick<CheckRow, 'first' | 'second'>, filter: DueFilter): boolean {
+  const done = doneCount(row);
+  switch (filter) {
+    case 'completed': return done === 2;
+    case 'pending': return done < 2;
+    case 'one_done': return done === 1;
+    case 'none_done': return done === 0;
+    case 'overdue': return hasOverdue(row);
+    default: return true;
+  }
+}
+
+/** Counts for the summary cards, using the same rules as the filter. */
+export function dueCounts(rows: Array<Pick<CheckRow, 'first' | 'second'>>) {
+  const count = (f: DueFilter) => rows.filter(r => matchesDueFilter(r, f)).length;
+  return { total: rows.length, completed: count('completed'), oneDone: count('one_done'), noneDone: count('none_done'), due: count('pending'), overdue: count('overdue') };
+}
