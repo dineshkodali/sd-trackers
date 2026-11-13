@@ -718,7 +718,7 @@ export const WelfareChecksView: React.FC = () => {
             {pageTab === 'required' && (
               <ExportDropdown 
                 moduleName="Welfare Checks Compliance"
-                totalRecordCount={complianceObligations.length}
+                totalRecordCount={filteredComplianceRows.length}
                 filteredRecordCount={tabComplianceRows.length}
                 availableColumns={welfareComplianceExportColumns}
                 onExport={handlePerformComplianceExport}
