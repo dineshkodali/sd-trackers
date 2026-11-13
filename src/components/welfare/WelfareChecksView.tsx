@@ -1,12 +1,15 @@
 import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
-import { IconHeartHandshake as HeartHandshake, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconBuilding as Building2, IconUser as User, IconActivity as Activity, IconStethoscope as Stethoscope, IconHome as Home, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock } from '@tabler/icons-react';
+import { IconHeartHandshake as HeartHandshake, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconBuilding as Building2, IconUser as User, IconActivity as Activity, IconStethoscope as Stethoscope, IconHome as Home, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock, IconAlertOctagon as AlertOctagon, IconAlertTriangle as AlertTriangle } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { WelfareCheckRecord } from '../../types';
 import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';
 import { Pagination } from '../common/Pagination';
-import { CheckObligationsPanel } from '../checks/CheckObligationsPanel';
+import { useCheckObligations } from '../../hooks/useCheckObligations';
+import { monthOptions, monthLabel } from '../checks/CheckObligationsPanel';
+import { londonNow } from '../../utils/operationsRules';
+import { monthWindows, type CheckRow, type CheckObligation } from '../../utils/checkObligations';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -71,6 +74,84 @@ export const WelfareChecksView: React.FC = () => {
   const [siteFilter, setSiteFilter] = useState(defaultSiteFilter);
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // Clock for monthly compliance evaluations
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  const today = londonNow(now).date;
+  const [selectedMonth, setSelectedMonth] = useState<string>(today.slice(0, 7));
+
+  // Compliance Tabs: 'all' | 'completed' | 'pending' | 'overdue' | 'history'
+  const [complianceTab, setComplianceTab] = useState<'all' | 'completed' | 'pending' | 'overdue' | 'history'>('all');
+  const [compliancePage, setCompliancePage] = useState(1);
+  const compliancePageSize = 10;
+
+  // Real-time Monthly Obligation Calculation
+  const obligationsState = useCheckObligations('welfare', selectedMonth, now, true);
+  const windows = useMemo(() => monthWindows(selectedMonth, obligationsState.result?.settings), [selectedMonth, obligationsState.result]);
+
+  const allowedNames = useMemo(() => {
+    if (canAccessAllSites()) return null;
+    return new Set((allowedSites || []).map(s => String(s).toLowerCase()));
+  }, [canAccessAllSites, allowedSites]);
+
+  const filteredComplianceRows = useMemo(() => {
+    return (obligationsState.rows || []).filter(r => {
+      if (allowedNames && !allowedNames.has(r.siteName.toLowerCase())) return false;
+      if (siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites' && r.siteName.toLowerCase() !== siteFilter.toLowerCase()) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const match =
+          (r.suName && r.suName.toLowerCase().includes(q)) ||
+          (r.suReference && r.suReference.toLowerCase().includes(q)) ||
+          (r.roomNumber && r.roomNumber.toLowerCase().includes(q)) ||
+          (r.siteName && r.siteName.toLowerCase().includes(q)) ||
+          (r.propertyName && r.propertyName.toLowerCase().includes(q)) ||
+          (r.responsible?.name && r.responsible.name.toLowerCase().includes(q));
+        if (!match) return false;
+      }
+      return true;
+    });
+  }, [obligationsState.rows, allowedNames, siteFilter, searchQuery]);
+
+  const tabComplianceRows = useMemo(() => {
+    if (complianceTab === 'completed') {
+      return filteredComplianceRows.filter(r => r.overall === 'complete');
+    }
+    if (complianceTab === 'pending') {
+      return filteredComplianceRows.filter(r => r.overall === 'incomplete' && r.first?.status !== 'overdue' && r.second?.status !== 'overdue');
+    }
+    if (complianceTab === 'overdue') {
+      return filteredComplianceRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue');
+    }
+    return filteredComplianceRows;
+  }, [filteredComplianceRows, complianceTab]);
+
+  const complianceKpis = useMemo(() => {
+    const total = filteredComplianceRows.length;
+    const completed = filteredComplianceRows.filter(r => r.overall === 'complete').length;
+    const inProgress = filteredComplianceRows.filter(r => {
+      const isC1 = r.first?.status === 'completed' || r.first?.status === 'completed_late';
+      const isC2 = r.second?.status === 'completed' || r.second?.status === 'completed_late';
+      return (isC1 !== isC2) && r.first?.status !== 'overdue' && r.second?.status !== 'overdue';
+    }).length;
+    const notStarted = filteredComplianceRows.filter(r => {
+      const isC1 = r.first?.status === 'completed' || r.first?.status === 'completed_late';
+      const isC2 = r.second?.status === 'completed' || r.second?.status === 'completed_late';
+      return !isC1 && !isC2 && r.first?.status !== 'overdue' && r.second?.status !== 'overdue';
+    }).length;
+    const overdue = filteredComplianceRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue').length;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, inProgress, notStarted, overdue, pct };
+  }, [filteredComplianceRows]);
+
+  const paginatedComplianceRows = useMemo(() => {
+    const start = (compliancePage - 1) * compliancePageSize;
+    return tabComplianceRows.slice(start, start + compliancePageSize);
+  }, [tabComplianceRows, compliancePage, compliancePageSize]);
+
   // Sync with active property switcher in Header
   useEffect(() => {
     setSiteFilter(defaultSiteFilter);
@@ -97,7 +178,7 @@ export const WelfareChecksView: React.FC = () => {
 
   // Form State
   const initialFormState: Partial<WelfareCheckRecord> = {
-    siteName: sites[0]?.name || assignedSite || 'Brit Hotel',
+    siteName: (siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites') ? siteFilter : (sites[0]?.name || ''),
     portReference: '',
     flatNumber: '',
     officerName: loggedInUserName,
@@ -185,7 +266,23 @@ export const WelfareChecksView: React.FC = () => {
     setFormData({
       ...initialFormState,
       officerName: loggedInUserName,
-      siteName: sites[0]?.name || (assignedSite !== 'All Sites' ? assignedSite : 'Brit Hotel')
+      siteName: (siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites') ? siteFilter : (sites[0]?.name || '')
+    });
+    setFormErrors({});
+    setIsEditing(false);
+    setActiveFormTab(1);
+    setIsFormOpen(true);
+  };
+
+  const handleQuickResolve = (row: CheckRow, preferredPeriod?: 1 | 2) => {
+    setFormData({
+      ...initialFormState,
+      siteName: row.siteName || ((siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites') ? siteFilter : (sites[0]?.name || '')),
+      portReference: row.suReference || '',
+      flatNumber: row.roomNumber || '',
+      officerName: loggedInUserName,
+      checkDatetime: new Date().toISOString().slice(0, 16),
+      status: 'Completed'
     });
     setFormErrors({});
     setIsEditing(false);
@@ -322,6 +419,103 @@ export const WelfareChecksView: React.FC = () => {
 
   const canViewSafeguarding = currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || currentUserRole === 'Regional Manager' || currentUserRole === 'Area Manager';
 
+  const fmt = (iso: string | null | undefined) => (iso ? iso.split('-').reverse().join('/') : '');
+
+  const renderObligationCell = (o: CheckObligation | null, row: CheckRow, period: 1 | 2) => {
+    if (!o) return <span className="text-neutral-400">—</span>;
+    if (o.status === 'completed' || o.status === 'completed_late') {
+      return (
+        <div>
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+            <span>Done {fmt(o.visitDate)}</span>
+          </span>
+          {o.completedBy && <div className="text-[10px] text-neutral-500 mt-0.5 truncate max-w-[130px]">{o.completedBy}</div>}
+        </div>
+      );
+    }
+    if (o.status === 'overdue') {
+      return (
+        <div>
+          <button
+            type="button"
+            onClick={() => handleQuickResolve(row, period)}
+            title="Click to complete this overdue welfare check now"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-bold bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 cursor-pointer shadow-2xs transition-colors group text-left"
+          >
+            <AlertOctagon className="w-3 h-3 text-red-600 shrink-0" />
+            <span className="group-hover:underline">Overdue ({o.daysLate ?? 1}d late)</span>
+          </button>
+          <div className="text-[10px] text-red-600 mt-0.5 font-medium">Due by {fmt(o.deadline)}</div>
+        </div>
+      );
+    }
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => handleQuickResolve(row, period)}
+          title="Click to record welfare check"
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 cursor-pointer transition-colors text-left"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
+          <span>Pending</span>
+        </button>
+        <div className="text-[10px] text-neutral-500 mt-0.5">Due by {fmt(o.deadline)}</div>
+      </div>
+    );
+  };
+
+  const renderFrequencyBadge = (row: CheckRow) => {
+    const isC1 = row.first?.status === 'completed' || row.first?.status === 'completed_late';
+    const isC2 = row.second?.status === 'completed' || row.second?.status === 'completed_late';
+    const count = (isC1 ? 1 : 0) + (isC2 ? 1 : 0);
+    if (count === 2) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          2/2 ✓
+        </span>
+      );
+    }
+    if (count === 1) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+          1/2
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-700 border border-neutral-200">
+        0/2
+      </span>
+    );
+  };
+
+  const renderComplianceStatus = (row: CheckRow) => {
+    if (row.overall === 'complete') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+          <span>Completed (2/2)</span>
+        </span>
+      );
+    }
+    if (row.first?.status === 'overdue' || row.second?.status === 'overdue') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-bold bg-red-50 text-red-800 border border-red-200">
+          <AlertOctagon className="w-3 h-3 text-red-600 shrink-0" />
+          <span>Overdue Action</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xs text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+        <span>Due / In Progress</span>
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Banner & Header */}
@@ -332,13 +526,18 @@ export const WelfareChecksView: React.FC = () => {
               <HeartHandshake className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-[#242424] tracking-tight">Welfare Checks</h1>
-              <p className="text-xs text-neutral-500">Resident welfare and safeguarding checks.</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#242424] tracking-tight">Welfare Checks &amp; Monthly Compliance</h1>
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-teal-50 text-[#0d9488] border border-teal-200 rounded-xs">
+                  Twice-Monthly Check Schedule (10th &amp; 25th)
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500 mt-0.5">Monthly resident safeguarding &amp; welfare checks per service user (Check 1 by the 10th, Check 2 by the 25th).</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {currentUserRole === 'Super Admin' && (
+          <div className="flex flex-wrap items-center gap-2">
+            {complianceTab === 'history' && currentUserRole === 'Super Admin' && (
               <button
                 type="button"
                 id="btn-customize-welfare-table"
@@ -351,13 +550,15 @@ export const WelfareChecksView: React.FC = () => {
               </button>
             )}
 
-            <ExportDropdown 
-              moduleName="Welfare Checks"
-              totalRecordCount={accessibleRecords.length}
-              filteredRecordCount={filteredRecords.length}
-              availableColumns={welfareExportColumns}
-              onExport={handlePerformExport}
-            />
+            {complianceTab === 'history' && (
+              <ExportDropdown 
+                moduleName="Welfare Checks"
+                totalRecordCount={accessibleRecords.length}
+                filteredRecordCount={filteredRecords.length}
+                availableColumns={welfareExportColumns}
+                onExport={handlePerformExport}
+              />
+            )}
 
             {canCreateRecord() && (
               <button
@@ -374,38 +575,54 @@ export const WelfareChecksView: React.FC = () => {
         </div>
 
         {/* Filter Bar */}
-        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by Port Ref, Room, Officer..."
-              value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-              className="w-full pl-8 pr-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
-            />
-          </div>
-
+        <div className="mt-4 pt-3 border-t border-[#f0f0f0] grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          {/* Month Selector */}
           <div>
             <select
-              value={siteFilter}
-              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); }}
-              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
-              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+              aria-label="Welfare Check Month"
+              value={selectedMonth}
+              onChange={e => { setSelectedMonth(e.target.value); setCompliancePage(1); }}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs font-medium focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
-              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
-                <option value="all">All Properties / Sites ({canAccessAllSites() ? sites.length : allowedSites.length})</option>
-              )}
-              {(canAccessAllSites() ? sites.map(s => s.name) : (allowedSites || [])).map(sName => (
-                <option key={sName} value={sName}>{sName}</option>
+              {monthOptions(today).map(m => (
+                <option key={m} value={m}>{monthLabel(m)}</option>
               ))}
             </select>
           </div>
 
           <div>
             <select
+              value={siteFilter}
+              onChange={e => { setSiteFilter(e.target.value); setCurrentPage(1); setCompliancePage(1); }}
+              disabled={!canAccessAllSites() && (allowedSites || []).length <= 1}
+              className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            >
+              {(canAccessAllSites() || (allowedSites && allowedSites.length > 1)) && (
+                <option value="all">
+                  {canAccessAllSites() ? `All Properties / Sites (${allowedSites.length})` : `All Assigned Sites (${allowedSites.length})`}
+                </option>
+              )}
+              {allowedSites.map((s, idx) => (
+                <option key={`${s}-${idx}`} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search Resident, Port Ref, Room, Officer..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); setCompliancePage(1); }}
+              className="w-full pl-8 pr-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
+            />
+          </div>
+
+          <div>
+            <select
               value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); setCompliancePage(1); }}
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Statuses</option>
@@ -417,108 +634,326 @@ export const WelfareChecksView: React.FC = () => {
         </div>
       </div>
 
-      <CheckObligationsPanel type="welfare" onStart={canCreateRecord() ? handleOpenCreate : undefined} />
-
-      {/* Main Table */}
-      <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
-        <div className="overflow-x-auto flex-1 custom-scrollbar">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
-                {visibleColumns.map(col => {
-                  const isSorted = sortKey === col.key;
-                  return (
-                    <th 
-                      key={String(col.key)} 
-                      className="py-2.5 px-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
-                      onClick={() => {
-                        if (sortKey === col.key) {
-                          setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortKey(col.key as keyof WelfareCheckRecord);
-                          setSortOrder('desc');
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>{col.label}</span>
-                        {isSorted ? (
-                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
-                        ) : (
-                          <ArrowUpDown className="w-3 h-3 text-neutral-400" />
-                        )}
-                      </div>
-                    </th>
-                  );
-                })}
-                <th className="py-2.5 px-3 text-right w-24 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10 select-none">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f0f0f0]">
-              {paginatedRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-neutral-400">
-                    <HeartHandshake className="w-8 h-8 mx-auto mb-2 text-neutral-300 opacity-60" />
-                    <p className="font-medium text-xs">No welfare check records found</p>
-                    <p className="text-[11px] mt-0.5">Click "New Welfare Check" to log an engagement.</p>
-                  </td>
-                </tr>
-              ) : (
-                paginatedRecords.map(rec => (
-                  <tr key={rec.id} className="group hover:bg-[#fbfbfa] transition-colors">
-                    {visibleColumns.map(col => (
-                      <td key={String(col.key)} className="py-2.5 px-3">
-                        {renderColumnCell(col, rec)}
-                      </td>
-                    ))}
-                    <td className="py-2.5 px-3 text-right sticky right-0 bg-white group-hover:bg-[#fbfbfa] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenView(rec)}
-                          title="View Details"
-                          className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        {canEditRecord() && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(rec)}
-                            title="Edit Record"
-                            className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {canDeleteRecord() && (
-                          <button
-                            type="button"
-                            onClick={() => deleteWelfareCheck(rec.id)}
-                            title="Delete Record"
-                            className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Monthly Compliance KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total Residents</span>
+          <div className="text-xl font-bold text-[#242424] tabular-nums mt-0.5">{complianceKpis.total}</div>
         </div>
 
-        {/* Pagination */}
+        <div className="bg-emerald-50/50 border border-emerald-200 rounded-xs p-2.5 flex flex-col justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" /> Completed (2/2)
+          </span>
+          <div className="flex items-baseline justify-between mt-0.5">
+            <span className="text-xl font-bold text-emerald-800 tabular-nums">{complianceKpis.completed}</span>
+            <span className="text-[10px] font-bold text-emerald-700 tabular-nums">{complianceKpis.pct}%</span>
+          </div>
+        </div>
+
+        <div className="bg-amber-50/50 border border-amber-200 rounded-xs p-2.5 flex flex-col justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> In Progress (1/2)
+          </span>
+          <div className="text-xl font-bold text-amber-800 tabular-nums mt-0.5">{complianceKpis.inProgress}</div>
+        </div>
+
+        <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2.5 flex flex-col justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c] flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" /> Not Started (0/2)
+          </span>
+          <div className="text-xl font-bold text-[#605e5c] tabular-nums mt-0.5">{complianceKpis.notStarted}</div>
+        </div>
+
+        <div className={`${complianceKpis.overdue > 0 ? 'bg-red-50/60 border-red-200' : 'bg-[#faf9f8] border-[#edebe9]'} rounded-xs p-2.5 flex flex-col justify-between`}>
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${complianceKpis.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'} flex items-center gap-1`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${complianceKpis.overdue > 0 ? 'bg-red-600 animate-pulse' : 'bg-neutral-400'}`} /> Overdue Action
+          </span>
+          <div className={`text-xl font-bold tabular-nums mt-0.5 ${complianceKpis.overdue > 0 ? 'text-red-700' : 'text-[#605e5c]'}`}>{complianceKpis.overdue}</div>
+        </div>
+
+        <div className="bg-white border border-[#e1dfdd] rounded-xs p-2.5 flex flex-col justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Monthly Progress</span>
+          <div className="mt-1">
+            <div className="flex justify-between items-center text-[10px] font-bold text-[#242424] mb-1">
+              <span>Rate</span>
+              <span className="tabular-nums">{complianceKpis.pct}%</span>
+            </div>
+            <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
+              <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${complianceKpis.pct}%` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Tabs Container */}
+      <div className="bg-white border border-[#e5e5e5] rounded-xs shadow-2xs overflow-hidden flex flex-col justify-between min-h-[520px] lg:min-h-[calc(100vh-270px)]">
+        <div className="px-3 py-2 border-b border-[#e5e5e5] bg-[#faf9f8] flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => { setComplianceTab('all'); setCompliancePage(1); }}
+              className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
+                complianceTab === 'all'
+                  ? 'bg-white text-[#0d9488] border border-[#cbd5e1] shadow-2xs'
+                  : 'text-[#605e5c] hover:bg-[#f3f2f1]'
+              }`}
+            >
+              All Residents ({filteredComplianceRows.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setComplianceTab('completed'); setCompliancePage(1); }}
+              className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
+                complianceTab === 'completed'
+                  ? 'bg-white text-emerald-800 border border-[#cbd5e1] shadow-2xs'
+                  : 'text-[#605e5c] hover:bg-[#f3f2f1]'
+              }`}
+            >
+              Completed 2/2 ({complianceKpis.completed})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setComplianceTab('pending'); setCompliancePage(1); }}
+              className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
+                complianceTab === 'pending'
+                  ? 'bg-white text-amber-800 border border-[#cbd5e1] shadow-2xs'
+                  : 'text-[#605e5c] hover:bg-[#f3f2f1]'
+              }`}
+            >
+              Due / In Progress ({complianceKpis.inProgress + complianceKpis.notStarted})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setComplianceTab('overdue'); setCompliancePage(1); }}
+              className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                complianceTab === 'overdue'
+                  ? 'bg-white text-red-800 border border-[#cbd5e1] shadow-2xs'
+                  : 'text-red-700 hover:bg-red-50'
+              }`}
+            >
+              <span>Overdue</span>
+              {complianceKpis.overdue > 0 && (
+                <span className="px-1.5 py-0.2 bg-red-100 text-red-800 text-[10px] font-bold rounded-full">
+                  {complianceKpis.overdue}
+                </span>
+              )}
+            </button>
+            <div className="h-4 w-px bg-slate-300 mx-1" />
+            <button
+              type="button"
+              onClick={() => { setComplianceTab('history'); setCurrentPage(1); }}
+              className={`px-2.5 py-1 rounded-xs text-xs font-semibold transition-colors cursor-pointer ${
+                complianceTab === 'history'
+                  ? 'bg-white text-[#242424] border border-[#cbd5e1] shadow-2xs'
+                  : 'text-[#605e5c] hover:bg-[#f3f2f1]'
+              }`}
+            >
+              Raw Check History Logs ({filteredRecords.length})
+            </button>
+          </div>
+
+          <div className="text-[11px] text-[#605e5c]">
+            {complianceTab === 'history'
+              ? `Showing ${paginatedRecords.length} of ${filteredRecords.length} historical logs`
+              : `Showing ${paginatedComplianceRows.length} of ${tabComplianceRows.length} resident check obligations`}
+          </div>
+        </div>
+
+        {/* Tab 1-4: Monthly Compliance Obligation Table */}
+        {complianceTab !== 'history' && (
+          <div className="overflow-x-auto flex-1 custom-scrollbar">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
+                  <th className="py-2.5 px-3">Service User</th>
+                  <th className="py-2.5 px-3">Flat / Room No</th>
+                  <th className="py-2.5 px-3">Property / Site</th>
+                  <th className="py-2.5 px-3">Check 1 (by {fmt(windows[0].deadline).slice(0, 5)})</th>
+                  <th className="py-2.5 px-3">Check 2 (by {fmt(windows[1].deadline).slice(0, 5)})</th>
+                  <th className="py-2.5 px-3 text-center">Frequency</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Last Checked</th>
+                  <th className="py-2.5 px-3">Assigned Staff</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f0f0f0]">
+                {paginatedComplianceRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-neutral-400">
+                      <HeartHandshake className="w-8 h-8 mx-auto mb-2 text-neutral-300 opacity-60" />
+                      <p className="font-medium text-xs">No service users found in this view</p>
+                      <p className="text-[11px] mt-0.5">Every active resident in the selected site and month will appear here.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedComplianceRows.map(row => {
+                    const hasOverdue = row.first?.status === 'overdue' || row.second?.status === 'overdue';
+                    const lastChecked = row.second?.visitDate || row.first?.visitDate;
+                    const lastOfficer = row.second?.completedBy || row.first?.completedBy;
+
+                    return (
+                      <tr key={row.subjectKey} className="group hover:bg-[#fbfbfa] transition-colors">
+                        <td className="py-2.5 px-3">
+                          <div className="font-semibold text-neutral-800">{row.suName || 'Service User'}</div>
+                          {row.suReference && <div className="text-[10px] text-teal-700 font-mono font-medium">{row.suReference}</div>}
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-neutral-800">{row.roomNumber || '—'}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="font-medium text-neutral-800">{row.siteName}</div>
+                          {row.propertyName && row.propertyName !== row.siteName && (
+                            <div className="text-[10px] text-neutral-500">{row.propertyName}</div>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3">{renderObligationCell(row.first, row, 1)}</td>
+                        <td className="py-2.5 px-3">{renderObligationCell(row.second, row, 2)}</td>
+                        <td className="py-2.5 px-3 text-center">{renderFrequencyBadge(row)}</td>
+                        <td className="py-2.5 px-3">{renderComplianceStatus(row)}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="font-medium text-neutral-800">{fmt(lastChecked) || '—'}</div>
+                          {lastOfficer && <div className="text-[10px] text-neutral-500 truncate max-w-[120px]">{lastOfficer}</div>}
+                        </td>
+                        <td className="py-2.5 px-3 text-neutral-600">{row.responsible?.name || <span className="text-neutral-400">—</span>}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          {hasOverdue ? (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickResolve(row)}
+                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xs text-[11px] shadow-2xs transition-colors cursor-pointer"
+                            >
+                              Resolve Check
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickResolve(row)}
+                              className="px-2 py-1 bg-white hover:bg-[#f3f2f1] text-[#0d9488] font-semibold rounded-xs text-[11px] border border-[#cbd5e1] transition-colors cursor-pointer"
+                            >
+                              Record Check
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tab 5: Raw Check History Logs */}
+        {complianceTab === 'history' && (
+          <div className="overflow-x-auto flex-1 custom-scrollbar">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#faf9f8] border-b border-[#e5e5e5] text-neutral-600 font-semibold select-none">
+                  {visibleColumns.map(col => {
+                    const isSorted = sortKey === col.key;
+                    return (
+                      <th 
+                        key={String(col.key)} 
+                        className="py-2.5 px-3 cursor-pointer hover:bg-[#edebe9] transition-colors"
+                        onClick={() => {
+                          if (sortKey === col.key) {
+                            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortKey(col.key as keyof WelfareCheckRecord);
+                            setSortOrder('desc');
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{col.label}</span>
+                          {isSorted ? (
+                            sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#0d9488]" /> : <ArrowDown className="w-3 h-3 text-[#0d9488]" />
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 text-neutral-400" />
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
+                  <th className="py-2.5 px-3 text-right w-24 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10 select-none">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f0f0f0]">
+                {paginatedRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-neutral-400">
+                      <HeartHandshake className="w-8 h-8 mx-auto mb-2 text-neutral-300 opacity-60" />
+                      <p className="font-medium text-xs">No welfare check records found</p>
+                      <p className="text-[11px] mt-0.5">Click "New Welfare Check" to log an engagement.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedRecords.map(rec => (
+                    <tr key={rec.id} className="group hover:bg-[#fbfbfa] transition-colors">
+                      {visibleColumns.map(col => (
+                        <td key={String(col.key)} className="py-2.5 px-3">
+                          {renderColumnCell(col, rec)}
+                        </td>
+                      ))}
+                      <td className="py-2.5 px-3 text-right sticky right-0 bg-white group-hover:bg-[#fbfbfa] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenView(rec)}
+                            title="View Details"
+                            className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          {canEditRecord() && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(rec)}
+                              title="Edit Record"
+                              className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canDeleteRecord() && (
+                            <button
+                              type="button"
+                              onClick={() => deleteWelfareCheck(rec.id)}
+                              title="Delete Record"
+                              className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination Footer */}
         <div className="px-3 py-2 border-t border-[#f0f0f0] flex items-center justify-between shrink-0">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredRecords.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
+          {complianceTab !== 'history' ? (
+            <Pagination
+              currentPage={compliancePage}
+              totalItems={tabComplianceRows.length}
+              pageSize={compliancePageSize}
+              onPageChange={setCompliancePage}
+              onPageSizeChange={() => {}}
+            />
+          ) : (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredRecords.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
+          )}
         </div>
       </div>
 

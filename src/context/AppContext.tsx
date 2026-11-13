@@ -617,7 +617,11 @@ function deduplicateSites(rawSites: SiteInfo[]): SiteInfo[] {
 }
 
 function getInitialAssignedSite(): string {
-  return String(loadStorage('assigned_site', 'Brit Hotel' as string));
+  const saved = loadStorage<string | null>('assigned_site', null);
+  if (saved && saved !== 'Brit Hotel' && saved !== 'Pending Assignment') {
+    return String(saved);
+  }
+  return 'All Sites';
 }
 
 /** Role permissions rows from the database, keyed by role, over the built-in defaults. */
@@ -662,10 +666,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [assignedSite, setAssignedSiteState] = useState<string>(() => {
     const savedUser = loadStorage<AuthUser | null>('auth_user', null);
-    if (savedUser?.assignedSite && savedUser.assignedSite !== 'All Sites') {
-      return savedUser.assignedSite;
+    const role = savedUser?.role || loadStorage('role', 'Super Admin');
+    const isAllowedMultiSite = role === 'Super Admin' || role === 'Admin' || role === 'Regional Manager';
+    if (!isAllowedMultiSite && savedUser?.assignedSite && savedUser.assignedSite !== 'All Sites' && savedUser.assignedSite !== 'Pending Assignment') {
+      const sitesCount = Array.isArray(savedUser.assignedSites) ? savedUser.assignedSites.length : 1;
+      if (sitesCount <= 1) {
+        return savedUser.assignedSite;
+      }
     }
-    return getInitialAssignedSite();
+    const savedSite = loadStorage<string | null>('assigned_site', null);
+    if (savedSite && savedSite !== 'Brit Hotel' && savedSite !== 'Pending Assignment') {
+      return savedSite;
+    }
+    return 'All Sites';
   });
   const [activePage, setActivePageRaw] = useState<string>(() => {
     try {
@@ -1332,9 +1345,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const cleanAssignedSites = rawAssignedSites
             .map(s => String(s).trim())
             .filter(s => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'all');
-          const primarySite = cleanAssignedSites.length > 0
-            ? cleanAssignedSites[0]
-            : (res.user.assignedSite && res.user.assignedSite !== 'Pending Assignment' ? res.user.assignedSite : 'All Sites');
+
+          const isAllowedMultiSite = res.user.role === 'Super Admin' ||
+            res.user.role === 'Admin' ||
+            res.user.role === 'Regional Manager' ||
+            cleanAssignedSites.length > 1 ||
+            cleanAssignedSites.length === 0;
+
+          const primarySite = isAllowedMultiSite
+            ? 'All Sites'
+            : (cleanAssignedSites[0] || 'All Sites');
 
           const authUser: AuthUser = {
             id: res.user.id,
@@ -1347,8 +1367,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setAuthBlockedState(null);
           setAuthProfileState(authUser);
           setCurrentUserRoleState(authUser.role);
-          if (authUser.assignedSite && authUser.assignedSite !== 'All Sites' && authUser.assignedSite !== 'Pending Assignment') {
+          if (!isAllowedMultiSite && authUser.assignedSite && authUser.assignedSite !== 'All Sites' && authUser.assignedSite !== 'Pending Assignment') {
             setAssignedSiteState(authUser.assignedSite);
+            saveStorage('assigned_site', authUser.assignedSite);
+          } else {
+            setAssignedSiteState('All Sites');
+            saveStorage('assigned_site', 'All Sites');
           }
         } else if (res.transient) {
           // Server outage, not a rejected session: keep the user signed in; the
@@ -1502,9 +1526,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const cleanAssignedSites = rawAssignedSites
           .map(s => String(s).trim())
           .filter(s => s && s !== 'Pending Assignment' && s !== 'All Sites' && s !== 'all');
-        const primarySite = cleanAssignedSites.length > 0
-          ? cleanAssignedSites[0]
-          : (res.user.assignedSite && res.user.assignedSite !== 'Pending Assignment' ? res.user.assignedSite : 'All Sites');
+
+        const isAllowedMultiSite = res.user.role === 'Super Admin' ||
+          res.user.role === 'Admin' ||
+          res.user.role === 'Regional Manager' ||
+          cleanAssignedSites.length > 1 ||
+          cleanAssignedSites.length === 0;
+
+        const primarySite = isAllowedMultiSite
+          ? 'All Sites'
+          : (cleanAssignedSites[0] || 'All Sites');
 
         const authUser: AuthUser = {
           id: res.user.id,
@@ -1521,9 +1552,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveStorage('auth_user', authUser);
         saveStorage('role', authUser.role);
         setCurrentUserRoleState(authUser.role);
-        if (authUser.assignedSite && authUser.assignedSite !== 'All Sites' && authUser.assignedSite !== 'Pending Assignment') {
+        if (!isAllowedMultiSite && authUser.assignedSite && authUser.assignedSite !== 'All Sites' && authUser.assignedSite !== 'Pending Assignment') {
           setAssignedSiteState(authUser.assignedSite);
           saveStorage('assigned_site', authUser.assignedSite);
+        } else {
+          setAssignedSiteState('All Sites');
+          saveStorage('assigned_site', 'All Sites');
         }
         addAuditEntry('SETTINGS_UPDATE', 'Settings', `User Login: ${authUser.email}`, authUser.assignedSite, `Authenticated session token created for role: ${authUser.role}.`);
         return true;
@@ -2274,19 +2308,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // When role changes or allowed sites change, keep assignedSite and selectedSite valid
   useEffect(() => {
     if (!canAccessAllSites() && (allowedSites || []).length <= 1) {
-      const singleSite = (allowedSites && allowedSites.length > 0 ? allowedSites[0] : 'Brit Hotel');
-      if (assignedSite !== singleSite) {
+      const singleSite = (allowedSites && allowedSites.length > 0 ? allowedSites[0] : (sites[0]?.name || ''));
+      if (singleSite && assignedSite !== singleSite) {
         setAssignedSiteState(singleSite);
       }
-      if (selectedSite !== singleSite) {
+      if (singleSite && selectedSite !== singleSite) {
         setSelectedSite(singleSite);
       }
     } else if (allowedSites.length > 0) {
-      if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all' && !allowedSites.includes(assignedSite)) {
-        setAssignedSiteState(allowedSites[0]);
+      // For multi-site or all-sites allowed users, clear legacy 'Brit Hotel' default to 'All Sites'
+      if (assignedSite === 'Brit Hotel' && (canAccessAllSites() || allowedSites.length > 1)) {
+        setAssignedSiteState('All Sites');
+        saveStorage('assigned_site', 'All Sites');
+      } else if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all' && !allowedSites.includes(assignedSite)) {
+        setAssignedSiteState('All Sites');
+        saveStorage('assigned_site', 'All Sites');
       }
-      if (selectedSite && selectedSite !== 'All Sites' && selectedSite !== 'all' && !allowedSites.includes(selectedSite)) {
-        setSelectedSite(allowedSites[0]);
+      if (selectedSite === 'Brit Hotel' && (canAccessAllSites() || allowedSites.length > 1)) {
+        setSelectedSite('All Sites');
+      } else if (selectedSite && selectedSite !== 'All Sites' && selectedSite !== 'all' && !allowedSites.includes(selectedSite)) {
+        setSelectedSite('All Sites');
       }
     }
   }, [canAccessAllSites, allowedSites, assignedSite, selectedSite]);

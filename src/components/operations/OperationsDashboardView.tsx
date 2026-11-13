@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IconRefresh as RefreshCw, IconSearch as Search } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { useOperationsData } from '../../hooks/useOperationsData';
-import { CheckObligationsPanel } from '../checks/CheckObligationsPanel';
+import { useCheckObligations } from '../../hooks/useCheckObligations';
 import {
   buildSnapshot, selectDeadlines, selectOverview, type AttentionItem, type DashboardPage, type DeadlineItem, type OpsInput, type OpsScope, type OverviewRow
 } from '../../utils/operationsSelectors';
@@ -112,6 +112,55 @@ export const OperationsDashboardView: React.FC = () => {
     const picked = siteFilter === 'all' || siteFilter === 'All Sites' ? 'all' : (resolveSite(siteFilter) ?? '__none__');
     return { allowedSiteIds: allowed, siteId: picked };
   }, [canAccessAllSites, allowedSites, resolveSite, siteFilter]);
+
+  // Monthly Room & Welfare check obligations for high-level KPI cards
+  const todayIso = londonNow(now).date;
+  const currentMonth = todayIso.slice(0, 7);
+  const currentMonthLabel = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${currentMonth}-01T00:00:00Z`));
+    } catch {
+      return currentMonth;
+    }
+  }, [currentMonth]);
+
+  const roomObligations = useCheckObligations('room', currentMonth, now, can.roomChecks);
+  const welfareObligations = useCheckObligations('welfare', currentMonth, now, can.welfareChecks);
+
+  const allowedNames = useMemo(() => {
+    if (canAccessAllSites()) return null;
+    return new Set((allowedSites || []).map(s => String(s).toLowerCase()));
+  }, [canAccessAllSites, allowedSites]);
+
+  const scopedRoomRows = useMemo(() => {
+    return (roomObligations.rows || []).filter(r =>
+      (!allowedNames || allowedNames.has(r.siteName.toLowerCase())) &&
+      (!siteFilter || siteFilter === 'all' || siteFilter === 'All Sites' || r.siteName.toLowerCase() === siteFilter.toLowerCase())
+    );
+  }, [roomObligations.rows, allowedNames, siteFilter]);
+
+  const scopedWelfareRows = useMemo(() => {
+    return (welfareObligations.rows || []).filter(r =>
+      (!allowedNames || allowedNames.has(r.siteName.toLowerCase())) &&
+      (!siteFilter || siteFilter === 'all' || siteFilter === 'All Sites' || r.siteName.toLowerCase() === siteFilter.toLowerCase())
+    );
+  }, [welfareObligations.rows, allowedNames, siteFilter]);
+
+  const roomTotals = useMemo(() => {
+    const total = scopedRoomRows.length;
+    const completed = scopedRoomRows.filter(r => r.overall === 'complete').length;
+    const overdue = scopedRoomRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue').length;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, overdue, pct };
+  }, [scopedRoomRows]);
+
+  const welfareTotals = useMemo(() => {
+    const total = scopedWelfareRows.length;
+    const completed = scopedWelfareRows.filter(r => r.overall === 'complete').length;
+    const overdue = scopedWelfareRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue').length;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, overdue, pct };
+  }, [scopedWelfareRows]);
 
   const input: OpsInput = useMemo(() => ({
     sites: siteRefs,
@@ -427,11 +476,122 @@ export const OperationsDashboardView: React.FC = () => {
         </section>
       </div>
 
-      {/* Required checks: two Room / Welfare checks a month per room and resident (by the 10th and 25th) */}
+      {/* Monthly Compliance Summary Cards (Replaces bulky dropdown lists) */}
       {(can.roomChecks || can.welfareChecks) && (
-        <div className="grid grid-cols-1 gap-2">
-          {can.roomChecks && <CheckObligationsPanel type="room" defaultOpen siteName={siteFilter} onOpenPage={() => navigateWithIntent('roomChecks')} />}
-          {can.welfareChecks && <CheckObligationsPanel type="welfare" defaultOpen siteName={siteFilter} onOpenPage={() => navigateWithIntent('welfareChecks')} />}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {can.roomChecks && (
+            <div className="bg-white border border-[#e1dfdd] rounded-xs p-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-semibold text-[#242424] truncate">Room Checks Monthly Compliance</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#faf9f8] text-[#605e5c] border border-[#edebe9] rounded-xs whitespace-nowrap">
+                      {currentMonthLabel}
+                    </span>
+                  </div>
+                  {roomTotals.overdue > 0 ? (
+                    <Tag tone="red">{roomTotals.overdue} overdue</Tag>
+                  ) : (
+                    <Tag tone="grey">On track</Tag>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mb-2.5">
+                  <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2 text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total Rooms</div>
+                    <div className="text-lg font-semibold text-[#242424] tabular-nums mt-0.5">{roomTotals.total}</div>
+                  </div>
+                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-xs p-2 text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800">Completed 2/2</div>
+                    <div className="text-lg font-semibold text-emerald-800 tabular-nums mt-0.5">{roomTotals.completed}</div>
+                  </div>
+                  <div className={`${roomTotals.overdue > 0 ? 'bg-red-50/50 border-red-100' : 'bg-[#faf9f8] border-[#edebe9]'} border rounded-xs p-2 text-center`}>
+                    <div className={`text-[10px] font-semibold uppercase tracking-wider ${roomTotals.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'}`}>Overdue</div>
+                    <div className={`text-lg font-semibold tabular-nums mt-0.5 ${roomTotals.overdue > 0 ? 'text-red-800' : 'text-[#242424]'}`}>{roomTotals.overdue}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-1 mb-2">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-[#605e5c]">Monthly Completion Rate</span>
+                    <span className="font-semibold text-[#242424] tabular-nums">{roomTotals.pct}%</span>
+                  </div>
+                  <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
+                    <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${roomTotals.pct}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[#edebe9] flex items-center justify-between">
+                <span className="text-[11px] text-[#605e5c]">2 checks / month per room (10th & 25th)</span>
+                <button
+                  type="button"
+                  onClick={() => navigateWithIntent('roomChecks')}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0d9488] hover:text-[#0f766e] cursor-pointer"
+                >
+                  <span>Manage Room Checks</span>
+                  <span aria-hidden="true">&rarr;</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {can.welfareChecks && (
+            <div className="bg-white border border-[#e1dfdd] rounded-xs p-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-semibold text-[#242424] truncate">Welfare Checks Monthly Compliance</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#faf9f8] text-[#605e5c] border border-[#edebe9] rounded-xs whitespace-nowrap">
+                      {currentMonthLabel}
+                    </span>
+                  </div>
+                  {welfareTotals.overdue > 0 ? (
+                    <Tag tone="red">{welfareTotals.overdue} overdue</Tag>
+                  ) : (
+                    <Tag tone="grey">On track</Tag>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mb-2.5">
+                  <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2 text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total SUs</div>
+                    <div className="text-lg font-semibold text-[#242424] tabular-nums mt-0.5">{welfareTotals.total}</div>
+                  </div>
+                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-xs p-2 text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800">Completed 2/2</div>
+                    <div className="text-lg font-semibold text-emerald-800 tabular-nums mt-0.5">{welfareTotals.completed}</div>
+                  </div>
+                  <div className={`${welfareTotals.overdue > 0 ? 'bg-red-50/50 border-red-100' : 'bg-[#faf9f8] border-[#edebe9]'} border rounded-xs p-2 text-center`}>
+                    <div className={`text-[10px] font-semibold uppercase tracking-wider ${welfareTotals.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'}`}>Overdue</div>
+                    <div className={`text-lg font-semibold tabular-nums mt-0.5 ${welfareTotals.overdue > 0 ? 'text-red-800' : 'text-[#242424]'}`}>{welfareTotals.overdue}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-1 mb-2">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-[#605e5c]">Monthly Completion Rate</span>
+                    <span className="font-semibold text-[#242424] tabular-nums">{welfareTotals.pct}%</span>
+                  </div>
+                  <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
+                    <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${welfareTotals.pct}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[#edebe9] flex items-center justify-between">
+                <span className="text-[11px] text-[#605e5c]">2 checks / month per placed resident</span>
+                <button
+                  type="button"
+                  onClick={() => navigateWithIntent('welfareChecks')}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0d9488] hover:text-[#0f766e] cursor-pointer"
+                >
+                  <span>Manage Welfare Checks</span>
+                  <span aria-hidden="true">&rarr;</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
