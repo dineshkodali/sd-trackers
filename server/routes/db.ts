@@ -464,7 +464,7 @@ export async function recordAuditTrailEntry(req: Request, params: {
  * table is exhausted or `limit` is reached (BUG-025). Paging needs a
  * deterministic order, so `id` is always the final sort key.
  */
-const PAGE_SIZE = 1000;
+const PAGE_SIZE = 500;
 const MAX_ROWS = 50_000; // hard ceiling so one enormous table cannot exhaust memory
 
 interface ListOptions {
@@ -613,9 +613,12 @@ async function selectRows(
     }
   }
 
+  // Rows that carry large attachments can make a full page time out or exceed the response limit. When a page fails
+  // (other than a missing table) it is retried with half as many rows, down to one, so the table still loads.
+  let pageSize = PAGE_SIZE;
   while (rows.length < cap) {
     const from = rows.length;
-    const to = Math.min(from + PAGE_SIZE, cap) - 1;
+    const to = Math.min(from + pageSize, cap) - 1;
 
     let query = client.from(tableName).select('*');
 
@@ -646,7 +649,10 @@ async function selectRows(
     }
     const { data, error } = await query.order('id', { ascending: true }).range(from, to);
 
-    if (error) return { data: null, error, truncated: false };
+    if (error) {
+      if (pageSize > 1 && !isMissingTableError(error)) { pageSize = Math.max(1, Math.floor(pageSize / 2)); continue; }
+      return { data: null, error, truncated: false };
+    }
     if (!data || data.length === 0) break;
 
     rows.push(...data);

@@ -683,6 +683,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
     return 'dashboard';
   });
+  // Read by the data sync so it can load the current page's records first without depending on page changes.
+  const activePageRef = useRef(activePage);
+  activePageRef.current = activePage;
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isMobileCompactView, setIsMobileCompactView] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -1741,7 +1744,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const hasSyncedOnceRef = useRef(false);
 
   const syncFromDatabase = useCallback(async () => {
-    const plan: Array<{ key: string; entity: string; label: string; limit?: number; order?: string }> = [
+    const fullPlan: Array<{ key: string; entity: string; label: string; limit?: number; order?: string }> = [
       { key: 'referrals', entity: 'referrals', label: 'SG Referrals' },
       { key: 'vulnerable', entity: 'vulnerable', label: 'Vulnerable SUs' },
       { key: 'challenging', entity: 'challenging', label: 'Challenging SUs' },
@@ -1785,13 +1788,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       { key: 'audit', entity: 'audit_trails', label: 'Audit Trail', limit: 500, order: 'timestamp.desc' }
     ];
 
+    // Core records every page needs, plus the records each page shows. Those load first so the page appears quickly;
+    // everything else follows in small parallel requests instead of one huge response.
+    const CORE_KEYS = ['sites', 'users', 'userGroups', 'fieldOptions', 'rolePermissions', 'appSettings', 'tableSchemas'];
+    const PAGE_KEYS: Record<string, string[]> = {
+      operations: ['maintenance', 'compliance', 'escalations', 'audit', 'roomChecks', 'welfareChecks'],
+      dashboard: ['referrals', 'vulnerable', 'challenging', 'maintenance', 'escalations', 'compliance'],
+      referrals: ['referrals'], referralsArchive: ['referrals'],
+      vulnerable: ['vulnerable'], vulnerableArchive: ['vulnerable'],
+      challenging: ['challenging'], challengingArchive: ['challenging'],
+      maintenance: ['maintenance'], compliance: ['compliance'], escalations: ['escalations'],
+      welfareChecks: ['welfareChecks', 'roomChecks'], roomChecks: ['roomChecks', 'welfareChecks'],
+      rfaWelfare: ['rfaWelfare'], mhComplaintWelfare: ['mhComplaintWelfare'], gpAppointments: ['gpAppointments'],
+      spcd: ['spcd'], irTracker: ['irRecords'], publicTransport: ['publicTransport'], dispersal: ['dispersal'],
+      booklets: ['booklets'], laundry: ['laundry', 'dailyLaundry', 'property_laundry_logs'],
+      housekeeping: ['housekeeping'], food: ['food', 'food_vendor_buffet_logs'], foodConsumption: ['foodConsumption'],
+      foodSurveys: ['foodSurveys'], foodWastage: ['foodWastage'], documents: ['documents'], vcsDirectory: ['vcsAgencies'],
+      requests: ['requests'], audit: ['audit'], dailyRegisters: ['dailyRegisterRooms', 'dailyRegisterRecords']
+    };
+    const priority = new Set<string>([...CORE_KEYS, ...(PAGE_KEYS[activePageRef.current] || [])]);
+    const firstPlan = fullPlan.filter(p => priority.has(p.key));
+    const restPlan = fullPlan.filter(p => !priority.has(p.key));
+    const toRequests = (list: typeof fullPlan) => list.map(({ key, entity, limit, order }) => ({ key, entity, limit, order }));
+
     if (!hasSyncedOnceRef.current) {
       setLiveDataStatus(prev => ({ ...prev, state: 'loading', message: 'Loading live data...' }));
     }
 
+
     try {
       const [batch, supaUsersRes] = await Promise.all([
-        apiService.batchFetchEntities(plan.map(({ key, entity, limit, order }) => ({ key, entity, limit, order }))),
+        apiService.batchFetchEntities(toRequests(firstPlan)),
         apiService.fetchSupabaseUsers()
       ]);
 
@@ -1803,142 +1830,163 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
 
-      const r = batch.results;
-      const got = <T,>(key: string): T[] | undefined => (r[key]?.success && Array.isArray(r[key].data) ? r[key].data as T[] : undefined);
-      const apply = <T,>(key: string, setter: (rows: T[]) => void) => {
-        const rows = got<T>(key);
-        if (!rows) return;
-        const pending = pendingCreatesRef.current.get(key);
-        if (pending && pending.size > 0) {
-          const have = new Set(rows.map((x: any) => x?.id));
-          setter([...Array.from(pending.values()).filter(p => !have.has(p.id)), ...rows]);
-        } else {
-          setter(rows);
+      const allResults: Record<string, any> = { ...batch.results };
+
+      const applyResults = (r: Record<string, any>, supaUsersRes?: any) => {
+        const got = <T,>(key: string): T[] | undefined => (r[key]?.success && Array.isArray(r[key].data) ? r[key].data as T[] : undefined);
+        const apply = <T,>(key: string, setter: (rows: T[]) => void) => {
+          const rows = got<T>(key);
+          if (!rows) return;
+          const pending = pendingCreatesRef.current.get(key);
+          if (pending && pending.size > 0) {
+            const have = new Set(rows.map((x: any) => x?.id));
+            setter([...Array.from(pending.values()).filter(p => !have.has(p.id)), ...rows]);
+          } else {
+            setter(rows);
+          }
+        };
+
+        // Empty results are applied too: a record deleted elsewhere must disappear here (BUG-021).
+        apply<SGReferral>('referrals', setReferrals);
+        apply<VulnerableSU>('vulnerable', setVulnerableSUs);
+        apply<ChallengingSU>('challenging', setChallengingSUs);
+        apply<MaintenanceRecord>('maintenance', setMaintenanceRecords);
+        apply<SPCDRecord>('spcd', setSpcdRecords);
+        apply<SiteInfo>('sites', rows => setSites(deduplicateSites(rows)));
+        apply<LaundryRecord>('laundry', setLaundryRecords);
+        apply<PropertyLaundryLog>('property_laundry_logs', setPropertyLaundryLogs);
+        apply<FoodRecord>('food', setFoodRecords);
+        apply<PropertyFoodVendorBuffetLog>('food_vendor_buffet_logs', setFoodVendorBuffetLogs);
+        apply<EscalationRecord>('escalations', setEscalations);
+        apply<DocumentRecord>('documents', setDocuments);
+        apply<UserGroup>('userGroups', setUserGroups);
+        apply<PublicTransportRecord>('publicTransport', setPublicTransportRecords);
+        apply<TransportFeedbackRecord>('transportFeedback', rows => {
+          setTransportFeedbackRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_FEEDBACK);
+        });
+        apply<TransportChallengeRecord>('transportChallenges', rows => {
+          setTransportChallengeRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_CHALLENGES);
+        });
+        apply<TransportFundingRequestRecord>('transportFundingRequests', rows => {
+          setTransportFundingRequests(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_FUNDING_REQUESTS);
+        });
+        apply<TransportRoomMoveRecord>('transportRoomMoveRequests', rows => {
+          setTransportRoomMoveRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_ROOM_MOVES);
+        });
+        apply<SDComplianceRecord>('compliance', setComplianceRecords);
+        apply<GPAppointmentRecord>('gpAppointments', setGpAppointmentRecords);
+        apply<RFAWelfareCheckRecord>('rfaWelfare', setRfaWelfareRecords);
+        apply<DispersalRecord>('dispersal', setDispersalRecords);
+        apply<BookletCollectionRecord>('booklets', setBookletRecords);
+        apply<SDVCSAgency>('vcsAgencies', rows => {
+          if (rows && rows.length > 0) {
+            setVcsAgencies(rows);
+          } else {
+            setVcsAgencies(prev => (prev.length > 0 ? prev : INITIAL_VCS_AGENCIES));
+          }
+        });
+        apply<IRRecord>('irRecords', setIrRecords);
+        apply<FoodWastageRecord>('foodWastage', setFoodWastageRecords);
+        apply<DailyRegisterRoom>('dailyRegisterRooms', setDailyRegisterRooms);
+        apply<DailyRegisterRecord>('dailyRegisterRecords', setDailyRegisterRecords);
+        apply<NewArrivalRecord>('newArrivals', setNewArrivalsRecords);
+        apply<EvictionRecord>('evictions', setEvictionRecords);
+        apply<WelfareCheckRecord>('welfareChecks', setWelfareChecks);
+        apply<MHComplaintWelfareRecord>('mhComplaintWelfare', setMhComplaintWelfareRecords);
+        apply<DailyLaundryRecord>('dailyLaundry', setDailyLaundryRecords);
+        apply<HousekeepingRecord>('housekeeping', setHousekeepingRecords);
+        apply<FoodConsumptionReport>('foodConsumption', setFoodConsumptionReports);
+        apply<FoodBoxRequest>('foodBoxRequests', setFoodBoxRequests);
+        apply<FoodSurveyRecord>('foodSurveys', setFoodSurveys);
+        apply<RoomCheckRecord>('roomChecks', setRoomChecks);
+        apply<DataChangeRequest>('requests', rows =>
+          setDataChangeRequests([...rows].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))))
+        );
+        apply<AuditLog>('audit', setAuditLogs);
+        apply<CustomFieldOption>('fieldOptions', rows => {
+          // Categories with no stored options (never seeded) fall back to the built-in vocabulary.
+          // Also ensure built-in system options (e.g. Care, OT, Housing Needs, Wheelchair, Dispersal Types) are always present even if DB has older partial options.
+          const validRows = rows.filter(o => o.label !== '__EMPTY__' && o.value !== '__EMPTY__');
+          const existingKeys = new Set(validRows.map(o => `${o.category}:::${String(o.value).toLowerCase().trim()}`));
+          const missingSystemDefaults = DEFAULT_FIELD_OPTIONS.filter(o => !existingKeys.has(`${o.category}:::${String(o.value).toLowerCase().trim()}`));
+          setFieldOptions([...validRows, ...missingSystemDefaults]);
+        });
+        apply<any>('rolePermissions', rows => setRolePermissions(rolePermissionsFromRows(rows)));
+        apply<any>('appSettings', rows => {
+          const global = rows.find(row => row.id === 'global');
+          if (global?.value && typeof global.value === 'object') {
+            setSettings({ 
+              ...INITIAL_SETTINGS, 
+              ...global.value,
+              requireConfirmForCreates: true,
+              requireConfirmForEdits: true,
+              requireConfirmForArchives: true,
+              requireConfirmForDeletes: true
+            });
+          }
+        });
+        apply<any>('tableSchemas', rows => {
+          tableSchemaService.hydrate(Object.fromEntries(rows.filter(s => Array.isArray(s.columns)).map(s => [s.id, s.columns])));
+        });
+
+        const supaUsers = (supaUsersRes?.success && Array.isArray(supaUsersRes.users) && supaUsersRes.users.length > 0)
+          ? supaUsersRes.users
+          : got<any>('users');
+        if (supaUsers && supaUsers.length > 0) {
+          const mappedUsers: UserAccount[] = supaUsers.map((u: any) => ({
+            id: u.id || `usr-${Date.now()}`,
+            name: u.name || u.email?.split('@')[0] || 'User',
+            email: u.email || '',
+            role: u.role || 'Staff',
+            assignedSites: Array.isArray(u.assignedSites) && u.assignedSites.length > 0
+              ? u.assignedSites
+              : (u.assignedSite ? u.assignedSite.split(',').map((s: string) => s.trim()).filter(Boolean) : ['All Sites']),
+            status: u.status === 'Inactive' ? 'Inactive' : 'Active',
+            lastActive: u.lastActive || u.updatedAt || 'Recently'
+          }));
+          setUsers(mappedUsers);
+          try {
+            localStorage.setItem('sg_tracker_users', JSON.stringify(mappedUsers));
+          } catch {}
         }
       };
 
-      // Empty results are applied too: a record deleted elsewhere must disappear here (BUG-021).
-      apply<SGReferral>('referrals', setReferrals);
-      apply<VulnerableSU>('vulnerable', setVulnerableSUs);
-      apply<ChallengingSU>('challenging', setChallengingSUs);
-      apply<MaintenanceRecord>('maintenance', setMaintenanceRecords);
-      apply<SPCDRecord>('spcd', setSpcdRecords);
-      apply<SiteInfo>('sites', rows => setSites(deduplicateSites(rows)));
-      apply<LaundryRecord>('laundry', setLaundryRecords);
-      apply<PropertyLaundryLog>('property_laundry_logs', setPropertyLaundryLogs);
-      apply<FoodRecord>('food', setFoodRecords);
-      apply<PropertyFoodVendorBuffetLog>('food_vendor_buffet_logs', setFoodVendorBuffetLogs);
-      apply<EscalationRecord>('escalations', setEscalations);
-      apply<DocumentRecord>('documents', setDocuments);
-      apply<UserGroup>('userGroups', setUserGroups);
-      apply<PublicTransportRecord>('publicTransport', setPublicTransportRecords);
-      apply<TransportFeedbackRecord>('transportFeedback', rows => {
-        setTransportFeedbackRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_FEEDBACK);
-      });
-      apply<TransportChallengeRecord>('transportChallenges', rows => {
-        setTransportChallengeRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_CHALLENGES);
-      });
-      apply<TransportFundingRequestRecord>('transportFundingRequests', rows => {
-        setTransportFundingRequests(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_FUNDING_REQUESTS);
-      });
-      apply<TransportRoomMoveRecord>('transportRoomMoveRequests', rows => {
-        setTransportRoomMoveRecords(rows && rows.length > 0 ? rows : INITIAL_TRANSPORT_ROOM_MOVES);
-      });
-      apply<SDComplianceRecord>('compliance', setComplianceRecords);
-      apply<GPAppointmentRecord>('gpAppointments', setGpAppointmentRecords);
-      apply<RFAWelfareCheckRecord>('rfaWelfare', setRfaWelfareRecords);
-      apply<DispersalRecord>('dispersal', setDispersalRecords);
-      apply<BookletCollectionRecord>('booklets', setBookletRecords);
-      apply<SDVCSAgency>('vcsAgencies', rows => {
-        if (rows && rows.length > 0) {
-          setVcsAgencies(rows);
-        } else {
-          setVcsAgencies(prev => (prev.length > 0 ? prev : INITIAL_VCS_AGENCIES));
-        }
-      });
-      apply<IRRecord>('irRecords', setIrRecords);
-      apply<FoodWastageRecord>('foodWastage', setFoodWastageRecords);
-      apply<DailyRegisterRoom>('dailyRegisterRooms', setDailyRegisterRooms);
-      apply<DailyRegisterRecord>('dailyRegisterRecords', setDailyRegisterRecords);
-      apply<NewArrivalRecord>('newArrivals', setNewArrivalsRecords);
-      apply<EvictionRecord>('evictions', setEvictionRecords);
-      apply<WelfareCheckRecord>('welfareChecks', setWelfareChecks);
-      apply<MHComplaintWelfareRecord>('mhComplaintWelfare', setMhComplaintWelfareRecords);
-      apply<DailyLaundryRecord>('dailyLaundry', setDailyLaundryRecords);
-      apply<HousekeepingRecord>('housekeeping', setHousekeepingRecords);
-      apply<FoodConsumptionReport>('foodConsumption', setFoodConsumptionReports);
-      apply<FoodBoxRequest>('foodBoxRequests', setFoodBoxRequests);
-      apply<FoodSurveyRecord>('foodSurveys', setFoodSurveys);
-      apply<RoomCheckRecord>('roomChecks', setRoomChecks);
-      apply<DataChangeRequest>('requests', rows =>
-        setDataChangeRequests([...rows].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))))
-      );
-      apply<AuditLog>('audit', setAuditLogs);
-      apply<CustomFieldOption>('fieldOptions', rows => {
-        // Categories with no stored options (never seeded) fall back to the built-in vocabulary.
-        // Also ensure built-in system options (e.g. Care, OT, Housing Needs, Wheelchair, Dispersal Types) are always present even if DB has older partial options.
-        const validRows = rows.filter(o => o.label !== '__EMPTY__' && o.value !== '__EMPTY__');
-        const existingKeys = new Set(validRows.map(o => `${o.category}:::${String(o.value).toLowerCase().trim()}`));
-        const missingSystemDefaults = DEFAULT_FIELD_OPTIONS.filter(o => !existingKeys.has(`${o.category}:::${String(o.value).toLowerCase().trim()}`));
-        setFieldOptions([...validRows, ...missingSystemDefaults]);
-      });
-      apply<any>('rolePermissions', rows => setRolePermissions(rolePermissionsFromRows(rows)));
-      apply<any>('appSettings', rows => {
-        const global = rows.find(row => row.id === 'global');
-        if (global?.value && typeof global.value === 'object') {
-          setSettings({ 
-            ...INITIAL_SETTINGS, 
-            ...global.value,
-            requireConfirmForCreates: true,
-            requireConfirmForEdits: true,
-            requireConfirmForArchives: true,
-            requireConfirmForDeletes: true
-          });
-        }
-      });
-      apply<any>('tableSchemas', rows => {
-        tableSchemaService.hydrate(Object.fromEntries(rows.filter(s => Array.isArray(s.columns)).map(s => [s.id, s.columns])));
-      });
+      const publishStatus = (done: typeof fullPlan) => {
+        const failed = done.filter(p => !allResults[p.key]?.success);
+        const missingTables = failed.filter(p => allResults[p.key]?.tableMissing).map(p => p.label);
+        hasSyncedOnceRef.current = true;
+        setLiveDataStatus({
+          state: failed.length === 0 ? 'live' : 'degraded',
+          lastSyncAt: new Date().toISOString(),
+          message: failed.length === 0
+            ? null
+            : missingTables.length === failed.length
+              ? `${missingTables.length} module(s) have no database table yet - an administrator must run the database migration. Those modules cannot save.`
+              : failed.length === done.length
+                ? 'Session not authenticated. Please log in to view and save live database records.'
+                : `${failed.length} module(s) could not be loaded from the live database. ${failed.slice(0, 3).map(p => `${p.label}: ${String(allResults[p.key]?.error || 'no response').slice(0, 140)}`).join(' | ')}`,
+          unavailable: failed.map(p => p.label),
+          missingTables
+        });
+      };
 
-      const supaUsers = (supaUsersRes?.success && Array.isArray(supaUsersRes.users) && supaUsersRes.users.length > 0)
-        ? supaUsersRes.users
-        : got<any>('users');
-      if (supaUsers && supaUsers.length > 0) {
-        const mappedUsers: UserAccount[] = supaUsers.map((u: any) => ({
-          id: u.id || `usr-${Date.now()}`,
-          name: u.name || u.email?.split('@')[0] || 'User',
-          email: u.email || '',
-          role: u.role || 'Staff',
-          assignedSites: Array.isArray(u.assignedSites) && u.assignedSites.length > 0
-            ? u.assignedSites
-            : (u.assignedSite ? u.assignedSite.split(',').map((s: string) => s.trim()).filter(Boolean) : ['All Sites']),
-          status: u.status === 'Inactive' ? 'Inactive' : 'Active',
-          lastActive: u.lastActive || u.updatedAt || 'Recently'
-        }));
-        setUsers(mappedUsers);
-        try {
-          localStorage.setItem('sg_tracker_users', JSON.stringify(mappedUsers));
-        } catch {}
-      }
-
+      applyResults(batch.results, supaUsersRes);
       refreshNotificationData();
+      publishStatus(firstPlan); // the page can show now
 
-      const failed = plan.filter(p => !r[p.key]?.success);
-      const missingTables = failed.filter(p => r[p.key]?.tableMissing).map(p => p.label);
-      hasSyncedOnceRef.current = true;
-      setLiveDataStatus({
-        state: failed.length === 0 ? 'live' : 'degraded',
-        lastSyncAt: new Date().toISOString(),
-        message: failed.length === 0
-          ? null
-          : missingTables.length === failed.length
-            ? `${missingTables.length} module(s) have no database table yet - an administrator must run the database migration. Those modules cannot save.`
-            : failed.length === plan.length
-              ? 'Session not authenticated. Please log in to view and save live database records.'
-              : `${failed.length} module(s) could not be loaded from the live database.`,
-        unavailable: failed.map(p => p.label),
-        missingTables
-      });
+      // The rest, in small parallel requests; each is applied the moment it arrives and fails on its own.
+      const chunks: Array<typeof fullPlan> = [];
+      for (let i = 0; i < restPlan.length; i += 6) chunks.push(restPlan.slice(i, i + 6));
+      await Promise.all(chunks.map(async chunk => {
+        const res = await apiService.batchFetchEntities(toRequests(chunk));
+        const results = res.success
+          ? res.results
+          : Object.fromEntries(chunk.map(p => [p.key, { success: false, error: res.error, data: [] as any[] }]));
+        Object.assign(allResults, results);
+        applyResults(results);
+      }));
+      refreshNotificationData();
+      publishStatus(fullPlan);
 
       // One-time move of records earlier versions kept only in this browser.
       if (!legacyMigrationAttemptedRef.current && hasLegacyLocalData()) {
@@ -1947,7 +1995,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const report = await migrateLegacyLocalData({
           isAdmin: verifiedRole === 'Super Admin' || verifiedRole === 'Admin',
           isSuperAdmin: verifiedRole === 'Super Admin',
-          snapshot: Object.fromEntries(plan.map(p => [p.entity === 'audit_trails' ? 'audit' : p.entity, got<any>(p.key)]))
+          snapshot: Object.fromEntries(fullPlan.map(p => [p.entity === 'audit_trails' ? 'audit' : p.entity, allResults[p.key]?.success ? allResults[p.key].data : undefined]))
         });
         purgeAllLegacyLocalStorage();
         if (report.uploaded.length > 0 || report.failed.length > 0) {
