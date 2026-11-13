@@ -9,7 +9,7 @@ import { Pagination } from '../common/Pagination';
 import { useCheckObligations } from '../../hooks/useCheckObligations';
 import { monthOptions, monthLabel } from '../checks/CheckObligationsPanel';
 import { londonNow } from '../../utils/operationsRules';
-import { monthWindows, type CheckRow, type CheckObligation } from '../../utils/checkObligations';
+import { monthWindows, isSatisfied, type CheckRow, type CheckObligation } from '../../utils/checkObligations';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { ExportDropdown } from '../common/ExportDropdown';
@@ -262,7 +262,11 @@ export const WelfareChecksView: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
+  // Which of the month's two checks the open form is recording (null for a free-standing check, counted by its date)
+  const [recording, setRecording] = useState<{ period: 1 | 2; month: string; deadline: string } | null>(null);
+
   const handleOpenCreate = () => {
+    setRecording(null);
     setFormData({
       ...initialFormState,
       officerName: loggedInUserName,
@@ -275,8 +279,14 @@ export const WelfareChecksView: React.FC = () => {
   };
 
   const handleQuickResolve = (row: CheckRow, preferredPeriod?: 1 | 2) => {
+    const period: 1 | 2 = preferredPeriod || (row.first && !isSatisfied(row.first.status) ? 1 : 2);
+    const ob = period === 1 ? row.first : row.second;
+    setRecording(row.overall === 'complete' && !preferredPeriod ? null : { period, month: selectedMonth, deadline: ob?.deadline || '' });
     setFormData({
       ...initialFormState,
+      siteId: ob?.siteId || undefined,
+      suId: ob?.suId || undefined,
+      serviceUserId: ob?.suId || undefined,
       siteName: row.siteName || ((siteFilter && siteFilter !== 'all' && siteFilter !== 'All Sites') ? siteFilter : (sites[0]?.name || '')),
       portReference: row.suReference || '',
       flatNumber: row.roomNumber || '',
@@ -292,6 +302,8 @@ export const WelfareChecksView: React.FC = () => {
 
   const handleOpenEdit = (rec: WelfareCheckRecord) => {
     setFormData({ ...rec, officerName: rec.officerName || loggedInUserName });
+    const savedPeriod = Number((rec as any).data?.checkPeriod);
+    setRecording(savedPeriod === 1 || savedPeriod === 2 ? { period: savedPeriod as 1 | 2, month: String((rec as any).data?.checkMonth || ''), deadline: '' } : null);
     setFormErrors({});
     setIsEditing(true);
     setActiveFormTab(1);
@@ -309,7 +321,9 @@ export const WelfareChecksView: React.FC = () => {
 
     const dataToSave = {
       ...formData,
-      officerName: formData.officerName || loggedInUserName
+      officerName: formData.officerName || loggedInUserName,
+      // Which of the month's two checks this is, kept with the record
+      data: { ...((formData as any).data || {}), ...(recording ? { checkPeriod: recording.period, checkMonth: recording.month } : {}) }
     };
 
     if (isEditing && formData.id) {
@@ -318,6 +332,7 @@ export const WelfareChecksView: React.FC = () => {
       await addWelfareCheck(dataToSave as any);
     }
     setIsFormOpen(false);
+    setRecording(null);
   };
 
   const handlePerformExport = (options: {
@@ -420,6 +435,23 @@ export const WelfareChecksView: React.FC = () => {
   const canViewSafeguarding = currentUserRole === 'Super Admin' || currentUserRole === 'Admin' || currentUserRole === 'Regional Manager' || currentUserRole === 'Area Manager';
 
   const fmt = (iso: string | null | undefined) => (iso ? iso.split('-').reverse().join('/') : '');
+
+  // "Check 1 - November 2026" for every recorded welfare check that counts toward a month
+  const checkLabelByVisit = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of obligationsState.rows) for (const o of [r.first, r.second]) {
+      if (o?.visitId) m.set(o.visitId, `Check ${o.period} · ${monthLabel(o.month)}${o.status === 'completed_late' ? ' (late)' : ''}`);
+    }
+    return m;
+  }, [obligationsState.rows]);
+  const checkLabelOf = (rec: WelfareCheckRecord) => {
+    const found = checkLabelByVisit.get(rec.id);
+    if (found) return found;
+    const d: any = (rec as any).data;
+    const sp = Number(d?.checkPeriod);
+    return sp ? `Check ${sp}${d?.checkMonth ? ' · ' + monthLabel(String(d.checkMonth)) : ''}` : '—';
+  };
+  const recordedFor = (o: CheckObligation | null) => (o?.visitId ? welfareChecks.find(r => r.id === o.visitId) : undefined);
 
   const renderObligationCell = (o: CheckObligation | null, row: CheckRow, period: 1 | 2) => {
     if (!o) return <span className="text-neutral-400">—</span>;
@@ -822,7 +854,7 @@ export const WelfareChecksView: React.FC = () => {
                               onClick={() => handleQuickResolve(row)}
                               className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xs text-[11px] shadow-2xs transition-colors cursor-pointer"
                             >
-                              Resolve Check
+                              Resolve Check {row.first && !isSatisfied(row.first.status) ? 1 : 2}
                             </button>
                           ) : (
                             <button
@@ -830,9 +862,23 @@ export const WelfareChecksView: React.FC = () => {
                               onClick={() => handleQuickResolve(row)}
                               className="px-2 py-1 bg-white hover:bg-[#f3f2f1] text-[#0d9488] font-semibold rounded-xs text-[11px] border border-[#cbd5e1] transition-colors cursor-pointer"
                             >
-                              Record Check
+                              {row.overall === 'complete' ? 'Record Extra Check' : `Record Check ${row.first && !isSatisfied(row.first.status) ? 1 : 2}`}
                             </button>
                           )}
+                          <div className="mt-1 flex flex-col items-end gap-0.5">
+                            {([row.first, row.second] as Array<CheckObligation | null>).map((o, i) => {
+                              const rec = recordedFor(o);
+                              if (!rec) return null;
+                              return (
+                                <div key={i} className="flex items-center gap-0.5">
+                                  <span className="text-[10px] text-neutral-500 mr-0.5">Check {i + 1}</span>
+                                  <button type="button" onClick={() => handleOpenView(rec)} title={`View Check ${i + 1}`} className="p-1 text-neutral-500 hover:text-[#0d9488] hover:bg-[#f0efeb] rounded cursor-pointer"><Eye className="w-3.5 h-3.5" /></button>
+                                  {canEditRecord() && <button type="button" onClick={() => handleOpenEdit(rec)} title={`Edit Check ${i + 1}`} className="p-1 text-neutral-500 hover:text-blue-600 hover:bg-[#f0efeb] rounded cursor-pointer"><Edit3 className="w-3.5 h-3.5" /></button>}
+                                  {canDeleteRecord() && <button type="button" onClick={() => deleteWelfareCheck(rec.id)} title={`Delete Check ${i + 1}`} className="p-1 text-neutral-500 hover:text-red-600 hover:bg-[#f0efeb] rounded cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -875,13 +921,14 @@ export const WelfareChecksView: React.FC = () => {
                       </th>
                     );
                   })}
+                  <th className="py-2.5 px-3 whitespace-nowrap">Check</th>
                   <th className="py-2.5 px-3 text-right w-24 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10 select-none">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0f0f0]">
                 {paginatedRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={visibleColumns.length + 1} className="py-12 text-center text-neutral-400">
+                    <td colSpan={visibleColumns.length + 2} className="py-12 text-center text-neutral-400">
                       <HeartHandshake className="w-8 h-8 mx-auto mb-2 text-neutral-300 opacity-60" />
                       <p className="font-medium text-xs">No welfare check records found</p>
                       <p className="text-[11px] mt-0.5">Click "New Welfare Check" to log an engagement.</p>
@@ -895,6 +942,7 @@ export const WelfareChecksView: React.FC = () => {
                           {renderColumnCell(col, rec)}
                         </td>
                       ))}
+                      <td className="py-2.5 px-3 whitespace-nowrap text-neutral-700">{checkLabelOf(rec)}</td>
                       <td className="py-2.5 px-3 text-right sticky right-0 bg-white group-hover:bg-[#fbfbfa] shadow-[-2px_0_4px_rgba(0,0,0,0.05)] z-10">
                         <div className="flex items-center justify-end gap-1">
                           <button
@@ -976,6 +1024,19 @@ export const WelfareChecksView: React.FC = () => {
               >
                 <CloseIcon className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Which check this is */}
+            <div className={`px-6 py-2 border-b text-xs flex flex-wrap items-center gap-x-3 gap-y-1 ${recording ? 'bg-teal-50 border-teal-100 text-teal-900' : 'bg-neutral-50 border-[#e5e5e5] text-neutral-600'}`}>
+              {recording ? (
+                <>
+                  <span className="font-bold">Recording Check {recording.period} of 2{recording.month ? ` · ${monthLabel(recording.month)}` : ''}</span>
+                  {recording.deadline && <span>due by {recording.deadline.split('-').reverse().join('/')}</span>}
+                  <span className="text-[11px] opacity-80">Saved against this check; the check date decides whether it counts as on time.</span>
+                </>
+              ) : (
+                <span>Free-standing check: it counts toward Check 1 (1st–{windows[0].deadline.slice(8)}th) or Check 2 (until the {windows[1].deadline.slice(8)}th) by its check date.</span>
+              )}
             </div>
 
             {/* Scrollable 3-Column Form Body */}
