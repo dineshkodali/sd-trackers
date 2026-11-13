@@ -4,7 +4,8 @@ import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconHeartHandshake as HeartHandshake, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconBuilding as Building2, IconUser as User, IconActivity as Activity, IconStethoscope as Stethoscope, IconHome as Home, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock, IconAlertOctagon as AlertOctagon, IconAlertTriangle as AlertTriangle, IconClock as Clock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { WelfareCheckRecord } from '../../types';
-import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';
+import { ServiceUserSection } from '../common/ServiceUserSection';
+import { StandardModal } from '../common/StandardModal';
 import { Pagination } from '../common/Pagination';
 import { useCheckObligations } from '../../hooks/useCheckObligations';
 import { useTabState } from '../../hooks/useTabState';
@@ -1060,461 +1061,420 @@ export const WelfareChecksView: React.FC = () => {
         </div>
       </div>
 
-      {/* CREATE / EDIT 3-COLUMN COMPREHENSIVE MODAL */}
+      {/* CREATE / EDIT MODAL */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-3 sm:p-4">
-          <div className="bg-white rounded-xs border border-[#e1dfdd] shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-[#e1dfdd] bg-[#faf9f8] flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <HeartHandshake className="w-5 h-5 text-[#0d9488]" />
-                <div>
-                  <h2 className="text-sm font-bold text-[#242424]">{isEditing ? 'Edit Welfare Check' : 'Conduct Welfare Check'}</h2>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsFormOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-[#edebe9] transition-colors cursor-pointer"
-              >
-                <CloseIcon className="w-4 h-4" />
-              </button>
-            </div>
+        <StandardModal
+          title={isEditing ? 'Edit Welfare Check' : 'Conduct Welfare Check'}
+          icon={<HeartHandshake className="w-5 h-5 text-[#0d9488]" />}
+          onClose={() => setIsFormOpen(false)}
+          onSubmit={handleFormSubmit}
+          submitLabel={isEditing ? 'Save Changes' : 'Submit Welfare Check'}
+          error={Object.keys(formErrors).length > 0 ? 'Some required details are missing. Check the fields marked in red.' : undefined}
+          banner={
+          <div className={`px-6 py-2 border-b text-xs flex flex-wrap items-center gap-x-3 gap-y-1 ${recording ? 'bg-teal-50 border-teal-100 text-teal-900' : 'bg-neutral-50 border-[#e5e5e5] text-neutral-600'}`}>
+            {recording ? (
+              <>
+                <span className="font-bold">Recording Check {recording.period} of 2{recording.month ? ` · ${monthLabel(recording.month)}` : ''}</span>
+                {recording.deadline && <span>due by {recording.deadline.split('-').reverse().join('/')}</span>}
+                <span className="text-[11px] opacity-80">Saved against this check; the check date decides whether it counts as on time.</span>
+              </>
+            ) : (
+              <span>Free-standing check: it counts toward Check 1 (1st–{windows[0].deadline.slice(8)}th) or Check 2 (until the {windows[1].deadline.slice(8)}th) by its check date.</span>
+            )}
+          </div>
+          }
+        >
+            <div className="grid grid-cols-1 gap-6">
+              {/* COLUMN 1: Location & Resident Engagement */}
+              <div className="space-y-5">
+                {/* Subsection: Check Details */}
+                <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
+                  <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-[#0d9488]" />
+                    <span>Check Details &amp; Location</span>
+                  </h3>
 
-            {/* Which check this is */}
-            <div className={`px-6 py-2 border-b text-xs flex flex-wrap items-center gap-x-3 gap-y-1 ${recording ? 'bg-teal-50 border-teal-100 text-teal-900' : 'bg-neutral-50 border-[#e5e5e5] text-neutral-600'}`}>
-              {recording ? (
-                <>
-                  <span className="font-bold">Recording Check {recording.period} of 2{recording.month ? ` · ${monthLabel(recording.month)}` : ''}</span>
-                  {recording.deadline && <span>due by {recording.deadline.split('-').reverse().join('/')}</span>}
-                  <span className="text-[11px] opacity-80">Saved against this check; the check date decides whether it counts as on time.</span>
-                </>
-              ) : (
-                <span>Free-standing check: it counts toward Check 1 (1st–{windows[0].deadline.slice(8)}th) or Check 2 (until the {windows[1].deadline.slice(8)}th) by its check date.</span>
-              )}
-            </div>
+                  {/* Central Master SU Selector */}
+                  <ServiceUserSection
+                    value={formData.suId}
+                    resetKey={`${isFormOpen}-${formData.id || 'new'}`}
+                    fieldMap={{
+                      siteName: 'siteName', siteId: 'siteId', propertyId: 'propertyId', roomId: 'roomId',
+                      portReference: p => p.externalReference || p.suReference, flatNumber: 'roomNumber',
+                      serviceUserId: 'suId'
+                    }}
+                    getForm={() => formData as Record<string, unknown>}
+                    apply={changes => setFormData(prev => ({ ...prev, ...changes }))}
+                  />
 
-            {/* Scrollable 3-Column Form Body */}
-            <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
-              <div className="grid grid-cols-1 gap-6">
-                {/* COLUMN 1: Location & Resident Engagement */}
-                <div className="space-y-5">
-                  {/* Subsection: Check Details */}
-                  <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
-                    <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4 text-[#0d9488]" />
-                      <span>Check Details &amp; Location</span>
-                    </h3>
+                  <div>
+                    <label className="block font-medium text-neutral-700 mb-1">Check Date &amp; Time *</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.checkDatetime}
+                      onChange={e => setFormData({ ...formData, checkDatetime: e.target.value })}
+                      className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                    />
+                    {formErrors.checkDatetime && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.checkDatetime}</p>}
+                  </div>
 
-                    {/* Central Master SU Selector */}
-                    <div className="p-3 bg-white border border-teal-100 rounded-xs shadow-2xs space-y-2">
-                      <div className="text-[11px] font-semibold text-teal-800 uppercase tracking-wider">
-                        Master Data Selection
-                      </div>
-                      <SiteServiceUserSelector
-                        selectedSiteId={formData.siteId}
-                        selectedSuId={formData.suId}
-                        onSelect={(sel) => {
-                          setFormData(prev => ({
-                            ...prev,
-                            siteName: sel.siteName,
-                            siteId: sel.siteId,
-                            suId: sel.suId,
-                            propertyId: sel.propertyId,
-                            roomId: sel.roomId,
-                            portReference: sel.externalReference || '',
-                            flatNumber: sel.roomNumber && sel.roomNumber !== 'Unassigned Room' ? sel.roomNumber : ''
-                          }));
-                        }}
-                      />
-                    </div>
-
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block font-medium text-neutral-700 mb-1">Check Date &amp; Time *</label>
-                      <input
-                        type="datetime-local"
-                        value={formData.checkDatetime}
-                        onChange={e => setFormData({ ...formData, checkDatetime: e.target.value })}
-                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
-                      />
-                      {formErrors.checkDatetime && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.checkDatetime}</p>}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block font-medium text-neutral-700 mb-1">SU Port / Ref *</label>
-                        <input
-                          type="text"
-                          placeholder="From the Service User profile"
-                          value={formData.portReference || ''}
-                          readOnly
-                          className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-xs font-mono cursor-not-allowed outline-hidden"
-                        />
-                        {formErrors.portReference && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.portReference}</p>}
-                      </div>
-                      <div>
-                        <label className="block font-medium text-neutral-700 mb-1">Room / Flat</label>
-                        <input
-                          type="text"
-                          placeholder="From the Service User profile"
-                          value={formData.flatNumber || ''}
-                          readOnly
-                          className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-xs cursor-not-allowed outline-hidden"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block font-medium text-neutral-700 mb-1">Overall Status</label>
-                      <select
-                        value={formData.status}
-                        onChange={e => setFormData({ ...formData, status: e.target.value })}
-                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
-                      >
-                        <option value="Completed">Completed</option>
-                        <option value="Issues Identified">Issues Identified</option>
-                        <option value="Follow-up Required">Follow-up Required</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block font-medium text-neutral-700">Conducting Officer</label>
-                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                          <Lock className="w-2.5 h-2.5" />
-                          <span>Locked to session</span>
-                        </span>
-                      </div>
+                      <label className="block font-medium text-neutral-700 mb-1">SU Port / Ref *</label>
                       <input
                         type="text"
+                        placeholder="From the Service User profile"
+                        value={formData.portReference || ''}
                         readOnly
-                        value={formData.officerName || loggedInUserName}
-                        className="w-full p-2 border border-[#e1dfdd] rounded-xs bg-[#f3f2f1] text-[#323130] font-medium text-xs cursor-not-allowed select-none outline-hidden"
+                        className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-xs font-mono cursor-not-allowed outline-hidden"
                       />
-                      <p className="text-[10px] text-neutral-400 mt-0.5">Automatically recorded as the currently authenticated user.</p>
+                      {formErrors.portReference && <p className="text-red-500 text-[10px] mt-0.5">{formErrors.portReference}</p>}
                     </div>
-
-                    <div className="pt-1">
-                      <label className="flex items-start gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.safeguardingStatementAgreement}
-                          onChange={e => setFormData({ ...formData, safeguardingStatementAgreement: e.target.checked })}
-                          className="rounded border-neutral-300 text-[#0d9488] mt-0.5"
-                        />
-                        <span className="text-neutral-700 text-xs">I agree with safeguarding compliance policy &amp; audit declarations</span>
-                      </label>
+                    <div>
+                      <label className="block font-medium text-neutral-700 mb-1">Room / Flat</label>
+                      <input
+                        type="text"
+                        placeholder="From the Service User profile"
+                        value={formData.flatNumber || ''}
+                        readOnly
+                        className="w-full p-2 border border-teal-200 rounded-xs bg-teal-50/50 text-xs cursor-not-allowed outline-hidden"
+                      />
                     </div>
                   </div>
 
-                  {/* Subsection: Contact & Engagement */}
-                  <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
-                    <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
-                      <User className="w-4 h-4 text-[#0d9488]" />
-                      <span>Contact &amp; Engagement</span>
-                    </h3>
+                  <div>
+                    <label className="block font-medium text-neutral-700 mb-1">Overall Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                    >
+                      <option value="Completed">Completed</option>
+                      <option value="Issues Identified">Issues Identified</option>
+                      <option value="Follow-up Required">Follow-up Required</option>
+                    </select>
+                  </div>
 
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-medium text-neutral-700">Conducting Officer</label>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Locked to session</span>
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formData.officerName || loggedInUserName}
+                      className="w-full p-2 border border-[#e1dfdd] rounded-xs bg-[#f3f2f1] text-[#323130] font-medium text-xs cursor-not-allowed select-none outline-hidden"
+                    />
+                    <p className="text-[10px] text-neutral-400 mt-0.5">Automatically recorded as the currently authenticated user.</p>
+                  </div>
+
+                  <div className="pt-1">
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.safeguardingStatementAgreement}
+                        onChange={e => setFormData({ ...formData, safeguardingStatementAgreement: e.target.checked })}
+                        className="rounded border-neutral-300 text-[#0d9488] mt-0.5"
+                      />
+                      <span className="text-neutral-700 text-xs">I agree with safeguarding compliance policy &amp; audit declarations</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Subsection: Contact & Engagement */}
+                <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
+                  <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-[#0d9488]" />
+                    <span>Contact &amp; Engagement</span>
+                  </h3>
+
+                  <div>
+                    <label className="block font-medium text-neutral-700 mb-1">Location Type</label>
+                    <select
+                      value={formData.locationType}
+                      onChange={e => setFormData({ ...formData, locationType: e.target.value })}
+                      className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                    >
+                      <option value="In Person - Flat">In Person - Flat / Room</option>
+                      <option value="In Person - Communal">In Person - Communal Area</option>
+                      <option value="Telephone">Telephone</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  {formData.locationType === 'Other' && (
                     <div>
-                      <label className="block font-medium text-neutral-700 mb-1">Location Type</label>
+                      <label className="block font-medium text-neutral-700 mb-1">Specify Other Location</label>
+                      <input
+                        type="text"
+                        value={formData.locationOther || ''}
+                        onChange={e => setFormData({ ...formData, locationOther: e.target.value })}
+                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-medium text-neutral-700 mb-1">Contact Method</label>
                       <select
-                        value={formData.locationType}
-                        onChange={e => setFormData({ ...formData, locationType: e.target.value })}
+                        value={formData.contactMethod}
+                        onChange={e => setFormData({ ...formData, contactMethod: e.target.value })}
                         className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
                       >
-                        <option value="In Person - Flat">In Person - Flat / Room</option>
-                        <option value="In Person - Communal">In Person - Communal Area</option>
-                        <option value="Telephone">Telephone</option>
+                        <option value="In Person">In Person</option>
+                        <option value="Phone Call">Phone Call</option>
+                        <option value="Virtual / WhatsApp">WhatsApp</option>
                         <option value="Other">Other</option>
                       </select>
                     </div>
 
-                    {formData.locationType === 'Other' && (
-                      <div>
-                        <label className="block font-medium text-neutral-700 mb-1">Specify Other Location</label>
-                        <input
-                          type="text"
-                          value={formData.locationOther || ''}
-                          onChange={e => setFormData({ ...formData, locationOther: e.target.value })}
-                          className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs"
-                        />
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block font-medium text-neutral-700 mb-1">Contact Method</label>
-                        <select
-                          value={formData.contactMethod}
-                          onChange={e => setFormData({ ...formData, contactMethod: e.target.value })}
-                          className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
-                        >
-                          <option value="In Person">In Person</option>
-                          <option value="Phone Call">Phone Call</option>
-                          <option value="Virtual / WhatsApp">WhatsApp</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block font-medium text-neutral-700 mb-1">Occupancy</label>
-                        <select
-                          value={formData.familyOrIndividual}
-                          onChange={e => setFormData({ ...formData, familyOrIndividual: e.target.value as any })}
-                          className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
-                        >
-                          <option value="Individual">Individual</option>
-                          <option value="Family">Family</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-1">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.wantsWelfareEngagement}
-                          onChange={e => setFormData({ ...formData, wantsWelfareEngagement: e.target.checked })}
-                          className="rounded border-neutral-300 text-[#0d9488]"
-                        />
-                        <span className="text-neutral-700 text-xs">Resident welcomed welfare engagement</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.validPortReference}
-                          onChange={e => setFormData({ ...formData, validPortReference: e.target.checked })}
-                          className="rounded border-neutral-300 text-[#0d9488]"
-                        />
-                        <span className="text-neutral-700 text-xs">Port reference verified against ID / paperwork</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* COLUMN 2: Health, GP & Wellbeing */}
-                <div className="space-y-5">
-                  {/* Subsection: GP & Physical Health */}
-                  <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
-                    <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
-                      <Stethoscope className="w-4 h-4 text-[#0d9488]" />
-                      <span>GP &amp; Physical Health</span>
-                    </h3>
-
                     <div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.gpRegistered}
-                          onChange={e => setFormData({ ...formData, gpRegistered: e.target.checked })}
-                          className="rounded border-neutral-300 text-[#0d9488]"
-                        />
-                        <span className="text-neutral-800 text-xs font-medium">Service User is registered with a GP Surgery</span>
-                      </label>
-                    </div>
-
-                    {formData.gpRegistered && (
-                      <div>
-                        <label className="block font-medium text-neutral-700 mb-1">GP Surgery Practice / Details</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Westside Medical Centre, Dr. Smith"
-                          value={formData.gpDetails || ''}
-                          onChange={e => setFormData({ ...formData, gpDetails: e.target.value })}
-                          className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
-                        />
-                      </div>
-                    )}
-
-                    <div className="pt-1 border-t border-neutral-200">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.physicalHealthChange}
-                          onChange={e => setFormData({ ...formData, physicalHealthChange: e.target.checked })}
-                          className="rounded border-neutral-300 text-red-600"
-                        />
-                        <span className="text-neutral-800 text-xs font-medium">Any changes or deterioration in physical health?</span>
-                      </label>
-                    </div>
-
-                    {formData.physicalHealthChange && (
-                      <div>
-                        <label className="block font-medium text-red-700 mb-1">Physical Health Details / Symptoms / Medication</label>
-                        <textarea
-                          rows={2}
-                          placeholder="Describe symptoms, appointments needed, mobility issues..."
-                          value={formData.physicalHealthDetails || ''}
-                          onChange={e => setFormData({ ...formData, physicalHealthDetails: e.target.value })}
-                          className="w-full p-2 border border-red-200 rounded-xs bg-red-50/40 text-xs focus:bg-white outline-hidden"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Subsection: Mental Health & Welfare Needs */}
-                  <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
-                    <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
-                      <HeartHandshake className="w-4 h-4 text-[#0d9488]" />
-                      <span>Mental Wellbeing &amp; General Welfare</span>
-                    </h3>
-
-                    <div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.mentalHealthChange}
-                          onChange={e => setFormData({ ...formData, mentalHealthChange: e.target.checked })}
-                          className="rounded border-neutral-300 text-red-600"
-                        />
-                        <span className="text-neutral-800 text-xs font-medium">Concerns identified regarding mental wellbeing or mood</span>
-                      </label>
-                    </div>
-
-                    {formData.mentalHealthChange && (
-                      <div>
-                        <label className="block font-medium text-red-700 mb-1">Mental Health &amp; Wellbeing Details</label>
-                        <textarea
-                          rows={2}
-                          placeholder="Observations regarding distress, isolation, anxiety, support required..."
-                          value={formData.mentalHealthDetails || ''}
-                          onChange={e => setFormData({ ...formData, mentalHealthDetails: e.target.value })}
-                          className="w-full p-2 border border-red-200 rounded-xs bg-red-50/40 text-xs focus:bg-white outline-hidden"
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block font-medium text-neutral-700 mb-1">Other Welfare Issues / Family Needs</label>
-                      <textarea
-                        rows={2}
-                        placeholder="Clothing, baby items, language support, religious needs..."
-                        value={formData.otherWelfareIssues || ''}
-                        onChange={e => setFormData({ ...formData, otherWelfareIssues: e.target.value })}
+                      <label className="block font-medium text-neutral-700 mb-1">Occupancy</label>
+                      <select
+                        value={formData.familyOrIndividual}
+                        onChange={e => setFormData({ ...formData, familyOrIndividual: e.target.value as any })}
                         className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
-                      />
+                      >
+                        <option value="Individual">Individual</option>
+                        <option value="Family">Family</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Subsection: Health Awareness */}
-                  <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-2">
-                    <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
-                      <Activity className="w-4 h-4 text-[#0d9488]" />
-                      <span>Health &amp; Infection Awareness</span>
-                    </h3>
-                    {[
-                      { key: 'coronavirusAwareness', label: 'SU has general coronavirus & infectious disease awareness' },
-                      { key: 'coronavirusSymptomsAwareness', label: 'SU is aware of infectious disease symptoms (fever, cough, fatigue)' },
-                      { key: 'previousCoronavirus', label: 'SU previously tested positive or suffered from severe symptoms' },
-                      { key: 'knowsSymptomAction', label: 'SU knows immediate action to take if symptoms arise' },
-                      { key: 'knowsWorseningContact', label: 'SU knows who to contact if condition worsens (NHS 111 / 999)' },
-                      { key: 'knowsAssistanceContact', label: 'SU knows emergency support contact details at the property' },
-                    ].map(item => (
-                      <label key={item.key} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={Boolean((formData as any)[item.key])}
-                          onChange={e => setFormData({ ...formData, [item.key]: e.target.checked })}
-                          className="rounded border-neutral-300 text-[#0d9488]"
-                        />
-                        <span className="text-neutral-700 text-xs">{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* COLUMN 3: Safety, Maintenance & Confidential Safeguarding */}
-                <div className="space-y-5">
-                  {/* Subsection: Property Safety & Maintenance */}
-                  <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
-                    <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
-                      <Home className="w-4 h-4 text-[#0d9488]" />
-                      <span>Property Safety &amp; Maintenance</span>
-                    </h3>
-
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.windowRestrictorsIntact}
-                          onChange={e => setFormData({ ...formData, windowRestrictorsIntact: e.target.checked })}
-                          className="rounded border-neutral-300 text-[#0d9488]"
-                        />
-                        <span className="text-neutral-700 text-xs font-medium">Window restrictors in place, intact and not bypassed</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.smokeAlarmsWorking}
-                          onChange={e => setFormData({ ...formData, smokeAlarmsWorking: e.target.checked })}
-                          className="rounded border-neutral-300 text-[#0d9488]"
-                        />
-                        <span className="text-neutral-700 text-xs font-medium">Smoke alarms / detectors working and uncovered</span>
-                      </label>
-                    </div>
-
-                    <div>
-                      <label className="block font-medium text-neutral-700 mb-1">Maintenance Issues Reported During Check</label>
-                      <textarea
-                        rows={2}
-                        placeholder="Leaks, heating, lighting, locks or repairs requested..."
-                        value={formData.maintenanceIssues || ''}
-                        onChange={e => setFormData({ ...formData, maintenanceIssues: e.target.value })}
-                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                  <div className="space-y-2 pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.wantsWelfareEngagement}
+                        onChange={e => setFormData({ ...formData, wantsWelfareEngagement: e.target.checked })}
+                        className="rounded border-neutral-300 text-[#0d9488]"
                       />
-                    </div>
-                  </div>
+                      <span className="text-neutral-700 text-xs">Resident welcomed welfare engagement</span>
+                    </label>
 
-                  {/* Subsection: Confidential Safeguarding Notes */}
-                  <div className="bg-amber-50/40 border-2 border-amber-300 rounded-xs p-4 space-y-3">
-                    <div className="flex items-start gap-2 text-amber-900 pb-1 border-b border-amber-200">
-                      <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wide">
-                          DO NOT SHARE WITH SU — Confidential
-                        </h4>
-                        <p className="text-[10px] text-amber-800">
-                          Strictly for Housing Officers &amp; Management. Never share with resident.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-neutral-800 mb-1">
-                        Safeguarding / Welfare Concerns Identified
-                      </label>
-                      <textarea
-                        rows={6}
-                        placeholder="Record professional observations, safeguarding flags, indicators of exploitation, radicalisation, abuse, or escalation recommendations..."
-                        value={formData.safeguardingConcerns || ''}
-                        onChange={e => setFormData({ ...formData, safeguardingConcerns: e.target.value })}
-                        className="w-full p-2.5 border border-amber-300 bg-white rounded-xs text-xs focus:border-amber-500 outline-hidden font-medium"
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.validPortReference}
+                        onChange={e => setFormData({ ...formData, validPortReference: e.target.checked })}
+                        className="rounded border-neutral-300 text-[#0d9488]"
                       />
-                    </div>
+                      <span className="text-neutral-700 text-xs">Port reference verified against ID / paperwork</span>
+                    </label>
                   </div>
                 </div>
               </div>
 
-              {/* Modal Footer Buttons */}
-              <div className="pt-4 border-t border-[#e5e5e5] flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsFormOpen(false)}
-                  className="px-4 py-1.5 border border-neutral-300 text-neutral-700 rounded-xs hover:bg-neutral-100 transition-colors cursor-pointer text-xs font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-1.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold rounded-xs transition-colors shadow-2xs cursor-pointer text-xs"
-                >
-                  {isEditing ? 'Save Changes' : 'Submit Welfare Check'}
-                </button>
+              {/* COLUMN 2: Health, GP & Wellbeing */}
+              <div className="space-y-5">
+                {/* Subsection: GP & Physical Health */}
+                <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
+                  <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
+                    <Stethoscope className="w-4 h-4 text-[#0d9488]" />
+                    <span>GP &amp; Physical Health</span>
+                  </h3>
+
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.gpRegistered}
+                        onChange={e => setFormData({ ...formData, gpRegistered: e.target.checked })}
+                        className="rounded border-neutral-300 text-[#0d9488]"
+                      />
+                      <span className="text-neutral-800 text-xs font-medium">Service User is registered with a GP Surgery</span>
+                    </label>
+                  </div>
+
+                  {formData.gpRegistered && (
+                    <div>
+                      <label className="block font-medium text-neutral-700 mb-1">GP Surgery Practice / Details</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Westside Medical Centre, Dr. Smith"
+                        value={formData.gpDetails || ''}
+                        onChange={e => setFormData({ ...formData, gpDetails: e.target.value })}
+                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                      />
+                    </div>
+                  )}
+
+                  <div className="pt-1 border-t border-neutral-200">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.physicalHealthChange}
+                        onChange={e => setFormData({ ...formData, physicalHealthChange: e.target.checked })}
+                        className="rounded border-neutral-300 text-red-600"
+                      />
+                      <span className="text-neutral-800 text-xs font-medium">Any changes or deterioration in physical health?</span>
+                    </label>
+                  </div>
+
+                  {formData.physicalHealthChange && (
+                    <div>
+                      <label className="block font-medium text-red-700 mb-1">Physical Health Details / Symptoms / Medication</label>
+                      <textarea
+                        rows={2}
+                        placeholder="Describe symptoms, appointments needed, mobility issues..."
+                        value={formData.physicalHealthDetails || ''}
+                        onChange={e => setFormData({ ...formData, physicalHealthDetails: e.target.value })}
+                        className="w-full p-2 border border-red-200 rounded-xs bg-red-50/40 text-xs focus:bg-white outline-hidden"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Subsection: Mental Health & Welfare Needs */}
+                <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
+                  <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
+                    <HeartHandshake className="w-4 h-4 text-[#0d9488]" />
+                    <span>Mental Wellbeing &amp; General Welfare</span>
+                  </h3>
+
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.mentalHealthChange}
+                        onChange={e => setFormData({ ...formData, mentalHealthChange: e.target.checked })}
+                        className="rounded border-neutral-300 text-red-600"
+                      />
+                      <span className="text-neutral-800 text-xs font-medium">Concerns identified regarding mental wellbeing or mood</span>
+                    </label>
+                  </div>
+
+                  {formData.mentalHealthChange && (
+                    <div>
+                      <label className="block font-medium text-red-700 mb-1">Mental Health &amp; Wellbeing Details</label>
+                      <textarea
+                        rows={2}
+                        placeholder="Observations regarding distress, isolation, anxiety, support required..."
+                        value={formData.mentalHealthDetails || ''}
+                        onChange={e => setFormData({ ...formData, mentalHealthDetails: e.target.value })}
+                        className="w-full p-2 border border-red-200 rounded-xs bg-red-50/40 text-xs focus:bg-white outline-hidden"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block font-medium text-neutral-700 mb-1">Other Welfare Issues / Family Needs</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Clothing, baby items, language support, religious needs..."
+                      value={formData.otherWelfareIssues || ''}
+                      onChange={e => setFormData({ ...formData, otherWelfareIssues: e.target.value })}
+                      className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Subsection: Health Awareness */}
+                <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-2">
+                  <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
+                    <Activity className="w-4 h-4 text-[#0d9488]" />
+                    <span>Health &amp; Infection Awareness</span>
+                  </h3>
+                  {[
+                    { key: 'coronavirusAwareness', label: 'SU has general coronavirus & infectious disease awareness' },
+                    { key: 'coronavirusSymptomsAwareness', label: 'SU is aware of infectious disease symptoms (fever, cough, fatigue)' },
+                    { key: 'previousCoronavirus', label: 'SU previously tested positive or suffered from severe symptoms' },
+                    { key: 'knowsSymptomAction', label: 'SU knows immediate action to take if symptoms arise' },
+                    { key: 'knowsWorseningContact', label: 'SU knows who to contact if condition worsens (NHS 111 / 999)' },
+                    { key: 'knowsAssistanceContact', label: 'SU knows emergency support contact details at the property' },
+                  ].map(item => (
+                    <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean((formData as any)[item.key])}
+                        onChange={e => setFormData({ ...formData, [item.key]: e.target.checked })}
+                        className="rounded border-neutral-300 text-[#0d9488]"
+                      />
+                      <span className="text-neutral-700 text-xs">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </form>
-          </div>
-        </div>
+
+              {/* COLUMN 3: Safety, Maintenance & Confidential Safeguarding */}
+              <div className="space-y-5">
+                {/* Subsection: Property Safety & Maintenance */}
+                <div className="bg-[#faf9f8] border border-[#e5e5e5] rounded-xs p-4 space-y-3">
+                  <h3 className="font-semibold text-neutral-800 pb-1 border-b border-neutral-200 flex items-center gap-1.5">
+                    <Home className="w-4 h-4 text-[#0d9488]" />
+                    <span>Property Safety &amp; Maintenance</span>
+                  </h3>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.windowRestrictorsIntact}
+                        onChange={e => setFormData({ ...formData, windowRestrictorsIntact: e.target.checked })}
+                        className="rounded border-neutral-300 text-[#0d9488]"
+                      />
+                      <span className="text-neutral-700 text-xs font-medium">Window restrictors in place, intact and not bypassed</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.smokeAlarmsWorking}
+                        onChange={e => setFormData({ ...formData, smokeAlarmsWorking: e.target.checked })}
+                        className="rounded border-neutral-300 text-[#0d9488]"
+                      />
+                      <span className="text-neutral-700 text-xs font-medium">Smoke alarms / detectors working and uncovered</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-neutral-700 mb-1">Maintenance Issues Reported During Check</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Leaks, heating, lighting, locks or repairs requested..."
+                      value={formData.maintenanceIssues || ''}
+                      onChange={e => setFormData({ ...formData, maintenanceIssues: e.target.value })}
+                      className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Subsection: Confidential Safeguarding Notes */}
+                <div className="bg-amber-50/40 border-2 border-amber-300 rounded-xs p-4 space-y-3">
+                  <div className="flex items-start gap-2 text-amber-900 pb-1 border-b border-amber-200">
+                    <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wide">
+                        DO NOT SHARE WITH SU — Confidential
+                      </h4>
+                      <p className="text-[10px] text-amber-800">
+                        Strictly for Housing Officers &amp; Management. Never share with resident.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-neutral-800 mb-1">
+                      Safeguarding / Welfare Concerns Identified
+                    </label>
+                    <textarea
+                      rows={6}
+                      placeholder="Record professional observations, safeguarding flags, indicators of exploitation, radicalisation, abuse, or escalation recommendations..."
+                      value={formData.safeguardingConcerns || ''}
+                      onChange={e => setFormData({ ...formData, safeguardingConcerns: e.target.value })}
+                      className="w-full p-2.5 border border-amber-300 bg-white rounded-xs text-xs focus:border-amber-500 outline-hidden font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+        </StandardModal>
       )}
 
       {/* DETAIL VIEW MODAL */}

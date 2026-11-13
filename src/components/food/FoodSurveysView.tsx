@@ -4,7 +4,7 @@ import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconSoup as Soup, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconCircleCheck as CheckCircle2, IconToolsKitchen2 as Utensils, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { FoodSurveyRecord, FoodMealRating, MealRatingValue } from '../../types';
-import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';
+import { ServiceUserSection } from '../common/ServiceUserSection';
 import { Pagination } from '../common/Pagination';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
@@ -605,20 +605,16 @@ export const FoodSurveysView: React.FC = () => {
                     <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">
                       Master Data Selection
                     </div>
-                    <SiteServiceUserSelector
-                      selectedSiteId={formData.siteId}
-                      selectedSuId={formData.suId}
-                      onSelect={(sel) => {
-                        setFormData(prev => ({
-                          ...prev,
-                          siteName: sel.siteName,
-                          siteId: sel.siteId,
-                          suId: sel.suId,
-                          propertyId: sel.propertyId,
-                          roomId: sel.roomId,
-                          portReference: sel.externalReference || ''
-                        }));
+                    <ServiceUserSection
+                      title={null}
+                      value={formData.suId}
+                      resetKey={`${isFormOpen}-${formData.id || 'new'}`}
+                      fieldMap={{
+                        siteName: 'siteName', siteId: 'siteId', propertyId: 'propertyId', roomId: 'roomId',
+                        portReference: p => p.externalReference || p.suReference
                       }}
+                      getForm={() => formData as Record<string, unknown>}
+                      apply={changes => setFormData(prev => ({ ...prev, ...changes }))}
                     />
                   </div>
 

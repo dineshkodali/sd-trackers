@@ -294,3 +294,8 @@ Defaults used for the open decisions: tab names "Required checks" / "Inspection 
 | 7 Server validation | Not started. |
 | 8 Route table | Only per-page tab memory done; no URL changes. |
 Not verified in a browser.
+
+### Status: steps 5 and 6 (first pass)
+- **5 Selector migration:** Welfare Checks and Food Surveys now use the shared `ServiceUserSection` (picker + autofill + notice). **Room Checks keeps `SiteServiceUserSelector` on purpose**: a room check is about a room, and the old selector can choose a room with no resident; the shared picker is resident-only. Revisit once a room-first variant exists.
+- **6 Modal standard:** new `StandardModal` (overlay, header, own scrolling body, sticky footer, Escape, dialog semantics), `ModalFormSection`, `FormField` in `src/components/common/StandardModal.tsx`, and `src/utils/formValidation.ts` (required, date, number, choice, length, http/https URL; 6 tests). Applied to the Welfare Check form shell. The Room Check form, Food Survey form and the ~80 other hand-built modals still use their own shells; `DynamicRecordFormModal` is unchanged.
+- Server-side validation (step 7) and the route table (step 8) are still not started. Not verified in a browser.
