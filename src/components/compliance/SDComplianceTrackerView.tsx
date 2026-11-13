@@ -18,6 +18,7 @@ import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from
 import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 import { IntentFilterBanner } from '../common/IntentFilterBanner';
 import { splitList } from '../../utils/navigationIntent';
+import { complianceCloseBlockedReason, hasEvidenceFile } from '../../utils/closureRules';
 import { complianceInfo, londonToday } from '../../utils/operationsRules';
 
 const complianceExportColumns: ExportColumnOption[] = [
@@ -171,6 +172,9 @@ export const SDComplianceTrackerView: React.FC = () => {
       }
     }
 
+    const blocked = complianceCloseBlockedReason(null, { ...data, status: data.status || (hasEvidenceFile({ attachments: data.attachments }) ? 'Compliant' : 'In Progress'), attachments: Array.isArray(data.attachments) ? data.attachments : [] });
+    if (blocked) throw new Error(blocked); // keeps the form open with the reason
+
     addComplianceRecord({
       srNo: complianceRecords.length + 1,
       complianceType: data.complianceType || 'Fire Risk Assessment (FRA)',
@@ -179,7 +183,8 @@ export const SDComplianceTrackerView: React.FC = () => {
       contractorEmail: data.contractorEmail || '',
       issuedDate: data.issuedDate || new Date().toISOString().slice(0, 10),
       expiryDate: data.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      status: (data.status as any) || 'Compliant',
+      // With no document yet the record is still In Progress; it becomes Compliant once the certificate is attached.
+      status: (data.status as any) || (hasEvidenceFile({ attachments: data.attachments }) ? 'Compliant' : 'In Progress'),
       actionTaken: data.actionTaken || '',
       previousContractor: data.previousContractor || '',
       siteName: effectiveSite || '',
@@ -191,6 +196,8 @@ export const SDComplianceTrackerView: React.FC = () => {
 
   const handleEditSubmit = (data: Partial<SDComplianceRecord>) => {
     if (!editingRecord) return;
+    const blocked = complianceCloseBlockedReason(editingRecord, { ...editingRecord, ...data, attachments: Array.isArray(data.attachments) ? data.attachments : [] });
+    if (blocked) throw new Error(blocked); // keeps the form open with the reason
     updateComplianceRecord(editingRecord.id, {
       ...editingRecord,
       ...data,

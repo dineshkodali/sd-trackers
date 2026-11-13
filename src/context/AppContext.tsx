@@ -101,6 +101,7 @@ import { diagnosticLogger, parseJwtPayload } from '../utils/diagnosticLogger';
 import { makeIntent, type NavigationIntent } from '../utils/navigationIntent';
 import { resolveRecovery } from '../auth/recoveryFlow';
 import { closeBlockedReason } from '../utils/maintenancePriority';
+import { escalationCloseBlockedReason, complianceCloseBlockedReason } from '../utils/closureRules';
 import { AuthBlockedInfo } from '../components/auth/AuthenticationBlockedView';
 import { realtimeService, RealtimeTableChangeEvent } from '../services/realtimeService';
 import { LEAD_OFFICER_ROLES, findUserForOfficer, officerLabelFor, hasAllSitesAccess } from '../utils/leadOfficerSync';
@@ -3285,6 +3286,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- CRUD: Escalations ---
   const addEscalation = useCallback((data: Omit<EscalationRecord, 'id' | 'createdAt'>) => {
+    // An escalation cannot be created already Resolved without saying what was done.
+    const blocked = escalationCloseBlockedReason(null, data);
+    if (blocked) { reportPersistFailure('Saving the escalation', blocked); return; }
     const execute = () => {
       const rec: EscalationRecord = {
         ...data,
@@ -3362,12 +3366,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateEscalation = useCallback((id: string, updates: Partial<EscalationRecord>) => {
     const current = escalations.find(e => e.id === id);
     if (!current) return;
+    const blocked = escalationCloseBlockedReason(current, { ...current, ...updates });
+    if (blocked) { reportPersistFailure('Resolving the escalation', blocked); return; }
     setEscalations(prev => prev.map(e => (e.id === id ? { ...e, ...updates } : e)));
     persistUpdate('escalations', 'Escalation changes', setEscalations, current, updates, {
       action: 'UPDATE', module: 'Escalations', targetItem: `Escalation #${id}`, site: current.site,
       details: `Updated escalation details: ${Object.keys(updates).join(', ')}.`
     });
-  }, [escalations, persistUpdate]);
+  }, [escalations, persistUpdate, reportPersistFailure]);
 
   const deleteEscalation = useCallback((id: string) => {
     const current = escalations.find(e => e.id === id);
@@ -3918,6 +3924,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- 2. CRUD: SD-Compliance Tracker (compliance_records) ---
   const addComplianceRecord = useCallback((data: Omit<SDComplianceRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const blocked = complianceCloseBlockedReason(null, data);
+    if (blocked) { reportPersistFailure('Saving the compliance record', blocked); return; }
     const now = new Date().toISOString();
     const newRecord: SDComplianceRecord = {
       ...data,
@@ -3943,13 +3951,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateComplianceRecord = useCallback((id: string, updates: Partial<SDComplianceRecord>) => {
     const current = complianceRecords.find(r => r.id === id);
     if (!current) return;
+    const blocked = complianceCloseBlockedReason(current, { ...current, ...updates });
+    if (blocked) { reportPersistFailure('Marking the record Compliant', blocked); return; }
     const changes: Partial<SDComplianceRecord> = { ...updates, updatedAt: new Date().toISOString() };
     setComplianceRecords(prev => prev.map(rec => rec.id === id ? { ...rec, ...changes } : rec));
     persistUpdate('compliance', 'Compliance record changes', setComplianceRecords, current, changes, {
       action: 'UPDATE', module: 'Settings', targetItem: `Compliance: ${current.complianceType}`, site: current.siteName || 'All Sites',
       details: 'Updated compliance certificate status.'
     });
-  }, [complianceRecords, persistUpdate]);
+  }, [complianceRecords, persistUpdate, reportPersistFailure]);
 
   const deleteComplianceRecord = useCallback((id: string) => {
     const current = complianceRecords.find(r => r.id === id);

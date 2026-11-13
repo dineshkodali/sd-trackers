@@ -320,3 +320,9 @@ Not done - the rest needs a decision per module, because the status words and th
 | SD-Compliance | Compliant | In Progress, Expiring Soon, Expired, Overdue | certificate / document |
 | Food box requests, MH complaint welfare, Public transport, Laundry, GP, Booklets, Room moves | Completed / Collected / Resolved / Attended | Pending / Queued / Scheduled / In progress... | varies |
 A shared close-guard (generalising `closeBlockedReason`) can enforce whichever proofs are chosen.
+
+### Closing rules added: Escalations and SD-Compliance
+- **Escalations:** cannot be set to Resolved (or Closed) unless "Action Taken" (or a resolution summary) has at least 10 characters. Active, Under Investigation and Awaiting Multi-Agency Review are the open states.
+- **SD-Compliance:** cannot be set to Compliant without an attached certificate / evidence file (file list or a stored link). A new record with no file starts as In Progress; In Progress, Expiring Soon, Expired and Overdue are the open states.
+- Only the moment of closing is checked, so records already Resolved/Compliant stay editable. Enforced in the forms (the reason shows in the form, which stays open) and again in `AppContext` add/update. Rules: `src/utils/closureRules.ts`.
+- Known limit: renewing an Expired certificate to Compliant is satisfied by any file already attached, including the old one.

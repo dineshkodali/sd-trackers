@@ -12,6 +12,7 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { ESCALATIONS_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
+import { escalationCloseBlockedReason } from '../../utils/closureRules';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
@@ -189,6 +190,8 @@ export const EscalationsView: React.FC = () => {
   };
 
   const handleCreateSubmit = (data: Partial<EscalationRecord>) => {
+    const blocked = escalationCloseBlockedReason(null, data);
+    if (blocked) throw new Error(blocked); // keeps the form open with the reason
     const nowIso = new Date().toISOString();
     const suName = data.suName || '';
     const incidentType = data.incidentType || 'Safeguarding Concern';
@@ -225,6 +228,8 @@ export const EscalationsView: React.FC = () => {
 
   const handleEditSubmit = (data: Partial<EscalationRecord>) => {
     if (!editingRecord) return;
+    const blocked = escalationCloseBlockedReason(editingRecord, { ...editingRecord, ...data });
+    if (blocked) throw new Error(blocked); // keeps the form open with the reason
     const site = data.siteName || data.site || editingRecord.siteName || editingRecord.site;
     const incidentType = data.incidentType || editingRecord.incidentType || 'Safeguarding Incident';
 
