@@ -18,7 +18,7 @@ import {
   TrackerHeader, TabSwitcher, CustomizeTableButton, PrimaryButton, TablePanel, SortableTh, ActionsTh, actionsTdCls, EmptyRow, SkeletonRows,
   theadRowCls, tbodyCls, tdCls, AuditAccountability
 } from '../common/TrackerLayout';
-import { ExportModal, type ExportFormat, type ExportOrientation, type ExportScope } from '../common/ExportModal';
+import { ExportModal, type ExportColumnOption, type ExportFormat, type ExportOrientation, type ExportScope } from '../common/ExportModal';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { useTableSchema } from '../../hooks/useTableSchema';
@@ -29,6 +29,9 @@ import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
 const policy = DEFAULT_ABSENCE_POLICY;
+
+const toColumnOptions = (columns: ExportColumnOption[]): ExportColumnOption[] =>
+  columns.map(({ id, label, defaultSelected }) => ({ id, label, defaultSelected }));
 
 type Tab = 'roll' | 'records' | 'followups';
 
@@ -902,14 +905,13 @@ export const SUAttendanceTrackerView: React.FC = () => {
               ? (s, e) => allFuRows.filter(f => { const d = String(f.absenceStartDate).slice(0, 10); return (!s || d >= s) && (!e || d <= e); }).length
               : undefined
         }
-        availableColumns={
-          (exportModal.mode === 'roll'
+        availableColumns={toColumnOptions(
+          exportModal.mode === 'roll'
             ? rollExportCols
             : exportModal.mode === 'records'
               ? recExportCols
               : fuExportCols
-          ).map(({ id, label, defaultSelected }) => ({ id, label, defaultSelected }))
-        }
+        )}
         getPreviewData={getExportPreviewData}
         onExport={handlePerformExport}
       />

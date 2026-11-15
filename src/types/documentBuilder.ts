@@ -153,6 +153,7 @@ export interface DocumentBuilderRecord {
   site: string;
   title: string;
   documentNumber: string;
+  category?: string;
   status: DocumentStatus;
   fieldValues: Record<string, any>;
   fieldDefinitions?: TemplateFieldDefinition[];

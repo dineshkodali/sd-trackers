@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { FIELD_CATEGORIES_META, DEFAULT_FIELD_OPTIONS } from '../src/data/defaultFieldOptions.js';
 import { DISABILITY_CATEGORY_OPTIONS, DEFAULT_DISABILITY_TYPE_OPTIONS } from '../src/types/masterData.js';
 import { isStayingInRange, buildGuests, emptyGuestContext } from '../src/utils/guestStats.js';
+import type { DailyRegisterRecord } from '../src/types/index.js';
 
 test('Disability Options: categories and types are properly registered in FIELD_CATEGORIES_META', () => {
   const metaKeys = new Set(FIELD_CATEGORIES_META.map(m => m.key));
@@ -87,7 +88,7 @@ test('Demographics: Date range filtering identifies residents staying within ran
     name: 'Resident One',
     checkInDate: '2026-11-01',
     occupied: 'Yes'
-  };
+  } as DailyRegisterRecord;
 
   const rec2 = {
     id: 'r2',
@@ -97,7 +98,7 @@ test('Demographics: Date range filtering identifies residents staying within ran
     name: 'Resident Two',
     checkInDate: '2026-11-15', // check-in in the future
     occupied: 'Yes'
-  };
+  } as DailyRegisterRecord;
 
   const rec3 = {
     id: 'r3',
@@ -107,7 +108,7 @@ test('Demographics: Date range filtering identifies residents staying within ran
     name: 'Resident Three',
     checkInDate: '2026-10-20',
     occupied: 'No' // vacant
-  };
+  } as DailyRegisterRecord;
 
   // Range: 2026-11-01 to 2026-11-08
   assert.equal(isStayingInRange(rec1, '2026-11-01', '2026-11-08'), true);

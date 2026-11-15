@@ -23,6 +23,7 @@ export interface ServiceUserReportRecord {
   fileFormat: 'pdf' | 'docx' | 'xlsx' | 'csv' | string;
   fileName: string;
   fileSize?: number;
+  fileStorageRef?: string;
   fileUrl?: string;
   storageBucket?: string;
   storagePath?: string;
@@ -57,10 +58,15 @@ export interface TrackReportInput {
   fileFormat: string;
   fileName: string;
   fileSize?: number;
+  fileSizeBytes?: number;
+  fileStorageRef?: string;
   fileBlob?: Blob;
   fileDataUrl?: string;
   fileBase64?: string;
   status?: 'Generated' | 'Saved' | 'Downloaded' | 'Archived';
+  generatedById?: string;
+  generatedByName?: string;
+  generatedByRole?: string;
   notes?: string;
   metadata?: Record<string, any>;
 }

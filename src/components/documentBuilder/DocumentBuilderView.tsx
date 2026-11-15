@@ -703,7 +703,10 @@ export const DocumentBuilderView: React.FC = () => {
       showToast(`Saved ${name}`);
 
       // Track against relevant resident victim(s) or selected SU
-      const victims = irState?.victims || [];
+      const victims = (irState?.core.victims || '')
+        .split(/[,;\n]/)
+        .map(name => name.trim())
+        .filter(Boolean);
       const targets = victims.length > 0
         ? victims
         : (selectedSUKey ? [siteSUs.find(s => s.id === selectedSUKey)?.name] : []).filter(Boolean);
@@ -720,14 +723,14 @@ export const DocumentBuilderView: React.FC = () => {
             suName: matched.name,
             suReference: matched.portRef,
             site: selectedSite,
-            reportName: `Incident Report — ${irReport?.ref || documentTitle || 'Incident'}`,
+            reportName: `Incident Report — ${documentTitle || 'Incident'}`,
             reportType: 'Incident Report',
             reportCategory: 'Safeguarding & Incidents',
             fileFormat: 'docx',
             fileName: name,
             fileBlob: blob,
             status: 'Downloaded',
-            metadata: { incidentRef: irReport?.ref, date: irReport?.date }
+            metadata: { date: irReport?.date }
           });
         }
       }

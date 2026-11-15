@@ -51,7 +51,7 @@ export const SUReportsHistoryTab: React.FC<SUReportsHistoryTabProps> = ({
   serviceUser,
   onNavigateToReportGenerator,
 }) => {
-  const { currentUserRole, currentUserName, currentUserId, requestConfirmation } = useApp();
+  const { currentUserRole, currentUserName, requestConfirmation } = useApp();
   const isSuperAdmin = currentUserRole === 'Super Admin';
 
   const [reports, setReports] = useState<ServiceUserReportRecord[]>([]);
@@ -856,7 +856,6 @@ export const SUReportsHistoryTab: React.FC<SUReportsHistoryTabProps> = ({
           <div className="p-3 border-t border-neutral-200 bg-[#faf9f8]">
             <Pagination
               currentPage={currentPage}
-              totalPages={Math.ceil(filteredReports.length / pageSize)}
               totalItems={filteredReports.length}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
@@ -864,7 +863,6 @@ export const SUReportsHistoryTab: React.FC<SUReportsHistoryTabProps> = ({
                 setPageSize(size);
                 setCurrentPage(1);
               }}
-              pageSizeOptions={[5, 10, 20, 50]}
             />
           </div>
         )}

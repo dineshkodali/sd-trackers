@@ -10,6 +10,7 @@ import type {
   DocumentTemplate,
   TemplateVersion,
   DocumentBuilderRecord,
+  DocumentStatus,
   TemplateWithVersion,
   DocumentBuilderApiResponse,
 } from '../types/documentBuilder';
@@ -363,7 +364,7 @@ export function readCachedLocalRecords(): DocumentBuilderRecord[] {
 }
 
 export function saveCachedLocalRecord(rec: DocumentBuilderRecord): void {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined') return;
   try {
     const list = readCachedLocalRecords();
     const idx = list.findIndex(r => r.id === rec.id);

@@ -1233,9 +1233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     try {
       const res = await emailNotificationService.triggerNotification(eventCode, payload, options);
-      if (res.success && res.delivered) {
-        console.log(`[Production Email Dispatched] Event: ${eventCode}, Recipients:`, res.recipients);
-      } else if (!res.success) {
+      if (!res.success) {
         console.warn(`[Production Email Failed] Event: ${eventCode}:`, res.error || (res as any).message);
       }
       const updatedLogs = await emailNotificationService.getLogs();
@@ -3333,10 +3331,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           reason: rec.incidentNotes || 'Safeguarding incident requiring higher authority intervention.',
           actionRequired: rec.actionTaken || 'Immediate review & multi-agency response.',
           reportedBy: rec.reportedBy || rec.personReporting || currentUserName
-        }).then(res => {
-          if (res.success) {
-            console.log('Automated escalation email notification dispatched via SMTP:', res.messageId || 'Success');
-          }
         }).catch(err => console.error('Failed to dispatch automated escalation email alert:', err));
 
         // Push real-time urgent notification to notification drawer
