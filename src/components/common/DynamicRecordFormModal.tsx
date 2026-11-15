@@ -715,8 +715,8 @@ export function DynamicRecordFormModal<T = any>({
         description: d.description
       }));
 
-      // Also merge any static/default options defined directly on col.options
-      if (col.options) {
+      // Only fallback to static col.options if this category has no dynamic options configured
+      if (list.length === 0 && col.options) {
         const rawStatic = typeof col.options === 'function' ? col.options({ ...effectiveContext, formData }) : col.options;
         (rawStatic || []).forEach((opt: any) => {
           const val = typeof opt === 'string' ? opt : opt?.value;

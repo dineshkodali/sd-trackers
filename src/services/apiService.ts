@@ -179,16 +179,13 @@ export function shouldPreferDirectSupabase(): boolean {
         return true;
       }
     } catch {}
-    const override = localStorage.getItem('sd_api_url') || '';
-    if (override && !override.includes('trackers.sdcdms.co.uk')) {
-      return false;
+    // If direct fallback was explicitly activated due to server unreachable
+    if (directFallbackActive) {
+      return true;
     }
-    const envVal = (import.meta as any).env?.VITE_API_URL || '';
-    const isDeadApi = !envVal || envVal.includes('api.trackers.sdcdms.co.uk') || envVal.includes('trackers.sdcdms.co.uk');
+    // Only purely static client hosts without an Express server proxy
     const host = window.location.hostname;
-    // On static hosting (AWS Amplify S3 / CloudFront, or any non-localhost host without a separate external backend)
-    // there is no Express backend running on the same origin.
-    if (host.includes('sdcdms') || host.includes('amplifyapp') || (isDeadApi && host !== 'localhost' && host !== '127.0.0.1')) {
+    if (host.includes('amplifyapp.com')) {
       return true;
     }
   }

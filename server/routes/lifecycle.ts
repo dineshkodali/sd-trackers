@@ -72,33 +72,87 @@ export async function applyLifecycle(
       : { ok: false, status: 500, error: 'Could not load the record.' };
   }
   if (!row) return { ok: false, status: 404, error: 'Record not found.' };
-  if (row.lifecycle_state === undefined) return { ok: false, status: 503, error: migrationHint };
+
+  const currentLifecycleState: LifecycleState = (row.lifecycle_state || row.data?.lifecycle_state || (row.status === 'Archived' ? 'Archived' : (row.status === 'Deleted' ? 'Deleted' : 'Active'))) as LifecycleState;
 
   const sites = entity === 'users'
     ? [...splitSites(row.assigned_site), ...((await userSitesMap(db, [row.id])).get(row.id) || [])]
     : [row.name];
   const verdict = checkTransition(entity, action, actorOf(req), {
     id: String(row.id),
-    state: (row.lifecycle_state || 'Active') as LifecycleState,
-    previousState: row.lifecycle_prev_state,
+    state: currentLifecycleState,
+    previousState: row.lifecycle_prev_state || row.data?.lifecycle_prev_state,
     role: row.role,
     sites,
   });
   if (verdict.ok === false) return { ok: false, status: 403, error: verdict.error };
 
-  const { data, error } = await db.rpc('lifecycle_apply', {
-    p_entity: entity,
-    p_id: String(id),
-    p_action: action,
-    p_actor: req.user.id,
-    p_reason: cleanReason(reasonInput) || null,
-  });
-  if (error) {
-    if (isMissingObject(error)) return { ok: false, status: 503, error: migrationHint };
-    const status = error.code === '42501' ? 403 : error.code === 'P0002' ? 404 : ['22023', '23505'].includes(error.code) ? 409 : 500;
-    return { ok: false, status, error: status === 500 ? 'Could not complete the action.' : error.message };
+  // If lifecycle_apply RPC is installed, use it first
+  if (row.lifecycle_state !== undefined) {
+    const { data, error } = await db.rpc('lifecycle_apply', {
+      p_entity: entity,
+      p_id: String(id),
+      p_action: action,
+      p_actor: req.user.id,
+      p_reason: cleanReason(reasonInput) || null,
+    });
+    if (!error) {
+      return { ok: true, from: (data as any)?.from_state || currentLifecycleState, to: (data as any)?.to_state || (action === 'archive' ? 'Archived' : (action === 'delete' ? 'Deleted' : 'Active')) };
+    }
+    if (!isMissingObject(error)) {
+      const status = error.code === '42501' ? 403 : error.code === 'P0002' ? 404 : ['22023', '23505'].includes(error.code) ? 409 : 500;
+      return { ok: false, status, error: status === 500 ? 'Could not complete the action.' : error.message };
+    }
   }
-  return { ok: true, from: data?.from ?? verdict.from, to: data?.to ?? verdict.to };
+
+  // Graceful fallback when migration 028 custom RPC is not yet present:
+  // Update status and data JSONB, and write to audit_trails
+  const targetState: LifecycleState = action === 'archive' ? 'Archived' : (action === 'delete' ? 'Deleted' : 'Active');
+  const targetStatus = action === 'archive' ? 'Archived' : (action === 'delete' ? 'Deleted' : (row.lifecycle_prev_status || row.data?.lifecycle_prev_status || 'Active'));
+  const nowIso = new Date().toISOString();
+
+  const updates: Record<string, any> = {
+    status: targetStatus,
+    updated_at: nowIso
+  };
+
+  const existingData = typeof row.data === 'object' && row.data !== null ? row.data : {};
+  updates.data = {
+    ...existingData,
+    status: targetStatus,
+    lifecycle_state: targetState,
+    lifecycle_prev_state: currentLifecycleState,
+    lifecycle_prev_status: row.status || existingData.status || 'Active',
+    lifecycle_reason: cleanReason(reasonInput) || null,
+    lifecycle_changed_at: nowIso,
+    lifecycle_changed_by: req.user.id,
+    lifecycle_changed_by_name: req.user.name || req.user.email
+  };
+
+  const { error: updateErr } = await db.from(table).update(updates).eq('id', id);
+  if (updateErr) {
+    return { ok: false, status: 500, error: `Could not update record: ${updateErr.message}` };
+  }
+
+  // Record in audit_trails for full compliance and history
+  try {
+    await db.from('audit_trails').insert({
+      action: action.toUpperCase(),
+      module: entity === 'users' ? 'Users' : 'Properties',
+      site: row.name || 'Site',
+      target_label: row.name || row.email || String(id),
+      entity_type: table,
+      entity_id: String(id),
+      user: req.user.name || req.user.email || 'System User',
+      user_id: req.user.id,
+      role: req.user.role || 'Super Admin',
+      details: `${action.toUpperCase()} ${entity === 'users' ? 'user' : 'property'} "${row.name || row.email || id}". Reason: ${cleanReason(reasonInput) || 'N/A'}`
+    });
+  } catch (auditErr) {
+    console.warn('Could not record lifecycle event to audit_trails:', auditErr);
+  }
+
+  return { ok: true, from: currentLifecycleState, to: targetState };
 }
 
 function entityParam(req: Request, res: Response): LifecycleEntity | null {
@@ -120,34 +174,49 @@ router.get('/:entity', async (req: Request, res: Response) => {
   const state = req.query.state === 'Deleted' ? 'Deleted' : 'Archived';
   const db = dbOr503(res); if (!db) return;
 
+  let records: any[] = [];
   const { data, error } = await db.from(LIFECYCLE_TABLE[entity]).select('*').eq('lifecycle_state', state).order('lifecycle_changed_at', { ascending: false });
-  if (error) {
-    if (isMissingObject(error)) return res.json({ success: true, installed: false, rows: [] });
+  if (!error && Array.isArray(data)) {
+    records = data;
+  } else if (error && isMissingObject(error)) {
+    // Fallback to checking status column and JSONB data
+    const { data: fallbackData, error: fbErr } = await db.from(LIFECYCLE_TABLE[entity]).select('*');
+    if (fbErr) {
+      return res.status(500).json({ success: false, error: 'Could not load records.' });
+    }
+    records = (fallbackData || []).filter((r: any) => {
+      const rState = r.lifecycle_state || r.data?.lifecycle_state || (r.status === state ? state : null);
+      return rState === state;
+    });
+  } else if (error) {
     return res.status(500).json({ success: false, error: 'Could not load records.' });
   }
 
   const actor = actorOf(req);
   const global = req.user.role === 'Super Admin' || hasGlobalScope(actor.role, actor.sites);
-  const extra = entity === 'users' ? await userSitesMap(db, (data || []).map((r: any) => r.id)) : new Map<string, string[]>();
+  const extra = entity === 'users' ? await userSitesMap(db, records.map((r: any) => r.id)) : new Map<string, string[]>();
 
-  const rows: LifecycleRow[] = (data || [])
+  const rows: LifecycleRow[] = records
     .filter((r: any) => {
       if (global) return true;
       const sites = entity === 'users' ? [...splitSites(r.assigned_site), ...(extra.get(r.id) || [])] : [r.name];
       return sitesWithinScope(actor, sites);
     })
-    .map((r: any) => ({
-      id: String(r.id),
-      label: entity === 'users' ? (r.name || r.email) : (r.name || String(r.id)),
-      recordType: LIFECYCLE_ENTITY_LABEL[entity],
-      state: r.lifecycle_state,
-      previousState: r.lifecycle_prev_state,
-      previousStatus: r.lifecycle_prev_status,
-      changedAt: r.lifecycle_changed_at,
-      changedBy: r.lifecycle_changed_by_name,
-      reason: r.lifecycle_reason,
-      detail: entity === 'users' ? [r.email, r.role].filter(Boolean).join(' · ') : [r.pid, r.city].filter(Boolean).join(' · '),
-    }));
+    .map((r: any) => {
+      const d = r.data || {};
+      return {
+        id: String(r.id),
+        label: entity === 'users' ? (r.name || r.email) : (r.name || String(r.id)),
+        recordType: LIFECYCLE_ENTITY_LABEL[entity],
+        state: r.lifecycle_state || d.lifecycle_state || (r.status === 'Archived' ? 'Archived' : 'Deleted'),
+        previousState: r.lifecycle_prev_state || d.lifecycle_prev_state || null,
+        previousStatus: r.lifecycle_prev_status || d.lifecycle_prev_status || null,
+        changedAt: r.lifecycle_changed_at || d.lifecycle_changed_at || r.updated_at,
+        changedBy: r.lifecycle_changed_by_name || d.lifecycle_changed_by_name || 'Administrator',
+        reason: r.lifecycle_reason || d.lifecycle_reason || null,
+        detail: entity === 'users' ? [r.email, r.role].filter(Boolean).join(' · ') : [r.pid, r.city].filter(Boolean).join(' · '),
+      };
+    });
   res.json({ success: true, installed: true, rows });
 });
 

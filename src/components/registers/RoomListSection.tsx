@@ -16,6 +16,7 @@ import {
   GROUP_AVAILABILITY_LABEL, canConfigureInterconnecting, connectedRooms, groupRooms, groupStatus, isInterconnecting, planGroupDissolve,
   roomAvailability, type RoomAvailability, type RoomChange,
 } from '../../utils/interconnectingRooms';
+import { roomOccupants } from '../../utils/roomAllocation';
 
 interface RoomListSectionProps {
   selectedSite: string;
@@ -235,14 +236,25 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
       return <span className="font-semibold text-[#242424]">{val}</span>;
     }
     if (col.key === 'currentOccupancy') {
-      const isFull = (item.currentOccupancy || 0) >= (item.currentMaxOccupancy || 1);
+      const liveOccupants = roomOccupants(dailyRegisterRecords, item.hotel, item.roomNo).length;
+      const count = liveOccupants > 0 ? liveOccupants : (Number(item.currentOccupancy) || 0);
+      const max = Number(item.currentMaxOccupancy) || 0;
+      const isFull = count >= (max || 1);
       return (
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
           isFull ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'
         }`}>
-          {val || 0} / {item.currentMaxOccupancy || 0}
+          {count} / {max}
         </span>
       );
+    }
+    if (col.key === 'bedspacesAvailable') {
+      const liveOccupants = roomOccupants(dailyRegisterRecords, item.hotel, item.roomNo).length;
+      const count = liveOccupants > 0 ? liveOccupants : (Number(item.currentOccupancy) || 0);
+      const max = Number(item.currentMaxOccupancy) || 0;
+      const voids = Number(item.voidBedspaces) || 0;
+      const avail = Math.max(0, max - voids - count);
+      return <span className="font-mono text-[#323130]">{avail}</span>;
     }
     if (col.key === 'voidReason') {
       return val ? <span className="text-red-700 font-medium">{val}</span> : <span className="text-[#a19f9d]">—</span>;

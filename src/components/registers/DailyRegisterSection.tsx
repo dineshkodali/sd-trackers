@@ -168,7 +168,34 @@ export const DailyRegisterSection: React.FC<DailyRegisterSectionProps> = ({
 
       return matchesSearch && matchesSite && matchesOcc;
     });
-    return filterRegisterRecords(base, guestCtx, guestFilter, registerDate);
+    const filtered = filterRegisterRecords(base, guestCtx, guestFilter, registerDate);
+
+    // Deduplicate active occupants so duplicate records for the same Port Ref or resident do not appear simultaneously
+    const unique = new Map<string, DailyRegisterRecord>();
+    const nonOccupied: DailyRegisterRecord[] = [];
+
+    for (const rec of filtered) {
+      const isOccupied = rec.occupied === 'Yes' || !rec.occupied;
+      if (!isOccupied) {
+        nonOccupied.push(rec);
+        continue;
+      }
+      const ref = (rec.portRef || '').trim().toLowerCase();
+      const name = (rec.name || '').trim().toLowerCase();
+      const key = ref || (name ? `${name}|${(rec.dob || '').trim()}` : `id:${rec.id}`);
+      const existing = unique.get(key);
+      if (!existing) {
+        unique.set(key, rec);
+      } else {
+        const dateA = rec.checkInDate || rec.registerDate || rec.createdAt || '';
+        const dateB = existing.checkInDate || existing.registerDate || existing.createdAt || '';
+        if (dateA >= dateB) {
+          unique.set(key, rec);
+        }
+      }
+    }
+
+    return [...Array.from(unique.values()), ...nonOccupied];
   }, [dailyRegisterRecords, searchQuery, selectedSite, occupancyFilter, isSitePermitted, guestCtx, guestFilter, registerDate]);
 
   // Age and Aspen card for each row, worked out by the same rules as the filters and the Dashboard.

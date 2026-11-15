@@ -67,10 +67,29 @@ export const WelfareChecksView: React.FC = () => {
     canDeleteRecord,
     currentUserRole,
     currentUserName,
-    authProfile
-  , requestConfirmation } = useApp();
+    authProfile,
+    getFieldOptions,
+    gpAppointmentRecords,
+    requestConfirmation
+  } = useApp();
 
   const loggedInUserName = authProfile?.name || authProfile?.email?.split('@')[0] || currentUserName || (currentUserRole ? `${currentUserRole} (User)` : 'Duty Officer');
+
+  // Dynamic GP Surgeries from Field Options ('gpPractices') and existing appointments
+  const gpSurgeryOptions = useMemo(() => {
+    const opts = typeof getFieldOptions === 'function' ? getFieldOptions('gpPractices', false) : [];
+    const set = new Set<string>();
+    (opts || []).forEach(o => {
+      const val = (o.value || o.label || '').trim();
+      if (val) set.add(val);
+    });
+    (gpAppointmentRecords || []).forEach((a: any) => {
+      const c = (a.clinic || a.practiceName || '').trim();
+      if (c && !c.toLowerCase().includes('site') && !c.toLowerCase().includes('hotel')) set.add(c);
+    });
+    ['Ranworth Surgery', 'East Lynne Medical Centre', 'St James Surgery', 'Old Road Medical Practice'].forEach(p => set.add(p));
+    return Array.from(set).sort();
+  }, [getFieldOptions, gpAppointmentRecords]);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -1479,15 +1498,41 @@ export const WelfareChecksView: React.FC = () => {
                   </div>
 
                   {formData.gpRegistered && (
-                    <div>
-                      <label className="block font-medium text-neutral-700 mb-1">GP Surgery Practice / Details</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Westside Medical Centre, Dr. Smith"
-                        value={formData.gpDetails || ''}
-                        onChange={e => setFormData({ ...formData, gpDetails: e.target.value })}
-                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
-                      />
+                    <div className="space-y-2">
+                      <label className="block font-medium text-neutral-700">GP Surgery (GPS) *</label>
+                      <select
+                        value={gpSurgeryOptions.includes(formData.gpDetails || '') ? formData.gpDetails : (formData.gpDetails ? '__custom__' : '')}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === '__custom__') {
+                            if (gpSurgeryOptions.includes(formData.gpDetails || '')) {
+                              setFormData({ ...formData, gpDetails: '' });
+                            }
+                          } else {
+                            setFormData({ ...formData, gpDetails: val });
+                          }
+                        }}
+                        className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden font-medium text-neutral-800"
+                      >
+                        <option value="">Select GP Surgery (GPS)...</option>
+                        {gpSurgeryOptions.map(surgery => (
+                          <option key={surgery} value={surgery}>{surgery}</option>
+                        ))}
+                        <option value="__custom__">+ Enter custom / other GP Surgery...</option>
+                      </select>
+
+                      {(!gpSurgeryOptions.includes(formData.gpDetails || '') || !formData.gpDetails) && (
+                        <div>
+                          <label className="block text-[11px] font-medium text-neutral-500 mb-0.5">GP Surgery Name / Details:</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Westside Medical Centre, Dr. Smith"
+                            value={formData.gpDetails || ''}
+                            onChange={e => setFormData({ ...formData, gpDetails: e.target.value })}
+                            className="w-full p-2 border border-[#e5e5e5] rounded-xs bg-white text-xs focus:border-[#0d9488] outline-hidden"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 

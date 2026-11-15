@@ -128,7 +128,8 @@ function formatPeriodFromDates(
 
 export const PropertyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
-    defaultSiteFilter,propertyLaundryLogs,
+    defaultSiteFilter,
+    propertyLaundryLogs,
     allowedSites,
     addPropertyLaundryLog,
     updatePropertyLaundryLog,
@@ -595,6 +596,11 @@ export const PropertyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (formData.dirtyLaundrySent === '' || formData.cleanLaundryReturned === '') {
+      alert('Please enter both Dirty Laundry Sent and Clean Laundry Returned figures.');
+      return;
+    }
+
     // Zod validation check before invoking data service
     const payloadToValidate = {
       site: formData.site,
@@ -605,6 +611,7 @@ export const PropertyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode
       cleanLaundryReturned: Number(formData.cleanLaundryReturned || 0),
       discrepanciesCount: Number(formData.discrepanciesCount || 0),
       hasDiscrepancy: Boolean(formData.hasDiscrepancy),
+      status: 'Verified',
       loggedBy: formData.loggedBy || 'System User'
     };
 

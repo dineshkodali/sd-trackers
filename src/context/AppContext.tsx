@@ -778,7 +778,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [propertyLaundryLogs, setPropertyLaundryLogs] = useState<PropertyLaundryLog[]>(INITIAL_PROPERTY_LAUNDRY_LOGS);
   const [foodRecords, setFoodRecords] = useState<FoodRecord[]>(INITIAL_FOOD);
   const [foodVendorBuffetLogs, setFoodVendorBuffetLogs] = useState<PropertyFoodVendorBuffetLog[]>(INITIAL_FOOD_VENDOR_BUFFET_LOGS);
-  const foodVendorsList = FOOD_VENDORS;
   const [escalations, setEscalations] = useState<EscalationRecord[]>(INITIAL_ESCALATIONS);
   const [documents, setDocuments] = useState<DocumentRecord[]>(INITIAL_DOCUMENTS);
   const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>(INITIAL_MAINTENANCE_RECORDS);
@@ -885,6 +884,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const canAccessPage = useCallback((pageId: string) => canPageAction(pageId, 'view'), [canPageAction]);
 
   const [fieldOptions, setFieldOptions] = useState<CustomFieldOption[]>(DEFAULT_FIELD_OPTIONS);
+
+  const foodVendorsList = useMemo<FoodVendorName[]>(() => {
+    const opts = fieldOptions.filter(o => o.category === 'foodVendors' && o.isActive);
+    if (opts.length > 0) {
+      return opts.map(o => (o.value || o.label) as FoodVendorName);
+    }
+    return FOOD_VENDORS;
+  }, [fieldOptions]);
 
   const [financeBills, setFinanceBills] = useState<FinanceBill[]>(() => financeService.getCachedBills());
 

@@ -68,7 +68,18 @@ export const lifecycleService = {
     if (!sb) throw new Error('Database connection unavailable.');
     const { data, error } = await sb.from(LIFECYCLE_TABLE[entity]).select('*').eq('lifecycle_state', state).order('lifecycle_changed_at', { ascending: false });
     if (error) {
-      if (['42703', '42P01', 'PGRST205'].includes((error as any).code)) return { rows: [], installed: false };
+      if (['42703', '42P01', 'PGRST205'].includes((error as any).code)) {
+        // Fallback: check status column or JSONB data
+        const { data: fbData, error: fbErr } = await sb.from(LIFECYCLE_TABLE[entity]).select('*');
+        if (!fbErr && Array.isArray(fbData)) {
+          const matched = fbData.filter((r: any) => {
+            const rState = r.lifecycle_state || r.data?.lifecycle_state || (r.status === state ? state : null);
+            return rState === state;
+          });
+          return { rows: matched.map(r => directRow(entity, r)), installed: true };
+        }
+        return { rows: [], installed: true };
+      }
       throw new Error('Could not load records.');
     }
     return { rows: (data || []).map(r => directRow(entity, r)), installed: true };
@@ -90,7 +101,44 @@ export const lifecycleService = {
     const { error } = await sb.rpc('lifecycle_apply_self', { p_entity: entity, p_id: id, p_action: action, p_reason: clean || null });
     if (error) {
       if (['42883', 'PGRST202'].includes((error as any).code)) {
-        throw new Error('Archive and deleted records are not installed yet. Apply migration 028 in the database.');
+        // RPC not present: update status and data JSONB directly
+        const targetState: LifecycleState = action === 'archive' ? 'Archived' : (action === 'delete' ? 'Deleted' : 'Active');
+        const targetStatus = action === 'archive' ? 'Archived' : (action === 'delete' ? 'Deleted' : 'Active');
+        const nowIso = new Date().toISOString();
+
+        const { data: existingRow } = await sb.from(LIFECYCLE_TABLE[entity]).select('*').eq('id', id).maybeSingle();
+        const existingData = existingRow && typeof existingRow.data === 'object' && existingRow.data !== null ? existingRow.data : {};
+
+        const updates: any = {
+          status: targetStatus,
+          updated_at: nowIso,
+          data: {
+            ...existingData,
+            status: targetStatus,
+            lifecycle_state: targetState,
+            lifecycle_prev_state: existingRow?.lifecycle_state || existingData.lifecycle_state || 'Active',
+            lifecycle_prev_status: existingRow?.status || existingData.status || 'Active',
+            lifecycle_reason: clean || null,
+            lifecycle_changed_at: nowIso
+          }
+        };
+
+        const { error: updErr } = await sb.from(LIFECYCLE_TABLE[entity]).update(updates).eq('id', id);
+        if (updErr) throw new Error(updErr.message);
+
+        try {
+          await sb.from('audit_trails').insert({
+            action: action.toUpperCase(),
+            module: entity === 'users' ? 'Users' : 'Properties',
+            site: existingRow?.name || 'Site',
+            target_label: existingRow?.name || existingRow?.email || id,
+            entity_type: LIFECYCLE_TABLE[entity],
+            entity_id: String(id),
+            user: 'User',
+            details: `${action.toUpperCase()} ${entity} "${existingRow?.name || id}". Reason: ${clean || 'N/A'}`
+          });
+        } catch {}
+        return;
       }
       throw new Error(error.message);
     }

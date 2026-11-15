@@ -139,6 +139,7 @@ export const FoodVendorBuffetLogSection: React.FC<{ tabSwitcher?: React.ReactNod
   const {
     defaultSiteFilter,
     foodVendorBuffetLogs,
+    foodVendorsList,
     getFieldOptions,
     allowedSites,
     addFoodVendorBuffetLog,
@@ -161,9 +162,8 @@ export const FoodVendorBuffetLogSection: React.FC<{ tabSwitcher?: React.ReactNod
     if (opts && opts.length > 0) {
       return opts.map(o => o.value || o.label);
     }
-    // Default fallback if fieldOptions not yet loaded
-    return ['A&M', 'Freshbite', '9 Cuisines', 'Sands'];
-  }, [getFieldOptions]);
+    return foodVendorsList && foodVendorsList.length > 0 ? foodVendorsList : ['A&M', 'Freshbite', '9 Cuisines', 'Sands'];
+  }, [getFieldOptions, foodVendorsList]);
 
   const userAssignedHotel = useMemo(() => {
     if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'all') {
@@ -904,7 +904,7 @@ export const FoodVendorBuffetLogSection: React.FC<{ tabSwitcher?: React.ReactNod
             <UtensilsCrossed className="w-8 h-8 text-neutral-400 mx-auto" />
             <div>
               <p className="font-semibold text-neutral-800 text-sm">
-                No buffet log records found for <span className="text-[#d83b01] font-bold">{vendorFilter}</span> ({(activeWeekBounds as any)?.label || ''})
+                No buffet log records found for <span className="text-[#d83b01] font-bold">{vendorFilter === 'all' ? 'All Vendors' : vendorFilter}</span> ({activeWeekInfo?.weekRange || formatWeekRangeFromDates(activeWeekBounds.start, activeWeekBounds.end).weekRange})
               </p>
               <p className="text-xs text-neutral-500 mt-1">
                 Use the side arrows above to move forward or backward through weeks, or record a new log.

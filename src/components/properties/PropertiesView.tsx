@@ -89,7 +89,13 @@ export const PropertiesView: React.FC = () => {
   const [section, setSection] = useState<LifecycleSection>('Active');
   const [lifecycleCounts, setLifecycleCounts] = useState<Partial<Record<LifecycleSection, number>>>({});
 
-  const visibleProperties = properties;
+  const visibleProperties = useMemo(() => {
+    return properties.filter(p => {
+      const isArchived = (p as any).status === 'Archived' || (p as any).lifecycle_state === 'Archived' || (p as any).data?.lifecycle_state === 'Archived';
+      const isDeleted = (p as any).status === 'Deleted' || (p as any).lifecycle_state === 'Deleted' || (p as any).data?.lifecycle_state === 'Deleted';
+      return !isArchived && !isDeleted;
+    });
+  }, [properties]);
 
   // KPI Statistics
   // Bed capacity comes from the real rooms of each property, not from a typed figure

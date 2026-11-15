@@ -11,7 +11,7 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { TableColumnConfig } from '../../types/tableSchema';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
-import { evaluateRegisterAllocation } from '../../utils/roomAllocation';
+import { evaluateRegisterAllocation, isArrivalAllocated } from '../../utils/roomAllocation';
 import { roomChoices } from '../../utils/interconnectingRooms';
 import { syncArrivalToServiceUser } from '../../utils/arrivalServiceUserSync';
 
@@ -66,6 +66,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
 
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : localSearchQuery;
+  const [allocationFilter, setAllocationFilter] = useState<'pending' | 'allocated' | 'all'>('pending');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -97,6 +98,21 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     return 'Brit Hotel';
   }, [selectedSite, assignedSite]);
 
+  const arrivalCounts = useMemo(() => {
+    let pending = 0;
+    let allocated = 0;
+    newArrivalsRecords.forEach(r => {
+      if (isSitePermitted(r.hotel, selectedSite)) {
+        if (isArrivalAllocated(r, dailyRegisterRecords).allocated) {
+          allocated++;
+        } else {
+          pending++;
+        }
+      }
+    });
+    return { pending, allocated, total: pending + allocated };
+  }, [newArrivalsRecords, dailyRegisterRecords, selectedSite, isSitePermitted]);
+
   const filteredArrivals = useMemo(() => {
     return newArrivalsRecords.filter(r => {
       const q = searchQuery.toLowerCase().trim();
@@ -108,9 +124,14 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         (r.country && r.country.toLowerCase().includes(q));
 
       const matchesSite = isSitePermitted(r.hotel, selectedSite);
-      return matchesSearch && matchesSite;
+      if (!matchesSearch || !matchesSite) return false;
+
+      const isAlloc = isArrivalAllocated(r, dailyRegisterRecords).allocated;
+      if (allocationFilter === 'pending') return !isAlloc;
+      if (allocationFilter === 'allocated') return isAlloc;
+      return true;
     });
-  }, [newArrivalsRecords, searchQuery, selectedSite, isSitePermitted]);
+  }, [newArrivalsRecords, searchQuery, selectedSite, isSitePermitted, allocationFilter, dailyRegisterRecords]);
 
   const sortedArrivals = useMemo(() => {
     return [...filteredArrivals].sort((a: any, b: any) => {
@@ -391,6 +412,54 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         </div>
       </div>
 
+      {/* Allocation Status Tabs */}
+      <div className="flex items-center gap-2 border-b border-[#edebe9] pb-2 text-xs">
+        <button
+          type="button"
+          onClick={() => { setAllocationFilter('pending'); setCurrentPage(1); }}
+          className={`px-3 py-1.5 rounded-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+            allocationFilter === 'pending'
+              ? 'bg-amber-500 text-white shadow-xs'
+              : 'bg-neutral-100 text-[#605e5c] hover:bg-neutral-200'
+          }`}
+        >
+          <span>Awaiting Room Allocation</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${allocationFilter === 'pending' ? 'bg-amber-700 text-white' : 'bg-neutral-200 text-[#323130]'}`}>
+            {arrivalCounts.pending}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setAllocationFilter('allocated'); setCurrentPage(1); }}
+          className={`px-3 py-1.5 rounded-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+            allocationFilter === 'allocated'
+              ? 'bg-[#0d9488] text-white shadow-xs'
+              : 'bg-neutral-100 text-[#605e5c] hover:bg-neutral-200'
+          }`}
+        >
+          <span>Allocated to Rooms</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${allocationFilter === 'allocated' ? 'bg-teal-800 text-white' : 'bg-neutral-200 text-[#323130]'}`}>
+            {arrivalCounts.allocated}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setAllocationFilter('all'); setCurrentPage(1); }}
+          className={`px-3 py-1.5 rounded-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+            allocationFilter === 'all'
+              ? 'bg-neutral-800 text-white shadow-xs'
+              : 'bg-neutral-100 text-[#605e5c] hover:bg-neutral-200'
+          }`}
+        >
+          <span>All Arrivals History</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${allocationFilter === 'all' ? 'bg-neutral-950 text-white' : 'bg-neutral-200 text-[#323130]'}`}>
+            {arrivalCounts.total}
+          </span>
+        </button>
+      </div>
+
       {/* Table */}
       <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs overflow-hidden min-h-[500px] lg:min-h-[calc(100vh-270px)] flex flex-col justify-between">
         <div className="overflow-x-auto flex-1">
@@ -405,7 +474,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
                 <th className="p-2.5">Contact No.</th>
                 <th className="p-2.5 cursor-pointer hover:bg-[#edebe9]" onClick={() => handleSort('checkInDate')}>Check-in Date</th>
                 <th className="p-2.5">Hotel</th>
-                <th className="p-2.5">Room</th>
+                <th className="p-2.5">Allocated Room</th>
                 <th className="p-2.5">Aspen Card</th>
                 <th className="p-2.5">Status</th>
                 <th className="p-2.5 text-right w-36 sticky right-0 bg-[#faf9f8] shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">Actions</th>
@@ -414,10 +483,20 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
             <tbody className="divide-y divide-[#edebe9] text-[#323130]">
               {paginatedArrivals.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-[#605e5c]">
+                  <td colSpan={12} className="py-12 text-center text-[#605e5c]">
                     <UserPlus className="w-8 h-8 mx-auto text-neutral-300 mb-2" />
-                    <p className="font-semibold text-sm text-[#242424]">No new arrivals recorded</p>
-                    <p className="text-xs text-[#605e5c] mt-0.5">Click '+ Record Arrival' to log new incoming residents.</p>
+                    <p className="font-semibold text-sm text-[#242424]">
+                      {allocationFilter === 'pending'
+                        ? 'No pending arrivals awaiting room allocation'
+                        : allocationFilter === 'allocated'
+                          ? 'No allocated arrivals found'
+                          : 'No new arrivals recorded'}
+                    </p>
+                    <p className="text-xs text-[#605e5c] mt-0.5">
+                      {allocationFilter === 'pending'
+                        ? 'All registered service users have been allocated to rooms.'
+                        : "Click '+ Record Arrival' to log new incoming residents."}
+                    </p>
                     {canCreateRecord() && (
                       <button
                         onClick={() => setIsCreateModalOpen(true)}
@@ -430,59 +509,64 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
                   </td>
                 </tr>
               ) : (
-                paginatedArrivals.map(arrival => (
-                  <tr key={arrival.id} className="hover:bg-[#f0fdf4] transition-colors">
-                    <td className="p-2.5 font-mono font-bold text-indigo-700">{arrival.portReference}</td>
-                    <td className="p-2.5 font-semibold text-[#242424]">{arrival.name}</td>
-                    <td className="p-2.5 text-[#605e5c]">{arrival.dob || '—'}</td>
-                    <td className="p-2.5">{arrival.country || '—'}</td>
-                    <td className="p-2.5">{arrival.language || '—'}</td>
-                    <td className="p-2.5 text-[#605e5c]">{arrival.contactNumber || '—'}</td>
-                    <td className="p-2.5 whitespace-nowrap">{arrival.checkInDate || '—'}</td>
-                    <td className="p-2.5 font-medium">{arrival.hotel}</td>
-                    <td className="p-2.5 font-mono text-[#0f766e]">{arrival.room || 'Unassigned'}</td>
-                    <td className="p-2.5 font-mono">{arrival.aspenCard || '—'}</td>
-                    <td className="p-2.5">
-                      <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-semibold ${
-                        arrival.status === 'Checked In' 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {arrival.status || 'Arrived'}
-                      </span>
-                    </td>
-                    <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {arrival.status !== 'Checked In' && canEditArrival(arrival) && (
+                paginatedArrivals.map(arrival => {
+                  const allocInfo = isArrivalAllocated(arrival, dailyRegisterRecords);
+                  return (
+                    <tr key={arrival.id} className="hover:bg-[#f0fdf4] transition-colors">
+                      <td className="p-2.5 font-mono font-bold text-indigo-700">{arrival.portReference}</td>
+                      <td className="p-2.5 font-semibold text-[#242424]">{arrival.name}</td>
+                      <td className="p-2.5 text-[#605e5c]">{arrival.dob || '—'}</td>
+                      <td className="p-2.5">{arrival.country || '—'}</td>
+                      <td className="p-2.5">{arrival.language || '—'}</td>
+                      <td className="p-2.5 text-[#605e5c]">{arrival.contactNumber || '—'}</td>
+                      <td className="p-2.5 whitespace-nowrap">{arrival.checkInDate || '—'}</td>
+                      <td className="p-2.5 font-medium">{arrival.hotel}</td>
+                      <td className="p-2.5 font-mono font-semibold text-[#0f766e]">
+                        {allocInfo.roomNo || arrival.room || <span className="text-amber-700 italic font-normal">Awaiting Room</span>}
+                      </td>
+                      <td className="p-2.5 font-mono">{arrival.aspenCard || '—'}</td>
+                      <td className="p-2.5">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          allocInfo.allocated 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {allocInfo.allocated ? `Allocated (${allocInfo.roomNo || arrival.room})` : 'Awaiting Allocation'}
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-[-2px_0_4px_rgba(0,0,0,0.04)]">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {!allocInfo.allocated && canEditArrival(arrival) && (
+                            <button
+                              onClick={() => handleAssignToDailyRegister(arrival)}
+                              className="p-1 hover:bg-emerald-50 text-emerald-700 rounded-xs flex items-center gap-0.5 text-[11px] font-semibold cursor-pointer"
+                              title="Assign to Room & Check-In"
+                            >
+                              <BedDouble className="w-3.5 h-3.5" />
+                              <span>Allocate</span>
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleAssignToDailyRegister(arrival)}
-                            className="p-1 hover:bg-emerald-50 text-emerald-700 rounded-xs flex items-center gap-0.5 text-[11px] font-semibold"
-                            title="Assign to Room & Check-In"
+                            onClick={() => setViewingRecord(arrival)}
+                            className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs"
+                            title="View Details"
                           >
-                            <BedDouble className="w-3.5 h-3.5" />
-                            <span>Check In</span>
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                        <button
-                          onClick={() => setViewingRecord(arrival)}
-                          className="p-1 hover:bg-[#edebe9] text-[#605e5c] hover:text-[#242424] rounded-xs"
-                          title="View Details"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        {canEditArrival(arrival) && (
-                          <button
-                            onClick={() => setEditingRecord(arrival)}
-                            className="p-1 hover:bg-teal-50 text-[#0d9488] rounded-xs"
-                            title="Edit Arrival"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {canEditArrival(arrival) && (
+                            <button
+                              onClick={() => setEditingRecord(arrival)}
+                              className="p-1 hover:bg-teal-50 text-[#0d9488] rounded-xs"
+                              title="Edit Arrival"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

@@ -77,3 +77,32 @@ export function deriveRoomOccupancy(room: DailyRegisterRoom, records: DailyRegis
     bedspacesAvailable: Math.max(0, usableCapacity(room) - occupants)
   };
 }
+
+/** Determine whether a new arrival has an active room allocation. */
+export function isArrivalAllocated(
+  arrival: { portReference?: string; name?: string; hotel?: string; room?: string; status?: string },
+  records: DailyRegisterRecord[] = []
+): { allocated: boolean; roomNo?: string; hotel?: string } {
+  const ref = (arrival.portReference || '').trim().toLowerCase();
+  const name = (arrival.name || '').trim().toLowerCase();
+
+  if (ref || name) {
+    const reg = records.find(r => {
+      const rRef = (r.portRef || '').trim().toLowerCase();
+      const rName = (r.name || '').trim().toLowerCase();
+      const matches = (ref && rRef === ref) || (name && rName === name);
+      return matches && r.occupied !== 'No' && !!r.roomNo;
+    });
+    if (reg) {
+      return { allocated: true, roomNo: reg.roomNo, hotel: reg.hotel };
+    }
+  }
+
+  const roomInput = (arrival.room || '').trim();
+  const status = (arrival.status || '').trim().toLowerCase();
+  if (roomInput && (status === 'checked in' || status === 'allocated')) {
+    return { allocated: true, roomNo: roomInput, hotel: arrival.hotel };
+  }
+
+  return { allocated: false };
+}

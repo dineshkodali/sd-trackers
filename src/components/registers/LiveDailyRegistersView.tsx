@@ -20,9 +20,10 @@ import { LiveRegisterKpiCards } from './LiveRegisterKpiCards';
 import { RegisterGuestFilters } from './RegisterGuestFilters';
 import { useGuestContext } from '../../hooks/useGuestContext';
 import {
-  NO_GUEST_FILTER, clearRegisterFilterIntent, filterRegisterRecords, isGuestFilterActive, readRegisterFilterIntent,
+  NO_GUEST_FILTER, buildGuests, clearRegisterFilterIntent, filterRegisterRecords, isGuestFilterActive, readRegisterFilterIntent,
   type GuestFilter,
 } from '../../utils/guestStats';
+import { isArrivalAllocated } from '../../utils/roomAllocation';
 
 export type DailyRegisterTab = 
   | 'dailyRegister'
@@ -187,6 +188,10 @@ export const LiveDailyRegistersView: React.FC = () => {
     return newArrivalsRecords.filter(a => isSiteMatch(a.hotel, effectiveSite));
   }, [newArrivalsRecords, effectiveSite]);
 
+  const scopedPendingArrivals = useMemo(() => {
+    return scopedArrivals.filter(a => !isArrivalAllocated(a, dailyRegisterRecords).allocated);
+  }, [scopedArrivals, dailyRegisterRecords]);
+
   const scopedEvictions = useMemo(() => {
     return evictionRecords.filter(e => isSiteMatch(e.hotel, effectiveSite));
   }, [evictionRecords, effectiveSite]);
@@ -196,10 +201,10 @@ export const LiveDailyRegistersView: React.FC = () => {
     [scopedRecords, guestCtx, guestFilter, registerDate]
   );
 
-  // Operational KPI calculations
+  // Operational KPI calculations: deduplicated active occupants staying on registerDate
   const activeResidentsCount = useMemo(() => {
-    return scopedRecords.filter(r => r.occupied === 'Yes' || !r.occupied).length;
-  }, [scopedRecords]);
+    return buildGuests(scopedRecords, guestCtx, registerDate).length;
+  }, [scopedRecords, guestCtx, registerDate]);
 
   const totalCapacity = useMemo(() => {
     return scopedRooms.reduce((sum, r) => sum + (Number(r.currentMaxOccupancy) || 0), 0);
@@ -279,7 +284,7 @@ export const LiveDailyRegistersView: React.FC = () => {
   const getTabBadge = (id: DailyRegisterTab) => {
     if (id === 'roomList') return scopedRooms.length;
     if (id === 'dailyRegister') return activeResidentsCount;
-    if (id === 'newArrivals') return scopedArrivals.length;
+    if (id === 'newArrivals') return scopedPendingArrivals.length;
     return undefined;
   };
 
@@ -479,7 +484,7 @@ export const LiveDailyRegistersView: React.FC = () => {
         availableBedspaces={availableBedspaces}
         roomCount={scopedRooms.length}
         voidBedspaces={voidBedspaces}
-        pendingArrivalsCount={scopedArrivals.length}
+        pendingArrivalsCount={scopedPendingArrivals.length}
       />
 
       {/* 5. Active Tab Viewport Area */}
