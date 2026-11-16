@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconTool as Wrench, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconX as X, IconBook as BookOpen, IconFlame as Flame, IconHammer as Hammer, IconEye as Eye, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
-import { MAINTENANCE_PRIORITY_RULES, normalizePriority, calculateDueDate, getPriorityRule, getSlaInfo, slaLabel, formatDuration, nowTime, DUE_SOON_HOURS, isMaintenanceClosed, closingTimer, overdueDuration, closeBlockedReason } from '../../utils/maintenancePriority';
+import { MAINTENANCE_PRIORITY_RULES, canonicalTimescale, normalizePriority, calculateDueDate, getPriorityRule, getSlaInfo, slaLabel, formatDuration, nowTime, DUE_SOON_HOURS, isMaintenanceClosed, closingTimer, overdueDuration, closeBlockedReason } from '../../utils/maintenancePriority';
 import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 import { IntentFilterBanner } from '../common/IntentFilterBanner';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';
@@ -156,7 +156,7 @@ export const MaintenanceTrackerView: React.FC = () => {
     location: '',
     criteriaCode: '',
     priority: 'CAT 1' as MaintenancePriority,
-    priorityTimeScale: '4 Hours',
+    priorityTimeScale: 'Up to 4 Hours',
     description: '',
     raisedBy: loggedInUserName,
     closeDueDate: calculateDueDate('CAT 1'),
@@ -580,21 +580,21 @@ export const MaintenanceTrackerView: React.FC = () => {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-200">
             <Flame className="w-3 h-3 text-red-600" />
-            Cat 1 (4 Hours)
+            Cat 1 (Up to 4 Hours)
           </span>
         );
       case 'CAT 2':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
             <AlertTriangle className="w-3 h-3 text-yellow-600" />
-            Cat 2 (5 Working Days)
+            Cat 2
           </span>
         );
       case 'CAT 3':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-teal-50 text-blue-800 border border-teal-200">
             <Hammer className="w-3 h-3 text-blue-600" />
-            Cat 3 (28 Working Days)
+            Cat 3 (Up to 28 Working Days)
           </span>
         );
       default:
@@ -1044,7 +1044,7 @@ export const MaintenanceTrackerView: React.FC = () => {
             <Clock className="w-3.5 h-3.5 text-amber-600" />
           </div>
           <div className="text-2xl font-bold text-amber-800 mt-1.5">{stats.cat2Open}</div>
-          <div className="text-[11px] text-amber-700 font-medium">5 Working Days Timescale</div>
+          <div className="text-[11px] text-amber-700 font-medium">Up to 21 Days Timescale</div>
         </div>
 
         <div className="bg-white border border-sky-200 bg-sky-50/30 p-3 rounded-xs shadow-xs">
@@ -1262,7 +1262,7 @@ export const MaintenanceTrackerView: React.FC = () => {
         initialValues={{
           date: new Date().toISOString().slice(0, 10),
           priority: 'CAT 2',
-          priorityTimeScale: '5 Working Days',
+          priorityTimeScale: 'Up to 5 Working Days',
           closeDueDate: calculateDueDate('CAT 2'),
           defectStatus: 'In Process',
           action: 'Open',
@@ -1300,7 +1300,7 @@ export const MaintenanceTrackerView: React.FC = () => {
         initialValues={editingRecord ? {
           ...editingRecord,
           priority: normalizePriority(editingRecord.priority) || editingRecord.priority,
-          priorityTimeScale: getPriorityRule(editingRecord.priority)?.timescale || editingRecord.priorityTimeScale,
+          priorityTimeScale: canonicalTimescale(editingRecord.priorityTimeScale) || getPriorityRule(editingRecord.priority)?.timescale || editingRecord.priorityTimeScale,
         } : undefined}
         isEdit={true}
         onSave={(data) => {

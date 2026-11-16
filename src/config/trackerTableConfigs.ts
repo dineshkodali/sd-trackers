@@ -1,5 +1,5 @@
 import React from 'react';
-import { MAINTENANCE_PRIORITY_RULES, getPriorityRule, getRuleForTimescale, calculateDueDate, reportedAt, closingFieldsFor } from '../utils/maintenancePriority';
+import { MAINTENANCE_PRIORITY_RULES, MAINTENANCE_TIMESCALES, getPriorityRule, getRuleForTimescale, calculateDueDate, reportedAt, closingFieldsFor } from '../utils/maintenancePriority';
 import { TableColumnConfig } from '../types/tableSchema';
 import { 
   MaintenanceRecord, 
@@ -59,7 +59,7 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     type: 'date',
     required: true,
     defaultValue: () => new Date().toISOString().slice(0, 10),
-    onValueChange: (value, form) => ({ closeDueDate: calculateDueDate(form.priority, reportedAt(value, form.reportedTime)) }),
+    onValueChange: (value, form) => ({ closeDueDate: calculateDueDate(form.priority, reportedAt(value, form.reportedTime), form.priorityTimeScale) }),
     section: 'Defect Details'
   },
   {
@@ -68,7 +68,7 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     type: 'text',
     placeholder: 'HH:MM e.g. 10:30',
     defaultValue: () => new Date().toTimeString().slice(0, 5),
-    onValueChange: (value, form) => ({ closeDueDate: calculateDueDate(form.priority, reportedAt(form.date, value)) }),
+    onValueChange: (value, form) => ({ closeDueDate: calculateDueDate(form.priority, reportedAt(form.date, value), form.priorityTimeScale) }),
     section: 'Defect Details'
   },
   {
@@ -83,9 +83,12 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     onValueChange: (value, form) => {
       const rule = getPriorityRule(value);
       if (!rule) return;
+      // Keep the chosen timescale if it already belongs to this priority (Cat 2 has several).
+      const keepCurrent = getRuleForTimescale(form.priorityTimeScale)?.value === rule.value;
+      const timescale = keepCurrent ? form.priorityTimeScale : rule.timescale;
       return {
-        priorityTimeScale: rule.timescale,
-        closeDueDate: calculateDueDate(value, reportedAt(form.date, form.reportedTime))
+        priorityTimeScale: timescale,
+        closeDueDate: calculateDueDate(value, reportedAt(form.date, form.reportedTime), timescale)
       };
     },
     badgeColors: {
@@ -101,16 +104,16 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     type: 'select',
     fixedOptions: true,
     allowQuickAdd: false,
-    options: MAINTENANCE_PRIORITY_RULES.map(r => r.timescale),
+    options: MAINTENANCE_TIMESCALES,
     placeholder: 'Set automatically from priority',
-    defaultValue: '4 Hours',
+    defaultValue: 'Up to 4 Hours',
     // Choosing a timescale sets the matching priority and recalculates Complete By.
     onValueChange: (value, form) => {
       const rule = getRuleForTimescale(value);
       if (!rule) return;
       return {
         priority: rule.value,
-        closeDueDate: calculateDueDate(rule.value, reportedAt(form.date, form.reportedTime))
+        closeDueDate: calculateDueDate(rule.value, reportedAt(form.date, form.reportedTime), value)
       };
     },
     section: 'Defect Details'

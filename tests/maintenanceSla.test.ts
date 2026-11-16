@@ -82,7 +82,7 @@ test('every priority maps to one of Cat 1, Cat 2 or Cat 3 and back to its own ti
   assert.equal(normalizePriority('CAT 2 - Interim'), 'CAT 2');
   assert.equal(normalizePriority('CAT 2 - Urgent (24 Hours)'), 'CAT 2');
   assert.equal(normalizePriority('Cat 3 (28 Working Days)'), 'CAT 3');
-  assert.equal(getPriorityRule('CAT 2 - Urgent (24 Hours)')?.timescale, '5 Working Days');
+  assert.equal(getPriorityRule('CAT 2 - Urgent (24 Hours)')?.timescale, 'Up to 5 Working Days');
   assert.equal(getRuleForTimescale('4 Hours')?.value, 'CAT 1');
   assert.equal(getRuleForTimescale('24 Hours')?.value, 'CAT 2');
   assert.equal(getRuleForTimescale('28 Working Days')?.value, 'CAT 3');
@@ -94,4 +94,20 @@ test('every priority maps to one of Cat 1, Cat 2 or Cat 3 and back to its own ti
   assert.match(closed.actualClosedDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.match(closed.actualClosedTime, /^\d{2}:\d{2}$/);
   assert.deepEqual(closingFieldsFor({ defectStatus: 'In Process', action: 'Open', actualClosedDate: '2026-11-16' }), { actualClosedDate: '', actualClosedTime: '' });
+});
+
+test('Cat 2 offers 5 working days and 7, 14 and 21 calendar days', async () => {
+  const { MAINTENANCE_TIMESCALES, getRuleForTimescale, canonicalTimescale, calculateDueDate, getPriorityRule } = await import('../src/utils/maintenancePriority.ts');
+  assert.deepEqual(MAINTENANCE_TIMESCALES.filter(t => getRuleForTimescale(t)?.value === 'CAT 2'),
+    ['Up to 5 Working Days', 'Up to 7 Days', 'Up to 14 Days', 'Up to 21 Days']);
+  assert.equal(getRuleForTimescale('Up to 4 Hours')?.value, 'CAT 1');
+  assert.equal(getRuleForTimescale('Up to 28 Working Days')?.value, 'CAT 3');
+  assert.equal(calculateDueDate('CAT 2', at(2026, 11, 16, 13, 42), 'Up to 7 Days'), '2026-11-23 13:42');
+  assert.equal(calculateDueDate('CAT 2', at(2026, 11, 16, 13, 42), 'Up to 21 Days'), '2026-12-07 13:42');
+  assert.equal(calculateDueDate('CAT 2', at(2026, 11, 16, 13, 42), 'Up to 5 Working Days'), '2026-11-23 13:42');
+  assert.equal(calculateDueDate('CAT 2', at(2026, 11, 16, 13, 42)), '2026-11-23 13:42');
+  assert.equal(canonicalTimescale('5 Working Days'), 'Up to 5 Working Days');
+  assert.equal(canonicalTimescale('0 (4 Hours)'), 'Up to 4 Hours');
+  assert.equal(canonicalTimescale('28 Working Days'), 'Up to 28 Working Days');
+  assert.equal(getPriorityRule('CAT 3')?.timescale, 'Up to 28 Working Days');
 });

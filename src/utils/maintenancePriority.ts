@@ -9,12 +9,34 @@ export interface MaintenancePriorityRule {
   workingDays?: number;
 }
 
-/** The three priorities in use. Each one has exactly one timescale, so the two always move together. */
+/** The three priorities in use. `timescale` is the default a priority starts with; Cat 2 offers several. */
 export const MAINTENANCE_PRIORITY_RULES: MaintenancePriorityRule[] = [
-  { value: 'CAT 1', label: 'Cat 1 (4 Hours)', timescale: '4 Hours', hours: 4 },
-  { value: 'CAT 2', label: 'Cat 2 (5 Working Days)', timescale: '5 Working Days', workingDays: 5 },
-  { value: 'CAT 3', label: 'Cat 3 (28 Working Days)', timescale: '28 Working Days', workingDays: 28 }
+  { value: 'CAT 1', label: 'Cat 1 (Up to 4 Hours)', timescale: 'Up to 4 Hours', hours: 4 },
+  { value: 'CAT 2', label: 'Cat 2', timescale: 'Up to 5 Working Days', workingDays: 5 },
+  { value: 'CAT 3', label: 'Cat 3 (Up to 28 Working Days)', timescale: 'Up to 28 Working Days', workingDays: 28 }
 ];
+
+/** Every timescale that can be chosen, in the order shown in the dropdown. */
+export const MAINTENANCE_TIMESCALES: string[] = [
+  'Up to 4 Hours',
+  'Up to 5 Working Days',
+  'Up to 7 Days',
+  'Up to 14 Days',
+  'Up to 21 Days',
+  'Up to 28 Working Days'
+];
+
+interface ParsedTimescale { hours?: number; workingDays?: number; calendarDays?: number }
+
+/** Reads the amount and unit out of timescale text, e.g. 'Up to 7 Days', '5 Working Days', '0 (4 Hours)'. */
+const parseTimescale = (timescale?: string): ParsedTimescale | undefined => {
+  const text = String(timescale || '').toLowerCase();
+  const match = /(\d+)\s*(?:\(\s*)?(hours?|hrs?|h\b|working|days?)/.exec(text.replace(/^\s*\d+\s*\(/, ''));
+  if (!match) return undefined;
+  const amount = Number(match[1]);
+  if (/^h/.test(match[2])) return { hours: amount };
+  return /working/.test(text) ? { workingDays: amount } : { calendarDays: amount };
+};
 
 /**
  * Maps any stored priority text onto one of the three categories. Older records and options added in
@@ -34,13 +56,23 @@ export const getPriorityRule = (priority?: string) => {
   return MAINTENANCE_PRIORITY_RULES.find(r => r.value === normalized);
 };
 
-/** The rule a timescale belongs to: 4 hours is Cat 1, 28 days is Cat 3, any other timescale is Cat 2. */
+/** The priority a timescale belongs to: up to 4 hours is Cat 1, 28 days or more is Cat 3, anything else is Cat 2. */
 export const getRuleForTimescale = (timescale?: string) => {
-  const text = String(timescale || '').trim().toLowerCase();
-  if (!text) return undefined;
-  if (/^4\s*h/.test(text)) return MAINTENANCE_PRIORITY_RULES[0];
-  if (/^28\b/.test(text)) return MAINTENANCE_PRIORITY_RULES[2];
-  return MAINTENANCE_PRIORITY_RULES[1];
+  const parsed = parseTimescale(timescale);
+  if (!parsed) return undefined;
+  if (parsed.hours !== undefined) return parsed.hours <= 4 ? MAINTENANCE_PRIORITY_RULES[0] : MAINTENANCE_PRIORITY_RULES[1];
+  const days = parsed.workingDays ?? parsed.calendarDays ?? 0;
+  return days >= 28 ? MAINTENANCE_PRIORITY_RULES[2] : MAINTENANCE_PRIORITY_RULES[1];
+};
+
+/** The dropdown choice that matches older wording such as '5 Working Days' or '0 (4 Hours)', if there is one. */
+export const canonicalTimescale = (timescale?: string): string | undefined => {
+  const wanted = parseTimescale(timescale);
+  if (!wanted) return undefined;
+  return MAINTENANCE_TIMESCALES.find(option => {
+    const parsed = parseTimescale(option)!;
+    return parsed.hours === wanted.hours && parsed.workingDays === wanted.workingDays && parsed.calendarDays === wanted.calendarDays;
+  });
 };
 
 const addWorkingDays = (from: Date, days: number): Date => {
@@ -60,12 +92,20 @@ const pad = (n: number) => String(n).padStart(2, '0');
 export const formatDueDate = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-export const calculateDueDate = (priority: string | undefined, from: Date = new Date()): string => {
+/** Complete By for a priority, counted from `from`. A chosen timescale takes precedence over the priority's default. */
+export const calculateDueDate = (priority: string | undefined, from: Date = new Date(), timescale?: string): string => {
   const rule = getPriorityRule(priority);
-  if (!rule) return '';
-  const due = rule.hours !== undefined
-    ? new Date(from.getTime() + rule.hours * 3600 * 1000)
-    : addWorkingDays(from, rule.workingDays || 0);
+  const amount: ParsedTimescale | undefined = parseTimescale(timescale) || (rule && { hours: rule.hours, workingDays: rule.workingDays });
+  if (!amount) return '';
+  let due: Date;
+  if (amount.hours !== undefined) {
+    due = new Date(from.getTime() + amount.hours * 3600 * 1000);
+  } else if (amount.calendarDays !== undefined) {
+    due = new Date(from);
+    due.setDate(due.getDate() + amount.calendarDays);
+  } else {
+    due = addWorkingDays(from, amount.workingDays || 0);
+  }
   return formatDueDate(due);
 };
 
