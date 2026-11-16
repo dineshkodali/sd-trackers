@@ -8,6 +8,7 @@ import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { RoomNumberInput } from '../common/RoomNumberInput';
 
 const DEFAULT_BREAKFAST_ITEMS = [
   'Eggs', 'Bread', 'Milk', 'Cereal', 'Cheese', 'Butter', 'Juice', 'Jam', 'Baked Beans', 'Halal Sausages', 'Porridge', 'Fresh Fruit'
@@ -165,7 +166,10 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
 
   // Modal states for Food Box Requests / Complaints
   const [isBoxModalOpen, setIsBoxModalOpen] = useState(false);
+  // The property chosen in the food box form, so its Room No. list follows it. Null until the user changes it.
+  const [boxFormSite, setBoxFormSite] = useState<string | null>(null);
   const [editingBox, setEditingBox] = useState<FoodBoxRequest | null>(null);
+  useEffect(() => { setBoxFormSite(null); }, [isBoxModalOpen, editingBox]);
 
   // Form State for Report Modal
   const [currentItems, setCurrentItems] = useState<EditableFoodItem[]>([]);
@@ -1674,6 +1678,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                   <select
                     name="site"
                     defaultValue={editingBox?.site || (siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || ''))}
+                    onChange={e => setBoxFormSite(e.target.value)}
                     required
                     className="w-full px-2.5 py-1.5 border border-[#cbd5e1] rounded font-semibold bg-white"
                   >
@@ -1684,9 +1689,9 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-[#475569] uppercase mb-1">Room No.</label>
-                <input
-                  type="text"
+                <RoomNumberInput
                   name="roomNo"
+                  site={boxFormSite ?? (editingBox?.site || (siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || '')))}
                   defaultValue={editingBox?.roomNo || ''}
                   required
                   placeholder="e.g. NF 2, PWH 01 & 08, AWH 12"
