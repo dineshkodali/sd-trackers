@@ -86,7 +86,7 @@ const ChartCard: React.FC<{
           <button
             type="button"
             onClick={() => onModelChange('donut')}
-            className={`p-1 rounded cursor-pointer transition-colors ${model === 'donut' ? 'bg-white shadow-2xs text-[#0d9488]' : 'text-neutral-400 hover:text-neutral-700'}`}
+            className={`p-1 rounded cursor-pointer  ${model === 'donut' ? 'bg-white shadow-2xs text-[#0d9488]' : 'text-neutral-400 hover:text-neutral-700'}`}
             title="Donut / Pie Chart"
           >
             <PieIcon className="w-3.5 h-3.5" />
@@ -94,7 +94,7 @@ const ChartCard: React.FC<{
           <button
             type="button"
             onClick={() => onModelChange('bar')}
-            className={`p-1 rounded cursor-pointer transition-colors ${model === 'bar' ? 'bg-white shadow-2xs text-[#0d9488]' : 'text-neutral-400 hover:text-neutral-700'}`}
+            className={`p-1 rounded cursor-pointer  ${model === 'bar' ? 'bg-white shadow-2xs text-[#0d9488]' : 'text-neutral-400 hover:text-neutral-700'}`}
             title="Bar Chart"
           >
             <BarIcon className="w-3.5 h-3.5" />
@@ -102,7 +102,7 @@ const ChartCard: React.FC<{
           <button
             type="button"
             onClick={() => onModelChange('area')}
-            className={`p-1 rounded cursor-pointer transition-colors ${model === 'area' ? 'bg-white shadow-2xs text-[#0d9488]' : 'text-neutral-400 hover:text-neutral-700'}`}
+            className={`p-1 rounded cursor-pointer  ${model === 'area' ? 'bg-white shadow-2xs text-[#0d9488]' : 'text-neutral-400 hover:text-neutral-700'}`}
             title="Area Curve Chart"
           >
             <AreaIcon className="w-3.5 h-3.5" />
@@ -404,7 +404,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
         <div className="h-40" role="img" aria-label={`${label}: ${visible.map(s => `${s.label} ${s.value}`).join(', ')}`}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie
+              <Pie isAnimationActive={false}
                 data={visible}
                 dataKey="value"
                 nameKey="label"
@@ -447,7 +447,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
                 formatter={(v: any, _n: any, item: any) => [`${v} ${unit}${item?.payload?.note ? ` · ${item.payload.note}` : ''}`, item?.payload?.label]}
                 labelFormatter={() => ''}
               />
-              <Bar dataKey="value" radius={[2, 2, 0, 0]} cursor="pointer" onClick={(d: any) => d?.payload && open((d.payload as Slice).filter)}>
+              <Bar isAnimationActive={false} dataKey="value" radius={[2, 2, 0, 0]} cursor="pointer" onClick={(d: any) => d?.payload && open((d.payload as Slice).filter)}>
                 {visible.slice(0, 15).map(s => <Cell key={s.id} fill={s.color} />)}
               </Bar>
             </BarChart>
@@ -480,7 +480,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
               contentStyle={tooltipStyle}
               formatter={(v: any, _n: any, item: any) => [`${v} ${unit}${item?.payload?.note ? ` · ${item.payload.note}` : ''}`, item?.payload?.label]}
             />
-            <Area type="monotone" dataKey="value" stroke={TEAL} strokeWidth={2} fillOpacity={1} fill={`url(#grad-${label.replace(/\s+/g, '')})`} />
+            <Area isAnimationActive={false} type="monotone" dataKey="value" stroke={TEAL} strokeWidth={2} fillOpacity={1} fill={`url(#grad-${label.replace(/\s+/g, '')})`} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -509,7 +509,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setDateMode('single')}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer text-xs font-semibold ${
+              className={`px-2 py-1 rounded  cursor-pointer text-xs font-semibold ${
                 dateMode === 'single'
                   ? 'bg-white text-[#0f766e] shadow-2xs'
                   : 'text-neutral-500 hover:text-neutral-800'
@@ -520,7 +520,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setDateMode('range')}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer text-xs font-semibold ${
+              className={`px-2 py-1 rounded  cursor-pointer text-xs font-semibold ${
                 dateMode === 'range'
                   ? 'bg-white text-[#0f766e] shadow-2xs'
                   : 'text-neutral-500 hover:text-neutral-800'
@@ -652,7 +652,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
                 key={c.id}
                 type="button"
                 onClick={() => open(c.filter)}
-                className="text-left bg-white border border-[#e1dfdd] rounded-xs px-2.5 py-2 hover:border-[#0d9488] hover:shadow-2xs transition-colors cursor-pointer group"
+                className="text-left bg-white border border-[#e1dfdd] rounded-xs px-2.5 py-2 hover:border-[#0d9488] hover:shadow-2xs cursor-pointer group"
                 aria-label={`${c.label}: ${c.value}. Open the Daily Register filtered to this.`}
               >
                 <span className="block text-[11px] font-semibold text-[#605e5c] truncate">{c.label}</span>
@@ -753,7 +753,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => setDemographicView('matrix')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded  cursor-pointer ${
                     demographicView === 'matrix'
                       ? 'bg-white text-[#242424] font-semibold shadow-xs'
                       : 'text-[#605e5c] hover:text-[#242424]'
@@ -765,7 +765,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => setDemographicView('chart')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded  cursor-pointer ${
                     demographicView === 'chart'
                       ? 'bg-white text-[#242424] font-semibold shadow-xs'
                       : 'text-[#605e5c] hover:text-[#242424]'
@@ -791,7 +791,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
                   </thead>
                   <tbody className="divide-y divide-[#edebe9] text-[#323130] bg-white">
                     {propertyBreakdown.map(p => (
-                      <tr key={p.hotel} className="hover:bg-[#faf9f8] transition-colors">
+                      <tr key={p.hotel} className="hover:bg-[#faf9f8]">
                         <td className="p-2 font-semibold text-[#242424]">
                           <div className="flex items-center gap-1.5">
                             <Building className="w-3.5 h-3.5 text-neutral-400" />
@@ -859,7 +859,7 @@ export const GuestAnalyticsWidget: React.FC<Props> = ({
                         item?.payload?.hotel
                       ]}
                     />
-                    <Bar dataKey="totalGuests" fill={TEAL} radius={[3, 3, 0, 0]} />
+                    <Bar isAnimationActive={false} dataKey="totalGuests" fill={TEAL} radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

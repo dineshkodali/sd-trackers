@@ -350,14 +350,14 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           </div>
           <button
             onClick={() => onNavigate('escalations')}
-            className="px-2.5 py-1.5 bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] rounded-xs text-xs font-medium flex items-center gap-1 transition-colors"
+            className="px-2.5 py-1.5 bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] rounded-xs text-xs font-medium flex items-center gap-1"
           >
             <span>Escalations</span>
             <ArrowUpRight className="w-3 h-3" />
           </button>
           <button
             onClick={() => onNavigate('referrals')}
-            className="px-2.5 py-1.5 bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] rounded-xs text-xs font-medium flex items-center gap-1 transition-colors"
+            className="px-2.5 py-1.5 bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] rounded-xs text-xs font-medium flex items-center gap-1"
           >
             <span>Referrals</span>
             <ArrowUpRight className="w-3 h-3" />
@@ -464,7 +464,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 <button
                   type="button"
                   onClick={() => setIncidentChartMode('stacked')}
-                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  className={`px-2 py-1 text-xs font-medium rounded  ${
                     incidentChartMode === 'stacked'
                       ? 'bg-white text-[#0d9488] shadow-xs'
                       : 'text-[#605e5c] hover:text-[#242424]'
@@ -476,7 +476,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 <button
                   type="button"
                   onClick={() => setIncidentChartMode('grouped')}
-                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  className={`px-2 py-1 text-xs font-medium rounded  ${
                     incidentChartMode === 'grouped'
                       ? 'bg-white text-[#0d9488] shadow-xs'
                       : 'text-[#605e5c] hover:text-[#242424]'
@@ -488,7 +488,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 <button
                   type="button"
                   onClick={() => setIncidentChartMode('distribution')}
-                  className={`px-2 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                  className={`px-2 py-1 text-xs font-medium rounded  flex items-center gap-1 ${
                     incidentChartMode === 'distribution'
                       ? 'bg-white text-[#0d9488] shadow-xs'
                       : 'text-[#605e5c] hover:text-[#242424]'
@@ -558,7 +558,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       iconSize={8}
                     />
                     {INCIDENT_CATEGORIES.map((cat, idx) => (
-                      <Bar
+                      <Bar isAnimationActive={false}
                         key={cat.key}
                         dataKey={cat.key}
                         name={cat.shortName}
@@ -576,7 +576,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   <div className="w-full sm:w-1/2 h-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
+                        <Pie isAnimationActive={false}
                           data={incidentCategoryTotals}
                           dataKey="value"
                           nameKey="name"
@@ -659,7 +659,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 <button
                   type="button"
                   onClick={() => setReferralChartMode('area')}
-                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  className={`px-2 py-1 text-xs font-medium rounded  ${
                     referralChartMode === 'area'
                       ? 'bg-white text-[#0d9488] shadow-xs'
                       : 'text-[#605e5c] hover:text-[#242424]'
@@ -671,7 +671,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 <button
                   type="button"
                   onClick={() => setReferralChartMode('line')}
-                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  className={`px-2 py-1 text-xs font-medium rounded  ${
                     referralChartMode === 'line'
                       ? 'bg-white text-[#0d9488] shadow-xs'
                       : 'text-[#605e5c] hover:text-[#242424]'
@@ -745,7 +745,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       wrapperStyle={{ paddingTop: '8px', fontSize: '11px' }}
                       iconSize={8}
                     />
-                    <Area 
+                    <Area isAnimationActive={false} 
                       type="monotone" 
                       dataKey="Completed" 
                       name="Completed" 
@@ -753,7 +753,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       strokeWidth={2}
                       fill="#107c10" fillOpacity={0.15} 
                     />
-                    <Area 
+                    <Area isAnimationActive={false} 
                       type="monotone" 
                       dataKey="In progress" 
                       name="In Progress" 
@@ -761,7 +761,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       strokeWidth={2}
                       fill="#d83b01" fillOpacity={0.15} 
                     />
-                    <Area 
+                    <Area isAnimationActive={false} 
                       type="monotone" 
                       dataKey="Open" 
                       name="Open (New)" 
@@ -829,7 +829,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       wrapperStyle={{ paddingTop: '8px', fontSize: '11px' }}
                       iconSize={8}
                     />
-                    <Line 
+                    <Line isAnimationActive={false} 
                       type="monotone" 
                       dataKey="Total" 
                       name="Total Volume" 
@@ -838,7 +838,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       strokeDasharray="4 4"
                       dot={{ r: 3 }}
                     />
-                    <Line 
+                    <Line isAnimationActive={false} 
                       type="monotone" 
                       dataKey="Completed" 
                       name="Completed" 
@@ -846,7 +846,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       strokeWidth={2}
                       dot={{ r: 3, fill: '#107c10' }}
                     />
-                    <Line 
+                    <Line isAnimationActive={false} 
                       type="monotone" 
                       dataKey="In progress" 
                       name="In Progress" 
@@ -854,7 +854,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                       strokeWidth={2}
                       dot={{ r: 3, fill: '#d83b01' }}
                     />
-                    <Line 
+                    <Line isAnimationActive={false} 
                       type="monotone" 
                       dataKey="Open" 
                       name="Open (New)" 

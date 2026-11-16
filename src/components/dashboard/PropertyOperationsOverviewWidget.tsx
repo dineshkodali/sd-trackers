@@ -88,7 +88,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
           <div className="flex bg-[#f3f2f1] p-0.5 rounded border border-[#e1dfdd] text-xs font-semibold">
             <button
               onClick={() => setActiveTab('laundry')}
-              className={`px-3 py-1 rounded transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded  flex items-center gap-1.5 ${
                 activeTab === 'laundry'
                   ? 'bg-white text-[#0f766e] shadow-xs'
                   : 'text-[#605e5c] hover:text-[#242424]'
@@ -104,7 +104,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
             </button>
             <button
               onClick={() => setActiveTab('food')}
-              className={`px-3 py-1 rounded transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded  flex items-center gap-1.5 ${
                 activeTab === 'food'
                   ? 'bg-white text-orange-900 shadow-xs'
                   : 'text-[#605e5c] hover:text-[#242424]'
@@ -120,7 +120,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
 
           <button
             onClick={() => onNavigate(activeTab === 'laundry' ? 'laundry' : 'food')}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs"
           >
             <span>Open Full {activeTab === 'laundry' ? 'Laundry' : 'Food'} Hub</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -172,7 +172,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
                   <button
                     key={p}
                     onClick={() => setSelectedPeriodType(p)}
-                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                    className={`px-2 py-0.5 rounded text-xs  ${
                       selectedPeriodType === p
                         ? 'bg-[#0f766e] text-white font-semibold'
                         : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
@@ -212,7 +212,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
                     </tr>
                   ) : (
                     filteredLaundryLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-[#faf9f8] transition-colors">
+                      <tr key={log.id} className="hover:bg-[#faf9f8]">
                         <td className="py-2.5 px-3 font-semibold text-[#242424]">
                           <div className="flex items-center gap-1.5">
                             <Building2 className="w-3.5 h-3.5 text-neutral-400" />
@@ -272,7 +272,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
               <div className="flex flex-wrap gap-1.5">
                 <button
                   onClick={() => setSelectedVendorFilter('all')}
-                  className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+                  className={`px-2.5 py-1 rounded text-xs font-semibold  ${
                     selectedVendorFilter === 'all'
                       ? 'bg-[#8a3700] text-white shadow-xs'
                       : 'bg-white text-[#8a3700] border border-[#fedbb0] hover:bg-orange-50'
@@ -284,7 +284,7 @@ export const PropertyOperationsOverviewWidget: React.FC<PropertyOperationsOvervi
                   <button
                     key={vendor}
                     onClick={() => setSelectedVendorFilter(vendor)}
-                    className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+                    className={`px-2.5 py-1 rounded text-xs font-semibold  ${
                       selectedVendorFilter === vendor
                         ? 'bg-orange-600 text-white shadow-xs'
                         : 'bg-white text-orange-900 border border-orange-200 hover:bg-orange-50'

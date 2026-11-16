@@ -99,7 +99,7 @@ export const MonthlyIncidentsTable: React.FC<MonthlyIncidentsTableProps> = ({
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleCopyToClipboard}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-white border border-[#8a8886] hover:bg-[#edebe9] text-[#323130] rounded-xs transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-white border border-[#8a8886] hover:bg-[#edebe9] text-[#323130] rounded-xs shadow-2xs"
             title="Copy table to clipboard for pasting into SharePoint / Excel"
           >
             {copied ? (
@@ -117,7 +117,7 @@ export const MonthlyIncidentsTable: React.FC<MonthlyIncidentsTableProps> = ({
 
           <button
             onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] rounded-xs transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] rounded-xs"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV</span>
@@ -126,7 +126,7 @@ export const MonthlyIncidentsTable: React.FC<MonthlyIncidentsTableProps> = ({
           {onNavigate && (
             <button
               onClick={() => onNavigate('escalations')}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xs transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xs"
             >
               <span>Escalations Log</span>
               <ArrowUpRight className="w-3 h-3" />
@@ -161,7 +161,7 @@ export const MonthlyIncidentsTable: React.FC<MonthlyIncidentsTableProps> = ({
             {monthlyData.map((row) => {
               const isPeak = row.total > 0 && row.total === Math.max(...monthlyData.map(m => m.total));
               return (
-                <tr key={row.monthKey} className="hover:bg-[#f3f8fd] transition-colors">
+                <tr key={row.monthKey} className="hover:bg-[#f3f8fd]">
                   <td className="p-2.5 font-semibold text-[#242424] flex items-center gap-1.5">
                     <Calendar className="w-3 h-3 text-[#0d9488]" />
                     <span>{row.month}</span>

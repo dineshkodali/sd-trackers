@@ -382,7 +382,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-red-200 hover:text-white hover:bg-red-700/50 rounded transition-colors"
+            className="p-1 text-red-200 hover:text-white hover:bg-red-700/50 rounded"
             title="Close modal"
           >
             <X className="w-5 h-5" />
@@ -413,13 +413,13 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
             <div className="flex items-center justify-center gap-3 pt-2">
               <button
                 onClick={handleResetForm}
-                className="px-4 py-2 text-xs font-semibold bg-white hover:bg-neutral-100 border border-[#8a8886] rounded-xs text-[#323130] transition-colors"
+                className="px-4 py-2 text-xs font-semibold bg-white hover:bg-neutral-100 border border-[#8a8886] rounded-xs text-[#323130]"
               >
                 Close & Return
               </button>
               <button
                 onClick={handleGoToEscalations}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs transition-colors shadow-xs"
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs"
               >
                 <span>Go to Escalations Tracker</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -440,7 +440,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                 <button
                   type="button"
                   onClick={handleDiscardDraft}
-                  className="px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:text-red-700 hover:bg-amber-100 rounded border border-amber-400 transition-colors"
+                  className="px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:text-red-700 hover:bg-amber-100 rounded border border-amber-400"
                 >
                   Discard Draft
                 </button>
@@ -466,7 +466,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                 <button
                   type="button"
                   onClick={() => applyPreset('999')}
-                  className="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-800 rounded text-left font-semibold transition-colors flex items-center gap-1.5"
+                  className="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-800 rounded text-left font-semibold flex items-center gap-1.5"
                 >
                   <Flame className="w-3.5 h-3.5 text-red-600 shrink-0" />
                   <span className="truncate">999 / Paramedic</span>
@@ -474,7 +474,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                 <button
                   type="button"
                   onClick={() => applyPreset('police')}
-                  className="p-2 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-blue-800 rounded text-left font-semibold transition-colors flex items-center gap-1.5"
+                  className="p-2 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-blue-800 rounded text-left font-semibold flex items-center gap-1.5"
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-teal-800 shrink-0" />
                   <span className="truncate">Police Call-Out</span>
@@ -482,7 +482,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                 <button
                   type="button"
                   onClick={() => applyPreset('selfharm')}
-                  className="p-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded text-left font-semibold transition-colors flex items-center gap-1.5"
+                  className="p-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded text-left font-semibold flex items-center gap-1.5"
                 >
                   <AlertTriangle className="w-3.5 h-3.5 text-purple-700 shrink-0" />
                   <span className="truncate">Crisis / Self-Harm</span>
@@ -490,7 +490,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                 <button
                   type="button"
                   onClick={() => applyPreset('conflict')}
-                  className="p-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded text-left font-semibold transition-colors flex items-center gap-1.5"
+                  className="p-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded text-left font-semibold flex items-center gap-1.5"
                 >
                   <PhoneCall className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                   <span className="truncate">Threat / ASB Alert</span>
@@ -733,7 +733,7 @@ export const QuickIncidentModal: React.FC<QuickIncidentModalProps> = ({ isOpen, 
                 <button
                   id="btn-submit-quick-incident"
                   type="submit"
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xs font-bold shadow-sm transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xs font-bold shadow-sm"
                 >
                   <Siren className="w-4 h-4" />
                   <span>Submit & Escalate Immediately</span>

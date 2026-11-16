@@ -67,7 +67,7 @@ export const CommercialWelfareBreakdown: React.FC<CommercialWelfareBreakdownProp
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => onNavigate('food')}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xs transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xs"
           >
             <Soup className="w-3.5 h-3.5" />
             <span>Food Tracker</span>
@@ -76,7 +76,7 @@ export const CommercialWelfareBreakdown: React.FC<CommercialWelfareBreakdownProp
 
           <button
             onClick={() => onNavigate('laundry')}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xs transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xs"
           >
             <Shirt className="w-3.5 h-3.5" />
             <span>Laundry Tracker</span>

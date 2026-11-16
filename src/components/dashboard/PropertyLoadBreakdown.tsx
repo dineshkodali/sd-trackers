@@ -100,7 +100,7 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
 
         <button
           onClick={() => onNavigate('properties')}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] rounded-xs transition-colors shrink-0"
+          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0d9488] border border-[#99f6e4] rounded-xs shrink-0"
         >
           <span>Properties Directory</span>
           <ArrowUpRight className="w-3 h-3" />
@@ -112,12 +112,12 @@ export const PropertyLoadBreakdown: React.FC<PropertyLoadBreakdownProps> = ({
         {propertyLoads.slice(0, 6).map(item => (
           <div 
             key={item.id}
-            className="border border-[#e1dfdd] rounded-xs p-3 hover:border-[#0d9488] transition-all bg-white flex flex-col justify-between space-y-2.5 shadow-2xs group"
+            className="border border-[#e1dfdd] rounded-xs p-3 hover:border-[#0d9488] bg-white flex flex-col justify-between space-y-2.5 shadow-2xs group"
           >
             <div>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h4 className="font-bold text-xs text-[#242424] group-hover:text-[#0d9488] transition-colors line-clamp-1">
+                  <h4 className="font-bold text-xs text-[#242424] group-hover:text-[#0d9488] line-clamp-1">
                     {item.name}
                   </h4>
                   <p className="text-[10px] text-[#605e5c] line-clamp-1">

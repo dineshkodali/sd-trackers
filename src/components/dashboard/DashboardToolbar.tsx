@@ -29,7 +29,7 @@ interface Props {
   onCancel: () => void;
 }
 
-const btn = 'inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xs border transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+const btn = 'inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xs border  disabled:opacity-50 disabled:cursor-not-allowed';
 const btnSecondary = `${btn} bg-white border-[#8a8886] text-[#323130] hover:bg-[#edebe9]`;
 const btnPrimary = `${btn} bg-[#0d9488] border-[#0d9488] text-white hover:bg-[#0f766e]`;
 const menuItem = 'w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-[#323130] hover:bg-[#f3f2f1] disabled:opacity-50 disabled:cursor-not-allowed';

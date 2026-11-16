@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { Suspense, useState, useMemo, useEffect } from 'react';
 import { IconUsers as Users, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconBuilding as Building2, IconArrowUpRight as ArrowUpRight, IconAlarm as Siren, IconPlus as Plus, IconTrendingUp as TrendingUp, IconShieldCheck as ShieldCheck, IconBolt as Zap, IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconGripVertical as GripVertical, IconX as X, IconBus as Bus } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { useDashboards } from '../../hooks/useDashboards';
@@ -23,12 +23,12 @@ import {
   RecentNotificationsWidget,
 } from './DashboardMiniWidgets';
 import { FilterBar } from '../common/FilterBar';
-import { QuickIncidentModal } from './QuickIncidentModal';
-import { DashboardAnalytics } from './DashboardAnalytics';
-import { PropertyLoadBreakdown } from './PropertyLoadBreakdown';
-import { VulnerabilityRiskBreakdown } from './VulnerabilityRiskBreakdown';
-import { CommercialWelfareBreakdown } from './CommercialWelfareBreakdown';
-import { PropertyOperationsOverviewWidget } from './PropertyOperationsOverviewWidget';
+const QuickIncidentModal = React.lazy(() => import('./QuickIncidentModal').then(m => ({ default: m.QuickIncidentModal })));
+const DashboardAnalytics = React.lazy(() => import('./DashboardAnalytics').then(m => ({ default: m.DashboardAnalytics })));
+const PropertyLoadBreakdown = React.lazy(() => import('./PropertyLoadBreakdown').then(m => ({ default: m.PropertyLoadBreakdown })));
+const VulnerabilityRiskBreakdown = React.lazy(() => import('./VulnerabilityRiskBreakdown').then(m => ({ default: m.VulnerabilityRiskBreakdown })));
+const CommercialWelfareBreakdown = React.lazy(() => import('./CommercialWelfareBreakdown').then(m => ({ default: m.CommercialWelfareBreakdown })));
+const PropertyOperationsOverviewWidget = React.lazy(() => import('./PropertyOperationsOverviewWidget').then(m => ({ default: m.PropertyOperationsOverviewWidget })));
 import { exportDashboardSummaryPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrientation } from '../common/ExportModal';
@@ -316,32 +316,32 @@ export const DashboardView: React.FC = () => {
     switch (inst.type) {
       case 'summaryCards':
         return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Card 1: Active Referrals */}
         <div 
           id="summary-card-active-referrals"
           onClick={() => setActivePage('referrals')}
-          className="bg-white border border-[#5eead4] rounded-xs p-3.5 shadow-xs hover:shadow-md hover:border-[#0d9488] transition-all cursor-pointer group relative overflow-hidden"
+          className="bg-white border border-[#5eead4] rounded-xs p-2.5 shadow-xs hover:border-[#0d9488] cursor-pointer group relative overflow-hidden"
         >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-xs font-semibold text-[#0f766e] uppercase tracking-wider">
                 Total Active Referrals
               </span>
-              <div className="text-3xl font-bold text-[#242424] mt-1.5 group-hover:text-[#0d9488] transition-colors">
+              <div className="text-xl font-bold text-[#242424] mt-0.5 group-hover:text-[#0d9488]">
                 {activeReferrals.length}
               </div>
               <p className="text-[11px] text-[#605e5c] mt-1">
                 {activeReferrals.filter(r => r.status === 'Open').length} Open &bull; {activeReferrals.filter(r => r.status === 'In progress').length} In Progress
               </p>
             </div>
-            <div className="p-2.5 bg-[#f0fdfa] text-[#0d9488] rounded-xs group-hover:bg-[#0d9488] group-hover:text-white transition-colors">
-              <Users className="w-5 h-5" />
+            <div className="p-1.5 bg-[#f0fdfa] text-[#0d9488] rounded-xs group-hover:bg-[#0d9488] group-hover:text-white">
+              <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
+          <div className="mt-1.5 pt-1.5 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
             <span>Manage Referrals</span>
-            <ArrowUpRight className="w-3.5 h-3.5 transition-transform" />
+            <ArrowUpRight className="w-3.5 h-3.5" />
           </div>
         </div>
 
@@ -349,27 +349,27 @@ export const DashboardView: React.FC = () => {
         <div 
           id="summary-card-open-escalations"
           onClick={() => setActivePage('escalations')}
-          className="bg-white border border-red-200 rounded-xs p-3.5 shadow-xs hover:shadow-md hover:border-[#a4262c] transition-all cursor-pointer group relative overflow-hidden"
+          className="bg-white border border-red-200 rounded-xs p-2.5 shadow-xs hover:border-[#a4262c] cursor-pointer group relative overflow-hidden"
         >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-xs font-semibold text-red-800 uppercase tracking-wider">
                 Open Escalations
               </span>
-              <div className="text-3xl font-bold text-[#a4262c] mt-1.5">
+              <div className="text-xl font-bold text-[#a4262c] mt-0.5">
                 {activeEscalations.length}
               </div>
               <p className="text-[11px] text-red-700 mt-1">
                 Requiring multi-agency & emergency review
               </p>
             </div>
-            <div className="p-2.5 bg-red-100 text-[#a4262c] rounded-xs group-hover:bg-[#a4262c] group-hover:text-white transition-colors">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="p-1.5 bg-red-100 text-[#a4262c] rounded-xs group-hover:bg-[#a4262c] group-hover:text-white">
+              <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 pt-2 border-t border-red-100 flex items-center justify-between text-xs text-[#a4262c] font-semibold">
+          <div className="mt-1.5 pt-1.5 border-t border-red-100 flex items-center justify-between text-xs text-[#a4262c] font-semibold">
             <span>Review Escalations</span>
-            <ArrowUpRight className="w-3.5 h-3.5 transition-transform" />
+            <ArrowUpRight className="w-3.5 h-3.5" />
           </div>
         </div>
 
@@ -378,54 +378,54 @@ export const DashboardView: React.FC = () => {
           <div 
             id="summary-card-properties-managed"
             onClick={() => setActivePage('properties')}
-            className="bg-white border border-[#d2d0ce] rounded-xs p-3.5 shadow-xs hover:shadow-md hover:border-[#0d9488] transition-all cursor-pointer group relative overflow-hidden"
+            className="bg-white border border-[#d2d0ce] rounded-xs p-2.5 shadow-xs hover:border-[#0d9488] cursor-pointer group relative overflow-hidden"
           >
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-semibold text-[#323130] uppercase tracking-wider">
                   Total Properties Managed
                 </span>
-                <div className="text-3xl font-bold text-[#242424] mt-1.5 group-hover:text-[#0d9488] transition-colors">
+                <div className="text-xl font-bold text-[#242424] mt-0.5 group-hover:text-[#0d9488]">
                   {properties.length}
                 </div>
                 <p className="text-[11px] text-[#605e5c] mt-1">
                   Official contracted accommodation sites
                 </p>
               </div>
-              <div className="p-2.5 bg-neutral-100 text-[#323130] rounded-xs group-hover:bg-[#0d9488] group-hover:text-white transition-colors">
-                <Building2 className="w-5 h-5" />
+              <div className="p-1.5 bg-neutral-100 text-[#323130] rounded-xs group-hover:bg-[#0d9488] group-hover:text-white">
+                <Building2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
+            <div className="mt-1.5 pt-1.5 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
               <span>View Properties Directory</span>
-              <ArrowUpRight className="w-3.5 h-3.5 transition-transform" />
+              <ArrowUpRight className="w-3.5 h-3.5" />
             </div>
           </div>
         ) : (
           <div 
             id="summary-card-assigned-site"
             onClick={() => setActivePage('maintenance')}
-            className="bg-white border border-[#d2d0ce] rounded-xs p-3.5 shadow-xs hover:shadow-md hover:border-[#0d9488] transition-all cursor-pointer group relative overflow-hidden"
+            className="bg-white border border-[#d2d0ce] rounded-xs p-2.5 shadow-xs hover:border-[#0d9488] cursor-pointer group relative overflow-hidden"
           >
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-semibold text-[#323130] uppercase tracking-wider">
                   Assigned Accommodation
                 </span>
-                <div className="text-xl font-bold text-[#242424] mt-1.5 group-hover:text-[#0d9488] transition-colors truncate max-w-[200px]" title={allowedSites.length > 0 ? allowedSites.join(', ') : assignedSite}>
+                <div className="text-xl font-bold text-[#242424] mt-0.5 group-hover:text-[#0d9488] truncate max-w-[200px]" title={allowedSites.length > 0 ? allowedSites.join(', ') : assignedSite}>
                   {allowedSites.length > 0 ? allowedSites.join(', ') : assignedSite}
                 </div>
                 <p className="text-[11px] text-[#605e5c] mt-1">
                   Operational site for {currentUserRole}
                 </p>
               </div>
-              <div className="p-2.5 bg-neutral-100 text-[#323130] rounded-xs group-hover:bg-[#0d9488] group-hover:text-white transition-colors">
-                <Building2 className="w-5 h-5" />
+              <div className="p-1.5 bg-neutral-100 text-[#323130] rounded-xs group-hover:bg-[#0d9488] group-hover:text-white">
+                <Building2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3 pt-2 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
+            <div className="mt-1.5 pt-1.5 border-t border-[#edebe9] flex items-center justify-between text-xs text-[#0d9488] font-semibold">
               <span>Open Maintenance Tracker</span>
-              <ArrowUpRight className="w-3.5 h-3.5 transition-transform" />
+              <ArrowUpRight className="w-3.5 h-3.5" />
             </div>
           </div>
         )}
@@ -560,7 +560,7 @@ export const DashboardView: React.FC = () => {
           <button
             id="btn-quick-incident-log"
             onClick={() => setIsQuickIncidentModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xs shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xs shadow-xs"
             title="Trigger Quick Incident Log for immediate escalation reporting"
           >
             <Siren className="w-3.5 h-3.5" />
@@ -569,7 +569,7 @@ export const DashboardView: React.FC = () => {
 
           <button
             onClick={() => setActivePage('referrals')}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>+ New Record</span>
@@ -640,7 +640,7 @@ export const DashboardView: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5">
           {visibleWidgets.map(({ inst, index }, position) => {
             const def = getWidgetDefinition(inst.type)!;
             const editing = dash.isEditing && !previewing;
@@ -689,7 +689,7 @@ export const DashboardView: React.FC = () => {
                   </div>
                 )}
                 <div className={editing ? 'pointer-events-none select-none' : 'h-full'}>
-                  <ErrorBoundary>{renderWidget(inst)}</ErrorBoundary>
+                  <ErrorBoundary><Suspense fallback={<div className="text-xs text-[#605e5c] p-3">Loading…</div>}>{renderWidget(inst)}</Suspense></ErrorBoundary>
                 </div>
               </div>
             );
@@ -706,10 +706,14 @@ export const DashboardView: React.FC = () => {
       />
 
       {/* Quick Incident Log Modal for Immediate Escalation Reporting */}
-      <QuickIncidentModal
-        isOpen={isQuickIncidentModalOpen}
-        onClose={() => setIsQuickIncidentModalOpen(false)}
-      />
+      {isQuickIncidentModalOpen && (
+        <Suspense fallback={null}>
+          <QuickIncidentModal
+            isOpen={isQuickIncidentModalOpen}
+            onClose={() => setIsQuickIncidentModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* Export Selection & Configuration Modal */}
       <ExportModal
