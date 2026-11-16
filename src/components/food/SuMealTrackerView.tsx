@@ -3,7 +3,7 @@ import { IconHistory as History, IconClipboardList as ClipboardList, IconCheck a
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type SuDirectoryRow } from '../../services/suTrackerService';
 import { suEnhancementsService, type MealRecord, type MealHistoryEntry } from '../../services/suEnhancementsService';
-import { MEAL_PERIODS, MEAL_STATUSES, mealDayStatus, type MealPeriod, type MealDayStatus } from '../../utils/suEnhancementsLogic';
+import { MEAL_PERIODS, MEAL_STATUSES, mealDayStatus, mealRecordId, type MealPeriod, type MealDayStatus } from '../../utils/suEnhancementsLogic';
 import { todayIso } from '../../utils/attendanceLogic';
 import { SiteFilterSelect, TrackerExport, RefreshButton, ResetFiltersButton, type TrackerExportColumn } from '../common/TrackerToolbar';
 import {
@@ -36,7 +36,6 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
   const [mealFilter, setMealFilter] = useState('all');
   const [editing, setEditing] = useState<{ su: SuDirectoryRow; period: MealPeriod } | null>(null);
   const [historyFor, setHistoryFor] = useState<SuDirectoryRow | null>(null);
-  const [savingKey, setSavingKey] = useState('');
   const inFlight = useRef(new Set<string>());
 
   const loadDirectory = useCallback(async () => {
@@ -107,14 +106,46 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
   ];
   const th = (key: string, label: string) => <SortableTh key={key} label={label} active={tc.sortKey === key} asc={tc.asc} onSort={() => tc.sortBy(key)} />;
 
+  // Marking is optimistic: the tap shows at once and the save runs in the background (no reload, no spinner).
+  // If the save fails the slot goes back to what it was and the error banner explains why.
+  const recordsRef = useRef<MealRecord[]>([]);
+  recordsRef.current = records;
+  const queued = useRef(new Map<string, { status: string; notes?: string }>());
+
   const save = async (su: SuDirectoryRow, period: MealPeriod, status: string, notes?: string): Promise<string | null> => {
     const key = `${su.su.id}|${period}`;
-    if (inFlight.current.has(key)) return null;            // ignore a second change while this slot is saving
-    inFlight.current.add(key); setSavingKey(key); setError('');
-    const res = await suEnhancementsService.saveMeal({ suId: su.su.id, mealDate: date, mealPeriod: period, status, notes, existing: bySlot.get(key) || null }, currentUserName);
-    inFlight.current.delete(key); setSavingKey('');
-    if (!res.success) return res.error || 'Could not save.';
-    await loadMeals();
+    const previous = recordsRef.current.find(r => r.suId === su.su.id && r.mealPeriod === period) || null;
+
+    // Show the change straight away
+    const optimistic: MealRecord = { ...(previous || { id: mealRecordId(su.su.id, date, period), suId: su.su.id, mealDate: date, mealPeriod: period, recordedBy: currentUserName }), status, notes: notes?.trim() ? notes : null, updatedBy: currentUserName };
+    setRecords(prev => [...prev.filter(r => !(r.suId === su.su.id && r.mealPeriod === period)), optimistic]);
+    setError('');
+
+    // A save for this slot is already running: remember the latest choice and send it once that one finishes
+    if (inFlight.current.has(key)) { queued.current.set(key, { status, notes }); return null; }
+
+    inFlight.current.add(key);
+    let err: string | null = null;
+    let existing: MealRecord | null = previous;
+    let next: { status: string; notes?: string } | undefined = { status, notes };
+    while (next) {
+      queued.current.delete(key);
+      const res = await suEnhancementsService.saveMeal({ suId: su.su.id, mealDate: date, mealPeriod: period, status: next.status, notes: next.notes, existing }, currentUserName);
+      if (!res.success) { err = res.error || 'Could not save.'; break; }
+      existing = { ...optimistic, ...res.data };
+      setRecords(prev => prev.map(r => (r.suId === su.su.id && r.mealPeriod === period ? { ...r, ...res.data, id: res.data?.id || r.id } : r)));
+      next = queued.current.get(key);
+    }
+    inFlight.current.delete(key);
+    queued.current.delete(key);
+    if (err) {
+      // Put the slot back to what the database really holds
+      setRecords(prev => {
+        const rest = prev.filter(r => !(r.suId === su.su.id && r.mealPeriod === period));
+        return previous ? [...rest, previous] : rest;
+      });
+      return err;
+    }
     return null;
   };
 
@@ -195,11 +226,11 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
                       {actor.canEdit ? (
                         <div className="flex items-center gap-1.5" role="group" aria-label={`${p} for ${r.su.firstName} ${r.su.lastName}`}>
                           <div className="inline-flex rounded-xs border border-[#d4d4d4] overflow-hidden divide-x divide-[#d4d4d4]">
-                            <button type="button" disabled={savingKey === `${r.su.id}|${p}`} onClick={() => status !== 'Accepted' && onPick(r, p, 'Accepted')}
+                            <button type="button" onClick={() => status !== 'Accepted' && onPick(r, p, 'Accepted')}
                               className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-50 ${status === 'Accepted' ? 'bg-emerald-600 text-white' : 'bg-white text-neutral-500 hover:bg-emerald-50 hover:text-emerald-700'}`}>
                               <Check className="w-3 h-3" />Accepted
                             </button>
-                            <button type="button" disabled={savingKey === `${r.su.id}|${p}`} onClick={() => status !== 'Declined' && onPick(r, p, 'Declined')}
+                            <button type="button" onClick={() => status !== 'Declined' && onPick(r, p, 'Declined')}
                               className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-50 ${status === 'Declined' ? 'bg-rose-600 text-white' : 'bg-white text-neutral-500 hover:bg-rose-50 hover:text-rose-700'}`}>
                               <XIcon className="w-3 h-3" />Declined
                             </button>
