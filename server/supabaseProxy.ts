@@ -25,6 +25,15 @@ export const SUPABASE_PROXY_PREFIX = '/supabase';
  */
 export const GATEWAY_KEY_PLACEHOLDER = 'sd-gateway-key';
 
+/**
+ * One shared pool to Supabase. Without it every browser request opened its own TLS connection, so a page
+ * that asks for dozens of tables at once flooded the database with connections. Keep-alive reuses sockets,
+ * and the cap makes extra requests wait their turn here instead of piling onto the database.
+ */
+const UPSTREAM_MAX_SOCKETS = 24;
+const UPSTREAM_TIMEOUT_MS = 60000;
+const upstreamAgent = new https.Agent({ keepAlive: true, maxSockets: UPSTREAM_MAX_SOCKETS, maxFreeSockets: 8, keepAliveMsecs: 15000 });
+
 const DEFAULT_SUPABASE_URL = 'https://kxikojvpcyprfbyxsdaa.supabase.co';
 
 const HOP_BY_HOP = new Set([
@@ -119,6 +128,7 @@ export function supabaseProxy() {
         method: req.method,
         path: upstreamPath(req.originalUrl),
         headers: forwardHeaders(req, dest.host),
+        agent: upstreamAgent,
       },
       (upRes) => {
         const headers: Record<string, string | string[]> = {};
@@ -166,13 +176,26 @@ export function supabaseProxy() {
       },
     );
 
-    upstream.setTimeout(120000, () => upstream.destroy(new Error('Supabase upstream timed out')));
-    upstream.on('error', (err) => {
-      console.error('[SupabaseProxy]', req.method, req.originalUrl, err.message);
-      if (!res.headersSent) res.status(502).json({ error: 'Database gateway unavailable' });
-      else res.destroy();
+    let timedOut = false;
+    upstream.setTimeout(UPSTREAM_TIMEOUT_MS, () => {
+      timedOut = true;
+      upstream.destroy(new Error('Supabase upstream timed out'));
     });
-    req.on('aborted', () => upstream.destroy());
+    upstream.on('error', (err) => {
+      // A browser that navigated away is not an error worth logging.
+      if (!res.writableEnded && res.socket && !res.socket.destroyed) {
+        console.error('[SupabaseProxy]', req.method, req.originalUrl.split('?')[0], err.message);
+      }
+      if (!res.headersSent) {
+        res.status(timedOut ? 504 : 502).json({ error: 'Database gateway unavailable' });
+      } else {
+        res.destroy();
+      }
+    });
+    // Stop the upstream request, and the database work behind it, as soon as the browser gives up.
+    res.on('close', () => {
+      if (!res.writableEnded) upstream.destroy();
+    });
     req.pipe(upstream);
   };
 }

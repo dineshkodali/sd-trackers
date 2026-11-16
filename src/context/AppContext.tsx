@@ -2007,16 +2007,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       publishStatus(firstPlan); // the page can show now
 
       // The rest, in small parallel requests; each is applied the moment it arrives and fails on its own.
+      // Two chunks at a time: starting all of them at once put roughly 40 table reads on the database together.
       const chunks: Array<typeof fullPlan> = [];
       for (let i = 0; i < restPlan.length; i += 6) chunks.push(restPlan.slice(i, i + 6));
-      await Promise.all(chunks.map(async chunk => {
+      const loadChunk = async (chunk: typeof fullPlan) => {
         const res = await apiService.batchFetchEntities(toRequests(chunk));
         const results = res.success
           ? res.results
           : Object.fromEntries(chunk.map(p => [p.key, { success: false, error: res.error, data: [] as any[] }]));
         Object.assign(allResults, results);
         applyResults(results);
-      }));
+      };
+      const waiting = [...chunks];
+      const worker = async () => {
+        for (let chunk = waiting.shift(); chunk; chunk = waiting.shift()) await loadChunk(chunk);
+      };
+      await Promise.all([worker(), worker()]);
       refreshNotificationData();
       publishStatus(fullPlan);
 
