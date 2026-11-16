@@ -2557,9 +2557,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dataChangeRequests,
       extraNotifications: [...financeTaskNotifications, ...extraNotifications],
       readNotificationIds,
-      clearedBeforeTimestamp
+      // Only the Super Admin can clear the feed, and only the Super Admin's feed is capped; everyone else keeps every notification
+      clearedBeforeTimestamp: currentUserRole === 'Super Admin' ? clearedBeforeTimestamp : 0,
+      maxAuditEvents: currentUserRole === 'Super Admin' ? 300 : Infinity
     });
-  }, [auditLogs, escalations, dataChangeRequests, extraNotifications, financeTaskNotifications, readNotificationIds, clearedBeforeTimestamp]);
+  }, [auditLogs, escalations, dataChangeRequests, extraNotifications, financeTaskNotifications, readNotificationIds, clearedBeforeTimestamp, currentUserRole]);
 
   // RBAC filtered notifications according to current user's role and assigned site
   const notifications = useMemo(() => {
@@ -2580,7 +2582,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const next = new Set(prev);
       next.add(id);
       try {
-        localStorage.setItem('sd_read_notifications', JSON.stringify(Array.from(next).slice(-500)));
+        localStorage.setItem('sd_read_notifications', JSON.stringify(Array.from(next).slice(-5000)));
       } catch (e) {
         console.warn('Could not save read notification state:', e);
       }
@@ -2593,7 +2595,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const next = new Set(prev);
       notifications.forEach(n => next.add(n.id));
       try {
-        localStorage.setItem('sd_read_notifications', JSON.stringify(Array.from(next).slice(-500)));
+        localStorage.setItem('sd_read_notifications', JSON.stringify(Array.from(next).slice(-5000)));
       } catch (e) {
         console.warn('Could not save read notification state:', e);
       }
@@ -2602,8 +2604,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [notifications]);
 
   const clearAllNotifications = useCallback(() => {
-    if (currentUserRole !== 'Super Admin' && currentUserRole !== 'Admin') {
-      console.warn('[Notifications] Non-admin users have view-only permissions and cannot clear notifications.');
+    if (currentUserRole !== 'Super Admin') {
+      console.warn('[Notifications] Only the Super Admin can clear notifications.');
       return;
     }
     const now = Date.now();

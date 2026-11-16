@@ -244,6 +244,8 @@ export function deriveInAppNotifications(params: {
   extraNotifications?: NotificationItem[];
   readNotificationIds?: Set<string>;
   clearedBeforeTimestamp?: number;
+  /** How many of the newest audit events to turn into notifications (default 300; pass Infinity for no limit). */
+  maxAuditEvents?: number;
 }): NotificationItem[] {
   const {
     auditLogs = [],
@@ -251,7 +253,8 @@ export function deriveInAppNotifications(params: {
     dataChangeRequests = [],
     extraNotifications = [],
     readNotificationIds = new Set<string>(),
-    clearedBeforeTimestamp = 0
+    clearedBeforeTimestamp = 0,
+    maxAuditEvents = 300
   } = params;
 
   const items: NotificationItem[] = [];
@@ -335,7 +338,7 @@ export function deriveInAppNotifications(params: {
   });
 
   // 4. Comprehensive Audit Trail Events
-  auditLogs.slice(0, 300).forEach(audit => {
+  auditLogs.slice(0, maxAuditEvents).forEach(audit => {
     const auditTime = new Date(audit.timestamp).getTime();
     if (auditTime < clearedBeforeTimestamp) return;
 

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { clearReadCache } from '../../services/readCache';
 import { IconBell as Bell, IconShield as Shield, IconBolt as Zap, IconBuilding as Building2, IconChevronDown as ChevronDown, IconCheck as Check, IconExternalLink as ExternalLink, IconLock as Lock, IconLogout as LogOut, IconActivity as Activity, IconMenu as Menu, IconX as X, IconChecks as CheckCheck, IconShieldExclamation as ShieldAlert, IconUserCheck as UserCheck, IconArrowRight as ArrowRight } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
@@ -20,6 +21,7 @@ export const Header: React.FC = () => {
     markNotificationAsRead,
     markAllNotificationsAsRead,
     clearAllNotifications,
+    refreshLiveData,
     setActivePage,
     activePage,
     authProfile,
@@ -79,6 +81,8 @@ export const Header: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const isStaff = isStaffLevel(currentUserRole);
+  // The Super Admin gets the full feed with filters; everyone else gets one simple list of their own notifications
+  const isSuper = currentUserRole === 'Super Admin';
   const [notifTab, setNotifTab] = useState<'all' | 'site' | 'urgent' | 'requests'>(
     isStaffLevel(currentUserRole) ? 'site' : 'all'
   );
@@ -133,6 +137,7 @@ export const Header: React.FC = () => {
 
   const tabFilteredNotifications = useMemo(() => {
     let list = notifications;
+    if (!isSuper) return list;
 
     if (notifTab === 'urgent') {
       return list.filter(n => n.type === 'urgent' || n.type === 'security' || n.category === 'critical_security' || n.action === 'URGENT' || n.action === 'ALERT');
@@ -150,7 +155,7 @@ export const Header: React.FC = () => {
       return list.filter(n => n.category === 'site_activity' || Boolean(n.site));
     }
     return list;
-  }, [notifications, notifTab, assignedSite, isStaff]);
+  }, [notifications, notifTab, assignedSite, isStaff, isSuper]);
 
   const roleMenuRef = useRef<HTMLDivElement>(null);
   const propertyMenuRef = useRef<HTMLDivElement>(null);
@@ -429,7 +434,10 @@ export const Header: React.FC = () => {
         <div className="relative" ref={notifRef}>
           <button
             id="btn-notifications"
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => {
+              if (!showNotifications) { clearReadCache(); void refreshLiveData?.(); }
+              setShowNotifications(!showNotifications);
+            }}
             className="relative p-2 text-[#323130] hover:bg-[#edebe9] border border-[#8a8886] rounded-xs transition-colors"
             title="System Notifications"
             aria-label="View notifications"
@@ -448,7 +456,7 @@ export const Header: React.FC = () => {
           {showNotifications && (
             <div 
               id="notifications-flyout"
-              className="absolute right-0 mt-1 w-80 sm:w-[420px] bg-white border border-[#e1dfdd] shadow-2xl rounded-xs z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]"
+              className="absolute right-0 mt-1 w-80 sm:w-[420px] bg-white border border-[#e1dfdd] shadow-2xl rounded-xs z-40 overflow-hidden flex flex-col max-h-[85vh]"
             >
               {/* Role-Customized Header */}
               <div className="p-3.5 bg-[#f8f9fa] border-b border-[#e1dfdd] flex items-start justify-between gap-2">
@@ -456,7 +464,7 @@ export const Header: React.FC = () => {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <Bell className="w-4 h-4 text-[#0d9488]" />
                     <span className="text-xs font-bold text-[#242424]">
-                      {getRoleFeedTitle(currentUserRole)}
+                      {isSuper ? getRoleFeedTitle(currentUserRole) : 'Notifications'}
                     </span>
                     {unreadNotificationCount > 0 && (
                       <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 font-bold px-1.5 py-0.2 rounded-full">
@@ -465,7 +473,7 @@ export const Header: React.FC = () => {
                     )}
                   </div>
                   <p className="text-[10px] text-[#605e5c] mt-0.5 truncate">
-                    {getRoleFeedSubtitle(currentUserRole, assignedSite, allowedSites)}
+                    {isSuper ? getRoleFeedSubtitle(currentUserRole, assignedSite, allowedSites) : 'Updates for your account and properties'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -479,25 +487,20 @@ export const Header: React.FC = () => {
                       <span>Read all</span>
                     </button>
                   )}
-                  {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') ? (
-                    notifications.length > 0 && (
-                      <button 
-                        onClick={clearAllNotifications}
-                        className="text-[11px] text-neutral-400 hover:text-red-600 transition-colors"
-                        title="Clear notifications (Admin)"
-                      >
-                        Clear
-                      </button>
-                    )
-                  ) : (
-                    <span className="text-[10px] text-neutral-400 font-medium px-1.5 py-0.5 rounded bg-neutral-100 border border-neutral-200">
-                      View Only
-                    </span>
+                  {isSuper && notifications.length > 0 && (
+                    <button
+                      onClick={clearAllNotifications}
+                      className="text-[11px] text-neutral-400 hover:text-red-600"
+                      title="Clear notifications (Super Admin only)"
+                    >
+                      Clear
+                    </button>
                   )}
                 </div>
               </div>
 
-              {/* Filter Tabs */}
+              {/* Filter Tabs (Super Admin only) */}
+              {isSuper && (
               <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#f3f2f1] bg-[#faf9f8] overflow-x-auto">
                 {!isStaff && (
                   <button
@@ -541,6 +544,7 @@ export const Header: React.FC = () => {
                   <span>{isStaff ? 'My Requests' : 'Requests'}</span>
                 </button>
               </div>
+              )}
 
               {/* Notifications List */}
               <div className="max-h-80 overflow-y-auto divide-y divide-[#f3f2f1] text-xs">
@@ -566,7 +570,7 @@ export const Header: React.FC = () => {
                           setShowNotifications(false);
                         }
                       }}
-                      className={`p-3 cursor-pointer hover:bg-[#f3f8fd] transition-colors relative ${
+                      className={`p-3 cursor-pointer hover:bg-[#f3f8fd] relative ${
                         !notif.read ? 'bg-[#f0fdfa]/40' : ''
                       }`}
                     >
@@ -609,7 +613,7 @@ export const Header: React.FC = () => {
                           <p className="text-[11px] text-[#605e5c] mt-0.5 leading-relaxed line-clamp-2">
                             {notif.description}
                           </p>
-                          {notif.performedByUser && (
+                          {isSuper && notif.performedByUser && (
                             <div className="mt-1 text-[10px] text-neutral-400 flex items-center gap-1">
                               <span>By:</span>
                               <span className="font-medium text-neutral-600">{notif.performedByUser}</span>
@@ -642,11 +646,7 @@ export const Header: React.FC = () => {
                     <span>Full Activity Log</span>
                     <ArrowRight className="w-2.5 h-2.5" />
                   </button>
-                ) : (
-                  <span className="text-neutral-400 italic">
-                    Strict User Isolation (View Only)
-                  </span>
-                )}
+                ) : null}
               </div>
             </div>
           )}
