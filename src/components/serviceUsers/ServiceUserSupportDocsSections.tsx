@@ -12,13 +12,105 @@ import { useApp } from '../../context/AppContext';
 import { getUserDropdownOptions } from '../../utils/userSelectOptions';
 import { OptionSelect } from '../common/OptionSelect';
 
+const BulletListEditor: React.FC<{
+  label: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder: string;
+  addLabel: string;
+}> = ({ label, items, onChange, placeholder, addLabel }) => {
+  const rows = items.length > 0 ? items : [''];
+  const update = (i: number, v: string) => onChange(rows.map((r, j) => (j === i ? v : r)));
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <label className="block text-neutral-600 font-medium">{label}</label>
+        <button
+          type="button"
+          onClick={() => onChange([...rows, ''])}
+          className="px-2 py-0.5 text-[10px] font-semibold bg-teal-50 border border-teal-200 text-teal-800 rounded hover:bg-teal-100"
+        >
+          + {addLabel}
+        </button>
+      </div>
+      <div className="space-y-1.5">
+        {rows.map((row, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <span className="text-neutral-400">•</span>
+            <input
+              type="text"
+              value={row}
+              onChange={e => update(i, e.target.value)}
+              placeholder={placeholder}
+              className="flex-1 px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
+            />
+            <button
+              type="button"
+              onClick={() => onChange(rows.length > 1 ? rows.filter((_, j) => j !== i) : [''])}
+              title="Remove"
+              className="text-rose-500 hover:text-rose-700 text-base leading-none px-1"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/** Marker kept in a support row's notes so each Service User's own needs rows are found again (never shared between users). */
+const NEEDS_MARK = 'su-form:';
+const LEGACY_RE = /^(Vulnerabilities|Medical|Dietary|Mobility):/;
+const splitLines = (text?: string) => (text || '').split('\n').map(l => l.trim()).filter(Boolean);
+
+export interface SUNeedsFormValues {
+  vulnerabilityFlags: string;
+  medicalConditions: string[];
+  dietaryNeeds: string[];
+  mobilityNeeds: string;
+  supportPriority?: string;
+  assignedStaff?: string;
+}
+
+/** Reads one Service User's support rows back into the form fields (including the old single combined row). */
+export function parseSUNeeds(records: any[]): SUNeedsFormValues {
+  const out: SUNeedsFormValues = { vulnerabilityFlags: '', medicalConditions: [], dietaryNeeds: [], mobilityNeeds: '' };
+  const legacy: Record<string, string[]> = { vulnerability: [], medical: [], dietary: [], mobility: [] };
+  const legacyKey: Record<string, string> = { Vulnerabilities: 'vulnerability', Medical: 'medical', Dietary: 'dietary', Mobility: 'mobility' };
+  for (const r of records || []) {
+    const mark = String(r.notes || '').startsWith(NEEDS_MARK) ? String(r.notes).slice(NEEDS_MARK.length) : '';
+    if (mark === 'vulnerability') {
+      out.vulnerabilityFlags = r.description || '';
+      out.supportPriority = r.priority; out.assignedStaff = r.assignedStaff || '';
+    } else if (mark === 'medical') out.medicalConditions = splitLines(r.description);
+    else if (mark === 'dietary') out.dietaryNeeds = splitLines(r.description);
+    else if (mark === 'mobility') out.mobilityNeeds = r.description || '';
+    else if (LEGACY_RE.test(r.description || '') && ['Safeguarding', 'Needs Assessment'].includes(r.category)) {
+      if (!out.supportPriority) { out.supportPriority = r.priority; out.assignedStaff = r.assignedStaff || ''; }
+      for (const seg of String(r.description).split(' | ')) {
+        const m = seg.match(/^((?:Vulnerabilities|Medical|Dietary|Mobility):\s*)+/);
+        if (!m) continue;
+        const key = legacyKey[m[0].trim().split(':')[0]];
+        const text = seg.slice(m[0].length).trim();
+        if (text && !legacy[key].includes(text)) legacy[key].push(text);
+      }
+    }
+  }
+  if (!out.vulnerabilityFlags) out.vulnerabilityFlags = legacy.vulnerability.join('\n');
+  if (out.medicalConditions.length === 0) out.medicalConditions = legacy.medical;
+  if (out.dietaryNeeds.length === 0) out.dietaryNeeds = legacy.dietary;
+  if (!out.mobilityNeeds) out.mobilityNeeds = legacy.mobility.join('; ');
+  return out;
+}
+
 export interface SUSupportNeedsSectionProps {
   vulnerabilityFlags: string;
   setVulnerabilityFlags: (val: string) => void;
-  dietaryNeeds: string;
-  setDietaryNeeds: (val: string) => void;
-  medicalConditions: string;
-  setMedicalConditions: (val: string) => void;
+  dietaryNeeds: string[];
+  setDietaryNeeds: (val: string[]) => void;
+  medicalConditions: string[];
+  setMedicalConditions: (val: string[]) => void;
   mobilityNeeds: string;
   setMobilityNeeds: (val: string) => void;
   supportPriority: 'Low' | 'Medium' | 'High' | 'Critical';
@@ -232,26 +324,20 @@ export const SUSupportNeedsSection: React.FC<SUSupportNeedsSectionProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-neutral-600 font-medium mb-1">Medical Conditions &amp; Prescriptions</label>
-            <textarea
-              rows={2}
-              value={medicalConditions}
-              onChange={e => setMedicalConditions(e.target.value)}
-              placeholder="e.g. Diabetes Type 2, Asthma, regular medication required..."
-              className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
-            />
-          </div>
-          <div>
-            <label className="block text-neutral-600 font-medium mb-1">Dietary Requirements &amp; Allergies</label>
-            <textarea
-              rows={2}
-              value={dietaryNeeds}
-              onChange={e => setDietaryNeeds(e.target.value)}
-              placeholder="e.g. Halal only, Nut allergy, Vegetarian, Gluten free..."
-              className="w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]"
-            />
-          </div>
+          <BulletListEditor
+            label="Medical Conditions & Prescriptions"
+            items={medicalConditions}
+            onChange={setMedicalConditions}
+            placeholder="e.g. Diabetes Type 2 – Metformin 500mg"
+            addLabel="Add"
+          />
+          <BulletListEditor
+            label="Dietary Requirements & Allergies"
+            items={dietaryNeeds}
+            onChange={setDietaryNeeds}
+            placeholder="e.g. Halal only, Nut allergy"
+            addLabel="Add"
+          />
         </div>
 
         <div>
@@ -448,8 +534,8 @@ export async function saveSUAdditionalDetails({
   supportPriority: string;
   assignedStaff: string;
   vulnerabilityFlags: string;
-  medicalConditions: string;
-  dietaryNeeds: string;
+  medicalConditions: string[];
+  dietaryNeeds: string[];
   mobilityNeeds: string;
   newDocs: Array<{ type: string; name: string; fileUrl: string; fileName: string }>;
   suPropertyDetailsService: any;
@@ -463,22 +549,34 @@ export async function saveSUAdditionalDetails({
     });
   }
 
-  // Support
-  if (vulnerabilityFlags?.trim() || dietaryNeeds?.trim() || medicalConditions?.trim() || mobilityNeeds?.trim()) {
-    await suPropertyDetailsService.addSUSupport({
-      suId,
-      category: vulnerabilityFlags?.trim() ? 'Safeguarding' : 'Needs Assessment',
-      description: [
-        vulnerabilityFlags?.trim() ? `Vulnerabilities: ${vulnerabilityFlags.trim()}` : '',
-        medicalConditions?.trim() ? `Medical: ${medicalConditions.trim()}` : '',
-        dietaryNeeds?.trim() ? `Dietary: ${dietaryNeeds.trim()}` : '',
-        mobilityNeeds?.trim() ? `Mobility: ${mobilityNeeds.trim()}` : ''
-      ].filter(Boolean).join(' | '),
-      priority: supportPriority || 'Medium',
-      assignedStaff: assignedStaff?.trim() || '',
-      startDate: new Date().toISOString().split('T')[0],
-      status: 'Open'
-    });
+  // Support: each part is its own row for THIS Service User (updated in place, never re-added or shared)
+  const existing: any[] = await suPropertyDetailsService.getSUSupport(suId);
+  const rowFor = (key: string) => existing.find(r => r.notes === NEEDS_MARK + key);
+  const today = new Date().toISOString().split('T')[0];
+  const upsert = async (key: string, category: string, description: string, keepEmpty = false, extra: Record<string, any> = {}) => {
+    const cur = rowFor(key);
+    if (!description.trim() && !keepEmpty) {
+      if (cur) await suPropertyDetailsService.deleteSUSupport(cur.id);
+      return;
+    }
+    if (cur) await suPropertyDetailsService.updateSUSupport(cur.id, { category, description, ...extra });
+    else await suPropertyDetailsService.addSUSupport({ suId, category, description, notes: NEEDS_MARK + key, startDate: today, status: 'Open', ...extra });
+  };
+  const medical = (medicalConditions || []).map(i => i.trim()).filter(Boolean).join('\n');
+  const dietary = (dietaryNeeds || []).map(i => i.trim()).filter(Boolean).join('\n');
+  const hasPrimary = Boolean(vulnerabilityFlags?.trim() || assignedStaff?.trim() || rowFor('vulnerability'));
+  await upsert('vulnerability', 'Safeguarding', (vulnerabilityFlags || '').trim(), hasPrimary, {
+    priority: (supportPriority || 'Medium') as any,
+    assignedStaff: assignedStaff?.trim() || ''
+  });
+  await upsert('medical', 'Medical Conditions & Prescriptions', medical);
+  await upsert('dietary', 'Dietary Requirements & Allergies', dietary);
+  await upsert('mobility', 'Mobility & Accessibility', (mobilityNeeds || '').trim());
+  // The old single combined row has now been split into the rows above
+  for (const r of existing) {
+    if (!String(r.notes || '').startsWith(NEEDS_MARK) && LEGACY_RE.test(r.description || '') && ['Safeguarding', 'Needs Assessment'].includes(r.category)) {
+      await suPropertyDetailsService.deleteSUSupport(r.id);
+    }
   }
 
   // Docs

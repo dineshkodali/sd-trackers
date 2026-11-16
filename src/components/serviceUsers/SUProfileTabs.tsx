@@ -652,7 +652,13 @@ export const SUSupportTab: React.FC<SUSupportTabProps> = ({
                 <strong className="text-neutral-800 text-xs">{s.category}</strong>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-semibold">{s.priority}</span>
               </div>
-              <p className="text-[11px] text-neutral-600 mt-0.5">{s.description}</p>
+              {(s.description || '').includes('\n') || String(s.notes || '').startsWith('su-form:medical') || String(s.notes || '').startsWith('su-form:dietary') ? (
+                <ul className="list-disc pl-4 text-[11px] text-neutral-600 mt-0.5 space-y-0.5">
+                  {(s.description || '').split('\n').map(l => l.trim()).filter(Boolean).map((line, i) => <li key={i}>{line}</li>)}
+                </ul>
+              ) : (
+                <p className="text-[11px] text-neutral-600 mt-0.5 whitespace-pre-line">{s.description}</p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {onUpdateSupportStatus && canCRUD ? (

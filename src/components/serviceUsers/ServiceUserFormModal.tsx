@@ -12,7 +12,8 @@ import { pickActivePlacement, activePlacementBySu } from '../../utils/placementS
 import { 
   SUSupportNeedsSection, 
   SUDocumentsUploadSection, 
-  saveSUAdditionalDetails 
+  saveSUAdditionalDetails,
+  parseSUNeeds
 } from './ServiceUserSupportDocsSections';
 
 interface ServiceUserFormModalProps {
@@ -81,8 +82,8 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
 
   // Support & Needs
   const [vulnerabilityFlags, setVulnerabilityFlags] = useState('');
-  const [dietaryNeeds, setDietaryNeeds] = useState('');
-  const [medicalConditions, setMedicalConditions] = useState('');
+  const [dietaryNeeds, setDietaryNeeds] = useState<string[]>([]);
+  const [medicalConditions, setMedicalConditions] = useState<string[]>([]);
   const [mobilityNeeds, setMobilityNeeds] = useState('');
   const [supportPriority, setSupportPriority] = useState<'Low' | 'Medium' | 'High' | 'Critical'>('Medium');
   const [assignedStaff, setAssignedStaff] = useState('');
@@ -110,7 +111,8 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
     setMobile(''); setAlternativePhone(''); setEmail(''); setPreferredContactMethod('Mobile');
     setEmergencyName(''); setEmergencyRelationship(''); setEmergencyPhone(''); setEmergencyEmail('');
     setHouseholdMembers([]); setSiteId(permittedSites[0]?.id || sites[0]?.id || '');
-    setVulnerabilityFlags(''); setDietaryNeeds(''); setMedicalConditions(''); setMobilityNeeds('');
+    setVulnerabilityFlags(''); setDietaryNeeds([]); setMedicalConditions([]); setMobilityNeeds('');
+    setPropertyId(''); setRoomId(''); setOriginalRoomId('');
     setSupportPriority('Medium'); setAssignedStaff('');
     setDisabilityCategory('None'); setDisabilityType(''); setVulnerable('No');
     setPersonalEvacuationPlan('GEEP – General Emergency Evacuation Plan'); setGpRegistration('');
@@ -141,6 +143,14 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
         setPersonalEvacuationPlan(serviceUserToEdit.personalEvacuationPlan || 'GEEP – General Emergency Evacuation Plan');
         setGpRegistration(serviceUserToEdit.gpRegistration || '');
 
+        // Start from a clean slate so nothing typed for or loaded from the previously opened user carries over
+        setMobile(''); setAlternativePhone(''); setEmail(''); setPreferredContactMethod('Mobile');
+        setEmergencyName(''); setEmergencyRelationship(''); setEmergencyPhone(''); setEmergencyEmail('');
+        setHouseholdMembers([]); setExistingDocuments([]); setNewDocs([]);
+        setVulnerabilityFlags(''); setDietaryNeeds([]); setMedicalConditions([]); setMobilityNeeds('');
+        setSupportPriority('Medium'); setAssignedStaff('');
+        setPropertyId(''); setRoomId(''); setOriginalRoomId('');
+
         // Preload contact, household, placement, support, and documents
         Promise.all([
           suPropertyDetailsService.getSUContacts(serviceUserToEdit.id),
@@ -169,10 +179,13 @@ export const ServiceUserFormModal: React.FC<ServiceUserFormModalProps> = ({
             setRoomId(plc.roomId);
           }
           if (spRes && spRes.length > 0) {
-            const sp = spRes[0];
-            setSupportPriority((sp.priority as any) || 'Medium');
-            setAssignedStaff(sp.assignedStaff || '');
-            setVulnerabilityFlags(sp.description || '');
+            const needs = parseSUNeeds(spRes);
+            setSupportPriority((needs.supportPriority as any) || 'Medium');
+            setAssignedStaff(needs.assignedStaff || '');
+            setVulnerabilityFlags(needs.vulnerabilityFlags);
+            setMedicalConditions(needs.medicalConditions);
+            setDietaryNeeds(needs.dietaryNeeds);
+            setMobilityNeeds(needs.mobilityNeeds);
           }
           if (docRes && docRes.length > 0) {
             setExistingDocuments(docRes);
