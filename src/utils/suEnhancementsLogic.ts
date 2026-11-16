@@ -47,11 +47,13 @@ export function validateHc2(input: { status?: string; issueDate?: string; expiry
 /* ------------------------------------------------------------------------------------------------- Meals */
 export const MEAL_PERIODS = ['Breakfast', 'Lunch', 'Dinner'] as const;
 export type MealPeriod = typeof MEAL_PERIODS[number];
-export const MEAL_STATUSES = ['Pending', 'Provided', 'Accepted', 'Declined', 'Not available', 'Not applicable'] as const;
+export const MEAL_STATUSES = ['Pending', 'Accepted', 'Declined'] as const;
+/** Older records may still carry these; they stay valid and count as resolved, but new entries are Accepted or Declined only. */
+export const MEAL_LEGACY_STATUSES: readonly string[] = ['Provided', 'Not available', 'Not applicable'];
 export type MealStatus = typeof MEAL_STATUSES[number];
 
-/** Statuses that need a note explaining what happened, so a gap is never silent. */
-export const MEAL_NOTE_STATUSES: readonly string[] = ['Declined', 'Not available'];
+/** Notes are optional: add one only when there is something worth recording. */
+export const MEAL_NOTE_STATUSES: readonly string[] = [];
 
 /** Deterministic id: one record per SU, date and meal, so a repeated save can only ever update the same row. */
 export const mealRecordId = (suId: string, date: string, period: string) => `smr-${suId}-${date}-${period}`;
@@ -71,8 +73,7 @@ export function mealDayStatus(statusByPeriod: Partial<Record<MealPeriod, string 
 }
 
 export function validateMealEntry(status: string, notes?: string): string | null {
-  if (!(MEAL_STATUSES as readonly string[]).includes(status)) return 'Choose a meal status.';
-  if (MEAL_NOTE_STATUSES.includes(status) && !(notes || '').trim()) return `Add a note explaining why the meal was ${status.toLowerCase()}.`;
+  if (!(MEAL_STATUSES as readonly string[]).includes(status) && !MEAL_LEGACY_STATUSES.includes(status)) return 'Choose a meal status.';
   return null;
 }
 

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { IconHistory as History, IconClipboardList as ClipboardList } from '@tabler/icons-react';
+import { IconHistory as History, IconClipboardList as ClipboardList, IconCheck as Check, IconX as XIcon, IconNote as NoteIcon } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { suTrackerService, type SuDirectoryRow } from '../../services/suTrackerService';
 import { suEnhancementsService, type MealRecord, type MealHistoryEntry } from '../../services/suEnhancementsService';
-import { MEAL_PERIODS, MEAL_STATUSES, MEAL_NOTE_STATUSES, mealDayStatus, type MealPeriod, type MealDayStatus } from '../../utils/suEnhancementsLogic';
+import { MEAL_PERIODS, MEAL_STATUSES, mealDayStatus, type MealPeriod, type MealDayStatus } from '../../utils/suEnhancementsLogic';
 import { todayIso } from '../../utils/attendanceLogic';
 import { SiteFilterSelect, TrackerExport, RefreshButton, ResetFiltersButton, type TrackerExportColumn } from '../common/TrackerToolbar';
 import {
@@ -101,6 +101,7 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
       { id: p, label: p, get: (x: MealRow) => x.statuses[p] || 'Pending' },
       { id: `${p}-notes`, label: `${p} notes`, get: (x: MealRow) => bySlot.get(`${x.r.su.id}|${p}`)?.notes, defaultSelected: false }
     ]),
+    { id: 'notes', label: 'Notes', get: x => MEAL_PERIODS.map(p => { const n = bySlot.get(`${x.r.su.id}|${p}`)?.notes; return n ? `${p}: ${n}` : ''; }).filter(Boolean).join(' | ') },
     { id: 'day', label: 'Daily status', get: x => x.day }
   ];
   const th = (key: string, label: string) => <SortableTh key={key} label={label} active={tc.sortKey === key} asc={tc.asc} onSort={() => tc.sortBy(key)} />;
@@ -117,7 +118,6 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
   };
 
   const onPick = async (su: SuDirectoryRow, period: MealPeriod, status: string) => {
-    if (MEAL_NOTE_STATUSES.includes(status)) { setEditing({ su, period }); return; }
     const err = await save(su, period, status, bySlot.get(`${su.su.id}|${period}`)?.notes || undefined);
     if (err) setError(err);
   };
@@ -129,7 +129,7 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
         title="Service User Meals"
         tabs={tabSwitcher}
         countLabel={loading || error ? undefined : `${filtered.length} Service Users`}
-        description={`Breakfast, lunch and dinner for ${dateLabel}. "Provided" means the meal was given; "Accepted" means it was eaten.`}
+        description={`Tap Accepted or Declined for each meal on ${dateLabel}. Add a note only if there is something to record.`}
         actions={
           <>
             <RefreshButton onClick={refresh} loading={loading} />
@@ -163,15 +163,15 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
       <ErrorBanner message={!loading ? error : ''} />
 
       <TablePanel totalItems={filtered.length} page={tc.page} pageSize={tc.pageSize} onPage={tc.setPage} onPageSize={tc.setPageSize}>
-        <table className="w-full text-left text-xs border-collapse min-w-[900px]">
+        <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
           <thead>
             <tr className={theadRowCls}>
-              {th('name', 'Service User')}{MEAL_PERIODS.map(p => th(p, p))}{th('day', 'Daily status')}<ActionsTh />
+              {th('name', 'Service User')}{MEAL_PERIODS.map(p => th(p, p))}<th className="p-2.5 font-semibold text-left">Notes</th>{th('day', 'Daily status')}<ActionsTh />
             </tr>
           </thead>
           <tbody className={tbodyCls}>
-            {loading ? <SkeletonRows cols={6} /> : paged.length === 0 ? (
-              <EmptyRow colSpan={6} icon={<ClipboardList className="w-8 h-8" />} title={directory.length === 0 ? 'No Service Users to record meals for' : 'No Service Users match your filters'} />
+            {loading ? <SkeletonRows cols={7} /> : paged.length === 0 ? (
+              <EmptyRow colSpan={7} icon={<ClipboardList className="w-8 h-8" />} title={directory.length === 0 ? 'No Service Users to record meals for' : 'No Service Users match your filters'} />
             ) : paged.map(({ r, day }) => (
               <tr key={r.su.id} className={`align-top hover:bg-[#f3f8fd] transition-colors ${day === 'Complete' ? '' : 'bg-amber-50/40'}`}>
                 <td className={tdCls}>{r.su.firstName} {r.su.lastName}<div className="text-[10px] text-neutral-500">{r.su.externalReference || r.su.suReference} · {r.siteName || 'No property'}{r.roomNo ? ` · Room ${r.roomNo}` : ''}</div></td>
@@ -179,17 +179,34 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
                   const rec = bySlot.get(`${r.su.id}|${p}`);
                   const status = rec?.status || 'Pending';
                   return (
-                    <td key={p} className={`${tdCls} min-w-[9rem]`}>
+                    <td key={p} className={`${tdCls} min-w-[11rem]`}>
                       {actor.canEdit ? (
-                        <select className={inputCls} value={status} disabled={savingKey === `${r.su.id}|${p}`} aria-label={`${p} for ${r.su.firstName} ${r.su.lastName}`} onChange={e => onPick(r, p, e.target.value)}>
-                          {MEAL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        <div className="flex items-center gap-1" role="group" aria-label={`${p} for ${r.su.firstName} ${r.su.lastName}`}>
+                          <button type="button" disabled={savingKey === `${r.su.id}|${p}`} onClick={() => status !== 'Accepted' && onPick(r, p, 'Accepted')}
+                            className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-xs border text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${status === 'Accepted' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-[#d4d4d4] text-neutral-600 hover:bg-emerald-50 hover:border-emerald-400'}`}>
+                            <Check className="w-3.5 h-3.5" />Accepted
+                          </button>
+                          <button type="button" disabled={savingKey === `${r.su.id}|${p}`} onClick={() => status !== 'Declined' && onPick(r, p, 'Declined')}
+                            className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-xs border text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${status === 'Declined' ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white border-[#d4d4d4] text-neutral-600 hover:bg-rose-50 hover:border-rose-400'}`}>
+                            <XIcon className="w-3.5 h-3.5" />Declined
+                          </button>
+                          <button type="button" title={rec?.notes ? 'Edit note' : 'Add note'} aria-label={`${rec?.notes ? 'Edit' : 'Add'} note for ${p}`} onClick={() => setEditing({ su: r, period: p })}
+                            className={`p-1.5 rounded-xs border cursor-pointer ${rec?.notes ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-[#d4d4d4] text-neutral-400 hover:text-neutral-700'}`}>
+                            <NoteIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       ) : <StatusPill status={status} tone={statusTone(status)} />}
-                      {rec?.notes && <div className="mt-1 text-[10px] text-neutral-600" title={rec.notes}>{rec.notes.length > 40 ? `${rec.notes.slice(0, 40)}…` : rec.notes}</div>}
-                      {rec && <div className="mt-0.5 text-[10px] text-neutral-400">{rec.updatedBy || rec.recordedBy}</div>}
+                      {status !== 'Pending' && status !== 'Accepted' && status !== 'Declined' && <div className="mt-1"><StatusPill status={status} tone={statusTone(status)} /></div>}
                     </td>
                   );
                 })}
+                <td className={`${tdCls} min-w-[12rem] max-w-[18rem]`}>
+                  {MEAL_PERIODS.some(p => bySlot.get(`${r.su.id}|${p}`)?.notes) ? (
+                    <ul className="space-y-0.5 text-[11px] text-neutral-700">
+                      {MEAL_PERIODS.map(p => { const n = bySlot.get(`${r.su.id}|${p}`)?.notes; return n ? <li key={p}><span className="font-semibold">{p}:</span> {n}</li> : null; })}
+                    </ul>
+                  ) : <span className="text-neutral-300">—</span>}
+                </td>
                 <td className={tdCls}><StatusPill status={day} tone={day === 'Complete' ? 'good' : day === 'Incomplete' ? 'warn' : 'neutral'} /></td>
                 <td className={actionsTdCls}><button type="button" className={secondaryBtn} onClick={() => setHistoryFor(r)}><History className="w-3 h-3 inline mr-1" />History</button></td>
               </tr>
@@ -208,15 +225,20 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
 };
 
 const NoteDialog: React.FC<{ row: SuDirectoryRow; period: MealPeriod; existing?: MealRecord; onClose: () => void; onSave: (status: string, notes: string) => Promise<string | null> }> = ({ row, period, existing, onClose, onSave }) => {
-  const [status, setStatus] = useState(existing && MEAL_NOTE_STATUSES.includes(existing.status) ? existing.status : 'Declined');
+  const [status, setStatus] = useState(existing?.status === 'Declined' ? 'Declined' : 'Accepted');
   const [notes, setNotes] = useState(existing?.notes || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
     <SuModal title={`${period}: ${row.su.firstName} ${row.su.lastName}`} onClose={onClose}>
       <ErrorBanner message={error} />
-      <Field label="Status" required><select className={inputCls} value={status} onChange={e => setStatus(e.target.value)}>{MEAL_NOTE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></Field>
-      <Field label="Note (what happened, any follow-up needed)" required><textarea className={inputCls} rows={3} value={notes} onChange={e => setNotes(e.target.value)} autoFocus /></Field>
+      <div className="flex gap-2">
+        {(['Accepted', 'Declined'] as const).map(s => (
+          <button key={s} type="button" onClick={() => setStatus(s)}
+            className={`flex-1 px-3 py-2 rounded-xs border text-xs font-semibold cursor-pointer ${status === s ? (s === 'Accepted' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-rose-600 border-rose-600 text-white') : 'bg-white border-[#d4d4d4] text-neutral-600'}`}>{s}</button>
+        ))}
+      </div>
+      <Field label="Note (optional)"><textarea className={inputCls} rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything worth recording, e.g. slept late, ate half" autoFocus /></Field>
       <div className="flex justify-end gap-2 pt-2 border-t border-[#e5e5e5]">
         <button type="button" className={secondaryBtn} onClick={onClose} disabled={busy}>Cancel</button>
         <button type="button" className={primaryBtn} disabled={busy} onClick={async () => { setBusy(true); const err = await onSave(status, notes); setBusy(false); if (err) setError(err); }}>{busy ? 'Saving...' : 'Save'}</button>
