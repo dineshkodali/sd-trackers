@@ -671,6 +671,7 @@ export function DynamicRecordFormModal<T = any>({
   };
 
   const inferOptionCategory = (col: TableColumnConfig<T>): FieldOptionCategory | undefined => {
+    if (col.fixedOptions) return undefined;
     if (col.optionCategory) return col.optionCategory;
     const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
     const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');

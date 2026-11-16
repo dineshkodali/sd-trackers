@@ -27,6 +27,8 @@ export interface TableColumnConfig<T = any> {
   type?: FieldType;
   options?: SelectOption[] | string[] | ((context?: any) => SelectOption[] | string[]);
   optionCategory?: FieldOptionCategory; // Links column to centralized FieldOptionCategory in AppContext
+  /** If true, always use `options` as written and never the editable Field Options list for this column. */
+  fixedOptions?: boolean;
   allowQuickAdd?: boolean; // If true, enables in-modal + Add / ⚙️ Manage controls
   required?: boolean;
   placeholder?: string;

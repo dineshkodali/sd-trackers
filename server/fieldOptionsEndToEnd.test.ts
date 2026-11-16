@@ -50,7 +50,7 @@ test('Field Options: Tracker table configs have optionCategory and allowQuickAdd
 
   for (const { name, cols } of configs) {
     for (const col of cols) {
-      if (col.type === 'select' && !FIXED_SELECT_KEYS.has(String(col.key))) {
+      if (col.type === 'select' && !col.fixedOptions && !FIXED_SELECT_KEYS.has(String(col.key))) {
         assert.ok(
           col.optionCategory,
           `Table config ${name} column ${col.key} must specify optionCategory for dynamic propagation`

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MAINTENANCE_PRIORITY_RULES, getPriorityRule, calculateDueDate, reportedAt } from '../utils/maintenancePriority';
+import { MAINTENANCE_PRIORITY_RULES, getPriorityRule, getRuleForTimescale, calculateDueDate, reportedAt, closingFieldsFor } from '../utils/maintenancePriority';
 import { TableColumnConfig } from '../types/tableSchema';
 import { 
   MaintenanceRecord, 
@@ -59,6 +59,7 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     type: 'date',
     required: true,
     defaultValue: () => new Date().toISOString().slice(0, 10),
+    onValueChange: (value, form) => ({ closeDueDate: calculateDueDate(form.priority, reportedAt(value, form.reportedTime)) }),
     section: 'Defect Details'
   },
   {
@@ -67,6 +68,7 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     type: 'text',
     placeholder: 'HH:MM e.g. 10:30',
     defaultValue: () => new Date().toTimeString().slice(0, 5),
+    onValueChange: (value, form) => ({ closeDueDate: calculateDueDate(form.priority, reportedAt(form.date, value)) }),
     section: 'Defect Details'
   },
   {
@@ -74,11 +76,9 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     label: 'Priority',
     type: 'select',
     required: true,
-    optionCategory: 'maintenancePriorities',
-    allowQuickAdd: true,
-    options: [
-      ...MAINTENANCE_PRIORITY_RULES.map(r => ({ label: r.label, value: r.value }))
-    ],
+    fixedOptions: true,
+    allowQuickAdd: false,
+    options: MAINTENANCE_PRIORITY_RULES.map(r => ({ label: r.label, value: r.value })),
     defaultValue: 'CAT 1',
     onValueChange: (value, form) => {
       const rule = getPriorityRule(value);
@@ -90,7 +90,6 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     },
     badgeColors: {
       'CAT 1': 'bg-red-100 text-red-800 border-red-200',
-      'CAT 2 - Interim': 'bg-amber-100 text-amber-800 border-amber-200',
       'CAT 2': 'bg-amber-50 text-amber-700 border-amber-200',
       'CAT 3': 'bg-blue-100 text-blue-800 border-blue-200'
     },
@@ -100,11 +99,20 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     key: 'priorityTimeScale',
     label: 'Priority TimeScale',
     type: 'select',
-    optionCategory: 'maintenanceTimeScales',
-    allowQuickAdd: true,
+    fixedOptions: true,
+    allowQuickAdd: false,
     options: MAINTENANCE_PRIORITY_RULES.map(r => r.timescale),
     placeholder: 'Set automatically from priority',
     defaultValue: '4 Hours',
+    // Choosing a timescale sets the matching priority and recalculates Complete By.
+    onValueChange: (value, form) => {
+      const rule = getRuleForTimescale(value);
+      if (!rule) return;
+      return {
+        priority: rule.value,
+        closeDueDate: calculateDueDate(rule.value, reportedAt(form.date, form.reportedTime))
+      };
+    },
     section: 'Defect Details'
   },
   {
@@ -158,7 +166,8 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     label: 'Complete By',
     type: 'text',
     placeholder: 'YYYY-MM-DD HH:MM',
-    helperText: 'Calculated automatically from the selected priority; can be overridden.',
+    defaultValue: () => calculateDueDate('CAT 1'),
+    helperText: 'Calculated automatically from the priority and reported time; can be overridden.',
     section: 'Status & Progression'
   },
   {
@@ -183,6 +192,11 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
       { label: 'Completed', value: 'Completed' }
     ],
     defaultValue: 'In Process',
+    // Completing a defect closes it and stamps the closing date and time; reopening clears them.
+    onValueChange: (value, form) => {
+      const action = value === 'Completed' ? 'Closed' : 'Open';
+      return { action, ...closingFieldsFor({ ...form, defectStatus: value, action }) };
+    },
     badgeColors: {
       'In Process': 'bg-sky-100 text-sky-800',
       'Completed': 'bg-emerald-100 text-emerald-800'
@@ -206,6 +220,10 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     required: true,
     options: ['Open', 'Closed'],
     defaultValue: 'Open',
+    onValueChange: (value, form) => {
+      const defectStatus = value === 'Closed' ? 'Completed' : 'In Process';
+      return { defectStatus, ...closingFieldsFor({ ...form, defectStatus, action: value }) };
+    },
     badgeColors: {
       'Open': 'bg-amber-100 text-amber-800',
       'Closed': 'bg-neutral-100 text-neutral-600'
@@ -224,6 +242,7 @@ export const maintenanceTableConfig: TableColumnConfig<MaintenanceRecord>[] = [
     key: 'actualClosedDate',
     label: 'Actual Closed Date',
     type: 'date',
+    defaultValue: '',
     section: 'Status & Progression'
   },
   {

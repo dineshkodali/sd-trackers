@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconTool as Wrench, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconPlus as Plus, IconTrash as Trash2, IconEdit as Edit3, IconSearch as Search, IconX as X, IconBook as BookOpen, IconFlame as Flame, IconHammer as Hammer, IconEye as Eye, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
-import { calculateDueDate, getPriorityRule, getSlaInfo, slaLabel, formatDuration, nowTime, DUE_SOON_HOURS, isMaintenanceClosed, closingTimer, overdueDuration, closeBlockedReason } from '../../utils/maintenancePriority';
+import { MAINTENANCE_PRIORITY_RULES, normalizePriority, calculateDueDate, getPriorityRule, getSlaInfo, slaLabel, formatDuration, nowTime, DUE_SOON_HOURS, isMaintenanceClosed, closingTimer, overdueDuration, closeBlockedReason } from '../../utils/maintenancePriority';
 import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 import { IntentFilterBanner } from '../common/IntentFilterBanner';
 import { MaintenanceRecord, MaintenancePriority, DefectStatus, MaintenanceAction } from '../../types';
@@ -80,7 +80,6 @@ export const MaintenanceTrackerView: React.FC = () => {
     return rep;
   };
 
-  const priorityOptions = useMemo(() => getFieldOptions('maintenancePriorities'), [getFieldOptions]);
   const defectStatusOptions = useMemo(() => getFieldOptions('maintenanceStatuses'), [getFieldOptions]);
 
   // Filters
@@ -364,7 +363,7 @@ export const MaintenanceTrackerView: React.FC = () => {
   const stats = useMemo(() => {
     const total = filteredRecords.length;
     const cat1Emergency = filteredRecords.filter(r => r.priority === 'CAT 1' && r.defectStatus !== 'Completed').length;
-    const cat2Interim = filteredRecords.filter(r => r.priority === 'CAT 2 - Interim' && r.defectStatus !== 'Completed').length;
+    const cat2Open = filteredRecords.filter(r => normalizePriority(r.priority) === 'CAT 2' && r.defectStatus !== 'Completed').length;
     const inProcess = filteredRecords.filter(r => r.defectStatus === 'In Process').length;
     const completed = filteredRecords.filter(r => r.defectStatus === 'Completed').length;
     const openActions = filteredRecords.filter(r => r.action === 'Open').length;
@@ -372,7 +371,7 @@ export const MaintenanceTrackerView: React.FC = () => {
     const overdue = sla.filter(x => x === 'overdue').length;
     const dueSoon = sla.filter(x => x === 'due-soon').length;
     const completedLate = sla.filter(x => x === 'completed-late').length;
-    return { total, cat1Emergency, cat2Interim, inProcess, completed, openActions, overdue, dueSoon, completedLate };
+    return { total, cat1Emergency, cat2Open, inProcess, completed, openActions, overdue, dueSoon, completedLate };
   }, [filteredRecords, now]);
 
   // When selecting criteria in create form
@@ -576,19 +575,12 @@ export const MaintenanceTrackerView: React.FC = () => {
 
   // Badge styles for priority
   const getPriorityBadge = (priority: MaintenancePriority) => {
-    switch (priority) {
+    switch (normalizePriority(priority)) {
       case 'CAT 1':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-200">
             <Flame className="w-3 h-3 text-red-600" />
             Cat 1 (4 Hours)
-          </span>
-        );
-      case 'CAT 2 - Interim':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-            <Clock className="w-3 h-3 text-amber-600" />
-            Cat 2 - Interim (24 Hours)
           </span>
         );
       case 'CAT 2':
@@ -944,8 +936,8 @@ export const MaintenanceTrackerView: React.FC = () => {
               className="w-full px-2.5 py-1.5 bg-[#fbfbfa] border border-[#e5e5e5] rounded-xs text-xs focus:bg-white focus:border-[#0d9488] outline-hidden transition-all"
             >
               <option value="all">All Priorities</option>
-              {priorityOptions.map(opt => (
-                <option key={opt.id} value={opt.value}>{opt.label}</option>
+              {MAINTENANCE_PRIORITY_RULES.map(rule => (
+                <option key={rule.value} value={rule.value}>{rule.label}</option>
               ))}
             </select>
           </div>
@@ -1048,11 +1040,11 @@ export const MaintenanceTrackerView: React.FC = () => {
 
         <div className="bg-white border border-amber-200 bg-amber-50/40 p-3 rounded-xs shadow-xs">
           <div className="flex items-center justify-between text-amber-800 text-xs">
-            <span className="font-semibold">CAT 2 - Interim</span>
+            <span className="font-semibold">CAT 2 Open</span>
             <Clock className="w-3.5 h-3.5 text-amber-600" />
           </div>
-          <div className="text-2xl font-bold text-amber-800 mt-1.5">{stats.cat2Interim}</div>
-          <div className="text-[11px] text-amber-700 font-medium">24-Hour Timescale (1 Day)</div>
+          <div className="text-2xl font-bold text-amber-800 mt-1.5">{stats.cat2Open}</div>
+          <div className="text-[11px] text-amber-700 font-medium">5 Working Days Timescale</div>
         </div>
 
         <div className="bg-white border border-sky-200 bg-sky-50/30 p-3 rounded-xs shadow-xs">
@@ -1305,7 +1297,11 @@ export const MaintenanceTrackerView: React.FC = () => {
         onClose={() => setEditingRecord(null)}
         title={`Update Maintenance Ticket #${editingRecord?.id || ''}`}
         columns={maintenanceColumns}
-        initialValues={editingRecord || undefined}
+        initialValues={editingRecord ? {
+          ...editingRecord,
+          priority: normalizePriority(editingRecord.priority) || editingRecord.priority,
+          priorityTimeScale: getPriorityRule(editingRecord.priority)?.timescale || editingRecord.priorityTimeScale,
+        } : undefined}
         isEdit={true}
         onSave={(data) => {
           if (!editingRecord) return;

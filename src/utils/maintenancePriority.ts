@@ -9,15 +9,39 @@ export interface MaintenancePriorityRule {
   workingDays?: number;
 }
 
+/** The three priorities in use. Each one has exactly one timescale, so the two always move together. */
 export const MAINTENANCE_PRIORITY_RULES: MaintenancePriorityRule[] = [
   { value: 'CAT 1', label: 'Cat 1 (4 Hours)', timescale: '4 Hours', hours: 4 },
-  { value: 'CAT 2 - Interim', label: 'Cat 2 - Interim (24 Hours)', timescale: '24 Hours', hours: 24 },
   { value: 'CAT 2', label: 'Cat 2 (5 Working Days)', timescale: '5 Working Days', workingDays: 5 },
   { value: 'CAT 3', label: 'Cat 3 (28 Working Days)', timescale: '28 Working Days', workingDays: 28 }
 ];
 
-export const getPriorityRule = (priority?: string) =>
-  MAINTENANCE_PRIORITY_RULES.find(r => r.value === priority);
+/**
+ * Maps any stored priority text onto one of the three categories. Older records and options added in
+ * Field Options used other wording ('CAT 2 - Interim', 'CAT 2 - Urgent (24 Hours)'); everything that is
+ * not Cat 1 or Cat 3 counts as Cat 2.
+ */
+export const normalizePriority = (priority?: string): MaintenancePriority | undefined => {
+  const text = String(priority || '').trim().toLowerCase();
+  if (!text) return undefined;
+  if (/^cat\s*1\b/.test(text)) return 'CAT 1';
+  if (/^cat\s*3\b/.test(text)) return 'CAT 3';
+  return 'CAT 2';
+};
+
+export const getPriorityRule = (priority?: string) => {
+  const normalized = normalizePriority(priority);
+  return MAINTENANCE_PRIORITY_RULES.find(r => r.value === normalized);
+};
+
+/** The rule a timescale belongs to: 4 hours is Cat 1, 28 days is Cat 3, any other timescale is Cat 2. */
+export const getRuleForTimescale = (timescale?: string) => {
+  const text = String(timescale || '').trim().toLowerCase();
+  if (!text) return undefined;
+  if (/^4\s*h/.test(text)) return MAINTENANCE_PRIORITY_RULES[0];
+  if (/^28\b/.test(text)) return MAINTENANCE_PRIORITY_RULES[2];
+  return MAINTENANCE_PRIORITY_RULES[1];
+};
 
 const addWorkingDays = (from: Date, days: number): Date => {
   const d = new Date(from);
@@ -136,6 +160,18 @@ export const slaLabel = (info: SlaInfo): string => {
 
 /** Current local time as 'HH:MM', for stamping when a defect was closed. */
 export const nowTime = (d: Date = new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+/** Today's local date as 'YYYY-MM-DD'. */
+export const todayDate = (d: Date = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+/**
+ * Closing date and time that match a form's status. A closed defect gets the moment it was closed
+ * (kept if already recorded); a reopened one has them cleared.
+ */
+export const closingFieldsFor = (form: { defectStatus?: string; action?: string; actualClosedDate?: string; actualClosedTime?: string }) =>
+  isMaintenanceClosed(form)
+    ? { actualClosedDate: form.actualClosedDate || todayDate(), actualClosedTime: form.actualClosedTime || nowTime() }
+    : { actualClosedDate: '', actualClosedTime: '' };
 
 /** Resolves the clock-start from a form's reported date/time, falling back to now. */
 export const reportedAt = (date?: string, time?: string): Date => {

@@ -75,3 +75,23 @@ test('the maintenance row carries complete_by and keeps the JSON copy', () => {
   assert.equal(row.complete_by, '2026-11-07T16:30:00.000Z');
   assert.equal(JSON.parse(row.notes).closeDueDate, '2026-11-07 16:30');
 });
+
+test('every priority maps to one of Cat 1, Cat 2 or Cat 3 and back to its own timescale', async () => {
+  const { normalizePriority, getPriorityRule, getRuleForTimescale, calculateDueDate, closingFieldsFor } = await import('../src/utils/maintenancePriority.ts');
+  assert.equal(normalizePriority('CAT 1'), 'CAT 1');
+  assert.equal(normalizePriority('CAT 2 - Interim'), 'CAT 2');
+  assert.equal(normalizePriority('CAT 2 - Urgent (24 Hours)'), 'CAT 2');
+  assert.equal(normalizePriority('Cat 3 (28 Working Days)'), 'CAT 3');
+  assert.equal(getPriorityRule('CAT 2 - Urgent (24 Hours)')?.timescale, '5 Working Days');
+  assert.equal(getRuleForTimescale('4 Hours')?.value, 'CAT 1');
+  assert.equal(getRuleForTimescale('24 Hours')?.value, 'CAT 2');
+  assert.equal(getRuleForTimescale('28 Working Days')?.value, 'CAT 3');
+  // Cat 1 is 4 hours from the reported time; Cat 3 is 28 working days.
+  assert.equal(calculateDueDate('CAT 1', at(2026, 11, 16, 13, 42)), '2026-11-16 17:42');
+  assert.equal(calculateDueDate('CAT 3', at(2026, 11, 16, 13, 42)), '2026-12-24 13:42');
+  // Closing stamps the date and time; reopening clears them.
+  const closed = closingFieldsFor({ defectStatus: 'Completed', action: 'Closed' });
+  assert.match(closed.actualClosedDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(closed.actualClosedTime, /^\d{2}:\d{2}$/);
+  assert.deepEqual(closingFieldsFor({ defectStatus: 'In Process', action: 'Open', actualClosedDate: '2026-11-16' }), { actualClosedDate: '', actualClosedTime: '' });
+});
