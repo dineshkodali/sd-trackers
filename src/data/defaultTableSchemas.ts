@@ -1,4 +1,5 @@
 import React from 'react';
+import { LANGUAGE_OPTIONS } from './languages';
 import { TableColumnConfig } from '../types/tableSchema';
 import { TableAttachmentCell } from '../components/common/TableAttachmentCell';
 import { 
@@ -365,7 +366,7 @@ export const BOOKLETS_TABLE_COLUMNS: TableColumnConfig<BookletCollectionRecord>[
   { key: 'hotelName', label: 'Hotel / Site', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Location & Agent' },
   { key: 'agentName', label: 'Agent / Provider', type: 'text', required: true, section: 'Location & Agent' },
   { key: 'bookletType', label: 'Booklet Type', type: 'text', required: true, section: 'Booklet Details' },
-  { key: 'language', label: 'Language', type: 'text', required: true, section: 'Booklet Details' },
+  { key: 'language', label: 'Language', type: 'select', options: LANGUAGE_OPTIONS, allowQuickAdd: false, required: true, section: 'Booklet Details' },
   { key: 'numberForCollection', label: 'Target / To Collect', type: 'number', required: true, section: 'Quantities' },
   { key: 'collectedBooklets', label: 'Collected Booklets', type: 'number', section: 'Quantities' },
   { key: 'bookletsReceived', label: 'Booklets Received', type: 'number', section: 'Quantities' },
@@ -712,7 +713,7 @@ export const DAILY_REGISTER_TABLE_COLUMNS: TableColumnConfig<DailyRegisterRecord
   { key: 'age', label: 'Age', type: 'number', section: 'Demographics' },
   { key: 'ageGroup', label: 'Age Group', type: 'select', options: ['0-17', '18-25', '26-40', '41-60', '60+'], section: 'Demographics' },
   { key: 'nationality', label: 'Nationality', type: 'text', section: 'Demographics' },
-  { key: 'language', label: 'Language', type: 'text', section: 'Demographics' },
+  { key: 'language', label: 'Language', type: 'select', options: LANGUAGE_OPTIONS, allowQuickAdd: false, section: 'Demographics' },
   { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other', 'Prefer not to say'], section: 'Demographics' },
   { key: 'aspenCard', label: 'Aspen Card', type: 'text', helperText: 'Leave blank if the guest has no Aspen card. New Arrivals entries with the same Port Ref are used when this is blank.', section: 'Demographics' },
   { key: 'suComments', label: 'SU Comments', type: 'textarea', colSpan: 2, section: 'Operational Notes' },
@@ -729,7 +730,7 @@ export const NEW_ARRIVALS_TABLE_COLUMNS: TableColumnConfig<NewArrivalRecord>[] =
   { key: 'name', label: 'Name', type: 'text', required: true, section: 'Arrival Information' },
   { key: 'dob', label: 'Date of Birth', type: 'date', section: 'Arrival Information' },
   { key: 'country', label: 'Country', type: 'text', section: 'Arrival Information' },
-  { key: 'language', label: 'Language', type: 'text', section: 'Arrival Information' },
+  { key: 'language', label: 'Language', type: 'select', options: LANGUAGE_OPTIONS, allowQuickAdd: false, section: 'Arrival Information' },
   { key: 'contactNumber', label: 'Contact Number', type: 'text', section: 'Arrival Information' },
   { key: 'checkInDate', label: 'Check-in Date', type: 'date', required: true, defaultValue: () => new Date().toISOString().slice(0, 10), section: 'Arrival Information' },
   { key: 'hotel', label: 'Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Allocation' },

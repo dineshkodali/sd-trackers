@@ -7,6 +7,7 @@ import { AttachmentsSection } from './AttachmentsSection';
 import { EvidenceImagesSection } from './EvidenceImagesSection';
 import { QuickOptionModal } from './QuickOptionModal';
 import { PropertyRelativeSUSelector } from './PropertyRelativeSUSelector';
+import { useSiteRooms } from '../../hooks/useSiteRooms';
 import { isUserAssignmentField, getUserDropdownOptions } from '../../utils/userSelectOptions';
 
 interface DynamicRecordFormModalProps<T = any> {
@@ -297,6 +298,14 @@ export function DynamicRecordFormModal<T = any>({
     );
   };
 
+  const isRoomColumn = (col: TableColumnConfig<T>): boolean => {
+    if (col.type && col.type !== 'text') return false;
+    const key = String(col.key).toLowerCase();
+    const label = col.label.toLowerCase().trim();
+    return ['roomno', 'roomnumber', 'flatnumber', 'flatroomnumber'].includes(key) ||
+      ['room no', 'room no.', 'flat / room no'].includes(label);
+  };
+
   const isDobColumn = (col: TableColumnConfig<T>): boolean => {
     const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
     const label = String(col.label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -352,6 +361,18 @@ export function DynamicRecordFormModal<T = any>({
   };
 
   const [formData, setFormData] = useState<Record<string, any>>({});
+
+  // Room No fields become a dropdown of the chosen property's rooms when it has any on record.
+  const roomLookupName = String(
+    formData.siteName || formData.site || formData.siteId || formData.property || formData.propertyName ||
+    formData.hotel || formData.hotelName || userAssignedHotel || ''
+  );
+  const siteRooms = useSiteRooms(roomLookupName);
+  const siteRoomGroups = useMemo(() => {
+    const groups = new Map<string, typeof siteRooms>();
+    for (const room of siteRooms) groups.set(room.propertyName, [...(groups.get(room.propertyName) || []), room]);
+    return groups;
+  }, [siteRooms]);
   const hasSingleSu = useMemo(() => singleSuColumn(columns), [columns]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -1183,6 +1204,25 @@ export function DynamicRecordFormModal<T = any>({
                               Add new option...
                             </option>
                           )}
+                        </select>
+                      ) : isRoomColumn(col) && siteRooms.length > 0 ? (
+                        <select
+                          value={value}
+                          disabled={isReadOnly || isSubmitting}
+                          onChange={e => handleChange(key, e.target.value)}
+                          className={`w-full p-2 border rounded-xs bg-white text-[#323130] focus:ring-1 focus:ring-[#0d9488] focus:border-[#0d9488] transition-colors ${
+                            errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
+                          } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}
+                        >
+                          <option value="" disabled={Boolean(col.required)}>Select {col.label}...</option>
+                          {value && !siteRooms.some(room => room.value === value) && <option value={value}>{value}</option>}
+                          {siteRoomGroups.size > 1
+                            ? Array.from(siteRoomGroups).map(([house, rooms]) => (
+                                <optgroup key={house} label={house}>
+                                  {rooms.map(room => <option key={`${house}-${room.value}`} value={room.value}>{room.label}</option>)}
+                                </optgroup>
+                              ))
+                            : siteRooms.map(room => <option key={room.value} value={room.value}>{room.label}</option>)}
                         </select>
                       ) : col.type === 'textarea' ? (
                         <textarea
