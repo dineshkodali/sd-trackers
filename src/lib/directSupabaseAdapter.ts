@@ -254,7 +254,27 @@ function ensureId(entity: string, record: any): any {
   return record;
 }
 
-export async function directBatchFetchEntities(
+/**
+ * Identical reads started while one is already in flight share its result, so a page that
+ * asks for the same table from several places fetches it once.
+ */
+const pendingReads = new Map<string, Promise<any>>();
+
+function shareInFlight<T>(key: string, start: () => Promise<T>): Promise<T> {
+  const existing = pendingReads.get(key);
+  if (existing) return existing;
+  const request = start().finally(() => pendingReads.delete(key));
+  pendingReads.set(key, request);
+  return request;
+}
+
+export function directBatchFetchEntities(
+  requests: Array<{ key: string; entity: DbEntityName; limit?: number; order?: string; eq?: Record<string, string> }>
+): Promise<{ success: boolean; results: Record<string, { success: boolean; data: any[]; error?: string; tableMissing?: boolean }> }> {
+  return shareInFlight(`batch:${JSON.stringify(requests)}`, () => fetchEntityBatch(requests));
+}
+
+async function fetchEntityBatch(
   requests: Array<{ key: string; entity: DbEntityName; limit?: number; order?: string; eq?: Record<string, string> }>
 ): Promise<{ success: boolean; results: Record<string, { success: boolean; data: any[]; error?: string; tableMissing?: boolean }> }> {
   const supabase = getBrowserSupabaseClient();
@@ -318,9 +338,16 @@ export async function directBatchFetchEntities(
   return { success: hasAnySuccess, results };
 }
 
-export async function directFetchEntityRecords<T = any>(
+export function directFetchEntityRecords<T = any>(
   entity: DbEntityName,
   options: { limit?: number; order?: string; eq?: Record<string, string> } = {}
+): Promise<{ success: boolean; data: T[]; error?: string; status?: number; tableMissing?: boolean }> {
+  return shareInFlight(`records:${entity}:${JSON.stringify(options)}`, () => fetchEntityRecords<T>(entity, options));
+}
+
+async function fetchEntityRecords<T>(
+  entity: DbEntityName,
+  options: { limit?: number; order?: string; eq?: Record<string, string> }
 ): Promise<{ success: boolean; data: T[]; error?: string; status?: number; tableMissing?: boolean }> {
   const supabase = getBrowserSupabaseClient();
   if (!supabase) {

@@ -48,7 +48,7 @@ In AWS Amplify Console, navigate to:
 | Variable Name | Value | Description |
 |---|---|---|
 | `VITE_SUPABASE_URL` | `https://kxikojvpcyprfbyxsdaa.supabase.co` | Supabase API endpoint (Defaulted in bundle) |
-| `VITE_SUPABASE_ANON_KEY` | `sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd` | Supabase publishable key (Defaulted in bundle) |
+| `VITE_SUPABASE_ANON_KEY` | `sb_publishable_<your-key>` | Supabase publishable key (Defaulted in bundle) |
 | `VITE_API_URL` | *(Leave empty for Direct Supabase Mode, or set to your external backend URL)* | Express Backend API URL |
 | `VITE_AZURE_CLIENT_ID` | `8902bae4-3763-4455-ae7d-8c7c5aac4011` | Azure Entra Client ID |
 | `VITE_AZURE_TENANT_ID` | `common` | Azure Tenant ID |

@@ -4,7 +4,7 @@ import zlib from 'zlib';
 import type { IncomingMessage, Server } from 'http';
 import type { Duplex } from 'stream';
 import type { Request, Response, NextFunction } from 'express';
-import { getSupabaseUrl } from './supabase.js';
+import { getSupabaseUrl, getSupabasePublishableKey } from './supabase.js';
 
 /**
  * Same-origin reverse proxy for Supabase.
@@ -18,6 +18,12 @@ import { getSupabaseUrl } from './supabase.js';
  * redirects, cookies and text bodies is rewritten to the app's own gateway address.
  */
 export const SUPABASE_PROXY_PREFIX = '/supabase';
+
+/**
+ * The browser never holds the real project key when it goes through this gateway. It sends
+ * this placeholder instead and the server swaps in the real publishable key before forwarding.
+ */
+export const GATEWAY_KEY_PLACEHOLDER = 'sd-gateway-key';
 
 const DEFAULT_SUPABASE_URL = 'https://kxikojvpcyprfbyxsdaa.supabase.co';
 
@@ -42,7 +48,10 @@ function target(): URL {
 
 function upstreamPath(originalUrl: string): string {
   const rest = originalUrl.slice(SUPABASE_PROXY_PREFIX.length);
-  return rest.startsWith('/') ? rest : `/${rest}`;
+  const path = rest.startsWith('/') ? rest : `/${rest}`;
+  const realKey = getSupabasePublishableKey();
+  // Realtime websockets carry the key in the query string.
+  return realKey ? path.split(`apikey=${GATEWAY_KEY_PLACEHOLDER}`).join(`apikey=${realKey}`) : path;
 }
 
 function publicHost(req: IncomingMessage): string {
@@ -74,6 +83,12 @@ function forwardHeaders(req: IncomingMessage, host: string, keepUpgrade = false)
     out[name] = value;
   }
   out.host = host;
+
+  const realKey = getSupabasePublishableKey();
+  if (realKey) {
+    if (out.apikey === GATEWAY_KEY_PLACEHOLDER) out.apikey = realKey;
+    if (out.authorization === `Bearer ${GATEWAY_KEY_PLACEHOLDER}`) out.authorization = `Bearer ${realKey}`;
+  }
   return out;
 }
 

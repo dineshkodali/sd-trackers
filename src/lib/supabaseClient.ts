@@ -5,6 +5,9 @@ const DEFAULT_SUPABASE_URL = 'https://kxikojvpcyprfbyxsdaa.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_Gyrx4Cg-tpjkXwitgNrLqA_jp0ZJpDd';
 
 const env = (import.meta as any).env || {};
+// Sent instead of the real key when the server gateway is in use; the server swaps in the real one.
+const GATEWAY_KEY_PLACEHOLDER = 'sd-gateway-key';
+
 const win = typeof window !== 'undefined' ? (window as any) : {};
 
 const directSupabaseUrl: string =
@@ -23,7 +26,11 @@ function resolveSupabaseUrl(): string {
   const mode = String(env.VITE_SUPABASE_PROXY || '').toLowerCase();
   if (typeof window === 'undefined' || mode === 'off') return directSupabaseUrl;
   const proxyUrl = `${window.location.origin}/supabase`;
-  return proxyIsAvailable(proxyUrl) ? proxyUrl : directSupabaseUrl;
+  if (proxyIsAvailable(proxyUrl)) {
+    usingGateway = true;
+    return proxyUrl;
+  }
+  return directSupabaseUrl;
 }
 
 /**
@@ -35,16 +42,19 @@ function proxyIsAvailable(proxyUrl: string): boolean {
   try {
     const xhr = new XMLHttpRequest();
     xhr.open('GET', `${proxyUrl}/auth/v1/health`, false);
-    xhr.setRequestHeader('apikey', supabaseAnonKey);
+    xhr.setRequestHeader('apikey', GATEWAY_KEY_PLACEHOLDER);
     xhr.send();
     const type = xhr.getResponseHeader('content-type') || '';
-    return xhr.status >= 200 && xhr.status < 500 && /json/i.test(type);
+    // A 200 proves the server swapped in the real key; anything else means connect directly.
+    return xhr.status === 200 && /json/i.test(type);
   } catch {
     return false;
   }
 }
 
-const supabaseAnonKey: string =
+let usingGateway = false;
+
+const projectKey: string =
   env.VITE_SUPABASE_ANON_KEY ||
   env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   win.__VITE_SUPABASE_ANON_KEY__ ||
@@ -52,6 +62,7 @@ const supabaseAnonKey: string =
   DEFAULT_SUPABASE_ANON_KEY;
 
 const supabaseUrl: string = resolveSupabaseUrl();
+const supabaseAnonKey: string = usingGateway ? GATEWAY_KEY_PLACEHOLDER : projectKey;
 
 let supabaseClientInstance: SupabaseClient | null = null;
 
