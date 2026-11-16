@@ -3,6 +3,7 @@ import { IconRefresh as RefreshCw, IconSearch as Search } from '@tabler/icons-re
 import { useApp } from '../../context/AppContext';
 import { useOperationsData } from '../../hooks/useOperationsData';
 import { useCheckObligations } from '../../hooks/useCheckObligations';
+import { GuestAnalyticsWidget } from '../dashboard/GuestAnalyticsWidget';
 import {
   buildSnapshot, selectDeadlines, selectOverview, type AttentionItem, type DashboardPage, type DeadlineItem, type OpsInput, type OpsScope, type OverviewRow
 } from '../../utils/operationsSelectors';
@@ -80,7 +81,8 @@ export const OperationsDashboardView: React.FC = () => {
     followUps: canAccessPage('suAttendance'),
     property: canAccessPage('propertyManagement'),
     roomChecks: canAccessPage('roomChecks'),
-    welfareChecks: canAccessPage('welfareChecks')
+    welfareChecks: canAccessPage('welfareChecks'),
+    dailyRegisters: canAccessPage('dailyRegisters')
   };
 
   const master = useOperationsData({ property: can.property, peep: can.peep, followUps: can.followUps });
@@ -737,6 +739,11 @@ export const OperationsDashboardView: React.FC = () => {
             </div>
           )}
         </section>
+      )}
+
+      {/* Guest statistics & demographics (moved here from the main dashboard) */}
+      {can.dailyRegisters && (
+        <GuestAnalyticsWidget siteFilter={siteFilter} onNavigate={page => navigateWithIntent(page)} />
       )}
 
       {/* Data quality: records the numbers above had to leave out */}

@@ -29,7 +29,6 @@ import { PropertyLoadBreakdown } from './PropertyLoadBreakdown';
 import { VulnerabilityRiskBreakdown } from './VulnerabilityRiskBreakdown';
 import { CommercialWelfareBreakdown } from './CommercialWelfareBreakdown';
 import { PropertyOperationsOverviewWidget } from './PropertyOperationsOverviewWidget';
-import { GuestAnalyticsWidget } from './GuestAnalyticsWidget';
 import { TransportKPIDashboard } from '../transport/TransportKPIDashboard';
 import { exportDashboardSummaryPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
@@ -527,8 +526,6 @@ export const DashboardView: React.FC = () => {
               onNavigate={setActivePage}
             />
         );
-      case 'guestAnalytics':
-        return <GuestAnalyticsWidget siteFilter={siteFilter} onNavigate={setActivePage} />;
       case 'transport':
         return (
             <div className="bg-white border border-[#e1dfdd] rounded-xs p-4 shadow-xs">
