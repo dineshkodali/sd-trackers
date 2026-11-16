@@ -29,7 +29,6 @@ import { PropertyLoadBreakdown } from './PropertyLoadBreakdown';
 import { VulnerabilityRiskBreakdown } from './VulnerabilityRiskBreakdown';
 import { CommercialWelfareBreakdown } from './CommercialWelfareBreakdown';
 import { PropertyOperationsOverviewWidget } from './PropertyOperationsOverviewWidget';
-import { TransportKPIDashboard } from '../transport/TransportKPIDashboard';
 import { exportDashboardSummaryPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
 import { ExportModal, ExportFormat, ExportScope, ExportColumnOption, ExportOrientation } from '../common/ExportModal';
@@ -526,89 +525,6 @@ export const DashboardView: React.FC = () => {
               onNavigate={setActivePage}
             />
         );
-      case 'transport':
-        return (
-            <div className="bg-white border border-[#e1dfdd] rounded-xs p-4 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#edebe9] mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-purple-50 text-[#8764b8] rounded-xs border border-purple-200">
-                    <Bus className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-[#242424]">Public Transport</h3>
-                    </div>
-                    <p className="text-xs text-[#605e5c]">Journeys, issues and funding requests</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActivePage('publicTransport')}
-                  className="text-xs font-semibold text-[#8764b8] hover:text-[#6b4f98] flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-xs transition-colors self-start sm:self-auto cursor-pointer"
-                >
-                  <span>Open Transport Tracker</span>
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <TransportKPIDashboard selectedSiteFilter={siteFilter} onNavigate={setActivePage} />
-            </div>
-        );
-      case 'priorityVulnerable': {
-        const limit = inst.config?.limit ?? DEFAULT_ROW_LIMIT;
-        return (
-          <div className="bg-white border border-[#e1dfdd] shadow-xs rounded-xs h-full">
-            <div className="px-4 py-3 border-b border-[#e1dfdd] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <h3 className="text-sm font-semibold text-[#242424]">
-                  Priority Safeguarding & High-Risk SUs ({highRiskCount})
-                </h3>
-              </div>
-              <button
-                onClick={() => setActivePage('vulnerable')}
-                className="text-xs text-[#0d9488] hover:underline flex items-center gap-1"
-              >
-                View all vulnerable <ArrowUpRight className="w-3 h-3" />
-              </button>
-            </div>
-
-            <div className="p-4 divide-y divide-[#edebe9] text-xs">
-              {activeVulnerable.slice(0, limit).map(vul => (
-                <div key={vul.id} className="py-2.5 first:pt-0 last:pb-0 flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-neutral-800 text-sm">{vul.suName}</span>
-                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                        vul.riskLevel === 'High' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {vul.riskLevel} Risk
-                      </span>
-                      <span className="text-neutral-500">{vul.site} · {vul.roomOrFlatNo}</span>
-                    </div>
-                    <p className="text-[#605e5c] line-clamp-1">{vul.vulnerability}</p>
-                    <div className="text-[11px] text-neutral-500 flex items-center gap-2">
-                      <span>Review Due: <strong className="text-neutral-700">{vul.reviewDate}</strong></span>
-                      <span>•</span>
-                      <span>Worker: {vul.allocatedWorker}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActivePage('vulnerable')}
-                    className="px-2.5 py-1 bg-white hover:bg-[#edebe9] border border-[#8a8886] rounded-xs text-[#323130] shrink-0 font-medium"
-                  >
-                    Details
-                  </button>
-                </div>
-              ))}
-              {activeVulnerable.length === 0 && (
-                <div className="text-center py-6 text-[#605e5c]">
-                  No high-risk safeguarding cases reported in selected filter scope.
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      }
       case 'quickActions':
         return <QuickActionsWidget onNavigate={setActivePage} onQuickIncident={() => setIsQuickIncidentModalOpen(true)} />;
       case 'myRequests':

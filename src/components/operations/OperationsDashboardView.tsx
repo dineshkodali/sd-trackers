@@ -4,6 +4,8 @@ import { useApp } from '../../context/AppContext';
 import { useOperationsData } from '../../hooks/useOperationsData';
 import { useCheckObligations } from '../../hooks/useCheckObligations';
 import { GuestAnalyticsWidget } from '../dashboard/GuestAnalyticsWidget';
+import { PriorityVulnerableWidget } from '../dashboard/PriorityVulnerableWidget';
+import { TransportKPIDashboard } from '../transport/TransportKPIDashboard';
 import {
   buildSnapshot, selectDeadlines, selectOverview, type AttentionItem, type DashboardPage, type DeadlineItem, type OpsInput, type OpsScope, type OverviewRow
 } from '../../utils/operationsSelectors';
@@ -82,7 +84,9 @@ export const OperationsDashboardView: React.FC = () => {
     property: canAccessPage('propertyManagement'),
     roomChecks: canAccessPage('roomChecks'),
     welfareChecks: canAccessPage('welfareChecks'),
-    dailyRegisters: canAccessPage('dailyRegisters')
+    dailyRegisters: canAccessPage('dailyRegisters'),
+    vulnerable: canAccessPage('vulnerable'),
+    publicTransport: canAccessPage('publicTransport')
   };
 
   const master = useOperationsData({ property: can.property, peep: can.peep, followUps: can.followUps });
@@ -744,6 +748,30 @@ export const OperationsDashboardView: React.FC = () => {
       {/* Guest statistics & demographics (moved here from the main dashboard) */}
       {can.dailyRegisters && (
         <GuestAnalyticsWidget siteFilter={siteFilter} onNavigate={page => navigateWithIntent(page)} />
+      )}
+
+      {/* Priority safeguarding and public transport (moved here from the main dashboard) */}
+      {can.vulnerable && (
+        <PriorityVulnerableWidget siteFilter={siteFilter} onNavigate={page => navigateWithIntent(page)} />
+      )}
+
+      {can.publicTransport && (
+        <section className="bg-white border border-[#e1dfdd] rounded-xs p-4 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#edebe9] mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#242424]">Public Transport</h3>
+              <p className="text-xs text-[#605e5c]">Journeys, issues and funding requests</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigateWithIntent('publicTransport')}
+              className="text-xs font-semibold text-[#8764b8] hover:text-[#6b4f98] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-xs transition-colors self-start sm:self-auto cursor-pointer"
+            >
+              Open Transport Tracker
+            </button>
+          </div>
+          <TransportKPIDashboard selectedSiteFilter={siteFilter} onNavigate={page => navigateWithIntent(page)} />
+        </section>
       )}
 
       {/* Data quality: records the numbers above had to leave out */}
