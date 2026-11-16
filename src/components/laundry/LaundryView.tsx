@@ -68,6 +68,7 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<DailyLaundryRecord | null>(null);
   const [viewingRecord, setViewingRecord] = useState<DailyLaundryRecord | null>(null);
+  const [extraRooms, setExtraRooms] = useState<Array<{ roomNo: string; quantityReceived: string; batches: string }>>([]);
 
   const filteredRecords = useMemo(() => {
     return (dailyLaundryRecords || []).filter(rec => {
@@ -294,9 +295,19 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
                             </td>
                           );
                         }
+                        let cell: React.ReactNode;
+                        if (col.renderCell) {
+                          cell = (col.renderCell as any)(val, rec);
+                        } else if (val === null || val === undefined || val === '') {
+                          cell = '—';
+                        } else if (typeof val === 'object') {
+                          cell = Array.isArray(val) ? `${val.length} file(s)` : '—';
+                        } else {
+                          cell = String(val);
+                        }
                         return (
                           <td key={col.key} className="py-2.5 px-3 text-[#334155]">
-                            {val ?? '—'}
+                            {cell}
                           </td>
                         );
                       })}
@@ -362,9 +373,57 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
       {/* CREATE MODAL */}
       <DynamicRecordFormModal<DailyLaundryRecord>
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => { setIsCreateModalOpen(false); setExtraRooms([]); }}
         title="Add Daily Laundry Entry"
         columns={columns}
+        slotAfterFields={
+          <div className="mt-4 border border-[#e2e8f0] rounded-xs p-3 bg-[#f8fafc]">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-bold text-[#475569] uppercase tracking-wide">Additional Rooms (No. of Bags, No. of Batches)</h4>
+              <button
+                type="button"
+                onClick={() => setExtraRooms(prev => [...prev, { roomNo: '', quantityReceived: '1', batches: '1' }])}
+                className="px-2.5 py-1 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs"
+              >
+                + Add Room Row
+              </button>
+            </div>
+            {extraRooms.length === 0 ? (
+              <p className="text-xs text-[#94a3b8]">The room above is saved as the first entry. Add rows to log more rooms with the same date, property and staff.</p>
+            ) : (
+              <div className="space-y-2">
+                {extraRooms.map((r, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                    {([
+                      ['roomNo', 'Room No', 'e.g. 102'],
+                      ['quantityReceived', 'No of bags', 'e.g. 2'],
+                      ['batches', 'No of Batches', 'e.g. 1']
+                    ] as const).map(([k, label, ph]) => (
+                      <label key={k} className="block">
+                        <span className="block text-[11px] font-semibold text-[#475569] mb-0.5">{label}</span>
+                        <input
+                          type="text"
+                          value={r[k]}
+                          placeholder={ph}
+                          onChange={e => setExtraRooms(prev => prev.map((x, j) => j === i ? { ...x, [k]: e.target.value } : x))}
+                          className="w-full px-2 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs outline-hidden focus:border-[#0d9488]"
+                        />
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setExtraRooms(prev => prev.filter((_, j) => j !== i))}
+                      title="Remove room row"
+                      className="p-1.5 text-rose-500 hover:bg-rose-50 rounded"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        }
         initialValues={{
           site: siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || ''),
           date: selectedDate || new Date().toISOString().slice(0, 10),
@@ -373,17 +432,30 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
           doneBy: currentUserRole || 'Staff Member'
         }}
         onSave={(data) => {
-          addDailyLaundryRecord({
+          const base = {
             date: data.date || selectedDate || new Date().toISOString().slice(0, 10),
             site: data.site || (siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || '')),
             house: data.house || '',
+            doneBy: data.doneBy || currentUserRole || 'Staff Member',
+            remarks: data.remarks || ''
+          };
+          addDailyLaundryRecord({
+            ...base,
             roomNo: data.roomNo || '',
             quantityReceived: data.quantityReceived || '1',
             batches: data.batches || '1',
-            doneBy: data.doneBy || currentUserRole || 'Staff Member',
-            remarks: data.remarks || '',
             attachments: Array.isArray(data.attachments) ? data.attachments : []
           });
+          extraRooms
+            .filter(r => r.roomNo.trim())
+            .forEach(r => addDailyLaundryRecord({
+              ...base,
+              roomNo: r.roomNo.trim(),
+              quantityReceived: r.quantityReceived || '1',
+              batches: r.batches || '1',
+              attachments: []
+            }));
+          setExtraRooms([]);
           setIsCreateModalOpen(false);
         }}
       />
