@@ -441,6 +441,8 @@ export async function recordAuditTrailEntry(req: Request, params: {
   defaultDetails: string;
 }) {
   if (params.entity === 'audit' || params.entity === 'audit_trails') return; // no self-auditing
+  // Checklist lines are part of their room check, which is audited itself; one row per line filled the trail (2,600 in two days).
+  if (params.entity === 'roomCheckItems' || params.entity === 'room_check_items') return;
   const client = getSupabaseAdmin();
   if (!client) return;
 

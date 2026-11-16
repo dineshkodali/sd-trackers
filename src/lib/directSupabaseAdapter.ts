@@ -673,6 +673,8 @@ export async function recordDirectAudit(
   activeUser?: AuditUserContext | null
 ): Promise<void> {
   if (entity === 'audit' || entity === 'audit_trails') return;
+  // Checklist lines are part of their room check, which is audited itself.
+  if (entity === 'roomCheckItems' || entity === 'room_check_items') return;
   const supabase = getBrowserSupabaseClient();
   if (!supabase) return;
 
