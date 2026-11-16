@@ -1,3 +1,4 @@
+import { clearReadCache } from '../../services/readCache';
 import React from 'react';
 import { IconRefresh as RefreshCw, IconRotate as RotateCcw } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
@@ -49,7 +50,7 @@ export const ToolbarButton: React.FC<{ onClick: () => void; icon: React.ReactNod
 );
 
 export const RefreshButton: React.FC<{ onClick: () => void; loading?: boolean }> = ({ onClick, loading }) => (
-  <ToolbarButton onClick={onClick} disabled={loading} label="Refresh" icon={<RefreshCw className={`w-3.5 h-3.5 text-[#0078d4] ${loading ? 'animate-spin' : ''}`} />} />
+  <ToolbarButton onClick={() => { clearReadCache(); onClick(); }} disabled={loading} label="Refresh" icon={<RefreshCw className={`w-3.5 h-3.5 text-[#0078d4] ${loading ? 'animate-spin' : ''}`} />} />
 );
 
 export const ResetFiltersButton: React.FC<{ onClick: () => void; active: boolean }> = ({ onClick, active }) => (

@@ -64,6 +64,8 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
   const rangeDays = datesBetween(dateFrom, dateTo).length;
   const maxDays = suFilter ? MAX_SU_RANGE_DAYS : MAX_RANGE_DAYS;
   const rangeTooLong = isRange && rangeDays > maxDays;
+  // Only a range needs a different request for a chosen person; on a single day the person filter is applied to what is already loaded
+  const loadSu = isRange ? suFilter : '';
 
   const loadDirectory = useCallback(async () => {
     const dir = await suTrackerService.loadSuDirectory(sites);
@@ -79,8 +81,8 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
       const res = await suEnhancementsService.listMealsForDate(dateFrom);
       if (!res.success) { setLoading(false); setError(res.error || 'Could not load meal records.'); return; }
       rows = res.data;
-    } else if (suFilter) {
-      const res = await suEnhancementsService.listMealsForSu(suFilter, 1000);
+    } else if (loadSu) {
+      const res = await suEnhancementsService.listMealsForSu(loadSu, 1000);
       if (!res.success) { setLoading(false); setError(res.error || 'Could not load meal records.'); return; }
       rows = res.data.filter(m => m.mealDate >= dateFrom && m.mealDate <= dateTo);
     } else {
@@ -95,7 +97,7 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
     }
     setLoading(false);
     setRecords(rows);
-  }, [dateFrom, dateTo, suFilter, rangeTooLong]);
+  }, [dateFrom, dateTo, loadSu, rangeTooLong]);
 
   useEffect(() => { void loadDirectory(); }, [loadDirectory]);
   useEffect(() => { void loadMeals(); }, [loadMeals]);

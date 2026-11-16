@@ -1,4 +1,5 @@
 import { authHeaders, getApiUrl, getApiBaseUrl, isDirectSupabaseActive, enableDirectSupabaseFallback } from './apiService';
+import { invalidateReads } from './readCache';
 import { runDirectWorkflow, type WorkflowResult } from '../lib/directWorkflows';
 
 /**
@@ -11,6 +12,14 @@ import { runDirectWorkflow, type WorkflowResult } from '../lib/directWorkflows';
 export type { WorkflowResult };
 
 export async function callWorkflow(path: string, body?: unknown, method: 'GET' | 'POST' | 'DELETE' = 'POST'): Promise<WorkflowResult> {
+  // A workflow can change several tables, so anything cached is dropped before and after it runs
+  if (method !== 'GET') invalidateReads();
+  const result = await callWorkflowInner(path, body, method);
+  if (method !== 'GET') invalidateReads();
+  return result;
+}
+
+async function callWorkflowInner(path: string, body: unknown, method: 'GET' | 'POST' | 'DELETE'): Promise<WorkflowResult> {
   const direct = async (reason: string): Promise<WorkflowResult> => {
     const result = await runDirectWorkflow(method, path, body);
     if (result) { enableDirectSupabaseFallback(); return result; }

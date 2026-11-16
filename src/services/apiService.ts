@@ -1,6 +1,7 @@
 import { diagnosticLogger } from '../utils/diagnosticLogger';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 import { INITIAL_USERS } from '../data/initialData';
+import { cachedRead, invalidateReads } from './readCache';
 import {
   directBatchFetchEntities,
   directFetchEntityRecords,
@@ -629,7 +630,20 @@ export const apiService = {
     }
   },
 
+  /** Cached, de-duplicated list read. Use fetchEntityRecordsFresh to bypass the cache. */
   async fetchEntityRecords<T = any>(
+    entity: DbEntityName,
+    options: { limit?: number; order?: string; eq?: Record<string, string> } = {}
+  ): Promise<{ success: boolean; data: T[]; error?: string; status?: number; tableMissing?: boolean }> {
+    const key = `${entity}?${JSON.stringify([options.limit || 0, options.order || '', Object.entries(options.eq || {}).sort()])}`;
+    // Audit trails are never served from the cache: they must always show the latest entries
+    if (/^audit/i.test(String(entity))) return apiService.fetchEntityRecordsFresh(entity, options);
+    const res = await cachedRead(entity, key, () => apiService.fetchEntityRecordsFresh(entity, options));
+    // Callers sort and edit these arrays, so each gets its own copy
+    return res.success ? { ...res, data: [...res.data] } : res;
+  },
+
+  async fetchEntityRecordsFresh<T = any>(
     entity: DbEntityName,
     options: { limit?: number; order?: string; eq?: Record<string, string> } = {}
   ): Promise<{ success: boolean; data: T[]; error?: string; status?: number; tableMissing?: boolean }> {
@@ -672,6 +686,7 @@ export const apiService = {
   },
 
   async saveEntityRecord<T = any>(entity: DbEntityName, record: T, audit?: AuditDescriptor): Promise<WriteResult<T>> {
+    invalidateReads(entity as string);
     if (shouldPreferDirectSupabase()) {
       return await directSaveEntityRecord<T>(entity, record, audit, activeAuditContext);
     }
@@ -701,6 +716,7 @@ export const apiService = {
   },
 
   async updateEntityRecord<T = any>(entity: DbEntityName, id: string, record: Partial<T>, audit?: AuditDescriptor): Promise<WriteResult<T>> {
+    invalidateReads(entity as string);
     if (shouldPreferDirectSupabase()) {
       return await directUpdateEntityRecord<T>(entity, id, record, audit, activeAuditContext);
     }
@@ -730,6 +746,7 @@ export const apiService = {
   },
 
   async deleteEntityRecord(entity: DbEntityName, id: string, audit?: AuditDescriptor): Promise<WriteResult> {
+    invalidateReads(entity as string);
     if (shouldPreferDirectSupabase()) {
       return await directDeleteEntityRecord(entity, id, audit, activeAuditContext);
     }
@@ -794,6 +811,7 @@ export const apiService = {
 
   /** Upsert many records in one request (resets, restores, batch archives, local-data migration). */
   async bulkSaveEntityRecords<T = any>(entity: DbEntityName, records: T[], audit?: AuditDescriptor): Promise<{ success: boolean; count?: number; error?: string; status?: number; tableMissing?: boolean }> {
+    invalidateReads(entity as string);
     if (records.length === 0) return { success: true, count: 0 };
     if (shouldPreferDirectSupabase()) {
       return await directBulkSaveEntityRecords<T>(entity, records, audit, activeAuditContext);
@@ -822,6 +840,7 @@ export const apiService = {
   },
 
   async bulkDeleteEntityRecords(entity: DbEntityName, ids: string[], audit?: AuditDescriptor): Promise<{ success: boolean; deleted?: number; error?: string; status?: number }> {
+    invalidateReads(entity as string);
     if (ids.length === 0) return { success: true, deleted: 0 };
     if (shouldPreferDirectSupabase()) {
       return await directBulkDeleteEntityRecords(entity, ids, audit, activeAuditContext);
@@ -1851,3 +1870,11 @@ export const apiService = {
   }
 };
 
+
+// Clear the read cache again once a write has finished, so a list read that started mid-write cannot keep old data.
+for (const name of ['saveEntityRecord', 'updateEntityRecord', 'deleteEntityRecord', 'bulkSaveEntityRecords', 'bulkDeleteEntityRecords'] as const) {
+  const original = (apiService as any)[name].bind(apiService);
+  (apiService as any)[name] = async (...args: any[]) => {
+    try { return await original(...args); } finally { invalidateReads(String(args[0])); }
+  };
+}
