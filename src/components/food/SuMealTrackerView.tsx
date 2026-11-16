@@ -84,7 +84,8 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
 
   const totals = useMemo(() => {
     const scoped = allRows.filter(x => isSitePermitted(x.r.siteName, site));
-    return { total: scoped.length, complete: scoped.filter(x => x.day === 'Complete').length, incomplete: scoped.filter(x => x.day === 'Incomplete').length, notStarted: scoped.filter(x => x.day === 'Not started').length };
+    const meals = scoped.flatMap(x => MEAL_PERIODS.map(p => x.statuses[p]));
+    return { accepted: meals.filter(m => m === 'Accepted').length, declined: meals.filter(m => m === 'Declined').length, total: scoped.length, complete: scoped.filter(x => x.day === 'Complete').length, incomplete: scoped.filter(x => x.day === 'Incomplete').length, notStarted: scoped.filter(x => x.day === 'Not started').length };
   }, [allRows, site, isSitePermitted]);
 
   const filtersActive = !!search || site !== defaultSiteFilter || dayFilter !== 'all' || mealFilter !== 'all';
@@ -139,6 +140,8 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
         summary={
           <div className="flex items-center gap-1.5 text-xs mt-3 flex-wrap">
             <StatusPill status={`${totals.complete} of ${totals.total} complete`} tone={totals.total > 0 && totals.complete === totals.total ? 'good' : 'neutral'} />
+            {totals.accepted > 0 && <StatusPill status={`${totals.accepted} meals accepted`} tone="good" />}
+            {totals.declined > 0 && <StatusPill status={`${totals.declined} meals declined`} tone="warn" />}
             {totals.incomplete > 0 && <StatusPill status={`${totals.incomplete} incomplete`} tone="warn" />}
             {totals.notStarted > 0 && <StatusPill status={`${totals.notStarted} not started`} tone="warn" />}
           </div>
@@ -163,7 +166,7 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
       <ErrorBanner message={!loading ? error : ''} />
 
       <TablePanel totalItems={filtered.length} page={tc.page} pageSize={tc.pageSize} onPage={tc.setPage} onPageSize={tc.setPageSize}>
-        <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
+        <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
           <thead>
             <tr className={theadRowCls}>
               {th('name', 'Service User')}{MEAL_PERIODS.map(p => th(p, p))}<th className="p-2.5 font-semibold text-left">Notes</th>{th('day', 'Daily status')}<ActionsTh />
@@ -173,26 +176,37 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
             {loading ? <SkeletonRows cols={7} /> : paged.length === 0 ? (
               <EmptyRow colSpan={7} icon={<ClipboardList className="w-8 h-8" />} title={directory.length === 0 ? 'No Service Users to record meals for' : 'No Service Users match your filters'} />
             ) : paged.map(({ r, day }) => (
-              <tr key={r.su.id} className={`align-top hover:bg-[#f3f8fd] transition-colors ${day === 'Complete' ? '' : 'bg-amber-50/40'}`}>
-                <td className={tdCls}>{r.su.firstName} {r.su.lastName}<div className="text-[10px] text-neutral-500">{r.su.externalReference || r.su.suReference} · {r.siteName || 'No property'}{r.roomNo ? ` · Room ${r.roomNo}` : ''}</div></td>
+              <tr key={r.su.id} className={`align-middle hover:bg-[#f3f8fd] transition-colors border-l-[3px] ${day === 'Complete' ? 'border-l-emerald-400' : day === 'Incomplete' ? 'border-l-amber-400 bg-amber-50/30' : 'border-l-neutral-200'}`}>
+                <td className={tdCls}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="shrink-0 w-8 h-8 rounded-full bg-teal-50 border border-teal-200 text-[#0f766e] text-[11px] font-bold flex items-center justify-center">{`${r.su.firstName?.[0] || ''}${r.su.lastName?.[0] || ''}`.toUpperCase()}</span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[#242424] truncate">{r.su.firstName} {r.su.lastName}</div>
+                      <div className="text-[10px] text-neutral-500 truncate">{r.su.externalReference || r.su.suReference}{r.roomNo ? ` · Room ${r.roomNo}` : ''}</div>
+                      <div className="text-[10px] text-neutral-400 truncate">{r.siteName || 'No property'}</div>
+                    </div>
+                  </div>
+                </td>
                 {MEAL_PERIODS.map(p => {
                   const rec = bySlot.get(`${r.su.id}|${p}`);
                   const status = rec?.status || 'Pending';
                   return (
-                    <td key={p} className={`${tdCls} min-w-[11rem]`}>
+                    <td key={p} className={`${tdCls} min-w-[10rem]`}>
                       {actor.canEdit ? (
-                        <div className="flex items-center gap-1" role="group" aria-label={`${p} for ${r.su.firstName} ${r.su.lastName}`}>
-                          <button type="button" disabled={savingKey === `${r.su.id}|${p}`} onClick={() => status !== 'Accepted' && onPick(r, p, 'Accepted')}
-                            className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-xs border text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${status === 'Accepted' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-[#d4d4d4] text-neutral-600 hover:bg-emerald-50 hover:border-emerald-400'}`}>
-                            <Check className="w-3.5 h-3.5" />Accepted
-                          </button>
-                          <button type="button" disabled={savingKey === `${r.su.id}|${p}`} onClick={() => status !== 'Declined' && onPick(r, p, 'Declined')}
-                            className={`flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-xs border text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${status === 'Declined' ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white border-[#d4d4d4] text-neutral-600 hover:bg-rose-50 hover:border-rose-400'}`}>
-                            <XIcon className="w-3.5 h-3.5" />Declined
-                          </button>
+                        <div className="flex items-center gap-1.5" role="group" aria-label={`${p} for ${r.su.firstName} ${r.su.lastName}`}>
+                          <div className="inline-flex rounded-xs border border-[#d4d4d4] overflow-hidden divide-x divide-[#d4d4d4]">
+                            <button type="button" disabled={savingKey === `${r.su.id}|${p}`} onClick={() => status !== 'Accepted' && onPick(r, p, 'Accepted')}
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-50 ${status === 'Accepted' ? 'bg-emerald-600 text-white' : 'bg-white text-neutral-500 hover:bg-emerald-50 hover:text-emerald-700'}`}>
+                              <Check className="w-3 h-3" />Accepted
+                            </button>
+                            <button type="button" disabled={savingKey === `${r.su.id}|${p}`} onClick={() => status !== 'Declined' && onPick(r, p, 'Declined')}
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-50 ${status === 'Declined' ? 'bg-rose-600 text-white' : 'bg-white text-neutral-500 hover:bg-rose-50 hover:text-rose-700'}`}>
+                              <XIcon className="w-3 h-3" />Declined
+                            </button>
+                          </div>
                           <button type="button" title={rec?.notes ? 'Edit note' : 'Add note'} aria-label={`${rec?.notes ? 'Edit' : 'Add'} note for ${p}`} onClick={() => setEditing({ su: r, period: p })}
-                            className={`p-1.5 rounded-xs border cursor-pointer ${rec?.notes ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-[#d4d4d4] text-neutral-400 hover:text-neutral-700'}`}>
-                            <NoteIcon className="w-3.5 h-3.5" />
+                            className={`p-1 rounded-xs border cursor-pointer ${rec?.notes ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-[#d4d4d4] text-neutral-400 hover:text-neutral-700'}`}>
+                            <NoteIcon className="w-3 h-3" />
                           </button>
                         </div>
                       ) : <StatusPill status={status} tone={statusTone(status)} />}
