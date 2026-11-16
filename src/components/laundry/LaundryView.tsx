@@ -13,6 +13,7 @@ import { DynamicRecordViewModal } from '../common/DynamicRecordViewModal';
 import { DynamicRecordFormModal } from '../common/DynamicRecordFormModal';
 import { useTableSchema } from '../../hooks/useTableSchema';
 import { DAILY_LAUNDRY_TABLE_COLUMNS } from '../../data/defaultTableSchemas';
+import { useSiteRooms } from '../../hooks/useSiteRooms';
 import { PropertyLaundryLogSection } from './PropertyLaundryLogSection';
 
 const dailyLaundryExportColumns: ExportColumnOption[] = [
@@ -25,6 +26,64 @@ const dailyLaundryExportColumns: ExportColumnOption[] = [
   { id: 'doneBy', label: 'Done By' },
   { id: 'remarks', label: 'Remarks / Notes' }
 ];
+
+interface LaundryRoomRow { roomNo: string; quantityReceived: string; batches: string }
+const newRoomRow = (): LaundryRoomRow => ({ roomNo: '', quantityReceived: '1', batches: '1' });
+
+const matrixInput = 'w-full px-2 py-1.5 bg-white border border-[#cbd5e1] rounded-xs text-xs outline-hidden focus:border-[#0d9488]';
+
+const LaundryRoomMatrix: React.FC<{ site: string; rows: LaundryRoomRow[]; onChange: (rows: LaundryRoomRow[]) => void }> = ({ site, rows, onChange }) => {
+  const rooms = useSiteRooms(site);
+  const update = (i: number, patch: Partial<LaundryRoomRow>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  return (
+    <div className="border border-[#e2e8f0] rounded-xs bg-white">
+      <div className="flex items-center justify-between px-3 py-2">
+        <h4 className="text-xs font-bold text-[#475569] uppercase tracking-wide">Rooms (Room No, No of bags / Quantity Received, No of Batches)</h4>
+        <button
+          type="button"
+          onClick={() => onChange([...rows, newRoomRow()])}
+          className="px-2.5 py-1 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs"
+        >
+          + Add Room Row
+        </button>
+      </div>
+      <div className="grid grid-cols-[1.2fr_1.2fr_1fr_auto] gap-2 px-3 py-2 bg-[#f1f5f9] text-[11px] font-bold text-[#475569]">
+        <span>Room No <span className="text-red-500">*</span></span>
+        <span>No of bags / Quantity Received <span className="text-red-500">*</span></span>
+        <span>No of Batches <span className="text-red-500">*</span></span>
+        <span className="w-6" />
+      </div>
+      <div className="space-y-2 p-3">
+        {rows.map((r, i) => (
+          <div key={i} className="grid grid-cols-[1.2fr_1.2fr_1fr_auto] gap-2 items-center">
+            {rooms.length > 0 ? (
+              <select value={r.roomNo} onChange={e => update(i, { roomNo: e.target.value })} className={matrixInput}>
+                <option value="">Select room...</option>
+                {r.roomNo && !rooms.some(room => room.value === r.roomNo) && <option value={r.roomNo}>{r.roomNo}</option>}
+                {rooms.map(room => (
+                  <option key={`${room.propertyName}-${room.value}`} value={room.value}>{room.label}</option>
+                ))}
+              </select>
+            ) : (
+              <input type="text" value={r.roomNo} placeholder="e.g. 101" onChange={e => update(i, { roomNo: e.target.value })} className={matrixInput} />
+            )}
+            <input type="text" value={r.quantityReceived} placeholder="e.g. 2 bags" onChange={e => update(i, { quantityReceived: e.target.value })} className={matrixInput} />
+            <input type="text" value={r.batches} placeholder="e.g. 1" onChange={e => update(i, { batches: e.target.value })} className={matrixInput} />
+            <button
+              type="button"
+              disabled={rows.length <= 1}
+              onClick={() => onChange(rows.filter((_, j) => j !== i))}
+              title="Remove room row"
+              className="w-6 text-rose-500 hover:text-rose-700 disabled:opacity-30 text-base leading-none"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }> = ({ tabSwitcher }) => {
   const {
@@ -68,7 +127,11 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<DailyLaundryRecord | null>(null);
   const [viewingRecord, setViewingRecord] = useState<DailyLaundryRecord | null>(null);
-  const [extraRooms, setExtraRooms] = useState<Array<{ roomNo: string; quantityReceived: string; batches: string }>>([]);
+  const [roomRows, setRoomRows] = useState<LaundryRoomRow[]>(() => [newRoomRow()]);
+  const createColumns = useMemo(
+    () => columns.filter(c => !['roomNo', 'quantityReceived', 'batches'].includes(String(c.key))),
+    [columns]
+  );
 
   const filteredRecords = useMemo(() => {
     return (dailyLaundryRecords || []).filter(rec => {
@@ -373,57 +436,16 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
       {/* CREATE MODAL */}
       <DynamicRecordFormModal<DailyLaundryRecord>
         isOpen={isCreateModalOpen}
-        onClose={() => { setIsCreateModalOpen(false); setExtraRooms([]); }}
+        onClose={() => { setIsCreateModalOpen(false); setRoomRows([newRoomRow()]); }}
         title="Add Daily Laundry Entry"
-        columns={columns}
-        slotAfterFields={
-          <div className="mt-4 border border-[#e2e8f0] rounded-xs p-3 bg-[#f8fafc]">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-[#475569] uppercase tracking-wide">Additional Rooms (No. of Bags, No. of Batches)</h4>
-              <button
-                type="button"
-                onClick={() => setExtraRooms(prev => [...prev, { roomNo: '', quantityReceived: '1', batches: '1' }])}
-                className="px-2.5 py-1 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs"
-              >
-                + Add Room Row
-              </button>
-            </div>
-            {extraRooms.length === 0 ? (
-              <p className="text-xs text-[#94a3b8]">The room above is saved as the first entry. Add rows to log more rooms with the same date, property and staff.</p>
-            ) : (
-              <div className="space-y-2">
-                {extraRooms.map((r, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
-                    {([
-                      ['roomNo', 'Room No', 'e.g. 102'],
-                      ['quantityReceived', 'No of bags', 'e.g. 2'],
-                      ['batches', 'No of Batches', 'e.g. 1']
-                    ] as const).map(([k, label, ph]) => (
-                      <label key={k} className="block">
-                        <span className="block text-[11px] font-semibold text-[#475569] mb-0.5">{label}</span>
-                        <input
-                          type="text"
-                          value={r[k]}
-                          placeholder={ph}
-                          onChange={e => setExtraRooms(prev => prev.map((x, j) => j === i ? { ...x, [k]: e.target.value } : x))}
-                          className="w-full px-2 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs outline-hidden focus:border-[#0d9488]"
-                        />
-                      </label>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setExtraRooms(prev => prev.filter((_, j) => j !== i))}
-                      title="Remove room row"
-                      className="p-1.5 text-rose-500 hover:bg-rose-50 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        }
+        columns={createColumns}
+        slotAfterFields={(form) => (
+          <LaundryRoomMatrix
+            site={String(form.site || (siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || '')))}
+            rows={roomRows}
+            onChange={setRoomRows}
+          />
+        )}
         initialValues={{
           site: siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || ''),
           date: selectedDate || new Date().toISOString().slice(0, 10),
@@ -432,6 +454,11 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
           doneBy: currentUserRole || 'Staff Member'
         }}
         onSave={(data) => {
+          const filled = roomRows.filter(r => r.roomNo.trim());
+          if (filled.length === 0) throw new Error('Choose a Room No. in at least one room row.');
+          if (filled.some(r => !r.quantityReceived.trim() || !r.batches.trim())) {
+            throw new Error('No of bags / Quantity Received and No of Batches are required for every room row.');
+          }
           const base = {
             date: data.date || selectedDate || new Date().toISOString().slice(0, 10),
             site: data.site || (siteFilter !== 'all' ? siteFilter : (allowedSites?.[0] || '')),
@@ -439,23 +466,14 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
             doneBy: data.doneBy || currentUserRole || 'Staff Member',
             remarks: data.remarks || ''
           };
-          addDailyLaundryRecord({
+          filled.forEach((r, i) => addDailyLaundryRecord({
             ...base,
-            roomNo: data.roomNo || '',
-            quantityReceived: data.quantityReceived || '1',
-            batches: data.batches || '1',
-            attachments: Array.isArray(data.attachments) ? data.attachments : []
-          });
-          extraRooms
-            .filter(r => r.roomNo.trim())
-            .forEach(r => addDailyLaundryRecord({
-              ...base,
-              roomNo: r.roomNo.trim(),
-              quantityReceived: r.quantityReceived || '1',
-              batches: r.batches || '1',
-              attachments: []
-            }));
-          setExtraRooms([]);
+            roomNo: r.roomNo.trim(),
+            quantityReceived: r.quantityReceived.trim(),
+            batches: r.batches.trim(),
+            attachments: i === 0 && Array.isArray(data.attachments) ? data.attachments : []
+          }));
+          setRoomRows([newRoomRow()]);
           setIsCreateModalOpen(false);
         }}
       />

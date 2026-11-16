@@ -29,7 +29,7 @@ interface DynamicRecordFormModalProps<T = any> {
   /** Called when a Service User is picked from the list (or cleared by typing a custom name). */
   onServiceUserChange?: (su: { id: string; firstName: string; lastName: string } | null) => void;
   /** Extra content shown between the fields and the attachments (e.g. details fetched for the chosen resident). */
-  slotAfterFields?: React.ReactNode;
+  slotAfterFields?: React.ReactNode | ((formData: Record<string, any>) => React.ReactNode);
 }
 
 export function DynamicRecordFormModal<T = any>({
@@ -1322,7 +1322,7 @@ export function DynamicRecordFormModal<T = any>({
             </div>
           ))}
 
-          {slotAfterFields}
+          {typeof slotAfterFields === 'function' ? slotAfterFields(formData as Record<string, any>) : slotAfterFields}
 
           {/* Universal Proof & Document Attachments Section */}
           <AttachmentsSection
