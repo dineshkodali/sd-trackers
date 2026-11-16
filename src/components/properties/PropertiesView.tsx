@@ -713,7 +713,7 @@ export const PropertiesView: React.FC = () => {
             role={currentUserRole}
             reloadKey={lifecycle.reloadKey}
             onRestore={row => lifecycle.ask('restore', { id: row.id, label: row.label })}
-            onLoaded={(s, n) => setLifecycleCounts(c => ({ ...c, [s]: n }))}
+            onLoaded={(s, n) => setLifecycleCounts(c => (c[s] === n ? c : { ...c, [s]: n }))}
           />
         </div>
       ) : (

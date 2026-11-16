@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { IconArchiveRestore as ArchiveRestore, IconHistory as History } from '@tabler/icons-react';
 import { lifecycleService } from '../../services/lifecycleService';
 import { canRestoreRecords, type LifecycleEntity, type LifecycleEvent, type LifecycleRow } from '../../config/recordLifecycle';
@@ -66,6 +66,9 @@ export const LifecycleRecordsPanel: React.FC<PanelProps> = ({ entity, state, rol
   const isSuperAdmin = canRestoreRecords(role);
   const isArchived = state === 'Archived';
   const typeLabel = entity === 'users' ? 'users' : 'properties';
+  // Parents usually pass an inline callback; keeping it in a ref stops each render from reloading the list.
+  const onLoadedRef = useRef(onLoaded);
+  onLoadedRef.current = onLoaded;
 
   const load = useCallback(async () => {
     setError(null);
@@ -73,12 +76,12 @@ export const LifecycleRecordsPanel: React.FC<PanelProps> = ({ entity, state, rol
       const res = await lifecycleService.list(entity, state);
       setRows(res.rows);
       setInstalled(res.installed);
-      onLoaded?.(state, res.rows.length);
+      onLoadedRef.current?.(state, res.rows.length);
     } catch (e: any) {
       setRows([]);
       setError(e?.message || 'Could not load records.');
     }
-  }, [entity, state, onLoaded]);
+  }, [entity, state]);
 
   useEffect(() => { setRows(null); setOpenHistory(null); void load(); }, [load, reloadKey]);
 
