@@ -284,7 +284,7 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
       <ErrorBanner message={!loading ? error : ''} />
 
       <TablePanel totalItems={filtered.length} page={tc.page} pageSize={tc.pageSize} onPage={tc.setPage} onPageSize={tc.setPageSize}>
-        <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
+        <table className="w-full text-left text-xs border-collapse min-w-[800px]">
           <thead>
             <tr className={theadRowCls}>
               {isRange && th('date', 'Date')}{th('name', 'Service User')}{MEAL_PERIODS.map(p => th(p, p))}<th className="p-2.5 font-semibold text-left">Notes</th>{th('day', 'Daily status')}<ActionsTh />
@@ -312,17 +312,17 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
                     const rec = bySlot.get(slotKey(r.su.id, x.date, p));
                     const status = rec?.status || 'Pending';
                     return (
-                      <td key={p} className={`${tdCls} min-w-[8.5rem]`}>
+                      <td key={p} className={`${tdCls} w-[1%] whitespace-nowrap`}>
                         {actor.canEdit ? (
                           <div className="flex items-center gap-1" role="group" aria-label={`${p} for ${r.su.firstName} ${r.su.lastName}`}>
-                            <div className="inline-flex rounded-xs border border-[#d4d4d4] overflow-hidden divide-x divide-[#d4d4d4]">
-                              <button type="button" onClick={() => status !== 'Accepted' && onPick(x, p, 'Accepted')}
-                                className={`inline-flex items-center gap-0.5 px-1 py-px text-[10px] leading-4 font-semibold transition-colors cursor-pointer ${status === 'Accepted' ? 'bg-emerald-600 text-white' : 'bg-white text-neutral-500 hover:bg-emerald-50 hover:text-emerald-700'}`}>
-                                <Check className="w-2.5 h-2.5" />Accepted
+                            <div className="inline-flex rounded-full border border-[#d4d4d4] bg-neutral-100 p-0.5 gap-0.5">
+                              <button type="button" title="Accepted" aria-label={`${p} accepted`} aria-pressed={status === 'Accepted'} onClick={() => status !== 'Accepted' && onPick(x, p, 'Accepted')}
+                                className={`inline-flex items-center justify-center w-6 h-5 rounded-full transition-colors cursor-pointer ${status === 'Accepted' ? 'bg-emerald-600 text-white' : 'text-neutral-400 hover:bg-emerald-50 hover:text-emerald-700'}`}>
+                                <Check className="w-3 h-3" />
                               </button>
-                              <button type="button" onClick={() => status !== 'Declined' && onPick(x, p, 'Declined')}
-                                className={`inline-flex items-center gap-0.5 px-1 py-px text-[10px] leading-4 font-semibold transition-colors cursor-pointer ${status === 'Declined' ? 'bg-rose-600 text-white' : 'bg-white text-neutral-500 hover:bg-rose-50 hover:text-rose-700'}`}>
-                                <XIcon className="w-2.5 h-2.5" />Declined
+                              <button type="button" title="Declined" aria-label={`${p} declined`} aria-pressed={status === 'Declined'} onClick={() => status !== 'Declined' && onPick(x, p, 'Declined')}
+                                className={`inline-flex items-center justify-center w-6 h-5 rounded-full transition-colors cursor-pointer ${status === 'Declined' ? 'bg-rose-600 text-white' : 'text-neutral-400 hover:bg-rose-50 hover:text-rose-700'}`}>
+                                <XIcon className="w-3 h-3" />
                               </button>
                             </div>
                             <button type="button" title={rec?.notes ? 'Edit note' : 'Add note'} aria-label={`${rec?.notes ? 'Edit' : 'Add'} note for ${p}`} onClick={() => setEditing({ row: x, period: p })}
