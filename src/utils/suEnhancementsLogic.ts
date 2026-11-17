@@ -45,7 +45,7 @@ export function validateHc2(input: { status?: string; issueDate?: string; expiry
 }
 
 /* ------------------------------------------------------------------------------------------------- Meals */
-export const MEAL_PERIODS = ['Breakfast', 'Lunch', 'Dinner'] as const;
+export const MEAL_PERIODS = ['Breakfast', 'Lunch', 'Dinner', 'Fruit Box'] as const;
 export type MealPeriod = typeof MEAL_PERIODS[number];
 export const MEAL_STATUSES = ['Pending', 'Accepted', 'Declined'] as const;
 /** Older records may still carry these; they stay valid and count as resolved, but new entries are Accepted or Declined only. */

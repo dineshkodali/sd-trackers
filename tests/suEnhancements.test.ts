@@ -139,8 +139,9 @@ test('meals: three separate periods, one id per SU/date/period, incomplete until
   assert.equal(mealRecordId('su1', '2026-10-28', 'Lunch'), 'smr-su1-2026-10-28-Lunch');
   assert.equal(mealDayStatus({}), 'Not started');
   assert.equal(mealDayStatus({ Breakfast: 'Accepted', Lunch: 'Pending' }), 'Incomplete');
-  assert.equal(mealDayStatus({ Breakfast: 'Accepted', Lunch: 'Declined', Dinner: 'Not applicable' }), 'Complete');
-  assert.equal(mealDayStatus({ Breakfast: 'Pending', Lunch: 'Pending', Dinner: 'Pending' }), 'Not started');
+  assert.equal(mealDayStatus({ Breakfast: 'Accepted', Lunch: 'Declined', Dinner: 'Not applicable' }), 'Incomplete');
+  assert.equal(mealDayStatus({ Breakfast: 'Accepted', Lunch: 'Declined', Dinner: 'Not applicable', 'Fruit Box': 'Accepted' }), 'Complete');
+  assert.equal(mealDayStatus({ Breakfast: 'Pending', Lunch: 'Pending', Dinner: 'Pending', 'Fruit Box': 'Pending' }), 'Not started');
   assert.equal(validateMealEntry('Declined', ''), null);   // a note is optional
   assert.equal(validateMealEntry('Accepted', ''), null);
   assert.equal(validateMealEntry('Provided', ''), null);   // older records stay valid

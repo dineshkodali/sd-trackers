@@ -235,8 +235,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
   };
 
   const handleAddItem = (meal: 'Breakfast' | 'Lunch' | 'Dinner') => {
-    const available = getOptionsForMeal(meal);
-    const defaultDish = available[0] || '';
+    const defaultDish = '';
     setCurrentItems(prev => [
       ...prev,
       {
@@ -1105,7 +1104,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                     <thead className="bg-slate-100 text-[#475569] font-bold border-b border-[#cbd5e1]">
                       <tr>
                         <th className="py-2.5 px-3 w-32">Meal Type</th>
-                        <th className="py-2.5 px-3 min-w-[200px]">Dish / Item (DB Dropdown)</th>
+                        <th className="py-2.5 px-3 min-w-[200px]">Dish / Item</th>
                         <th className="py-2.5 px-3 w-32">Quantity / Vol</th>
                         <th className="py-2.5 px-3 w-28">Consumption %</th>
                         <th className="py-2.5 px-3 w-28">Binned %</th>
@@ -1140,14 +1139,7 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                                   value={item.meal}
                                   onChange={e => {
                                     const newMeal = e.target.value as 'Breakfast' | 'Lunch' | 'Dinner';
-                                    const newOpts = getOptionsForMeal(newMeal);
-                                    setCurrentItems(prev => prev.map((r, i) => i === idx ? {
-                                      ...r,
-                                      meal: newMeal,
-                                      // If current item isn't in new meal options, default to first option
-                                      item: newOpts.includes(r.item) ? r.item : (newOpts[0] || r.item),
-                                      isCustom: false
-                                    } : r));
+                                    setCurrentItems(prev => prev.map((r, i) => i === idx ? { ...r, meal: newMeal } : r));
                                   }}
                                   className={`w-full px-2 py-1 rounded text-xs font-bold border ${
                                     item.meal === 'Breakfast'
@@ -1163,62 +1155,18 @@ export const FoodConsumptionView: React.FC<FoodConsumptionViewProps> = ({
                                 </select>
                               </td>
 
-                              {/* 2. Dish / Item Dropdown with Custom Input & Save to DB */}
-                              <td className="py-2 px-3 align-top space-y-1.5">
-                                <select
-                                  value={isCustomMode ? '__custom__' : item.item}
+                              {/* 2. Dish / Item: free-text, any food or dish name */}
+                              <td className="py-2 px-3 align-top">
+                                <input
+                                  type="text"
+                                  value={item.item === '__custom__' ? '' : item.item}
                                   onChange={e => {
                                     const val = e.target.value;
-                                    if (val === '__custom__') {
-                                      setCurrentItems(prev => prev.map((r, i) => i === idx ? {
-                                        ...r,
-                                        isCustom: true
-                                      } : r));
-                                    } else {
-                                      setCurrentItems(prev => prev.map((r, i) => i === idx ? {
-                                        ...r,
-                                        item: val,
-                                        isCustom: false
-                                      } : r));
-                                    }
+                                    setCurrentItems(prev => prev.map((r, i) => i === idx ? { ...r, item: val, isCustom: true } : r));
                                   }}
+                                  placeholder={`Enter ${item.meal.toLowerCase()} dish / item...`}
                                   className="w-full px-2 py-1 bg-white border border-[#cbd5e1] rounded font-semibold text-slate-800 text-xs"
-                                >
-                                  <optgroup label={`${item.meal} Preset Dishes (${mealOptions.length})`}>
-                                    {mealOptions.map((opt, oIdx) => (
-                                      <option key={`${opt}-${oIdx}`} value={opt}>{opt}</option>
-                                    ))}
-                                  </optgroup>
-                                  <option value="__custom__">Enter custom item...</option>
-                                </select>
-
-                                {/* Custom Text Input & Save to DB button */}
-                                {isCustomMode && (
-                                  <div className="flex items-center gap-1 animate-fadeIn">
-                                    <input
-                                      type="text"
-                                      value={item.item === '__custom__' ? '' : item.item}
-                                      onChange={e => {
-                                        const val = e.target.value;
-                                        setCurrentItems(prev => prev.map((r, i) => i === idx ? { ...r, item: val } : r));
-                                      }}
-                                      placeholder={`Enter custom ${item.meal.toLowerCase()} item...`}
-                                      className="flex-1 px-2 py-0.5 bg-yellow-50/50 border border-amber-300 rounded text-xs font-semibold"
-                                      autoFocus
-                                    />
-                                    {item.item && item.item !== '__custom__' && !mealOptions.includes(item.item) && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSaveItemToDatabase(item.meal, item.item)}
-                                        className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 rounded text-[10px] font-bold flex items-center gap-1 shrink-0"
-                                        title="Save this dish permanently to database dropdown presets"
-                                      >
-                                        <BookmarkPlus className="w-3 h-3 text-teal-600" />
-                                        Save to DB
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
+                                />
                               </td>
 
                               {/* 3. Quantity / Vol Preset Dropdown */}

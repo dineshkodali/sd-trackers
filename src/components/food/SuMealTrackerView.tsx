@@ -284,7 +284,7 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
       <ErrorBanner message={!loading ? error : ''} />
 
       <TablePanel totalItems={filtered.length} page={tc.page} pageSize={tc.pageSize} onPage={tc.setPage} onPageSize={tc.setPageSize}>
-        <table className="w-full text-left text-xs border-collapse min-w-[1000px]">
+        <table className="w-full text-left text-xs border-collapse min-w-[1100px]">
           <thead>
             <tr className={theadRowCls}>
               {isRange && th('date', 'Date')}{th('name', 'Service User')}{MEAL_PERIODS.map(p => th(p, p))}<th className="p-2.5 font-semibold text-left">Notes</th>{th('day', 'Daily status')}<ActionsTh />
@@ -312,22 +312,22 @@ export const SuMealTrackerView: React.FC<{ tabSwitcher?: React.ReactNode }> = ({
                     const rec = bySlot.get(slotKey(r.su.id, x.date, p));
                     const status = rec?.status || 'Pending';
                     return (
-                      <td key={p} className={`${tdCls} min-w-[10rem]`}>
+                      <td key={p} className={`${tdCls} min-w-[8.5rem]`}>
                         {actor.canEdit ? (
-                          <div className="flex items-center gap-1.5" role="group" aria-label={`${p} for ${r.su.firstName} ${r.su.lastName}`}>
+                          <div className="flex items-center gap-1" role="group" aria-label={`${p} for ${r.su.firstName} ${r.su.lastName}`}>
                             <div className="inline-flex rounded-xs border border-[#d4d4d4] overflow-hidden divide-x divide-[#d4d4d4]">
                               <button type="button" onClick={() => status !== 'Accepted' && onPick(x, p, 'Accepted')}
-                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${status === 'Accepted' ? 'bg-emerald-600 text-white' : 'bg-white text-neutral-500 hover:bg-emerald-50 hover:text-emerald-700'}`}>
-                                <Check className="w-3 h-3" />Accepted
+                                className={`inline-flex items-center gap-0.5 px-1 py-px text-[10px] leading-4 font-semibold transition-colors cursor-pointer ${status === 'Accepted' ? 'bg-emerald-600 text-white' : 'bg-white text-neutral-500 hover:bg-emerald-50 hover:text-emerald-700'}`}>
+                                <Check className="w-2.5 h-2.5" />Accepted
                               </button>
                               <button type="button" onClick={() => status !== 'Declined' && onPick(x, p, 'Declined')}
-                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${status === 'Declined' ? 'bg-rose-600 text-white' : 'bg-white text-neutral-500 hover:bg-rose-50 hover:text-rose-700'}`}>
-                                <XIcon className="w-3 h-3" />Declined
+                                className={`inline-flex items-center gap-0.5 px-1 py-px text-[10px] leading-4 font-semibold transition-colors cursor-pointer ${status === 'Declined' ? 'bg-rose-600 text-white' : 'bg-white text-neutral-500 hover:bg-rose-50 hover:text-rose-700'}`}>
+                                <XIcon className="w-2.5 h-2.5" />Declined
                               </button>
                             </div>
                             <button type="button" title={rec?.notes ? 'Edit note' : 'Add note'} aria-label={`${rec?.notes ? 'Edit' : 'Add'} note for ${p}`} onClick={() => setEditing({ row: x, period: p })}
-                              className={`p-1 rounded-xs border cursor-pointer ${rec?.notes ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-[#d4d4d4] text-neutral-400 hover:text-neutral-700'}`}>
-                              <NoteIcon className="w-3 h-3" />
+                              className={`p-0.5 rounded-xs border cursor-pointer ${rec?.notes ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-[#d4d4d4] text-neutral-400 hover:text-neutral-700'}`}>
+                              <NoteIcon className="w-2.5 h-2.5" />
                             </button>
                           </div>
                         ) : <StatusPill status={status} tone={statusTone(status)} />}

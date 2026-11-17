@@ -5079,4 +5079,10 @@ DROP POLICY IF EXISTS p_transport_room_move_requests_auth_all ON public.transpor
 CREATE POLICY p_transport_room_move_requests_auth_all ON public.transport_room_move_requests
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
+-- Fruit Box is a fourth daily meal slot in su_meal_records (one row per SU, date and meal).
+-- Only the meal_period CHECK changes: existing rows, history, triggers and RLS are untouched.
+ALTER TABLE public.su_meal_records DROP CONSTRAINT IF EXISTS su_meal_period;
+ALTER TABLE public.su_meal_records
+  ADD CONSTRAINT su_meal_period CHECK (meal_period IN ('Breakfast', 'Lunch', 'Dinner', 'Fruit Box'));
+
 NOTIFY pgrst, 'reload schema';
