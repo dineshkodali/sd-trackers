@@ -889,6 +889,18 @@ INSTEAD OF DELETE ON public.delivery_notes
 FOR EACH ROW EXECUTE FUNCTION trg_finance_view_del();
 
 
--- (Sample suppliers are no longer seeded: they are not real suppliers. See migration 038.)
+-- ============================================================================
+-- Default Finance Vendors
+-- Brakes, Total Commercial Laundry, British Gas and Enterprise are real suppliers the business uses.
+-- ON CONFLICT DO NOTHING: a re-run never overwrites details someone has since edited, and puts back a row that was removed.
+-- (Apex Facilities and Direct Site Supplies were demo-only and are no longer seeded; see migration 038.)
+-- ============================================================================
+INSERT INTO public.finance_vendors (id, organization_id, vendor_name, vendor_reference, contact_email, contact_phone, status)
+VALUES
+  ('00000000-0000-0000-0001-000000000002'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Brakes Foodservice Wholesale', 'BRAKES-UK-88', 'orders@brake.co.uk', '+44 34 5606 9090', 'active'),
+  ('00000000-0000-0000-0001-000000000003'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Total Commercial Laundry Solutions', 'TOT-LAU-09', 'billing@totallaundry.co.uk', '+44 16 1496 0233', 'active'),
+  ('00000000-0000-0000-0001-000000000004'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'British Gas Business Energy', 'BG-UTIL-44', 'business@britishgas.co.uk', '+44 33 0100 0050', 'active'),
+  ('00000000-0000-0000-0001-000000000005'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Enterprise Rent-A-Car Commercial', 'ENT-FLEET-12', 'commercial@enterprise.co.uk', '+44 80 0800 2277', 'active')
+ON CONFLICT (id) DO NOTHING;
 
 NOTIFY pgrst, 'reload schema';

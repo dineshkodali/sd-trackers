@@ -1,18 +1,16 @@
 /**
- * Sample suppliers that migration 004 used to insert into every database (and the older file store used to carry).
- * They are not real suppliers, so they are never offered in supplier lists or filters. They are recognised by their
- * fixed ids, so a real supplier that happens to share a name (for example Brakes) is never hidden.
+ * The two sample suppliers that migration 004 inserted purely as demo data (Apex Facilities & Commercial Cleaning Ltd and
+ * Direct Site Supplies & Maintenance Ltd). They are never offered in supplier lists or filters.
+ *
+ * The other four suppliers that migration also inserted (Brakes, Total Commercial Laundry, British Gas, Enterprise) are real
+ * companies the business may genuinely use, and the app has always shown them, so they are NOT hidden here.
+ * Recognised by their fixed ids (and the old "fven-" ids), with the two names kept for data saved under other ids.
  */
 export const DEMO_FINANCE_VENDOR_IDS: ReadonlySet<string> = new Set([
-  '00000000-0000-0000-0001-000000000001',
-  '00000000-0000-0000-0001-000000000002',
-  '00000000-0000-0000-0001-000000000003',
-  '00000000-0000-0000-0001-000000000004',
-  '00000000-0000-0000-0001-000000000005',
-  '00000000-0000-0000-0001-000000000006'
+  '00000000-0000-0000-0001-000000000001', // Apex Facilities & Commercial Cleaning Ltd
+  '00000000-0000-0000-0001-000000000006'  // Direct Site Supplies & Maintenance Ltd
 ]);
 
-/** The two sample suppliers earlier versions already hid by name (they also appear under other ids in old data). */
 const LEGACY_DEMO_NAMES = ['Apex Facilities', 'Direct Site Supplies'];
 
 export function isDemoFinanceVendor(v: { id?: string | null; vendorName?: string | null } | null | undefined): boolean {

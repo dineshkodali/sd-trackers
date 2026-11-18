@@ -1780,7 +1780,19 @@ ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.upd
 
 -- Ask PostgREST to pick up new tables and columns immediately.
 
--- (Sample suppliers are no longer seeded: they are not real suppliers. See migration 038.)
+-- ============================================================================
+-- Default Finance Vendors
+-- Brakes, Total Commercial Laundry, British Gas and Enterprise are real suppliers the business uses.
+-- ON CONFLICT DO NOTHING: a re-run never overwrites details someone has since edited, and puts back a row that was removed.
+-- (Apex Facilities and Direct Site Supplies were demo-only and are no longer seeded; see migration 038.)
+-- ============================================================================
+INSERT INTO public.finance_vendors (id, organization_id, vendor_name, vendor_reference, contact_email, contact_phone, status)
+VALUES
+  ('00000000-0000-0000-0001-000000000002'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Brakes Foodservice Wholesale', 'BRAKES-UK-88', 'orders@brake.co.uk', '+44 34 5606 9090', 'active'),
+  ('00000000-0000-0000-0001-000000000003'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Total Commercial Laundry Solutions', 'TOT-LAU-09', 'billing@totallaundry.co.uk', '+44 16 1496 0233', 'active'),
+  ('00000000-0000-0000-0001-000000000004'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'British Gas Business Energy', 'BG-UTIL-44', 'business@britishgas.co.uk', '+44 33 0100 0050', 'active'),
+  ('00000000-0000-0000-0001-000000000005'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Enterprise Rent-A-Car Commercial', 'ENT-FLEET-12', 'commercial@enterprise.co.uk', '+44 80 0800 2277', 'active')
+ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================================
 -- PART 10: DOCUMENT BUILDER MODULE (Single Unified Table: doc_builder)
@@ -5133,13 +5145,14 @@ BEGIN
   END LOOP;
 END $$;
 
--- Removes the six sample suppliers that migration 004 used to insert (Apex Facilities, Brakes, Total Commercial Laundry,
--- British Gas, Enterprise, Direct Site Supplies). They are not real suppliers and showed up in the supplier lists and
--- filters of Delivery Notes, Vendor Invoices and Credit Card Bills.
+-- Removes the two sample suppliers that migration 004 inserted purely as demo data: Apex Facilities & Commercial Cleaning Ltd
+-- and Direct Site Supplies & Maintenance Ltd. They showed up in the supplier lists and filters of Delivery Notes,
+-- Vendor Invoices and Credit Card Bills.
 --
--- Only these six fixed ids are touched, so a real supplier with the same name is never affected.
--- finance_bills.vendor_id is ON DELETE SET NULL, so deleting a sample supplier that a bill points to would silently
--- blank that bill's supplier. Such a supplier is therefore kept and set to inactive; only unused ones are deleted.
+-- The other four suppliers from that seed (Brakes, Total Commercial Laundry, British Gas, Enterprise) are real companies the
+-- business may use, so they are left exactly as they are.
+-- Only the two fixed ids below are touched. finance_bills.vendor_id is ON DELETE SET NULL, so deleting a sample supplier
+-- that a bill points to would silently blank that bill's supplier; such a supplier is kept and set to inactive instead.
 -- Safe to re-run.
 DO $$
 DECLARE
@@ -5147,9 +5160,8 @@ DECLARE
 BEGIN
   IF to_regclass('public.finance_vendors') IS NULL THEN RETURN; END IF;
   FOREACH demo_id IN ARRAY ARRAY[
-    '00000000-0000-0000-0001-000000000001'::uuid, '00000000-0000-0000-0001-000000000002'::uuid,
-    '00000000-0000-0000-0001-000000000003'::uuid, '00000000-0000-0000-0001-000000000004'::uuid,
-    '00000000-0000-0000-0001-000000000005'::uuid, '00000000-0000-0000-0001-000000000006'::uuid
+    '00000000-0000-0000-0001-000000000001'::uuid,
+    '00000000-0000-0000-0001-000000000006'::uuid
   ] LOOP
     IF to_regclass('public.finance_bills') IS NOT NULL
        AND EXISTS (SELECT 1 FROM public.finance_bills WHERE vendor_id = demo_id) THEN
