@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { isDemoFinanceVendor } from '../../data/demoFinance';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconTruck as Truck, IconPlus as Plus, IconSearch as Search, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal, IconEye as Eye, IconEdit as Edit3, IconTrash as Trash2, IconCopy as Copy, IconCheck as Check, IconBuilding as Building2, IconFileCheck as FileCheck2, IconClock as Clock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
@@ -163,9 +164,7 @@ export const DeliveryNotesView: React.FC = () => {
       if (
         v.vendorName &&
         v.vendorName.trim() &&
-        !v.id?.startsWith('fven-') &&
-        !v.vendorName.includes('Apex Facilities') &&
-        !v.vendorName.includes('Direct Site Supplies')
+        !isDemoFinanceVendor(v)
       ) {
         set.add(v.vendorName.trim());
       }
@@ -174,8 +173,7 @@ export const DeliveryNotesView: React.FC = () => {
       if (
         b.vendorName &&
         b.vendorName.trim() &&
-        !b.vendorName.includes('Apex Facilities') &&
-        !b.vendorName.includes('Direct Site Supplies')
+        !isDemoFinanceVendor({ id: b.vendorId, vendorName: b.vendorName })
       ) {
         set.add(b.vendorName.trim());
       }

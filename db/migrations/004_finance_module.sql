@@ -889,21 +889,6 @@ INSTEAD OF DELETE ON public.delivery_notes
 FOR EACH ROW EXECUTE FUNCTION trg_finance_view_del();
 
 
--- ============================================================================
--- Seed Default Finance Vendors
--- ============================================================================
-INSERT INTO public.finance_vendors (id, organization_id, vendor_name, vendor_reference, contact_email, contact_phone, status)
-VALUES 
-  ('00000000-0000-0000-0001-000000000001'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Apex Facilities & Commercial Cleaning Ltd', 'APEX-FAC-01', 'accounts@apexfacilities.co.uk', '+44 20 7946 0912', 'active'),
-  ('00000000-0000-0000-0001-000000000002'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Brakes Foodservice Wholesale', 'BRAKES-UK-88', 'orders@brake.co.uk', '+44 34 5606 9090', 'active'),
-  ('00000000-0000-0000-0001-000000000003'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Total Commercial Laundry Solutions', 'TOT-LAU-09', 'billing@totallaundry.co.uk', '+44 16 1496 0233', 'active'),
-  ('00000000-0000-0000-0001-000000000004'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'British Gas Business Energy', 'BG-UTIL-44', 'business@britishgas.co.uk', '+44 33 0100 0050', 'active'),
-  ('00000000-0000-0000-0001-000000000005'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Enterprise Rent-A-Car Commercial', 'ENT-FLEET-12', 'commercial@enterprise.co.uk', '+44 80 0800 2277', 'active'),
-  ('00000000-0000-0000-0001-000000000006'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, 'Direct Site Supplies & Maintenance Ltd', 'DSS-MAINT-77', 'helpdesk@directsitesupplies.co.uk', '+44 12 1496 0888', 'active')
-ON CONFLICT (id) DO UPDATE SET
-  vendor_name = EXCLUDED.vendor_name,
-  vendor_reference = EXCLUDED.vendor_reference,
-  contact_email = EXCLUDED.contact_email,
-  contact_phone = EXCLUDED.contact_phone;
+-- (Sample suppliers are no longer seeded: they are not real suppliers. See migration 038.)
 
 NOTIFY pgrst, 'reload schema';

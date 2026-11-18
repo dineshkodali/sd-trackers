@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { isDemoFinanceVendor } from '../../data/demoFinance';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconReceipt as Receipt, IconPlus as Plus, IconSearch as Search, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconAdjustmentsHorizontal as SlidersHorizontal, IconEye as Eye, IconEdit as Edit3, IconTrash as Trash2, IconCopy as Copy, IconCheck as Check, IconBuilding as Building2, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconSend as Send, IconClock as Clock, IconTruck as Truck } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
@@ -165,9 +166,7 @@ export const VendorInvoicesView: React.FC = () => {
       if (
         v.vendorName &&
         v.vendorName.trim() &&
-        !v.id?.startsWith('fven-') &&
-        !v.vendorName.includes('Apex Facilities') &&
-        !v.vendorName.includes('Direct Site Supplies')
+        !isDemoFinanceVendor(v)
       ) {
         set.add(v.vendorName.trim());
       }
@@ -176,8 +175,7 @@ export const VendorInvoicesView: React.FC = () => {
       if (
         b.vendorName &&
         b.vendorName.trim() &&
-        !b.vendorName.includes('Apex Facilities') &&
-        !b.vendorName.includes('Direct Site Supplies')
+        !isDemoFinanceVendor({ id: b.vendorId, vendorName: b.vendorName })
       ) {
         set.add(b.vendorName.trim());
       }

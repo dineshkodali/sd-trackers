@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { isDemoFinanceVendor } from '../../data/demoFinance';
 import { IconX as X, IconPlus as Plus, IconTrash as Trash2, IconUpload as Upload, IconFileText as FileText, IconAlertCircle as AlertCircle, IconCircleCheck as CheckCircle2, IconBuilding as Building2, IconLock as Lock, IconLoader2 as Loader2, IconTruck as Truck, IconShieldCheck as ShieldCheck, IconCreditCard as CreditCard, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconBuildingStore as Store } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { financeService } from '../../services/financeService';
@@ -63,9 +64,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
   // Suppliers state
   const [allVendors, setAllVendors] = useState<FinanceVendor[]>(() => {
     return (initialVendors || []).filter(v => 
-      !v.id.startsWith('fven-') && 
-      !v.vendorName.includes('Apex Facilities') && 
-      !v.vendorName.includes('Direct Site Supplies')
+      !isDemoFinanceVendor(v)
     );
   });
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
@@ -96,9 +95,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
     financeService.getVendors().then(v => {
       if (v) {
         const clean = v.filter(item => 
-          !item.id.startsWith('fven-') && 
-          !item.vendorName.includes('Apex Facilities') && 
-          !item.vendorName.includes('Direct Site Supplies')
+          !isDemoFinanceVendor(item)
         );
         setAllVendors(clean);
       }
@@ -121,9 +118,7 @@ export const FinanceBillModal: React.FC<FinanceBillModalProps> = ({
       financeService.getVendors(true).then(v => {
         if (v) {
           const clean = v.filter(item => 
-            !item.id.startsWith('fven-') && 
-            !item.vendorName.includes('Apex Facilities') && 
-            !item.vendorName.includes('Direct Site Supplies')
+            !isDemoFinanceVendor(item)
           );
           setAllVendors(clean);
         }

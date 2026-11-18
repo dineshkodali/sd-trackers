@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { isDemoFinanceVendor } from '../../data/demoFinance';
 import { IconX as X, IconPlus as Plus, IconTrash as Trash2, IconSearch as Search, IconTruck as Truck, IconAlertCircle as AlertCircle, IconCircleCheck as CheckCircle2, IconPhone as Phone, IconMail as Mail, IconHash as Hash, IconCheck as Check } from '@tabler/icons-react';
 import { financeService } from '../../services/financeService';
 import type { FinanceVendor } from '../../types/finance';
@@ -38,9 +39,7 @@ export const FinanceSupplierModal: React.FC<FinanceSupplierModalProps> = ({
     try {
       const data = await financeService.getSuppliers();
       const cleanData = (data || []).filter(s => 
-        !s.id.startsWith('fven-') &&
-        !s.vendorName.includes('Apex Facilities') &&
-        !s.vendorName.includes('Direct Site Supplies')
+        !isDemoFinanceVendor(s)
       );
       setSuppliers(cleanData);
     } catch (err: any) {

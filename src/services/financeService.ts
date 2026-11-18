@@ -4,6 +4,7 @@
  */
 
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
+import { isDemoFinanceVendor } from '../data/demoFinance';
 import { apiService, getApiUrl, authHeaders } from './apiService';
 import type {
   FinanceBill,
@@ -70,13 +71,7 @@ class FinanceService {
   }
 
   private filterCleanVendors(list: FinanceVendor[]): FinanceVendor[] {
-    return (list || []).filter(v =>
-      !v.id?.startsWith('fven-') &&
-      v.id !== '00000000-0000-0000-0001-000000000001' &&
-      v.id !== '00000000-0000-0000-0001-000000000006' &&
-      !v.vendorName?.includes('Apex Facilities') &&
-      !v.vendorName?.includes('Direct Site Supplies')
-    );
+    return (list || []).filter(v => !isDemoFinanceVendor(v));
   }
 
   public getCachedVendors(): FinanceVendor[] {

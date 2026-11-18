@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { isDemoFinanceVendor } from '../../src/data/demoFinance.js';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -160,13 +161,7 @@ export async function syncStoreToDedicatedSupabaseTables(supabase: any, store: L
 
     hasAttemptedNativeTableSync = true;
 
-    const rawVendors = (store.vendors || []).filter((v: any) =>
-      v.id !== '00000000-0000-0000-0001-000000000001' &&
-      v.id !== '00000000-0000-0000-0001-000000000006' &&
-      v.id !== 'fven-006' &&
-      !v.vendor_name?.includes('Apex Facilities') &&
-      !v.vendor_name?.includes('Direct Site Supplies')
-    );
+    const rawVendors = (store.vendors || []).filter((v: any) => !isDemoFinanceVendor({ id: v.id, vendorName: v.vendor_name }));
 
     const vendorRows = rawVendors.map((v: any) => ({
       id: toVendorUuid(v.id),
@@ -1986,13 +1981,7 @@ router.get('/vendors', requireAuth, async (_req, res) => {
       rawList = store.vendors || [];
     }
 
-    const clean = rawList.filter((v: any) =>
-      !v.id?.startsWith('fven-') &&
-      v.id !== '00000000-0000-0000-0001-000000000001' &&
-      v.id !== '00000000-0000-0000-0001-000000000006' &&
-      !v.vendor_name?.includes('Apex Facilities') &&
-      !v.vendor_name?.includes('Direct Site Supplies')
-    );
+    const clean = rawList.filter((v: any) => !isDemoFinanceVendor({ id: v.id, vendorName: v.vendor_name }));
 
     return res.json({ success: true, data: clean });
   } catch (err: any) {
@@ -2310,12 +2299,12 @@ router.get('/suppliers', requireAuth, async (_req, res) => {
     }
     const map = new Map<string, any>();
     for (const v of store.vendors) {
-      if (!v.id.startsWith('fven-') && !v.vendor_name?.includes('Apex Facilities') && !v.vendor_name?.includes('Direct Site Supplies')) {
+      if (!isDemoFinanceVendor({ id: v.id, vendorName: v.vendor_name })) {
         map.set(v.id, v);
       }
     }
     for (const v of dbVendors) {
-      if (!v.id.startsWith('fven-') && !v.vendor_name?.includes('Apex Facilities') && !v.vendor_name?.includes('Direct Site Supplies')) {
+      if (!isDemoFinanceVendor({ id: v.id, vendorName: v.vendor_name })) {
         map.set(v.id, v);
       }
     }
