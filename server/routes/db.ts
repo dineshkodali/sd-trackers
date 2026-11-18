@@ -18,6 +18,7 @@ import { INITIAL_ROLE_PERMISSIONS } from '../../src/data/initialData.js';
 import { masterDataStore } from '../masterDataStore.js';
 import { enforceEntityPagePermission, userMayAccessTable } from '../pagePermissions.js';
 import { notifyRecordEvent, getNotificationModules } from './smtp.js';
+import { applyAuditQuery, rowToAuditLog, AUDIT_MAX_PAGE_SIZE, type AuditQueryParams, type AuditSortField } from '../../src/utils/auditQuery.js';
 import { SU_MANAGER_ROLES, SU_EDITOR_ROLES, redactSensitiveRows, stripSensitiveUpdateFields, sanitizeFundingBody, sanitizeOysterCardBody } from '../suAccess.js';
 
 const router = Router();
@@ -1579,6 +1580,46 @@ router.post('/sync/push', async (req: Request, res: Response) => {
 
 // Page Access Management: per-user page/action overrides apply to every entity route below.
 router.use('/:entity', enforceEntityPagePermission(entity => ENTITY_REGISTRY[entity]?.table));
+
+// GET /api/db/audit_trails/search?page&pageSize&search&modules&action&user&sortField&sortAsc
+// One page of the audit trail, searched, filtered and sorted by the database. Registered before /:entity so it is not shadowed.
+router.get('/audit_trails/search', async (req: Request, res: Response) => {
+  const def = ENTITY_REGISTRY.audit_trails;
+  if (!readAllowed(def, req.user?.role || '')) {
+    return res.status(403).json({ success: false, error: 'Insufficient privileges for this operation' });
+  }
+  const client = requireDatabase(res);
+  if (!client) return;
+
+  const q = req.query as Record<string, any>;
+  const str = (v: any) => (typeof v === 'string' ? v : undefined);
+  const params: AuditQueryParams = {
+    page: Number(q.page) || 1,
+    pageSize: Math.min(Number(q.pageSize) || 15, AUDIT_MAX_PAGE_SIZE),
+    search: str(q.search),
+    modules: str(q.modules) ? String(q.modules).split('|').filter(Boolean) : [],
+    action: str(q.action),
+    user: str(q.user),
+    sortField: (str(q.sortField) as AuditSortField) || 'timestamp',
+    sortAsc: q.sortAsc === '1',
+    // A caller can only narrow its own view with this; the site restriction below is applied regardless
+    restrict: (str(q.rSite) || str(q.rUser) || str(q.rRole)) ? { site: str(q.rSite), userName: str(q.rUser), role: str(q.rRole) } : null
+  };
+
+  try {
+    let query: any = client.from('audit_trails').select('*', { count: 'exact' });
+    if (req.user && !userCanAccessAllSites(req.user)) {
+      const sites = getUserAssignedSites(req.user).map(s => resolveSiteName(s) || s).filter(Boolean);
+      if (sites.length === 0) return res.json({ success: true, rows: [], total: 0 });
+      query = query.in('site', sites);
+    }
+    const { data, error, count } = await applyAuditQuery(query, params);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    res.json({ success: true, rows: (data || []).map(rowToAuditLog), total: count ?? (data || []).length });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // GET /api/db/:entity  (optional ?limit=N&order=column.asc|desc)
 router.get('/:entity', async (req: Request, res: Response) => {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconHistory as History, IconSearch as Search, IconShieldCheck as ShieldCheck, IconRotate as RotateCcw, IconBuilding as Building2, IconUsers as Users, IconUserCheck as UserCheck, IconShield as Shield, IconEye as Eye, IconX as X, IconClock as Clock, IconArrowRight as ArrowRight, IconStack2 as Layers, IconFileText as FileText, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
@@ -8,6 +8,8 @@ import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportColumnOption, ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { exportTableToPdf } from '../../utils/pdfExport';
 import { exportTableToCsv } from '../../utils/csvExport';
+import { fetchAuditPage, fetchAuditAll } from '../../services/auditQueryService';
+import type { AuditQueryParams } from '../../utils/auditQuery';
 
 type FilterTab = 'all' | 'accountability' | 'properties' | 'users' | 'casework';
 
@@ -65,7 +67,7 @@ export const AuditView: React.FC = () => {
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
-  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : rows.map(p => p.id) || []); };
   const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
   const handleDeleteSelected = () => {
     if (selectedIds.length === 0) return;
@@ -118,37 +120,6 @@ export const AuditView: React.FC = () => {
     }
   };
 
-  const filteredLogs = useMemo(() => {
-    return accessibleLogs.filter(log => {
-      // Filter tab constraints
-      if (activeTab === 'accountability') {
-        if (log.module !== 'Properties' && log.module !== 'Users') return false;
-      } else if (activeTab === 'properties') {
-        if (log.module !== 'Properties') return false;
-      } else if (activeTab === 'users') {
-        if (log.module !== 'Users') return false;
-      } else if (activeTab === 'casework') {
-        if (!['Referrals', 'Vulnerable SUs', 'Challenging SUs', 'Escalations'].includes(log.module)) return false;
-      }
-
-      // Explicit module dropdown filter
-      if (moduleFilter !== 'all' && log.module !== moduleFilter) return false;
-
-      // Action type filter
-      if (actionFilter !== 'all' && log.action !== actionFilter) return false;
-
-      // User filter
-      if (userFilter !== 'all' && log.performedByUser !== userFilter) return false;
-
-      // Search query filter
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const str = `${log.performedByUser} ${log.performedByRole} ${log.module} ${log.action} ${log.details} ${log.targetItem} ${log.site || ''}`.toLowerCase();
-        if (!str.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [accessibleLogs, activeTab, moduleFilter, actionFilter, userFilter, searchQuery]);
 
   // Sort State
   const [sortField, setSortField] = useState<keyof AuditLog>('timestamp');
@@ -163,25 +134,56 @@ export const AuditView: React.FC = () => {
     }
   };
 
-  const sortedLogs = useMemo(() => {
-    return [...filteredLogs].sort((a, b) => {
-      let valA: any = a[sortField] ?? '';
-      let valB: any = b[sortField] ?? '';
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
-      if (valA < valB) return sortAsc ? -1 : 1;
-      if (valA > valB) return sortAsc ? 1 : -1;
-      return 0;
-    });
-  }, [filteredLogs, sortField, sortAsc]);
+  // The table is one page of rows that the database searched, filtered and sorted. Typing waits 300ms, an older
+  // answer never replaces a newer one, and a new log entry refreshes the page.
+  const [rows, setRows] = useState<AuditLog[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchQuery.trim()); setCurrentPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
-  const paginatedLogs = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedLogs.slice(start, start + pageSize);
-  }, [sortedLogs, currentPage, pageSize]);
+  const queryParams = useMemo<Omit<AuditQueryParams, 'page' | 'pageSize'>>(() => {
+    const tabModules: string[] | null = activeTab === 'accountability' ? ['Properties', 'Users']
+      : activeTab === 'properties' ? ['Properties']
+      : activeTab === 'users' ? ['Users']
+      : activeTab === 'casework' ? ['Referrals', 'Vulnerable SUs', 'Challenging SUs', 'Escalations']
+      : null;
+    let modules: string[] | undefined = tabModules || undefined;
+    if (moduleFilter !== 'all') modules = tabModules ? tabModules.filter(m => m === moduleFilter) : [moduleFilter];
+    if (modules && modules.length === 0) modules = ['__none__']; // tab and module filter exclude each other
+    return {
+      search: debouncedSearch,
+      modules,
+      action: actionFilter,
+      user: userFilter,
+      sortField: sortField as AuditQueryParams['sortField'],
+      sortAsc,
+      restrict: canAccessAllSites() ? null : { site: assignedSite || undefined, userName: loggedInUserName || undefined, role: currentUserRole }
+    };
+  }, [activeTab, moduleFilter, actionFilter, userFilter, debouncedSearch, sortField, sortAsc, canAccessAllSites, assignedSite, loggedInUserName, currentUserRole]);
+
+  const latestLogId = auditLogs[0]?.id;
+  const requestSeq = useRef(0);
+  useEffect(() => {
+    const seq = ++requestSeq.current;
+    const controller = new AbortController();
+    setLoading(true);
+    fetchAuditPage({ ...queryParams, page: currentPage, pageSize }, controller.signal)
+      .then(res => { if (seq !== requestSeq.current) return; setRows(res.rows); setTotal(res.total); setLoadError(''); })
+      .catch(err => { if (seq !== requestSeq.current || err?.name === 'AbortError') return; setLoadError(err?.message || 'Could not load the activity log.'); })
+      .finally(() => { if (seq === requestSeq.current) setLoading(false); });
+    return () => controller.abort();
+  }, [queryParams, currentPage, pageSize, latestLogId]);
+
+  // Whatever was typed/selected changes the result set: start from page 1
+  useEffect(() => { setCurrentPage(1); }, [activeTab, moduleFilter, actionFilter, userFilter, sortField, sortAsc]);
 
   const getExportDataForScope = (scope: ExportScope, startDate?: string, endDate?: string) => {
-    if (scope === 'filtered') return sortedLogs;
+    if (scope === 'filtered') return rows;
     if (scope === 'custom' && startDate && endDate) {
       return accessibleLogs.filter(l => l.timestamp.slice(0, 10) >= startDate && l.timestamp.slice(0, 10) <= endDate);
     }
@@ -223,7 +225,7 @@ export const AuditView: React.FC = () => {
     return { headers, rows };
   };
 
-  const handlePerformExport = ({
+  const handlePerformExport = async ({
     format,
     scope,
     orientation,
@@ -240,7 +242,8 @@ export const AuditView: React.FC = () => {
     selectedColumns?: string[];
     isCompact?: boolean;
   }) => {
-    const dataToExport = getExportDataForScope(scope, startDate, endDate);
+    // 'Current filtered view' exports every matching record from the database (up to 5,000), not only the page on screen
+    const dataToExport = scope === 'filtered' ? (await fetchAuditAll(queryParams)).rows : getExportDataForScope(scope, startDate, endDate);
     const colMap = getExportColumnMap();
     const cols = selectedColumns && selectedColumns.length > 0
       ? selectedColumns
@@ -307,7 +310,7 @@ export const AuditView: React.FC = () => {
               Activity Log &amp; Internal Accountability
             </h2>
             <span className="text-[11px] font-semibold bg-[#f0fdfa] text-[#0f766e] px-2 py-0.5 rounded">
-              {sortedLogs.length} Filtered / {auditLogs.length} Total Entries
+              {total} Filtered / {auditLogs.length} Total Entries
             </span>
           </div>
           <p className="text-xs text-[#605e5c] mt-0.5">
@@ -319,7 +322,7 @@ export const AuditView: React.FC = () => {
           <ExportDropdown
             moduleName={`Audit Log (${activeTab})`}
             totalRecordCount={auditLogs.length}
-            filteredRecordCount={sortedLogs.length}
+            filteredRecordCount={total}
             defaultOrientation="landscape"
             dateRangeRecordCount={calculateDateRangeCount}
             availableColumns={auditExportColumns}
@@ -666,7 +669,11 @@ export const AuditView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9] text-[11px]">
-              {paginatedLogs.length === 0 ? (
+              {loading && rows.length === 0 ? (
+                <tr><td colSpan={9} className="text-center py-12 text-[#605e5c] text-xs">Loading activity log...</td></tr>
+              ) : loadError && rows.length === 0 ? (
+                <tr><td colSpan={9} className="text-center py-12 text-xs text-rose-700">Could not load the activity log: {loadError}</td></tr>
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-12 text-[#605e5c] font-sans text-xs">
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -688,7 +695,7 @@ export const AuditView: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                paginatedLogs.map(log => {
+                rows.map(log => {
                   const isDelete = log.action === 'DELETE';
                   const isCreate = log.action === 'CREATE';
                   const isUpdate = log.action === 'UPDATE';
@@ -808,7 +815,7 @@ export const AuditView: React.FC = () => {
 
         <Pagination
           currentPage={currentPage}
-          totalItems={sortedLogs.length}
+          totalItems={total}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           onPageSizeChange={size => {
