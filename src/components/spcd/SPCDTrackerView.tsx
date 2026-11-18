@@ -463,7 +463,7 @@ export const SPCDTrackerView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
             {/* Tabs: Current SUs vs Archived SUs in header action group */}
             <div className="bg-[#edebe9] p-0.5 rounded-xs flex items-center text-xs">
               <button

@@ -269,7 +269,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
             {/* Tab Switcher: Dispersal Sheet | Cessation & Eviction Notices */}
             <div className="flex items-center bg-[#f3f2f1] p-0.5 rounded-xs border border-[#e5e5e5]">
               <button
@@ -306,7 +306,7 @@ export const EvictionTableSection: React.FC<EvictionTableSectionProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors cursor-pointer"
                 title="Super Admin: Customize table columns, headers, and fields"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
                 <span>Customize Table</span>
               </button>
             )}

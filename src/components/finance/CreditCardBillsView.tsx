@@ -425,7 +425,7 @@ export const CreditCardBillsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap self-end sm:self-auto">
             {(authProfile?.role || currentUserRole) === 'Super Admin' && (
               <button
                 type="button"
@@ -433,7 +433,7 @@ export const CreditCardBillsView: React.FC = () => {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"
                 title="Super Admin: Customize table columns, headers, and fields"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0078d4]" />
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#0d9488]" />
                 <span>Customize Table</span>
               </button>
             )}

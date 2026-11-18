@@ -327,7 +327,7 @@ export const TransportFeedbackSection: React.FC<{ tabSwitcher?: React.ReactNode 
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
             <ExportDropdown
               moduleName="Transport Feedback"
               totalRecordCount={transportFeedbackRecords.length}

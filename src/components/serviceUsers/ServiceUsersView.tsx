@@ -453,7 +453,7 @@ export const ServiceUsersView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
             <button
               onClick={loadMasterData}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#f3f2f1] text-[#323130] border border-[#8a8886] rounded-xs shadow-xs transition-colors cursor-pointer"

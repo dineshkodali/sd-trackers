@@ -79,7 +79,7 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
       return 'bg-[#0d9488] hover:bg-[#0f766e] text-white border-transparent';
     }
     if (buttonVariant === 'toolbar') {
-      return 'bg-white hover:bg-[#edebe9] text-[#323130] border-[#8a8886]';
+      return 'bg-white hover:bg-neutral-50 text-neutral-700 border-[#e5e5e5] shadow-2xs';
     }
     return 'bg-[#f3f8fd] hover:bg-[#f0fdfa] text-[#0f766e] border-[#71afe5]';
   };
@@ -94,7 +94,7 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
         <button
           type="button"
           onClick={() => openExportModal('pdf')}
-          className={`flex items-center gap-1.5 px-3 text-xs font-semibold rounded-l-xs border-r-0 transition-colors ${getButtonStyles()}`}
+          className={`flex items-center gap-1.5 px-3 text-xs font-semibold rounded-l-xs border border-r-0 transition-colors whitespace-nowrap ${getButtonStyles()}`}
           title="Open Export & Review Options"
         >
           <Download className="w-3.5 h-3.5 text-inherit" />

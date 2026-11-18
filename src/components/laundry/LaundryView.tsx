@@ -217,7 +217,7 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
             <ExportDropdown
               moduleName="Daily Laundry Log"
               onExport={handleExport}

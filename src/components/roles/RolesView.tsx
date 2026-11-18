@@ -377,7 +377,7 @@ export const RolesView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
             <button
               onClick={handleExportCsv}
               className="px-3 py-1.5 bg-white border border-[#edebe9] text-[#323130] hover:bg-[#faf9f8] text-xs font-semibold rounded-xs flex items-center gap-1.5 transition-colors shadow-2xs"

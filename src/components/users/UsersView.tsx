@@ -619,7 +619,7 @@ export const UsersView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap self-end sm:self-auto">
             {isAuthorized && (
               <button
                 onClick={() => {

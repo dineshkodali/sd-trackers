@@ -421,7 +421,7 @@ export const EscalationsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
             {currentUserRole === 'Super Admin' && (
               <button
                 type="button"

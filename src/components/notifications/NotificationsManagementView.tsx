@@ -244,7 +244,7 @@ export const NotificationsManagementView: React.FC = () => {
         </div>
 
         {/* Global Header Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
           <button
             onClick={() => refreshNotificationData()}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#323130] bg-[#faf9f8] hover:bg-[#f3f2f1] border border-[#d2d0ce] rounded-xs transition-colors"

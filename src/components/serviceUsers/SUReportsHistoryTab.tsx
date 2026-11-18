@@ -560,7 +560,7 @@ export const SUReportsHistoryTab: React.FC<SUReportsHistoryTabProps> = ({
         </div>
 
         {/* Filter Dropdowns */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
           {/* Format */}
           <select
             value={formatFilter}

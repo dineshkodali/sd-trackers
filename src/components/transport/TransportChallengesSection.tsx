@@ -290,7 +290,7 @@ export const TransportChallengesSection: React.FC<{ tabSwitcher?: React.ReactNod
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:whitespace-nowrap">
             <ExportDropdown
               moduleName="Transport Challenges"
               totalRecordCount={transportChallengeRecords.length}
