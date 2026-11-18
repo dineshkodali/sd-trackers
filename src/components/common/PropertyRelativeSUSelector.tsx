@@ -6,6 +6,7 @@ import { ServiceUserMaster, PropertyMaster, PropertyRoom, Placement } from '../.
 
 interface PropertyRelativeSUSelectorProps {
   siteOrPropertyName?: string;
+  roomNumber?: string;
   value: string;
   onChange: (
     value: string,
@@ -31,6 +32,7 @@ interface PropertyRelativeSUSelectorProps {
 
 export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProps> = ({
   siteOrPropertyName = '',
+  roomNumber = '',
   value,
   onChange,
   isMulti = false,
@@ -152,6 +154,112 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
     );
   }, [serviceUsers, vulnerableSUs, challengingSUs, spcdRecords, dailyRegisterRecords, newArrivalsRecords]);
 
+  // Comprehensive map of extra metadata (room, portRef, hotel, dob, nationality, language) across all sources
+  const suExtraMap = useMemo(() => {
+    const map = new Map<string, {
+      roomNumber: string;
+      portRef: string;
+      hotel: string;
+      dob?: string;
+      nationality?: string;
+      language?: string;
+    }>();
+
+    // 1. Placements (master data)
+    placements.filter(p => p.status === 'Active').forEach(plc => {
+      const rm = rooms.find(r => r.id === plc.roomId);
+      const prop = properties.find(pr => pr.id === plc.propertyId);
+      const su = serviceUsers.find(u => u.id === plc.suId);
+      if (su) {
+        const normName = `${su.firstName || ''} ${su.lastName || ''}`.trim().toLowerCase();
+        const info = {
+          roomNumber: rm?.roomNumber || '',
+          portRef: su.externalReference || su.suReference || '',
+          hotel: prop?.propertyName || '',
+          dob: su.dateOfBirth,
+          nationality: su.nationality,
+          language: su.preferredLanguage
+        };
+        map.set(su.id, info);
+        if (normName) map.set(normName, info);
+      }
+    });
+
+    // 2. dailyRegisterRecords
+    (dailyRegisterRecords || []).forEach(dr => {
+      if (dr.name) {
+        const normName = dr.name.trim().toLowerCase();
+        const existing = map.get(normName) || map.get(`synth-${encodeURIComponent(normName)}`);
+        const info = {
+          roomNumber: dr.roomNo || existing?.roomNumber || '',
+          portRef: dr.portRef || existing?.portRef || '',
+          hotel: dr.hotel || existing?.hotel || '',
+          dob: dr.dob || existing?.dob,
+          nationality: dr.nationality || existing?.nationality,
+          language: dr.language || existing?.language
+        };
+        map.set(`synth-${encodeURIComponent(normName)}`, info);
+        map.set(normName, info);
+      }
+    });
+
+    // 3. newArrivalsRecords
+    (newArrivalsRecords || []).forEach(na => {
+      if (na.name) {
+        const normName = na.name.trim().toLowerCase();
+        const existing = map.get(normName) || map.get(`synth-${encodeURIComponent(normName)}`);
+        const info = {
+          roomNumber: na.room || existing?.roomNumber || '',
+          portRef: na.portReference || existing?.portRef || '',
+          hotel: na.hotel || existing?.hotel || '',
+          dob: na.dob || existing?.dob,
+          nationality: na.country || existing?.nationality,
+          language: na.language || existing?.language
+        };
+        map.set(`synth-${encodeURIComponent(normName)}`, info);
+        map.set(normName, info);
+      }
+    });
+
+    // 4. spcdRecords
+    (spcdRecords || []).forEach(sp => {
+      if (sp.suName) {
+        const normName = sp.suName.trim().toLowerCase();
+        const existing = map.get(normName) || map.get(`synth-${encodeURIComponent(normName)}`);
+        const info = {
+          roomNumber: sp.roomNumber || existing?.roomNumber || '',
+          portRef: sp.suPortReference || existing?.portRef || '',
+          hotel: sp.site || sp.siteName || existing?.hotel || '',
+          dob: existing?.dob,
+          nationality: existing?.nationality,
+          language: existing?.language
+        };
+        map.set(`synth-${encodeURIComponent(normName)}`, info);
+        map.set(normName, info);
+      }
+    });
+
+    // 5. vulnerableSUs
+    (vulnerableSUs || []).forEach(v => {
+      if (v.suName) {
+        const normName = v.suName.trim().toLowerCase();
+        const existing = map.get(normName) || map.get(`synth-${encodeURIComponent(normName)}`);
+        const info = {
+          roomNumber: v.roomOrFlatNo || existing?.roomNumber || '',
+          portRef: v.portOrNassRef || existing?.portRef || '',
+          hotel: v.site || existing?.hotel || '',
+          dob: (v as any).dob || existing?.dob,
+          nationality: existing?.nationality,
+          language: existing?.language
+        };
+        map.set(`synth-${encodeURIComponent(normName)}`, info);
+        map.set(normName, info);
+      }
+    });
+
+    return map;
+  }, [placements, rooms, properties, serviceUsers, dailyRegisterRecords, newArrivalsRecords, spcdRecords, vulnerableSUs]);
+
   // The sites this list is limited to: the chosen site, otherwise every site the user is allowed to use.
   // Only an all-sites account with no site chosen sees everyone.
   const targetSites = useMemo<string[] | null>(() => {
@@ -202,12 +310,45 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
     // current site = site of the active placement, otherwise the profile's site
     const activeBySu = new Map(placements.filter(p => p.status === 'Active').map(p => [p.suId, p] as const));
     const rel = allKnownServiceUsers.filter(su => {
+      const normName = `${su.firstName || ''} ${su.lastName || ''}`.trim().toLowerCase();
+      const extra = suExtraMap.get(su.id) || suExtraMap.get(normName);
       const plc = activeBySu.get(su.id);
       if (plc) return placedIds.has(su.id);
-      return !!su.siteId && keys.has(String(su.siteId).toLowerCase());
+      if (su.siteId && keys.has(String(su.siteId).toLowerCase())) return true;
+      if (extra?.hotel) {
+        const eh = extra.hotel.toLowerCase();
+        if (keys.has(eh)) return true;
+        for (const k of keys) {
+          if (eh.includes(k) || k.includes(eh)) return true;
+        }
+      }
+      return false;
     });
     return { relativeSUs: rel, otherSUs: [] as ServiceUserMaster[] };
-  }, [targetSites, sites, properties, placements, allKnownServiceUsers]);
+  }, [targetSites, sites, properties, placements, allKnownServiceUsers, suExtraMap]);
+
+  const normTargetRoom = (roomNumber || '').trim().toLowerCase();
+
+  const { roomOccupants, otherPropertySUs } = useMemo(() => {
+    if (!normTargetRoom) {
+      return { roomOccupants: [] as ServiceUserMaster[], otherPropertySUs: relativeSUs };
+    }
+    const matching: ServiceUserMaster[] = [];
+    const others: ServiceUserMaster[] = [];
+
+    relativeSUs.forEach(su => {
+      const normName = `${su.firstName || ''} ${su.lastName || ''}`.trim().toLowerCase();
+      const extra = suExtraMap.get(su.id) || suExtraMap.get(normName);
+      const suRoom = String(extra?.roomNumber || '').trim().toLowerCase();
+      if (suRoom && suRoom === normTargetRoom) {
+        matching.push(su);
+      } else {
+        others.push(su);
+      }
+    });
+
+    return { roomOccupants: matching, otherPropertySUs: others };
+  }, [normTargetRoom, relativeSUs, suExtraMap]);
 
   // Handle single selection
   const handleSelectOne = (suId: string) => {
@@ -219,6 +360,8 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
     const su = allKnownServiceUsers.find(u => u.id === suId);
     if (!su) return;
 
+    const normName = `${su.firstName || ''} ${su.lastName || ''}`.trim().toLowerCase();
+    const extra = suExtraMap.get(su.id) || suExtraMap.get(normName);
     const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
     const rm = plc ? rooms.find(r => r.id === plc.roomId) : null;
     const fullName = `${su.firstName} ${su.lastName}`.trim();
@@ -231,11 +374,11 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
       placement: plc,
       property: resolvedProperty || undefined,
       room: rm || undefined,
-      portRef: su.externalReference || "",
-      dob: su.dateOfBirth || '',
-      nationality: su.nationality || '',
-      language: su.preferredLanguage || '',
-      roomNumber: rm?.roomNumber || '',
+      portRef: extra?.portRef || su.externalReference || su.suReference || '',
+      dob: extra?.dob || su.dateOfBirth || '',
+      nationality: extra?.nationality || su.nationality || '',
+      language: extra?.language || su.preferredLanguage || '',
+      roomNumber: extra?.roomNumber || rm?.roomNumber || roomNumber || '',
       address
     });
   };
@@ -254,6 +397,8 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
     } else {
       newNames = [...selectedNames, fullName];
     }
+    const normName = `${su.firstName || ''} ${su.lastName || ''}`.trim().toLowerCase();
+    const extra = suExtraMap.get(su.id) || suExtraMap.get(normName);
     const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
     const rm = plc ? rooms.find(r => r.id === plc.roomId) : null;
     const address = resolvedProperty
@@ -265,11 +410,11 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
       placement: plc,
       property: resolvedProperty || undefined,
       room: rm || undefined,
-      portRef: su.externalReference || "",
-      dob: su.dateOfBirth || '',
-      nationality: su.nationality || '',
-      language: su.preferredLanguage || '',
-      roomNumber: rm?.roomNumber || '',
+      portRef: extra?.portRef || su.externalReference || su.suReference || '',
+      dob: extra?.dob || su.dateOfBirth || '',
+      nationality: extra?.nationality || su.nationality || '',
+      language: extra?.language || su.preferredLanguage || '',
+      roomNumber: extra?.roomNumber || rm?.roomNumber || roomNumber || '',
       address
     });
   };
@@ -336,8 +481,12 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
             {listToShow.map(su => {
               const fullName = `${su.firstName} ${su.lastName}`.trim();
               const isChecked = selectedNames.includes(fullName);
+              const normName = fullName.toLowerCase();
+              const extra = suExtraMap.get(su.id) || suExtraMap.get(normName);
               const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
               const rm = plc ? rooms.find(r => r.id === plc.roomId) : null;
+              const displayRoom = extra?.roomNumber || rm?.roomNumber;
+              const ref = extra?.portRef || su.externalReference || su.suReference;
               return (
                 <label
                   key={su.id}
@@ -353,13 +502,13 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
                       className="rounded-xs text-[#0d9488] focus:ring-0"
                     />
                     <span>{fullName}</span>
-                    {su.externalReference && (
-                      <span className="text-[10px] font-mono text-neutral-400">({su.externalReference})</span>
+                    {ref && (
+                      <span className="text-[10px] font-mono text-neutral-400">({ref})</span>
                     )}
                   </div>
-                  {rm && (
+                  {displayRoom && (
                     <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 rounded text-neutral-600 font-mono">
-                      Room {rm.roomNumber}
+                      Room {displayRoom}
                     </span>
                   )}
                 </label>
@@ -409,17 +558,39 @@ export const PropertyRelativeSUSelector: React.FC<PropertyRelativeSUSelectorProp
           </option>
         )}
 
-        {relativeSUs.map(su => {
-          const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
-          const rm = plc ? rooms.find(r => r.id === plc.roomId) : null;
-          const roomLabel = rm ? ` [Room ${rm.roomNumber}]` : '';
-          const ref = su.externalReference || su.suReference;
-          return (
-            <option key={su.id} value={su.id}>
-              {su.firstName} {su.lastName} {ref ? `(${ref})` : ''}{roomLabel}
-            </option>
-          );
-        })}
+        {roomOccupants.length > 0 && (
+          <optgroup label={`Occupants in Room ${roomNumber} (${roomOccupants.length})`}>
+            {roomOccupants.map(su => {
+              const normName = `${su.firstName || ''} ${su.lastName || ''}`.trim().toLowerCase();
+              const extra = suExtraMap.get(su.id) || suExtraMap.get(normName);
+              const ref = extra?.portRef || su.externalReference || su.suReference;
+              return (
+                <option key={su.id} value={su.id}>
+                  {su.firstName} {su.lastName} {ref ? `(${ref})` : ''} [Room {roomNumber}]
+                </option>
+              );
+            })}
+          </optgroup>
+        )}
+
+        {otherPropertySUs.length > 0 && (
+          <optgroup label={roomOccupants.length > 0 ? "Other Residents at this Property" : undefined}>
+            {otherPropertySUs.map(su => {
+              const normName = `${su.firstName || ''} ${su.lastName || ''}`.trim().toLowerCase();
+              const extra = suExtraMap.get(su.id) || suExtraMap.get(normName);
+              const plc = placements.find(p => p.suId === su.id && p.status === 'Active');
+              const rm = plc ? rooms.find(r => r.id === plc.roomId) : null;
+              const displayRoom = extra?.roomNumber || rm?.roomNumber;
+              const roomLabel = displayRoom ? ` [Room ${displayRoom}]` : '';
+              const ref = extra?.portRef || su.externalReference || su.suReference;
+              return (
+                <option key={su.id} value={su.id}>
+                  {su.firstName} {su.lastName} {ref ? `(${ref})` : ''}{roomLabel}
+                </option>
+              );
+            })}
+          </optgroup>
+        )}
 
       </select>
 

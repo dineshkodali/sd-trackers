@@ -33,7 +33,7 @@ function loadRoomDirectory(): Promise<RoomDirectory> {
  * Returns an empty list when the site has no rooms on record, and the field stays free text.
  */
 export function useSiteRooms(siteOrPropertyName: string): SiteRoomOption[] {
-  const { sites } = useApp();
+  const { sites, dailyRegisterRooms, dailyRegisterRecords } = useApp();
   const [directory, setDirectory] = useState<RoomDirectory | null>(null);
 
   useEffect(() => {
@@ -43,23 +43,63 @@ export function useSiteRooms(siteOrPropertyName: string): SiteRoomOption[] {
     return () => { active = false; };
   }, [siteOrPropertyName]);
 
-  if (!directory || !siteOrPropertyName) return [];
+  if (!siteOrPropertyName) return [];
 
   const wanted = siteOrPropertyName.trim().toLowerCase();
-  const site = sites.find(s => s.id === siteOrPropertyName || s.name.trim().toLowerCase() === wanted);
-  const siteProperties = directory.properties.filter(property =>
+  const site = sites?.find(s => s.id === siteOrPropertyName || s.name.trim().toLowerCase() === wanted);
+  const siteProperties = directory?.properties.filter(property =>
     (site && property.siteId === site.id) ||
     property.id === siteOrPropertyName ||
     property.propertyName?.trim().toLowerCase() === wanted
-  );
+  ) || [];
   const propertyById = new Map(siteProperties.map(property => [property.id, property]));
 
-  return directory.rooms
-    .filter(room => propertyById.has(room.propertyId) && room.roomNumber)
-    .map(room => ({
-      value: room.roomNumber,
-      label: room.roomName ? `${room.roomNumber} — ${room.roomName}` : room.roomNumber,
-      propertyName: propertyById.get(room.propertyId)!.propertyName,
-    }))
-    .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
+  const roomMap = new Map<string, SiteRoomOption>();
+
+  // 1. Master rooms from database directory
+  if (directory?.rooms) {
+    directory.rooms
+      .filter(room => propertyById.has(room.propertyId) && room.roomNumber)
+      .forEach(room => {
+        const val = String(room.roomNumber).trim();
+        const propName = propertyById.get(room.propertyId)?.propertyName || siteOrPropertyName;
+        roomMap.set(val.toLowerCase(), {
+          value: val,
+          label: room.roomName ? `${val} — ${room.roomName}` : val,
+          propertyName: propName
+        });
+      });
+  }
+
+  // 2. Synchronous fallback & live rooms from dailyRegisterRooms
+  (dailyRegisterRooms || []).forEach(drr => {
+    const rHotel = (drr.hotel || '').trim().toLowerCase();
+    if (rHotel === wanted || (site && rHotel === site.name.trim().toLowerCase()) || rHotel.includes(wanted) || wanted.includes(rHotel)) {
+      const val = String(drr.roomNo || '').trim();
+      if (val && !roomMap.has(val.toLowerCase())) {
+        roomMap.set(val.toLowerCase(), {
+          value: val,
+          label: val,
+          propertyName: drr.hotel || siteOrPropertyName
+        });
+      }
+    }
+  });
+
+  // 3. Live occupied rooms from dailyRegisterRecords
+  (dailyRegisterRecords || []).forEach(dr => {
+    const rHotel = (dr.hotel || '').trim().toLowerCase();
+    if (rHotel === wanted || (site && rHotel === site.name.trim().toLowerCase()) || rHotel.includes(wanted) || wanted.includes(rHotel)) {
+      const val = String(dr.roomNo || '').trim();
+      if (val && !roomMap.has(val.toLowerCase())) {
+        roomMap.set(val.toLowerCase(), {
+          value: val,
+          label: val,
+          propertyName: dr.hotel || siteOrPropertyName
+        });
+      }
+    }
+  });
+
+  return Array.from(roomMap.values()).sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
 }

@@ -642,6 +642,7 @@ export interface DispersalRecord {
   id: string;
   sno: number; // SNO
   siteName: string; // Site Name
+  suName?: string; // Service User Name
   typeOfDispersal?: 'NTV (Move on Completed)' | 'Eviction' | 'Dispersal' | 'Self-Departure (Gone to Contact)' | string;
   dateReceived: string; // Date Received(MM/DD/YYYY)
   suPortNassRef: string; // SU Port/Nass Reference

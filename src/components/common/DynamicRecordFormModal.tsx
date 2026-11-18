@@ -58,7 +58,11 @@ export function DynamicRecordFormModal<T = any>({
     authProfile,
     currentUserName,
     currentUserRole,
-    getFieldOptions
+    getFieldOptions,
+    dailyRegisterRecords,
+    newArrivalsRecords,
+    spcdRecords,
+    vulnerableSUs
   } = useApp();
 
   const userAssignedHotel = useMemo(() => {
@@ -300,10 +304,10 @@ export function DynamicRecordFormModal<T = any>({
 
   const isRoomColumn = (col: TableColumnConfig<T>): boolean => {
     if (col.type && col.type !== 'text') return false;
-    const key = String(col.key).toLowerCase();
-    const label = col.label.toLowerCase().trim();
-    return ['roomno', 'roomnumber', 'flatnumber', 'flatroomnumber'].includes(key) ||
-      ['room no', 'room no.', 'flat / room no'].includes(label);
+    const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const label = col.label.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+    return ['roomno', 'roomnumber', 'flatnumber', 'flatroomnumber', 'room', 'roomorflatno'].includes(key) ||
+      ['roomno', 'roomnumber', 'flatnumber', 'flatroomnumber', 'room', 'roomorflatno', 'flatroomno'].includes(label);
   };
 
   const isDobColumn = (col: TableColumnConfig<T>): boolean => {
@@ -342,12 +346,12 @@ export function DynamicRecordFormModal<T = any>({
   };
 
   /**
-   * Fields that come from the Service User's profile (port reference, room, date of birth, nationality, language).
+   * Fields that come from the Service User's profile (port reference, date of birth, nationality, language).
    * Once the form has a single Service User picker these are filled in automatically and locked, never typed by hand.
    */
   const isSuProfileColumn = (col: TableColumnConfig<T>): boolean => {
     const key = String(col.key).toLowerCase().replace(/[^a-z0-9]/g, '');
-    return ['portref', 'portrefs', 'portreference', 'portornassref', 'nassref', 'roomno', 'roomnumber', 'roomorflatno', 'flatnumber',
+    return ['portref', 'portrefs', 'portreference', 'portornassref', 'suportnassref', 'nassref',
       'dob', 'sudob', 'dateofbirth', 'nationality', 'preferredlanguage'].includes(key) || isDobColumn(col) || !!col.suField;
   };
   const singleSuColumn = (cols: TableColumnConfig<T>[]) => {
@@ -358,6 +362,107 @@ export function DynamicRecordFormModal<T = any>({
   const isUserColumn = (col: TableColumnConfig<T>): boolean => {
     if (isLoggedByColumn(col)) return false;
     return isUserAssignmentField(String(col.key), col.label) || isSiteManagerColumn(col);
+  };
+
+  const findOccupantsForRoom = (hotelName: string, roomNumber: string) => {
+    if (!roomNumber) return [];
+    const normRoom = roomNumber.trim().toLowerCase();
+    const normHotel = hotelName.trim().toLowerCase();
+    const results: Array<{
+      name: string;
+      suId?: string;
+      portRef?: string;
+      dob?: string;
+      nationality?: string;
+      language?: string;
+      roomNumber: string;
+      hotel: string;
+    }> = [];
+    const seenNames = new Set<string>();
+
+    const matchesHotel = (h?: string) => {
+      if (!h) return false;
+      const nh = h.trim().toLowerCase();
+      if (!normHotel || normHotel === 'all' || normHotel === 'all sites') return true;
+      if (nh === normHotel) return true;
+      if (nh.includes(normHotel) || normHotel.includes(nh)) return true;
+      const s = sites?.find(site => site.id?.toLowerCase() === normHotel || site.name?.toLowerCase() === normHotel);
+      if (s && (nh === s.id?.toLowerCase() || nh === s.name?.toLowerCase())) return true;
+      return false;
+    };
+
+    // 1. Check dailyRegisterRecords
+    (dailyRegisterRecords || []).forEach(dr => {
+      if (matchesHotel(dr.hotel) && String(dr.roomNo || '').trim().toLowerCase() === normRoom && dr.name) {
+        const cleanName = dr.name.trim();
+        if (!seenNames.has(cleanName.toLowerCase())) {
+          seenNames.add(cleanName.toLowerCase());
+          results.push({
+            name: cleanName,
+            portRef: dr.portRef || '',
+            dob: dr.dob,
+            nationality: dr.nationality,
+            language: dr.language,
+            roomNumber: dr.roomNo,
+            hotel: dr.hotel
+          });
+        }
+      }
+    });
+
+    // 2. Check newArrivalsRecords
+    (newArrivalsRecords || []).forEach(na => {
+      if (matchesHotel(na.hotel) && String(na.room || '').trim().toLowerCase() === normRoom && na.name) {
+        const cleanName = na.name.trim();
+        if (!seenNames.has(cleanName.toLowerCase())) {
+          seenNames.add(cleanName.toLowerCase());
+          results.push({
+            name: cleanName,
+            portRef: na.portReference || '',
+            dob: na.dob,
+            nationality: na.country,
+            language: na.language,
+            roomNumber: na.room,
+            hotel: na.hotel
+          });
+        }
+      }
+    });
+
+    // 3. Check spcdRecords
+    (spcdRecords || []).forEach(sp => {
+      if (matchesHotel(sp.site || sp.siteName) && String(sp.roomNumber || '').trim().toLowerCase() === normRoom && sp.suName) {
+        const cleanName = sp.suName.trim();
+        if (!seenNames.has(cleanName.toLowerCase())) {
+          seenNames.add(cleanName.toLowerCase());
+          results.push({
+            name: cleanName,
+            portRef: sp.suPortReference || '',
+            roomNumber: sp.roomNumber,
+            hotel: sp.site || sp.siteName || ''
+          });
+        }
+      }
+    });
+
+    // 4. Check vulnerableSUs
+    (vulnerableSUs || []).forEach(v => {
+      if (matchesHotel(v.site) && String(v.roomOrFlatNo || '').trim().toLowerCase() === normRoom && v.suName) {
+        const cleanName = v.suName.trim();
+        if (!seenNames.has(cleanName.toLowerCase())) {
+          seenNames.add(cleanName.toLowerCase());
+          results.push({
+            name: cleanName,
+            portRef: v.portOrNassRef || '',
+            dob: (v as any).dob,
+            roomNumber: v.roomOrFlatNo,
+            hotel: v.site
+          });
+        }
+      }
+    });
+
+    return results;
   };
 
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -426,7 +531,7 @@ export function DynamicRecordFormModal<T = any>({
       if (!map.has(secName)) map.set(secName, []);
       map.get(secName)!.push(col);
     });
-    const rank = (c: TableColumnConfig<T>) => !hasSingleSu ? 3 : isSiteColumn(c) ? 0 : isServiceUserColumn(c) ? 1 : isSuProfileColumn(c) ? 2 : 3;
+    const rank = (c: TableColumnConfig<T>) => isSiteColumn(c) ? 0 : isRoomColumn(c) ? 1 : isServiceUserColumn(c) ? 2 : isSuProfileColumn(c) ? 3 : 4;
     return Array.from(map.entries()).map(([name, cols]) => [name, [...cols].sort((a, b) => rank(a) - rank(b))] as [string, TableColumnConfig<T>[]]);
   }, [formColumns, hasSingleSu]);
 
@@ -645,9 +750,10 @@ export function DynamicRecordFormModal<T = any>({
       if (col?.onValueChange) {
         Object.assign(next, col.onValueChange(value, next) || {});
       }
-      if (col && isSiteColumn(col) && hasSingleSu && prev[key] !== undefined && prev[key] !== value) {
+      // When Site / Hotel changes, clear room, SU, and profile fields
+      if (col && isSiteColumn(col) && prev[key] !== undefined && prev[key] !== value) {
         formColumns.forEach(c => {
-          if (isServiceUserColumn(c) || isSuProfileColumn(c)) next[String(c.key)] = '';
+          if (isRoomColumn(c) || isServiceUserColumn(c) || isSuProfileColumn(c)) next[String(c.key)] = '';
         });
         next.suId = '';
       }
@@ -658,6 +764,47 @@ export function DynamicRecordFormModal<T = any>({
             next[String(c.key)] = mgr;
           }
         });
+      }
+      // When Room changes: look up occupants in that room at this property
+      if (col && isRoomColumn(col)) {
+        const currentHotel = String(
+          next.siteName || next.site || next.siteId || next.property || next.propertyName ||
+          next.hotel || next.hotelName || userAssignedHotel || ''
+        ).trim();
+        const selectedRoom = String(value || '').trim();
+
+        if (!selectedRoom) {
+          formColumns.forEach(c => {
+            if (isServiceUserColumn(c) || isSuProfileColumn(c)) {
+              next[String(c.key)] = '';
+            }
+          });
+          next.suId = '';
+        } else {
+          const occupants = findOccupantsForRoom(currentHotel, selectedRoom);
+          if (occupants.length === 1) {
+            const occ = occupants[0];
+            formColumns.forEach(c => {
+              if (isServiceUserColumn(c)) {
+                next[String(c.key)] = occ.name;
+              }
+              const ck = String(c.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (['portref', 'portrefs', 'portreference', 'portornassref', 'suportnassref', 'nassref'].includes(ck)) {
+                next[String(c.key)] = occ.portRef || '';
+              }
+              if (['dob', 'dateofbirth', 'sudob'].includes(ck) && occ.dob) {
+                next[String(c.key)] = occ.dob;
+              }
+              if (['nationality', 'country'].includes(ck) && occ.nationality) {
+                next[String(c.key)] = occ.nationality;
+              }
+              if (['language', 'preferredlanguage'].includes(ck) && occ.language) {
+                next[String(c.key)] = occ.language;
+              }
+            });
+            next.suId = occ.suId || '';
+          }
+        }
       }
       return next;
     });
@@ -805,7 +952,7 @@ export function DynamicRecordFormModal<T = any>({
         }
       }
 
-      if (col.required && !(hasSingleSu && !isServiceUserColumn(col) && isSuProfileColumn(col))) {
+      if (col.required && !(hasSingleSu && !isServiceUserColumn(col) && !isRoomColumn(col) && isSuProfileColumn(col))) {
         if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
           newErrors[key] = `${col.label} is required`;
           return;
@@ -950,7 +1097,7 @@ export function DynamicRecordFormModal<T = any>({
                   const isStaffPlace = isStaffPlaceColumn(col);
                   const displayLabel = isLoggedBy ? 'Reporting Staff Member' : isSiteManager ? 'Site Manager' : isStaffPlace ? 'Staff Place' : col.label;
                   const isLockedToSingleSite = isSite && (!canAccessAllSites() && allSiteNames.length <= 1);
-                  const isSuProfile = hasSingleSu && !isServiceUserColumn(col) && isSuProfileColumn(col);
+                  const isSuProfile = hasSingleSu && !isServiceUserColumn(col) && !isRoomColumn(col) && isSuProfileColumn(col);
                   const isReadOnly = col.editable === false || isLockedToSingleSite || isLoggedBy || isSiteManager || isStaffPlace || isSuProfile;
                   const value = isLockedToSingleSite
                     ? (userAssignedHotel || allSiteNames[0])
@@ -1103,6 +1250,16 @@ export function DynamicRecordFormModal<T = any>({
                             effectiveContext.assignedSite ||
                             userAssignedHotel
                           }
+                          roomNumber={
+                            String(
+                              formData.roomNo ||
+                              formData.flatRoomNumber ||
+                              formData.roomNumber ||
+                              formData.roomOrFlatNo ||
+                              formData.room ||
+                              ''
+                            )
+                          }
                           value={String(value || '')}
                           isMulti={String(col.key).toLowerCase() === 'sunames' || col.label.toLowerCase().includes('(s)')}
                           placeholder={col.placeholder || `Select ${col.label}...`}
@@ -1132,8 +1289,8 @@ export function DynamicRecordFormModal<T = any>({
                             if (extra) {
                               if (extra.portRef) {
                                 formColumns.forEach(c => {
-                                  const ck = String(c.key).toLowerCase();
-                                  if (ck === 'portref' || ck === 'portrefs' || ck === 'portreference' || ck === 'portornassref') {
+                                  const ck = String(c.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  if (['portref', 'portrefs', 'portreference', 'portornassref', 'suportnassref', 'nassref'].includes(ck)) {
                                     handleChange(String(c.key), extra.portRef);
                                   }
                                 });
@@ -1146,30 +1303,31 @@ export function DynamicRecordFormModal<T = any>({
                                 language: extra.language, address: extra.address
                               };
                               formColumns.forEach(c => { if (c.suField && byField[c.suField]) handleChange(String(c.key), byField[c.suField]); });
-              const derivedKeys: Record<string, string[]> = {
-                dob: ['dob', 'dateofbirth'],
-                nationality: ['nationality', 'country'],
-                language: ['language', 'preferredlanguage']
-              };
-              Object.entries(derivedKeys).forEach(([field, aliases]) => {
-                const v = derived[field];
-                if (!v) return;
-                formColumns.forEach(c => {
-                  if (aliases.includes(String(c.key).toLowerCase())) handleChange(String(c.key), v);
-                });
-              });
-              if (extra.roomNumber) {
+                              const derivedKeys: Record<string, string[]> = {
+                                dob: ['dob', 'dateofbirth', 'sudob'],
+                                nationality: ['nationality', 'country'],
+                                language: ['language', 'preferredlanguage']
+                              };
+                              Object.entries(derivedKeys).forEach(([field, aliases]) => {
+                                const v = derived[field];
+                                if (!v) return;
                                 formColumns.forEach(c => {
-                                  const ck = String(c.key).toLowerCase();
-                                  if (ck === 'roomno' || ck === 'roomnumber' || ck === 'roomorflatno' || ck === 'flatnumber') {
+                                  const ck = String(c.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  if (aliases.includes(ck)) handleChange(String(c.key), v);
+                                });
+                              });
+                              if (extra.roomNumber) {
+                                formColumns.forEach(c => {
+                                  const ck = String(c.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  if (['roomno', 'roomnumber', 'roomorflatno', 'flatnumber', 'flatroomnumber', 'room'].includes(ck)) {
                                     handleChange(String(c.key), extra.roomNumber);
                                   }
                                 });
                               }
                               if (extra.address) {
                                 formColumns.forEach(c => {
-                                  const ck = String(c.key).toLowerCase();
-                                  if (ck === 'accommodationaddress' || ck === 'address') {
+                                  const ck = String(c.key).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  if (['accommodationaddress', 'address', 'propertyaddress'].includes(ck)) {
                                     handleChange(String(c.key), extra.address);
                                   }
                                 });
@@ -1206,7 +1364,7 @@ export function DynamicRecordFormModal<T = any>({
                             </option>
                           )}
                         </select>
-                      ) : isRoomColumn(col) && siteRooms.length > 0 ? (
+                      ) : isRoomColumn(col) ? (
                         <select
                           value={value}
                           disabled={isReadOnly || isSubmitting}
@@ -1215,7 +1373,9 @@ export function DynamicRecordFormModal<T = any>({
                             errors[key] ? 'border-red-500 bg-red-50/20' : 'border-[#8a8886]'
                           } ${isReadOnly ? 'bg-neutral-100 text-neutral-600 cursor-not-allowed' : ''}`}
                         >
-                          <option value="" disabled={Boolean(col.required)}>Select {col.label}...</option>
+                          <option value="" disabled={Boolean(col.required)}>
+                            {roomLookupName ? `Select ${col.label}...` : 'Select Hotel first...'}
+                          </option>
                           {value && !siteRooms.some(room => room.value === value) && <option value={value}>{value}</option>}
                           {siteRoomGroups.size > 1
                             ? Array.from(siteRoomGroups).map(([house, rooms]) => (

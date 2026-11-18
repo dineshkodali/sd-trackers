@@ -241,6 +241,7 @@ export const DISPERSAL_TABLE_COLUMNS: TableColumnConfig<DispersalRecord>[] = [
   { key: 'sno', label: 'S.No', type: 'number', section: 'Dispersal Identification' },
   { key: 'siteName', label: 'Site / Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Dispersal Identification' },
   { key: 'flatRoomNumber', label: 'Flat / Room No', type: 'text', required: true, section: 'Dispersal Identification' },
+  { key: 'suName', label: 'Service User Name', type: 'text', required: true, section: 'Dispersal Identification' },
   { key: 'suPortNassRef', label: 'SU Port / NASS Ref', type: 'text', required: true, section: 'Dispersal Identification' },
   { 
     key: 'typeOfDispersal', 
@@ -756,8 +757,8 @@ export const NEW_ARRIVALS_TABLE_COLUMNS: TableColumnConfig<NewArrivalRecord>[] =
 export const EVICTION_TABLE_COLUMNS: TableColumnConfig<EvictionRecord>[] = [
   { key: 'hotel', label: 'Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Eviction Details' },
   { key: 'roomNo', label: 'Room No.', type: 'text', section: 'Eviction Details' },
-  { key: 'portRef', label: 'Port Ref', type: 'text', required: true, section: 'Resident Details' },
   { key: 'suName', label: 'SU Name', type: 'text', required: true, section: 'Resident Details' },
+  { key: 'portRef', label: 'Port Ref', type: 'text', required: true, section: 'Resident Details' },
   { key: 'noticeDate', label: 'Notice Date', type: 'date', section: 'Eviction Timeline' },
   { key: 'evictionDate', label: 'Eviction Date', type: 'date', required: true, section: 'Eviction Timeline' },
   { key: 'evictionReason', label: 'Eviction Reason', type: 'textarea', required: true, section: 'Eviction Details' },

@@ -19,6 +19,7 @@ const dispersalExportColumns: ExportColumnOption[] = [
   { id: 'sno', label: 'S.No' },
   { id: 'siteName', label: 'Hotel / Site' },
   { id: 'typeOfDispersal', label: 'Type of Dispersal' },
+  { id: 'suName', label: 'Service User Name' },
   { id: 'suPortNassRef', label: 'Port / NASS Ref' },
   { id: 'flatRoomNumber', label: 'Room / Flat' },
   { id: 'dateReceived', label: 'Date Received' },
@@ -94,6 +95,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         r.suPortNassRef.toLowerCase().includes(q) ||
+        (r.suName && r.suName.toLowerCase().includes(q)) ||
         r.flatRoomNumber.toLowerCase().includes(q) ||
         r.reasonForDeparture.toLowerCase().includes(q) ||
         r.siteName.toLowerCase().includes(q) ||
@@ -275,6 +277,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
       );
     }
     if (col.key === 'suPortNassRef') return <span className="font-mono text-[#0f766e] font-semibold">{value || '—'}</span>;
+    if (col.key === 'suName') return <span className="font-semibold text-[#242424]">{value || '—'}</span>;
     if (col.key === 'flatRoomNumber') return <span className="font-semibold text-[#242424]">{value || '—'}</span>;
     if (col.key === 'sno') return <span className="text-[#605e5c] font-mono">{value || '—'}</span>;
     if (value === null || value === undefined || value === '') return <span className="text-[#a19f9d]">—</span>;
@@ -533,6 +536,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
           siteName: (!canAccessAllSites() && (allowedSites || []).length <= 1) ? assignedSite : (siteFilter !== 'all' ? siteFilter : (assignedSite || allowedSites[0])),
           typeOfDispersal: 'Dispersal',
           dateReceived: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+          suName: '',
           suPortNassRef: '',
           reasonForDeparture: 'Dispersal to Long-Term NASS accommodation',
           flatRoomNumber: '',
