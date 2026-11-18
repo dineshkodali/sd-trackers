@@ -566,15 +566,13 @@ export const PropertyManagementView: React.FC = () => {
         </div>
 
         {/* Standard Pagination Footer */}
-        <div className="px-3 py-2 border-t border-[#f0f0f0] flex items-center justify-between shrink-0">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredProperties.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredProperties.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       <BulkActionToolbar

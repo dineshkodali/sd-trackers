@@ -422,15 +422,13 @@ export const DailyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode }>
           </table>
         </div>
 
-        <div className="p-3 border-t border-[#e2e8f0] bg-white">
-          <Pagination
-            currentPage={currentPage}
-            pageSize={pageSize}
-            totalItems={sortedRecords.length}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
-          />
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={sortedRecords.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
+        />
       </div>
 
       {/* CREATE MODAL */}

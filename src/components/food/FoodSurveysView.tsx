@@ -540,15 +540,13 @@ export const FoodSurveysView: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        <div className="px-3 py-2 border-t border-[#f0f0f0] flex items-center justify-between shrink-0">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredRecords.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredRecords.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* CREATE / EDIT FOOD SURVEY MODAL */}

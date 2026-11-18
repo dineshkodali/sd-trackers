@@ -671,15 +671,13 @@ export const TransportFundingSection: React.FC<{ tabSwitcher?: React.ReactNode }
         </div>
 
         {/* Pagination Bar */}
-        <div className="p-3 border-t border-[#edebe9] shrink-0">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={sortedRecords.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={sortedRecords.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* MULTI-STEP DIGITAL FUNDING FORM (6 STEPS) */}

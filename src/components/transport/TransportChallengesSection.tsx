@@ -540,15 +540,13 @@ export const TransportChallengesSection: React.FC<{ tabSwitcher?: React.ReactNod
         </div>
 
         {/* Pagination Bar */}
-        <div className="p-3 border-t border-[#edebe9] shrink-0">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={sortedRecords.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={sortedRecords.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* CREATE / EDIT MODAL */}

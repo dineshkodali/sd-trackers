@@ -1246,17 +1246,13 @@ export const FoodVendorBuffetLogSection: React.FC<{ tabSwitcher?: React.ReactNod
             </table>
           </div>
           {/* Pagination for table view */}
-          {sortedTableLogs.length > 0 && (
-            <div className="p-3 border-t border-[#edebe9] shrink-0">
-              <Pagination
-                currentPage={currentPage}
-                totalItems={sortedTableLogs.length}
-                onPageChange={setCurrentPage}
-                pageSize={pageSize}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={sortedTableLogs.length}
+            onPageChange={setCurrentPage}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       )}
 

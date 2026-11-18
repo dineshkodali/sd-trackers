@@ -852,20 +852,16 @@ export const SUReportsHistoryTab: React.FC<SUReportsHistoryTabProps> = ({
         )}
 
         {/* Pagination Footer */}
-        {filteredReports.length > 0 && (
-          <div className="p-3 border-t border-neutral-200 bg-[#faf9f8]">
-            <Pagination
-              currentPage={currentPage}
-              totalItems={filteredReports.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={size => {
-                setPageSize(size);
-                setCurrentPage(1);
-              }}
-            />
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredReports.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={size => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
       {/* MODAL 1: Super Admin Edit Metadata */}

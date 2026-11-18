@@ -806,18 +806,16 @@ export const AuditView: React.FC = () => {
           </table>
         </div>
 
-        <div className="shrink-0 border-t border-[#edebe9]">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={sortedLogs.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={size => {
-              setPageSize(size);
-              setCurrentPage(1);
-            }}
-          />
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={sortedLogs.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={size => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
       {/* Audit Record Details / Receipt Modal */}

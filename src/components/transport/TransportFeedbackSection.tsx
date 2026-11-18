@@ -590,15 +590,13 @@ export const TransportFeedbackSection: React.FC<{ tabSwitcher?: React.ReactNode 
         </div>
 
         {/* Pagination */}
-        <div className="p-3 border-t border-[#edebe9] shrink-0">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={sortedRecords.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={sortedRecords.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* CREATE / EDIT FORM MODAL (Standard SDTracker styling) */}

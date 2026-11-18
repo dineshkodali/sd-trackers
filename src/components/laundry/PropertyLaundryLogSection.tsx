@@ -1007,17 +1007,13 @@ export const PropertyLaundryLogSection: React.FC<{ tabSwitcher?: React.ReactNode
         </div>
 
         {/* Pagination */}
-        {sortedData.length > 0 && (
-          <div className="p-3 border-t border-[#edebe9] shrink-0">
-            <Pagination
-              currentPage={currentPage}
-              totalItems={sortedData.length}
-              onPageChange={setCurrentPage}
-              pageSize={pageSize}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={sortedData.length}
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* Create / Edit Modal */}

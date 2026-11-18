@@ -709,20 +709,13 @@ export const SPCDTrackerView: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        {sortedRecords.length > 0 && (
-          <div className="p-3 border-t border-[#edebe9] flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
-            <div className="text-neutral-500">
-              Showing <span className="font-semibold text-neutral-800">{paginatedRecords.length}</span> of <span className="font-semibold text-neutral-800">{sortedRecords.length}</span> records
-            </div>
-            <Pagination
-              currentPage={currentPage}
-              totalItems={sortedRecords.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={sortedRecords.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* DYNAMIC CREATE SPCD RECORD MODAL */}
