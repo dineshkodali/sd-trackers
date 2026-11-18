@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { IconSearch as Search } from '@tabler/icons-react';
 import { filterInputCls } from '../common/TrackerToolbar';
 
@@ -39,11 +39,22 @@ export function usePaged<T>(rows: T[], page: number, pageSize: number): T[] {
 }
 
 /** The search box used in every tracker header. */
-export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string }> = ({ value, onChange, placeholder }) => (
-  <div className="relative flex-[2] min-w-[140px]">
-    <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-    <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={`${filterInputCls} pl-7`} aria-label="Search" />
-  </div>
-);
+/** Search field that tells the page what was typed 300ms after the last keystroke, not on every key. */
+export const SearchBox: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string }> = ({ value, onChange, placeholder }) => {
+  const [text, setText] = useState(value);
+  // A reset or change made by the page (Reset filters, etc.) replaces what is shown
+  useEffect(() => { setText(value); }, [value]);
+  useEffect(() => {
+    if (text === value) return;
+    const t = setTimeout(() => onChange(text), 300);
+    return () => clearTimeout(t);
+  }, [text]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="relative flex-[2] min-w-[140px]">
+      <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      <input value={text} onChange={e => setText(e.target.value)} placeholder={placeholder} className={`${filterInputCls} pl-7`} aria-label="Search" />
+    </div>
+  );
+};
 
 export const filterSelectCls = filterInputCls;

@@ -2112,12 +2112,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       backgroundSyncRef.current();
     });
 
-    // 5-minute safety-net poll (realtime covers live changes)
+    // 5-minute safety-net poll (realtime covers live changes). A full reload reads every table, so it is skipped
+    // while the tab is hidden (nobody is looking) and run once when the tab becomes visible after a long absence.
+    let lastSyncAt = Date.now();
+    const runSync = () => { lastSyncAt = Date.now(); backgroundSyncRef.current(); };
     const interval = setInterval(() => {
-      backgroundSyncRef.current();
+      if (typeof document !== 'undefined' && document.hidden) return;
+      runSync();
     }, 300000);
+    const onVisible = () => {
+      if (typeof document !== 'undefined' && !document.hidden && Date.now() - lastSyncAt >= 300000) runSync();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
 
     return () => {
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible);
       clearInterval(interval);
       unsubReconnect();
       realtimeService.unsubscribe();
