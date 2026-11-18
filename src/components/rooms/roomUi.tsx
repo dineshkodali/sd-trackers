@@ -9,9 +9,9 @@ export const inputCls =
   'w-full px-2.5 py-1.5 bg-white border border-[#d4d4d4] rounded-xs text-xs text-[#1e293b] focus:outline-none focus:border-[#0d9488] disabled:bg-[#f5f5f5] disabled:text-neutral-500';
 export const labelCls = 'block text-[10px] font-bold text-[#475569] uppercase mb-0.5';
 export const btnCls =
-  'inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-white hover:bg-[#f0fdfa] text-[#334155] border border-[#cbd5e1] hover:border-[#0d9488] rounded-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 export const primaryBtnCls =
-  'inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 export const dangerBtnCls =
   'inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-white hover:bg-red-50 text-red-700 border border-red-300 rounded-xs transition-colors cursor-pointer disabled:opacity-50';
 

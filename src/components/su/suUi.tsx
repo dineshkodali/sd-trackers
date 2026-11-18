@@ -5,8 +5,8 @@ import { canViewNhsNumber, canEditSuTrackers } from '../../utils/suTrackerAccess
 
 /** Shared look for the Service User enhancement screens: the same classes the GP and PEEP trackers use. */
 export const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488] disabled:bg-neutral-100';
-export const primaryBtn = 'px-4 py-1.5 bg-[#0d9488] hover:bg-teal-700 text-white rounded-xs text-xs font-semibold disabled:opacity-50 cursor-pointer';
-export const secondaryBtn = 'px-3.5 py-1.5 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700 hover:bg-neutral-100 cursor-pointer disabled:opacity-50';
+export const primaryBtn = 'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+export const secondaryBtn = 'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs shadow-2xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 export const dangerBtn = 'px-3.5 py-1.5 bg-white border border-rose-300 text-rose-700 rounded-xs text-xs font-semibold hover:bg-rose-50 cursor-pointer disabled:opacity-50';
 
 /** Roles the server allows to approve or reject archive requests (server/suAccess.ts holds the enforced list). */

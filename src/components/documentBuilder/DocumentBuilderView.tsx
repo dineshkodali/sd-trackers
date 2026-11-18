@@ -1237,7 +1237,7 @@ export const DocumentBuilderView: React.FC = () => {
                       type="button"
                       onClick={() => (guided ? downloadGuard.click('top') : handleGenerate('docx'))}
                       disabled={!!generating || !documentTitle}
-                      className="px-2 py-1 text-[11px] font-bold bg-[#0078d4] hover:bg-[#106ebe] text-white transition-colors cursor-pointer disabled:opacity-50"
+                      className="px-2 py-1 text-[11px] font-bold bg-[#0d9488] hover:bg-[#0f766e] text-white transition-colors cursor-pointer disabled:opacity-50"
                       title="Download DOCX"
                     >
                       {generating === 'docx' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'DOCX'}

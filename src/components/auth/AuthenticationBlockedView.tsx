@@ -173,7 +173,7 @@ ${events.slice(0, 5).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] ${
                 type="button"
                 id="btn-return-login-blocked"
                 onClick={onReturnToLogin}
-                className="w-full sm:w-auto px-5 py-2.5 bg-[#0078d4] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Return to Sign In Screen</span>

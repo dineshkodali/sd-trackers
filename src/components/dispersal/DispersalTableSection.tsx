@@ -358,7 +358,7 @@ export const DispersalTableSection: React.FC<DispersalTableSectionProps> = ({
             {canCreateRecord() && (
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0078d4] hover:bg-[#106ebe] text-white rounded-xs shadow-2xs transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0d9488] hover:bg-[#0f766e] text-white rounded-xs shadow-2xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>+ Record Dispersal</span>

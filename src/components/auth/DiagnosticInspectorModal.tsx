@@ -204,7 +204,7 @@ ${events.slice(0, 15).map(e => `[${e.timestamp}] [${e.category.toUpperCase()}] [
               id="btn-run-live-diagnostics"
               onClick={runLiveTest}
               disabled={testingEndpoint}
-              className="px-4 py-2 bg-[#0078d4] hover:bg-[#005a9e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-[#0d9488] hover:bg-[#0f766e] text-white text-xs font-semibold rounded-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <RotateCw className={`w-3.5 h-3.5 ${testingEndpoint ? 'animate-spin' : ''}`} />
               <span>{testingEndpoint ? 'Testing Connectivity...' : 'Run Diagnostics'}</span>
