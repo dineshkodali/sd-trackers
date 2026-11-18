@@ -1676,10 +1676,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [settings.autoLogoutMinutes]);
 
   const lockSession = useCallback((reason: string = 'User requested security lock') => {
-    setIsSessionLocked(true);
-    setSessionLockReason(reason);
-    addAuditEntry('SETTINGS_UPDATE', 'Settings', 'Session Lock', 'System', `User session locked (${reason})`);
-  }, [addAuditEntry]);
+    setIsSessionLocked(false);
+    setSessionLockReason('');
+    addAuditEntry('SETTINGS_UPDATE', 'Settings', 'Session Logout', 'System', `User session signed out (${reason})`);
+    setAuthError(`Session signed out: ${reason}`);
+    logout();
+  }, [addAuditEntry, logout]);
 
   const unlockSession = useCallback(() => {
     setIsSessionLocked(false);
@@ -1709,7 +1711,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isSessionLocked]);
 
   useEffect(() => {
-    if (!settings.autoLogoutMinutes || settings.autoLogoutMinutes <= 0 || isSessionLocked) {
+    if (!sessionToken || !settings.autoLogoutMinutes || settings.autoLogoutMinutes <= 0) {
       return;
     }
 
@@ -1720,15 +1722,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const remaining = Math.max(0, limitSeconds - elapsed);
       setRemainingInactivitySeconds(remaining);
 
-      if (remaining <= 0 && !isSessionLocked) {
-        setIsSessionLocked(true);
-        setSessionLockReason(`Inactivity timeout (${settings.autoLogoutMinutes} minutes)`);
-        addAuditEntry('SETTINGS_UPDATE', 'Settings', 'Auto-Logout Triggered', 'System', `Session locked automatically due to ${settings.autoLogoutMinutes} minutes of inactivity.`);
+      if (remaining <= 0) {
+        setIsSessionLocked(false);
+        setSessionLockReason('');
+        addAuditEntry('SETTINGS_UPDATE', 'Settings', 'Auto-Logout Triggered', 'System', `User session automatically signed out due to ${settings.autoLogoutMinutes} minutes of inactivity.`);
+        setAuthError(`Your session has timed out due to ${settings.autoLogoutMinutes} minutes of inactivity. Please sign in again.`);
+        logout();
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [settings.autoLogoutMinutes, lastActivityTimestamp, isSessionLocked, addAuditEntry]);
+  }, [sessionToken, settings.autoLogoutMinutes, lastActivityTimestamp, addAuditEntry, logout]);
 
   // Session preferences are the only thing kept in browser storage.
   useEffect(() => { saveStorage('role', currentUserRole); }, [currentUserRole]);

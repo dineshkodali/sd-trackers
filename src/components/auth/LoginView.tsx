@@ -133,7 +133,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToResetPassword 
           {(localError || authError) && (
             <div role="alert" className="mt-4 p-3 bg-red-950/40 border border-red-500/40 rounded-xs text-xs text-red-200">
               <div>{localError || authError}</div>
-              {(authError?.toLowerCase().includes('expired') || authError?.toLowerCase().includes('invalid')) && (
+              {((authError?.toLowerCase().includes('reset') || authError?.toLowerCase().includes('link') || authError?.toLowerCase().includes('recovery')) && (authError?.toLowerCase().includes('expired') || authError?.toLowerCase().includes('invalid'))) && (
                 <button
                   type="button"
                   onClick={() => {

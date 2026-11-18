@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { RoleType } from '../../types';
 
 export const SessionLockModal: React.FC = () => {
-  const { isSessionLocked, sessionLockReason, unlockSession, currentUserRole, currentUserName, setCurrentUserRole, assignedSite } = useApp();
+  const { isSessionLocked, sessionLockReason, unlockSession, logout, currentUserRole, currentUserName, setCurrentUserRole, assignedSite } = useApp();
 
   if (!isSessionLocked) return null;
 
@@ -39,11 +39,13 @@ export const SessionLockModal: React.FC = () => {
 
         <div className="space-y-2 pt-1">
           <button
-            onClick={() => unlockSession()}
-            className="w-full py-2.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold text-xs rounded-xs shadow-xs transition-colors flex items-center justify-center gap-2"
+            onClick={() => {
+              unlockSession();
+              logout();
+            }}
+            className="w-full py-2.5 bg-[#0d9488] hover:bg-[#0f766e] text-white font-semibold text-xs rounded-xs shadow-xs transition-colors flex items-center justify-center gap-1.5"
           >
-            <KeyRound className="w-4 h-4" />
-            <span>Unlock &amp; Resume Session</span>
+            <span>Return to Login Page</span>
           </button>
 
           <div className="text-[11px] text-[#8a8886] pt-1">
