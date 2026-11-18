@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
+import { Pagination } from '../common/Pagination';
 import { IconFileText as FileText, IconDownload as Download, IconEdit as Edit, IconTrash as Trash2, IconHistory as History, IconSearch as Search, IconClock as Clock, IconShield as Shield, IconMapPin as MapPin, IconCalendar as Calendar, IconX as X, IconLoader2 as Loader2, IconCircleCheck as CheckCircle } from '@tabler/icons-react';
 import type { DocumentBuilderRecord, DocumentAuditLog } from '../../types/documentBuilder';
 import {
@@ -52,6 +53,8 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
   const [selectedSite, setSelectedSite] = useState<string>(defaultSiteFilter === 'all' ? 'All Sites' : defaultSiteFilter);
   useEffect(() => { setSelectedSite(defaultSiteFilter === 'all' ? 'All Sites' : defaultSiteFilter); }, [defaultSiteFilter]);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Audit trail modal state
   const [auditRecord, setAuditRecord] = useState<DocumentBuilderRecord | null>(null);
@@ -148,6 +151,8 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
   };
 
   // Filter records
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedSite, selectedStatus]);
+
   const filteredRecords = records.filter(r => {
     // Site filter
     if (!isSitePermitted(r.site, selectedSite === 'All Sites' ? 'all' : selectedSite)) return false;
@@ -249,7 +254,7 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
-                {filteredRecords.map(rec => (
+                {filteredRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(rec => (
                   <tr key={rec.id} className="hover:bg-[#f8fafc] transition-colors">
                     {/* Document Title & Reference */}
                     <td className="py-3 px-4">
@@ -380,6 +385,16 @@ export const DocumentsListView: React.FC<DocumentsListViewProps> = ({ onEditReco
               </tbody>
             </table>
           </div>
+        )}
+
+        {!loading && (
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredRecords.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
+          />
         )}
       </div>
 

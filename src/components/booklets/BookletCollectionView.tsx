@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { ClampedText } from '../common/ClampedText';
+import { Pagination } from '../common/Pagination';
 import { IconBook as BookOpen, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowsSort as ArrowUpDown, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconCircleCheck as CheckCircle2, IconX as X, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { BookletCollectionRecord } from '../../types';
@@ -80,7 +81,7 @@ export const BookletCollectionView: React.FC = () => {
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
-  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedData?.map(p => p.id) || []); };
+  const handleToggleSelectAll = () => { setSelectedIds(prev => prev.length ? [] : paginatedRecords.map(p => p.id) || []); };
   const handleToggleSelect = (e: any, id: string) => { e.stopPropagation(); setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]); };
   const handleDeleteSelected = () => {
     if (selectedIds.length === 0) return;
@@ -118,6 +119,9 @@ export const BookletCollectionView: React.FC = () => {
     });
   }, [bookletRecords, isSitePermitted, effectiveHotel, selectedAgent, bookletTypeFilter, searchQuery]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a: any, b: any) => {
       // QA-08: Always pin newly created record to top of table while highlight is active
@@ -135,6 +139,14 @@ export const BookletCollectionView: React.FC = () => {
         : String(valB).localeCompare(String(valA));
     });
   }, [filteredRecords, sortKey, sortOrder, lastCreatedId]);
+
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedRecords.slice(start, start + pageSize);
+  }, [sortedRecords, currentPage, pageSize]);
+
+  // Back to page 1 when the filters or sorting change the list
+  React.useEffect(() => { setCurrentPage(1); }, [effectiveHotel, selectedAgent, bookletTypeFilter, searchQuery, sortKey, sortOrder]);
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
@@ -483,7 +495,7 @@ export const BookletCollectionView: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                sortedRecords.map(record => (
+                paginatedRecords.map(record => (
                   <tr 
                     key={record.id} 
                     className={
@@ -534,6 +546,14 @@ export const BookletCollectionView: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={sortedRecords.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={size => { setPageSize(size); setCurrentPage(1); }}
+        />
       </div>
 
       {/* Dynamic Create Modal */}

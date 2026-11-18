@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
+import { Pagination } from '../common/Pagination';
 import { IconAdjustmentsHorizontal as SlidersHorizontal, IconPlus as Plus, IconEdit as Edit3, IconTrash as Trash2, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconRefresh as RefreshCw, IconDownload as Download, IconSearch as Search, IconEye as Eye, IconCheck as Check, IconX as X, IconFolderHeart as FolderHeart, IconHeartHandshake as HeartHandshake, IconAlertTriangle as AlertTriangle, IconShieldExclamation as ShieldAlert, IconAlarm as Siren, IconHelmet as HardHat, IconClock as Clock, IconSoup as Soup, IconApple as Apple, IconWaveSine as Waves, IconBuildingBank as Landmark, IconSend as Send, IconCircleCheck as CheckCircle, IconActivity as Activity, IconAlertCircle as AlertCircle, IconTool as Wrench, IconToolsKitchen2 as Utensils, IconCreditCard as CreditCard } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { CustomFieldOption, FieldOptionCategory } from '../../types';
@@ -32,6 +33,8 @@ export const FieldOptionsSetupView: React.FC = () => {
   } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState<FieldOptionCategory>('referralTypes');
+  const [optionPage, setOptionPage] = useState(1);
+  const [optionPageSize, setOptionPageSize] = useState(25);
   const [selectedDepartment, setSelectedDepartment] = useState<'All' | 'Safeguarding' | 'Facilities' | 'Welfare' | 'Healthcare & Transport' | 'Compliance & Documents' | 'Operations & Governance'>('All');
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,6 +93,9 @@ export const FieldOptionsSetupView: React.FC = () => {
       .filter(opt => opt.category === selectedCategory)
       .sort((a, b) => a.order - b.order);
   }, [fieldOptions, selectedCategory]);
+
+  // Back to the first page when the category or search changes
+  React.useEffect(() => { setOptionPage(1); }, [selectedCategory, searchQuery]);
 
   // Filtered options by search query
   const filteredOptions = useMemo(() => {
@@ -452,7 +458,8 @@ export const FieldOptionsSetupView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredOptions.map((opt, idx) => {
+                    filteredOptions.slice((optionPage - 1) * optionPageSize, optionPage * optionPageSize).map((opt, localIdx) => {
+                      const idx = (optionPage - 1) * optionPageSize + localIdx;
                       const colorStyle = COLOR_MAP[opt.color || 'blue'] || COLOR_MAP.blue;
                       return (
                         <tr 
@@ -549,6 +556,13 @@ export const FieldOptionsSetupView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              currentPage={optionPage}
+              pageSize={optionPageSize}
+              totalItems={filteredOptions.length}
+              onPageChange={setOptionPage}
+              onPageSizeChange={size => { setOptionPageSize(size); setOptionPage(1); }}
+            />
           </div>
         </div>
       </div>

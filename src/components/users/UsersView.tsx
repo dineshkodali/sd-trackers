@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { IconArchive as Archive } from '@tabler/icons-react';
 import { useLifecycleActions } from '../../hooks/useLifecycleActions';
 import { LifecycleDialog } from '../common/LifecycleDialog';
+import { Pagination } from '../common/Pagination';
 import { LifecycleNoticeBar, LifecycleRecordsPanel, LifecycleTabs, type LifecycleSection } from '../common/LifecycleRecordsPanel';
 import { checkTransition } from '../../config/recordLifecycle';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
@@ -448,6 +449,12 @@ export const UsersView: React.FC = () => {
     });
   }, [filteredUsers, userSortField, userSortAsc]);
 
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(10);
+  const pagedUsers = useMemo(() => sortedUsers.slice((userPage - 1) * userPageSize, userPage * userPageSize), [sortedUsers, userPage, userPageSize]);
+  // Back to page 1 whenever the filtered list changes
+  React.useEffect(() => { setUserPage(1); }, [filteredUsers.length, userSortField, userSortAsc]);
+
   const dynamicPropertyGroups: UserGroup[] = useMemo(() => {
     return properties.map(p => {
       const teamUsers = users.filter(u => {
@@ -864,7 +871,7 @@ export const UsersView: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  sortedUsers.map(u => (
+                  pagedUsers.map(u => (
                     <tr key={u.id || `${u.email}-${u.name}`} className="hover:bg-[#f3f8fd] group transition-colors">
                       {hasAdminAuthority && (
                         <td className="p-3 border-b border-[#edebe9]">
@@ -977,6 +984,13 @@ export const UsersView: React.FC = () => {
               </tbody>
             </table>
           </div>
+          <Pagination
+            currentPage={userPage}
+            pageSize={userPageSize}
+            totalItems={sortedUsers.length}
+            onPageChange={setUserPage}
+            onPageSizeChange={size => { setUserPageSize(size); setUserPage(1); }}
+          />
         </div>
       )}
 

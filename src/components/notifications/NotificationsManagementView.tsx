@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
+import { Pagination } from '../common/Pagination';
 import { IconBellRinging as BellRing, IconMail as Mail, IconSend as Send, IconRefresh as RefreshCw, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconAlertTriangle as AlertTriangle, IconSearch as Search, IconRotate as RotateCcw, IconServer as Server, IconSettings as Settings, IconInfoCircle as Info, IconClock as Clock, IconEdit as Edit3, IconShield as Shield, IconTool as Wrench, IconBus as Bus, IconHeartbeat as HeartPulse, IconBuilding as Building2, IconFileCheck as FileCheck2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { 
@@ -105,6 +106,12 @@ export const NotificationsManagementView: React.FC = () => {
   const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [rulePage, setRulePage] = useState(1);
+  const [rulePageSize, setRulePageSize] = useState(10);
+  const [logPage, setLogPage] = useState(1);
+  const [logPageSize, setLogPageSize] = useState(10);
+
+  useEffect(() => { setRulePage(1); }, [searchQuery, selectedModule, selectedStatus, selectedSeverity]);
 
   useEffect(() => {
     emailNotificationService.getMaster().then(v => { if (v !== null) setMasterEnabled(v); });
@@ -569,7 +576,7 @@ export const NotificationsManagementView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredRules.map(rule => {
+                    filteredRules.slice((rulePage - 1) * rulePageSize, rulePage * rulePageSize).map(rule => {
                       const modStyle = MODULE_COLORS[rule.module] || { bg: 'bg-gray-50', text: 'text-gray-800', border: 'border-gray-200' };
                       return (
                         <tr key={rule.id} className="hover:bg-[#fbfbfa] transition-colors group">
@@ -688,6 +695,7 @@ export const NotificationsManagementView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination currentPage={rulePage} pageSize={rulePageSize} totalItems={filteredRules.length} onPageChange={setRulePage} onPageSizeChange={size => { setRulePageSize(size); setRulePage(1); }} />
           </div>
         </div>
       )}
@@ -733,7 +741,7 @@ export const NotificationsManagementView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    emailNotificationLogs.map(log => (
+                    emailNotificationLogs.slice((logPage - 1) * logPageSize, logPage * logPageSize).map(log => (
                       <tr key={log.id} className="hover:bg-[#fbfbfa] transition-colors">
                         <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#605e5c] whitespace-nowrap">
                           {new Date(log.dispatchedAt).toLocaleString('en-GB')}
@@ -788,6 +796,7 @@ export const NotificationsManagementView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination currentPage={logPage} pageSize={logPageSize} totalItems={emailNotificationLogs.length} onPageChange={setLogPage} onPageSizeChange={size => { setLogPageSize(size); setLogPage(1); }} />
           </div>
         </div>
       )}
