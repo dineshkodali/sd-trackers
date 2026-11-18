@@ -1636,12 +1636,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: `Submitted data change request (${newReq.requestType}) for review.`
     }).then(saved => {
       if (!saved) return;
-      // Automated configurable email notification dispatch
-      triggerEmailNotification('change_request.created', newReq, {
-        site: newReq.site,
-        severity: 'Medium',
-        entityId: newReq.id
-      });
     });
   }, [persistCreate, triggerEmailNotification]);
 
@@ -2642,12 +2636,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Alerts describe a stored record, so they wait for the database to accept it.
         if (!saved) return;
 
-        // Automated configurable email notification dispatch
-        triggerEmailNotification('referral.created', newRef, {
-          site: newRef.site,
-          severity: newRef.urgency === 'Critical' ? 'Critical' : newRef.urgency === 'High' ? 'High' : 'Medium',
-          entityId: newRef.portRef
-        });
         if (newRef.urgency === 'Critical' || newRef.urgency === 'High') {
           triggerEmailNotification('referral.urgent', newRef, {
             site: newRef.site,
@@ -2805,12 +2793,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         details: `Registered vulnerable resident (${newSU.riskLevel} risk).`
       }).then(saved => {
         if (!saved) return;
-        // Automated configurable email notification dispatch
-        triggerEmailNotification('vulnerable.created', newSU, {
-          site: newSU.site,
-          severity: newSU.riskLevel === 'Critical' ? 'Critical' : newSU.riskLevel === 'High' ? 'High' : 'Medium',
-          entityId: newSU.id
-        });
 
         // Automated SMTP email dispatch for High/Critical Vulnerable SUs
         if (newSU.riskLevel === 'Critical' || newSU.riskLevel === 'High') {
@@ -3315,12 +3297,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         details: `Escalated to ${rec.escalatedTo || rec.reportedAuthorities || 'Management'} with ${rec.urgency || 'High'} priority.`
       }).then(saved => {
         if (!saved) return;
-        // Automated configurable email notification dispatch
-        triggerEmailNotification('escalation.created', rec, {
-          site: rec.site,
-          severity: rec.urgency === 'Critical' ? 'Critical' : 'High',
-          entityId: rec.id
-        });
         if (rec.urgency === 'Critical') {
           triggerEmailNotification('escalation.critical', rec, {
             site: rec.site,
@@ -3470,12 +3446,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: `Logged maintenance defect (${newRecord.priorityTimeScale}).`
     }).then(saved => {
       if (!saved) return;
-      // Automated configurable email notification dispatch
-      triggerEmailNotification('maintenance.created', newRecord, {
-        site: newRecord.site,
-        severity: newRecord.priority === 'CAT 1' ? 'Critical' : 'Medium',
-        entityId: newRecord.id
-      });
       if (newRecord.priority === 'CAT 1') {
         triggerEmailNotification('maintenance.cat1_emergency', newRecord, {
           site: newRecord.site,
@@ -3612,12 +3582,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: `Created transport approval ${newRecord.approvalUrn} for ${newRecord.suNames}.`
     }).then(saved => {
       if (!saved) return;
-      // Automated configurable email notification dispatch
-      triggerEmailNotification('transport.created', newRecord, {
-        site,
-        severity: 'Low',
-        entityId: newRecord.approvalUrn
-      });
       if (newRecord.exceptionalCircumstances && newRecord.exceptionalCircumstances.trim() !== '') {
         triggerEmailNotification('transport.exceptional_circumstance', newRecord, {
           site,
@@ -3948,12 +3912,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: `Logged compliance asset ${newRecord.complianceType} by ${newRecord.contractorName}.`
     }).then(saved => {
       if (!saved) return;
-      // Automated configurable email notification dispatch
-      triggerEmailNotification('compliance.created', newRecord, {
-        site: newRecord.siteName || 'All Sites',
-        severity: 'Medium',
-        entityId: newRecord.complianceType
-      });
     });
   }, [persistCreate, triggerEmailNotification]);
 
@@ -4004,12 +3962,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: `Booked GP appointment for Room ${newRecord.roomNo} (${newRecord.portReference}).`
     }).then(saved => {
       if (!saved) return;
-      // Automated configurable email notification dispatch
-      triggerEmailNotification('gp.created', newRecord, {
-        site: newRecord.siteName || 'All Sites',
-        severity: 'Low',
-        entityId: newRecord.portReference
-      });
     });
   }, [persistCreate, triggerEmailNotification]);
 
@@ -4065,12 +4017,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: `Conducted RFA welfare check for ${newRecord.name} (Room ${newRecord.roomOrFlatNo}).`
     }).then(saved => {
       if (!saved) return;
-      // Automated configurable email notification dispatch
-      triggerEmailNotification('welfare.created', newRecord, {
-        site: newRecord.siteName,
-        severity: 'Low',
-        entityId: newRecord.portOrNassRef
-      });
       if (newRecord.mhTicket && newRecord.mhTicket.trim() !== '') {
         triggerEmailNotification('welfare.mental_health_ticket', newRecord, {
           site: newRecord.siteName,
@@ -4126,12 +4072,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       details: `Recorded dispersal entry for SU ${newRecord.suPortNassRef} (Flat ${newRecord.flatRoomNumber}).`
     }).then(saved => {
       if (!saved) return;
-      // Automated configurable email notification dispatch
-      triggerEmailNotification('dispersal.created', newRecord, {
-        site: newRecord.siteName,
-        severity: 'Low',
-        entityId: newRecord.suPortNassRef
-      });
       if (newRecord.travelled === 'No' || (newRecord.reasonFailedToTravel && newRecord.reasonFailedToTravel.trim() !== '')) {
         triggerEmailNotification('dispersal.failed_to_travel', newRecord, {
           site: newRecord.siteName,

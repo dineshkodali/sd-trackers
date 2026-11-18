@@ -17,6 +17,7 @@ import { seedReferenceData } from '../seed.js';
 import { INITIAL_ROLE_PERMISSIONS } from '../../src/data/initialData.js';
 import { masterDataStore } from '../masterDataStore.js';
 import { enforceEntityPagePermission, userMayAccessTable } from '../pagePermissions.js';
+import { notifyRecordEvent, getNotificationModules } from './smtp.js';
 import { SU_MANAGER_ROLES, SU_EDITOR_ROLES, redactSensitiveRows, stripSensitiveUpdateFields, sanitizeFundingBody, sanitizeOysterCardBody } from '../suAccess.js';
 
 const router = Router();
@@ -1748,6 +1749,11 @@ router.post('/:entity', async (req: Request, res: Response) => {
     const writeCols = await getLiveColumns(writeTable);
     const dbRow = toDatabaseRow(writeTable, record, caller.validUuid, writeCols || TABLE_COLUMNS[writeTable] || liveCols);
 
+    // A POST is an upsert: note whether the row already existed so the right email (new vs updated) is sent.
+    let priorRow: any = null;
+    if (getNotificationModules().some(m => m.table === writeTable) && dbRow.id) {
+      try { priorRow = (await client.from(writeTable).select('*').eq('id', dbRow.id).maybeSingle()).data || null; } catch {}
+    }
     const { data, error } = await client.from(writeTable).upsert(dbRow).select().single();
     if (error) {
       if (isMissingTableError(error)) {
@@ -1770,6 +1776,10 @@ router.post('/:entity', async (req: Request, res: Response) => {
 
     const saved = fromDatabaseRow(def.table, data || dbRow);
     if (def.table === 'role_permissions') permissionCache = null;
+    void notifyRecordEvent({
+      table: writeTable, kind: priorRow ? 'updated' : 'created', record: saved,
+      before: priorRow ? fromDatabaseRow(writeTable, priorRow) : null, incoming: req.body, user: req.user
+    });
 
     // Synchronize newly created property with sites (Properties Directory)
     if (writeTable === 'properties') {
@@ -1908,6 +1918,7 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
         site: req.body.site || req.body.siteName,
         defaultDetails: `Created ${req.params.entity} record [${id}]`
       });
+      void notifyRecordEvent({ table: writeTable, kind: 'created', record: fromDatabaseRow(def.table, data || dbRow), user: req.user });
       return res.json({ success: true, record: fromDatabaseRow(def.table, data || dbRow) });
     }
 
@@ -1925,6 +1936,10 @@ router.put('/:entity/:id', async (req: Request, res: Response) => {
     }
 
     if (def.table === 'role_permissions') permissionCache = null;
+    void notifyRecordEvent({
+      table: writeTable, kind: 'updated', record: fromDatabaseRow(def.table, data || { id, ...dbRow }),
+      before: fromDatabaseRow(writeTable, existingRow), incoming: req.body, user: req.user
+    });
 
     // Synchronize Property Management (properties) <-> Properties Directory (sites)
     if (writeTable === 'properties') {

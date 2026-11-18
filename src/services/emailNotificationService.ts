@@ -19,7 +19,7 @@ export const emailNotificationService = {
   /**
    * Fetch all configured notification rules
    */
-  async getRules(): Promise<NotificationRule[]> {
+  async getRules(): Promise<NotificationRule[] | null> {
     try {
       const res = await fetch(getApiUrl('/api/smtp/rules'), {
         headers: getAuthHeaders()
@@ -31,9 +31,54 @@ export const emailNotificationService = {
         }
       }
     } catch (err) {
-      console.warn('Failed to fetch notification rules from server, using defaults:', err);
+      console.warn('Failed to fetch notification rules from server:', err);
     }
-    return DEFAULT_NOTIFICATION_RULES;
+    // null = could not load. The caller keeps what is on screen: showing factory defaults here made saved ON/OFF
+    // settings look as if they had reverted whenever a refresh failed or timed out.
+    return null;
+  },
+
+  /** Modules discovered from the app's entity registry, with the fields an update rule can react to. */
+  async getModules(): Promise<Array<{ table: string; label: string; fields: string[] }>> {
+    try {
+      const res = await fetch(getApiUrl('/api/smtp/modules'), { headers: getAuthHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.modules)) return data.modules;
+    } catch {}
+    return [];
+  },
+
+  /** Master switch for every notification email. */
+  async getMaster(): Promise<boolean | null> {
+    try {
+      const res = await fetch(getApiUrl('/api/smtp/master'), { headers: getAuthHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.enabled === 'boolean') return data.enabled;
+    } catch {}
+    return null;
+  },
+
+  async setMaster(enabled: boolean): Promise<{ success: boolean; enabled?: boolean; error?: string }> {
+    try {
+      const res = await fetch(getApiUrl('/api/smtp/master'), { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ enabled }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) return { success: false, error: data?.error || `HTTP ${res.status}` };
+      return data;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  /** Renders the subject and email for sample data; nothing is sent. */
+  async preview(input: { subjectTemplate?: string; bodyTemplate?: string; module?: string; title?: string; includeLink?: boolean }): Promise<{ success: boolean; subject?: string; html?: string; error?: string }> {
+    try {
+      const res = await fetch(getApiUrl('/api/smtp/preview'), { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) return { success: false, error: data?.error || `HTTP ${res.status}` };
+      return data;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
   },
 
   /**

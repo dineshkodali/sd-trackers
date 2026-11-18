@@ -932,7 +932,7 @@ export type NotificationSeverityThreshold = 'All' | 'Low' | 'Medium' | 'High' | 
 export interface NotificationRule {
   id: string;
   eventCode: NotificationEventCode;
-  module: NotificationModule;
+  module: NotificationModule | string;
   title: string;
   description: string;
   enabled: boolean;
@@ -946,6 +946,18 @@ export interface NotificationRule {
   dispatchCount: number;
   createdAt: string;
   updatedAt: string;
+  /** Email body with {{field}} tokens. Empty uses the standard layout. */
+  bodyTemplate?: string;
+  includeLink?: boolean;
+  /** Record fields that make an update email send; empty means any meaningful change. */
+  triggerFields?: string[];
+  /** Specific user ids to notify, in addition to roles and custom addresses. */
+  recipientUsers?: string[];
+  notifySiteManager?: boolean;
+  /** Set on per-module rules: the table the module saves to. */
+  entityTable?: string;
+  eventKind?: 'record_created' | 'record_updated';
+  updatedBy?: string;
 }
 
 export interface EmailNotificationLog {

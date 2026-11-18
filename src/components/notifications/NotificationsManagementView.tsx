@@ -31,7 +31,9 @@ const MODULE_COLORS: Record<NotificationModule, { bg: string; text: string; bord
   'Governance': { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-200' }
 };
 
-const AVAILABLE_ROLES: RoleType[] = ['Super Admin', 'Admin', 'Regional Manager', 'Area Manager', 'Staff'];
+const AVAILABLE_ROLES: RoleType[] = ['Super Admin', 'Admin', 'Regional Manager', 'General Manager', 'Area Manager', 'Staff'];
+
+interface ModuleInfo { table: string; label: string; fields: string[] }
 
 export const NotificationsManagementView: React.FC = () => {
   const { 
@@ -41,7 +43,8 @@ export const NotificationsManagementView: React.FC = () => {
     toggleNotificationRule, 
     resetNotificationRules, 
     refreshNotificationData 
-  , requestConfirmation } = useApp();
+  , requestConfirmation, users, currentUserRole } = useApp();
+  const isSuperAdmin = currentUserRole === 'Super Admin';
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'smtp'>('rules');
@@ -93,6 +96,55 @@ export const NotificationsManagementView: React.FC = () => {
   // Log inspect modal
   const [inspectingLog, setInspectingLog] = useState<EmailNotificationLog | null>(null);
 
+  // Master switch, discovered modules and email preview
+  const [masterEnabled, setMasterEnabled] = useState<boolean | null>(null);
+  const [masterBusy, setMasterBusy] = useState(false);
+  const [masterError, setMasterError] = useState('');
+  const [modules, setModules] = useState<ModuleInfo[]>([]);
+  const [expandedModule, setExpandedModule] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    emailNotificationService.getMaster().then(v => { if (v !== null) setMasterEnabled(v); });
+    emailNotificationService.getModules().then(setModules);
+  }, []);
+
+  const handleToggleMaster = async () => {
+    if (masterEnabled === null || masterBusy) return;
+    const next = !masterEnabled;
+    setMasterBusy(true); setMasterError('');
+    const res = await emailNotificationService.setMaster(next);
+    setMasterBusy(false);
+    if (res.success) setMasterEnabled(next);
+    else setMasterError(res.error || 'Could not change the master switch.');
+  };
+
+  const handlePreview = async () => {
+    if (!editingRule) return;
+    setPreviewBusy(true);
+    const res = await emailNotificationService.preview({
+      subjectTemplate: editFormData.subjectTemplate, bodyTemplate: editFormData.bodyTemplate,
+      module: String(editingRule.module), title: editingRule.title, includeLink: editFormData.includeLink !== false
+    });
+    setPreviewBusy(false);
+    setPreview(res.success ? { subject: res.subject || '', html: res.html || '' } : { subject: 'Preview unavailable', html: '<p>' + (res.error || 'Could not render the preview.') + '</p>' });
+  };
+
+  // One row per module: its "New record" and "Record updated" rules
+  const moduleRows = useMemo(() => {
+    const byTable = new Map<string, { table: string; label: string; created?: NotificationRule; updated?: NotificationRule }>();
+    for (const r of notificationRules) {
+      if (!r.entityTable) continue;
+      const row = byTable.get(r.entityTable) || { table: r.entityTable, label: modules.find(m => m.table === r.entityTable)?.label || String(r.module) };
+      if (r.eventKind === 'record_created') row.created = r; else if (r.eventKind === 'record_updated') row.updated = r;
+      byTable.set(r.entityTable, row);
+    }
+    const q = searchQuery.trim().toLowerCase();
+    return Array.from(byTable.values()).filter(r => !q || r.label.toLowerCase().includes(q)).sort((a, b) => a.label.localeCompare(b.label));
+  }, [notificationRules, modules, searchQuery]);
+
   // Load SMTP Status
   useEffect(() => {
     loadSmtpStatus();
@@ -114,6 +166,7 @@ export const NotificationsManagementView: React.FC = () => {
   // Filtered Rules
   const filteredRules = useMemo(() => {
     return notificationRules.filter(rule => {
+      if (rule.entityTable) return false; // module rules live in the Modules table above
       if (selectedModule !== 'all' && rule.module !== selectedModule) return false;
       if (selectedStatus === 'enabled' && !rule.enabled) return false;
       if (selectedStatus === 'disabled' && rule.enabled) return false;
@@ -133,7 +186,7 @@ export const NotificationsManagementView: React.FC = () => {
   }, [notificationRules, selectedModule, selectedStatus, selectedSeverity, searchQuery]);
 
   // Counts
-  const totalRulesCount = notificationRules.length;
+  const totalRulesCount = notificationRules.filter(r => !r.entityTable).length;
   const activeRulesCount = notificationRules.filter(r => r.enabled).length;
   const totalLogsCount = emailNotificationLogs.length;
 
@@ -147,8 +200,15 @@ export const NotificationsManagementView: React.FC = () => {
       customRecipients: [...rule.customRecipients],
       customCc: [...rule.customCc],
       subjectTemplate: rule.subjectTemplate,
-      includeMetadata: rule.includeMetadata
+      includeMetadata: rule.includeMetadata,
+      bodyTemplate: rule.bodyTemplate || '',
+      includeLink: rule.includeLink !== false,
+      triggerFields: [...(rule.triggerFields || [])],
+      recipientUsers: [...(rule.recipientUsers || [])],
+      notifySiteManager: !!rule.notifySiteManager
     });
+    setSaveError('');
+    setPreview(null);
   };
 
   // Save Edit Modal
@@ -158,6 +218,7 @@ export const NotificationsManagementView: React.FC = () => {
     try {
       await updateNotificationRule(editingRule.id, editFormData);
       setEditingRule(null);
+      refreshNotificationData();
     } catch (err: any) {
       alert('Failed to save notification rule: ' + err.message);
     } finally {
@@ -271,6 +332,32 @@ export const NotificationsManagementView: React.FC = () => {
             <span>SMTP Server Status</span>
           </button>
         </div>
+      </div>
+
+      {/* Master switch */}
+      <div className={`border rounded-xs p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${masterEnabled === false ? 'bg-amber-50 border-amber-300' : 'bg-white border-[#e1dfdd]'}`}>
+        <div className="flex items-center gap-3">
+          <Mail className={`w-5 h-5 ${masterEnabled === false ? 'text-amber-600' : 'text-[#0d9488]'}`} />
+          <div>
+            <div className="text-sm font-bold text-[#242424]">Email Notifications: {masterEnabled === null ? '...' : masterEnabled ? 'ON' : 'OFF'}</div>
+            <div className="text-xs text-[#605e5c]">
+              {masterEnabled === false ? 'All notification emails are stopped, whatever is set below.' : 'Emails are sent only for the modules and events switched on below.'}
+              {!isSuperAdmin && ' Only a Super Admin can change this.'}
+            </div>
+            {masterError && <div className="text-xs text-rose-700 mt-0.5">{masterError}</div>}
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!!masterEnabled}
+          aria-label="Email notifications master switch"
+          disabled={!isSuperAdmin || masterEnabled === null || masterBusy}
+          onClick={handleToggleMaster}
+          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors disabled:opacity-50 ${isSuperAdmin ? 'cursor-pointer' : 'cursor-not-allowed'} ${masterEnabled ? 'bg-[#0d9488]' : 'bg-[#d2d0ce]'}`}
+        >
+          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ${masterEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+        </button>
       </div>
 
       {/* 2. Navigation Tabs */}
@@ -400,7 +487,67 @@ export const NotificationsManagementView: React.FC = () => {
             </div>
           </div>
 
-          {/* Rules Table */}
+          {/* Modules: New record / Record updated, discovered from the app's pages */}
+          <div className="bg-white border border-[#e1dfdd] rounded-xs overflow-hidden shadow-xs">
+            <div className="px-3.5 py-2.5 border-b border-[#edebe9] bg-[#faf9f8]">
+              <div className="text-xs font-bold text-[#242424]">Modules: New Record and Record Updated emails</div>
+              <div className="text-[11px] text-[#605e5c]">Every page that saves records is listed here automatically. Switch a module on, then Configure to choose recipients and wording.</div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#faf9f8] border-b border-[#edebe9] text-[#605e5c] font-semibold">
+                    <th className="py-2.5 px-3.5">Module / Page</th>
+                    <th className="py-2.5 px-3.5 text-center">New Record</th>
+                    <th className="py-2.5 px-3.5 text-center">Record Updated</th>
+                    <th className="py-2.5 px-3.5">Status</th>
+                    <th className="py-2.5 px-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#edebe9]">
+                  {moduleRows.length === 0 ? (
+                    <tr><td colSpan={5} className="py-6 text-center text-[#8a8886]">No modules loaded yet. Press Refresh.</td></tr>
+                  ) : moduleRows.map(row => {
+                    const anyOn = !!(row.created?.enabled || row.updated?.enabled);
+                    const Switch = ({ rule, label }: { rule?: NotificationRule; label: string }) => rule ? (
+                      <button
+                        type="button" role="switch" aria-checked={rule.enabled} aria-label={`${label} email for ${row.label}`} title={`${label}: ${rule.enabled ? 'ON (click to switch off)' : 'OFF (click to switch on)'}`}
+                        onClick={() => toggleNotificationRule(rule.id)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${rule.enabled ? 'bg-[#0d9488]' : 'bg-[#d2d0ce]'}`}
+                      >
+                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition duration-200 ${rule.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
+                    ) : <span className="text-[#c8c6c4]">-</span>;
+                    return (
+                      <tr key={row.table} className="hover:bg-[#fbfbfa] transition-colors">
+                        <td className="py-2.5 px-3.5 font-semibold text-[#242424]">{row.label}</td>
+                        <td className="py-2.5 px-3.5 text-center"><Switch rule={row.created} label="New record" /></td>
+                        <td className="py-2.5 px-3.5 text-center"><Switch rule={row.updated} label="Record updated" /></td>
+                        <td className="py-2.5 px-3.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-xs border ${anyOn ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-[#f3f2f1] text-[#605e5c] border-[#e1dfdd]'}`}>{anyOn ? 'Active' : 'Off'}</span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-right whitespace-nowrap space-x-1.5">
+                          {row.created && (
+                            <button type="button" onClick={() => handleOpenEdit(row.created!)} className="px-2.5 py-1 text-xs text-[#323130] hover:bg-[#f3f2f1] border border-[#d2d0ce] rounded-xs inline-flex items-center gap-1 font-medium" title="Configure the New Record email">
+                              <Edit3 className="w-3 h-3 text-[#605e5c]" /><span>New</span>
+                            </button>
+                          )}
+                          {row.updated && (
+                            <button type="button" onClick={() => handleOpenEdit(row.updated!)} className="px-2.5 py-1 text-xs text-[#323130] hover:bg-[#f3f2f1] border border-[#d2d0ce] rounded-xs inline-flex items-center gap-1 font-medium" title="Configure the Record Updated email">
+                              <Edit3 className="w-3 h-3 text-[#605e5c]" /><span>Updated</span>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Other alert rules (special events such as emergencies and expiries) */}
+          <div className="text-xs font-bold text-[#242424] pt-1">Other alert rules</div>
           <div className="bg-white border border-[#e1dfdd] rounded-xs overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -826,8 +973,8 @@ export const NotificationsManagementView: React.FC = () => {
                 </button>
               </div>
 
-              {/* Minimum Severity Threshold */}
-              <div>
+              {/* Minimum Severity Threshold (alert rules only: a module's record emails follow its ON/OFF switch) */}
+              {!editingRule.entityTable && <div>
                 <label className="block font-semibold text-[#323130] mb-1">
                   Minimum Severity / Risk Threshold:
                 </label>
@@ -842,7 +989,7 @@ export const NotificationsManagementView: React.FC = () => {
                   <option value="High">High &amp; Above (Recommended for Alerts)</option>
                   <option value="Critical">Critical Only (Highest Priority Emergencies)</option>
                 </select>
-              </div>
+              </div>}
 
               {/* Target Recipient Roles */}
               <div>
@@ -905,6 +1052,78 @@ export const NotificationsManagementView: React.FC = () => {
                 <div className="text-[11px] text-[#605e5c] mt-1">
                   Available tokens: <code className="bg-[#f3f2f1] px-1 py-0.5 rounded-xs">{'{{suName}}'}</code>, <code className="bg-[#f3f2f1] px-1 py-0.5 rounded-xs">{'{{site}}'}</code>, <code className="bg-[#f3f2f1] px-1 py-0.5 rounded-xs">{'{{roomNo}}'}</code>, <code className="bg-[#f3f2f1] px-1 py-0.5 rounded-xs">{'{{urgency}}'}</code>, <code className="bg-[#f3f2f1] px-1 py-0.5 rounded-xs">{'{{priority}}'}</code>, <code className="bg-[#f3f2f1] px-1 py-0.5 rounded-xs">{'{{defectType}}'}</code>, <code className="bg-[#f3f2f1] px-1 py-0.5 rounded-xs">{'{{complianceType}}'}</code>
                 </div>
+              </div>
+              {/* Specific users and the affected property's manager */}
+              <div>
+                <label className="block font-semibold text-[#323130] mb-1">Specific users (in addition to the roles above):</label>
+                <select
+                  multiple
+                  value={editFormData.recipientUsers || []}
+                  onChange={e => setEditFormData(prev => ({ ...prev, recipientUsers: Array.from(e.target.selectedOptions).map(o => o.value) }))}
+                  className="w-full px-2 py-1.5 border border-[#d2d0ce] rounded-xs bg-[#faf9f8] h-28"
+                >
+                  {users.filter(u => u.status === 'Active').sort((a, b) => a.name.localeCompare(b.name)).map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.role}) - {u.email}</option>
+                  ))}
+                </select>
+                <div className="text-[11px] text-[#605e5c] mt-1">Hold Ctrl (or Cmd) to pick several.</div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={!!editFormData.notifySiteManager} onChange={e => setEditFormData(prev => ({ ...prev, notifySiteManager: e.target.checked }))} className="rounded-xs text-[#0d9488]" />
+                <span>Also notify the manager(s) assigned to the affected property</span>
+              </label>
+
+              {/* Update trigger fields (Record Updated rules only) */}
+              {editingRule?.eventKind === 'record_updated' && (
+                <div>
+                  <label className="block font-semibold text-[#323130] mb-1">Send only when these fields change (leave all unticked for any meaningful change):</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1 bg-[#faf9f8] border border-[#edebe9] p-3 rounded-xs max-h-40 overflow-y-auto">
+                    {(modules.find(m => m.table === editingRule.entityTable)?.fields || []).map(f => (
+                      <label key={f} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={(editFormData.triggerFields || []).includes(f)}
+                          onChange={e => setEditFormData(prev => ({ ...prev, triggerFields: e.target.checked ? [...(prev.triggerFields || []), f] : (prev.triggerFields || []).filter(x => x !== f) }))}
+                          className="rounded-xs text-[#0d9488]"
+                        />
+                        <span className="truncate" title={f}>{f}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-[#605e5c] mt-1">Timestamps and other technical fields never trigger an email.</div>
+                </div>
+              )}
+
+              {/* Email body */}
+              <div>
+                <label className="block font-semibold text-[#323130] mb-1">Email message:</label>
+                <textarea
+                  rows={6}
+                  value={editFormData.bodyTemplate || ''}
+                  onChange={e => setEditFormData(prev => ({ ...prev, bodyTemplate: e.target.value }))}
+                  placeholder="Leave empty to use the standard layout"
+                  className="w-full px-3 py-2 text-xs border border-[#d2d0ce] rounded-xs focus:border-[#0d9488] focus:outline-hidden"
+                />
+                <div className="text-[11px] text-[#605e5c] mt-1">
+                  Tokens: {['site', 'actor', 'timestamp', 'moduleLabel', 'changedFields', ...(modules.find(m => m.table === editingRule?.entityTable)?.fields || []).slice(0, 12)].map(t => (
+                    <code key={t} className="bg-[#f3f2f1] px-1 py-0.5 rounded-xs mr-1">{`{{${t}}}`}</code>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={editFormData.includeLink !== false} onChange={e => setEditFormData(prev => ({ ...prev, includeLink: e.target.checked }))} className="rounded-xs text-[#0d9488]" />
+                <span>Include a "View Record" link to SDTracker</span>
+              </label>
+              <div>
+                <button type="button" onClick={handlePreview} disabled={previewBusy} className="px-3 py-1.5 text-xs font-semibold text-[#323130] hover:bg-[#edebe9] border border-[#d2d0ce] rounded-xs disabled:opacity-50">
+                  {previewBusy ? 'Rendering...' : 'Preview email'}
+                </button>
+                {preview && (
+                  <div className="mt-2 border border-[#e1dfdd] rounded-xs overflow-hidden">
+                    <div className="px-3 py-1.5 bg-[#faf9f8] border-b border-[#edebe9] text-[11px]"><span className="text-[#8a8886]">Subject: </span><span className="font-semibold">{preview.subject}</span></div>
+                    <iframe title="Email preview" sandbox="" srcDoc={preview.html} className="w-full h-72 bg-white" />
+                  </div>
+                )}
               </div>
             </div>
 
