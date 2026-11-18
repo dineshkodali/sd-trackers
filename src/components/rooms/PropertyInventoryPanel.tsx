@@ -4,6 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { IconDownload as Download, IconPackage as PackagePlus, IconPencil as Pencil } from '@tabler/icons-react';
 import { roomManagementService } from '../../services/roomManagementService';
 import { exportTableToCsv } from '../../utils/csvExport';
@@ -58,6 +59,7 @@ export const PropertyInventoryPanel: React.FC<Props> = ({ propertyId, propertyNa
     rows: rows.map(r => [r.item.itemCode || '', r.item.itemName, r.item.category, r.item.itemType, r.onHand, r.minimum, r.inRooms, r.damaged, r.missing, r.stockRow?.storageLocation || '']),
   });
 
+  const pg1 = usePagedRows(shown);
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -80,6 +82,7 @@ export const PropertyInventoryPanel: React.FC<Props> = ({ propertyId, propertyNa
           <label className="flex items-center gap-1.5 cursor-pointer text-xs"><input type="checkbox" className="accent-[#0d9488]" checked={onlyLow} onChange={e => setOnlyLow(e.target.checked)} /> Low / out of stock only</label>
         </div>
         {shown.length === 0 ? <EmptyState title="Nothing to show" hint="Receive stock to start tracking it, or change the filters." /> : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[820px]">
               <thead><tr className="text-left text-[10px] uppercase text-[#64748b] border-b border-[#e2e8f0]">
@@ -87,7 +90,7 @@ export const PropertyInventoryPanel: React.FC<Props> = ({ propertyId, propertyNa
                 <th className="py-1 pr-2 text-right">In rooms</th><th className="py-1 pr-2 text-right">Damaged / missing</th><th className="py-1 pr-2">Level</th><th className="py-1" />
               </tr></thead>
               <tbody>
-                {shown.map(r => (
+                {pg1.rows.map(r => (
                   <tr key={r.item.id} className="border-b border-[#f1f5f9]">
                     <td className="py-1.5 pr-2"><div className="font-semibold text-[#1e293b]">{r.item.itemName}</div><div className="text-[10px] text-[#64748b]">{r.item.itemCode ? `${r.item.itemCode} · ` : ''}{r.item.category}{r.stockRow?.storageLocation ? ` · ${r.stockRow.storageLocation}` : ''}</div></td>
                     <td className="py-1.5 pr-2"><Chip tone={r.item.itemType === 'Asset' ? 'blue' : 'neutral'}>{r.item.itemType === 'Asset' ? 'Tracked' : 'Counted'}</Chip></td>
@@ -105,6 +108,8 @@ export const PropertyInventoryPanel: React.FC<Props> = ({ propertyId, propertyNa
               </tbody>
             </table>
           </div>
+          {pg1.footer}
+          </>
         )}
       </Card>
 

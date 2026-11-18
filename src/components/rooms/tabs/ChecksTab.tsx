@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { usePagedRows } from '../../common/Pagination';
 import { IconClipboardList as ClipboardList } from '@tabler/icons-react';
 import { useApp } from '../../../context/AppContext';
 import { Card, Chip, EmptyState, btnCls, fmtDate } from '../roomUi';
@@ -15,13 +16,15 @@ export const ChecksTab: React.FC<RoomTabProps> = ({ room, property }) => {
 
   const tone = (s: string) => (/pass/i.test(s) ? 'green' : /fail/i.test(s) ? 'red' : 'amber');
 
+  const pg1 = usePagedRows(mine);
   return (
     <Card title={<><ClipboardList className="w-3.5 h-3.5 text-[#0d9488]" /> Room checks ({mine.length})</>} actions={<button type="button" className={btnCls} onClick={() => setActivePage('roomChecks')}>Open Room Checks</button>}>
       {mine.length === 0 ? <EmptyState icon={<ClipboardList className="w-8 h-8" />} title="No room checks recorded for this room" hint="Inspections done on the Room Checks page for this room number appear here." /> : (
+        <>
         <table className="w-full text-xs">
           <thead><tr className="text-left text-[10px] uppercase text-[#64748b] border-b border-[#e2e8f0]"><th className="py-1 pr-2">Date</th><th className="py-1 pr-2">Officer</th><th className="py-1 pr-2">Result</th><th className="py-1">Comments</th></tr></thead>
           <tbody>
-            {mine.map(c => (
+            {pg1.rows.map(c => (
               <tr key={c.id} className="border-b border-[#f1f5f9] align-top">
                 <td className="py-1.5 pr-2 whitespace-nowrap">{fmtDate(c.inspectionDate)}</td>
                 <td className="py-1.5 pr-2">{c.officerName || '—'}</td>
@@ -31,6 +34,8 @@ export const ChecksTab: React.FC<RoomTabProps> = ({ room, property }) => {
             ))}
           </tbody>
         </table>
+        {pg1.footer}
+        </>
       )}
     </Card>
   );

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { 
   IconLanguage as Languages, 
   IconWorld as Globe, 
@@ -304,6 +305,8 @@ export const LanguageSummarySection: React.FC<LanguageSummarySectionProps> = ({
     );
   };
 
+  const pg1 = usePagedRows(filteredLangTable);
+  const pg2 = usePagedRows(filteredNatTable);
   return (
     <div className="space-y-4">
       {/* Top Navigation Sub-Tabs */}
@@ -468,7 +471,7 @@ export const LanguageSummarySection: React.FC<LanguageSummarySectionProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#edebe9] text-[#323130]">
-                    {filteredLangTable.map(item => (
+                    {pg1.rows.map(item => (
                       <tr key={item.language} className="hover:bg-[#faf9f8] transition-colors">
                         <td className="p-2 font-medium text-[#242424]">{item.language}</td>
                         <td className="p-2 text-right font-semibold text-[#0d9488]">{item.count}</td>
@@ -487,6 +490,7 @@ export const LanguageSummarySection: React.FC<LanguageSummarySectionProps> = ({
                   </tbody>
                 </table>
               </div>
+              {pg1.footer}
             </div>
 
             <div className="bg-white border border-[#e1dfdd] rounded-xs shadow-2xs p-4 space-y-3">
@@ -627,7 +631,7 @@ export const LanguageSummarySection: React.FC<LanguageSummarySectionProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#edebe9] text-[#323130]">
-                  {filteredNatTable.map(item => (
+                  {pg2.rows.map(item => (
                     <tr key={item.nationality} className="hover:bg-[#faf9f8] transition-colors">
                       <td className="p-2 font-medium text-[#242424]">{item.nationality}</td>
                       <td className="p-2 text-right font-semibold text-[#0d9488]">{item.count}</td>
@@ -646,6 +650,7 @@ export const LanguageSummarySection: React.FC<LanguageSummarySectionProps> = ({
                 </tbody>
               </table>
             </div>
+            {pg2.footer}
           </div>
         </div>
       )}

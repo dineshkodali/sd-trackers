@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { usePagedRows } from '../../common/Pagination';
 import { IconBed as BedDouble, IconPlus as Plus, IconTrash as Trash2, IconUser as UserRound } from '@tabler/icons-react';
 import { roomManagementService } from '../../../services/roomManagementService';
 import { BED_TYPES, ITEM_CONDITIONS } from '../../../types/roomManagement';
@@ -27,6 +28,7 @@ export const BedsTab: React.FC<RoomTabProps> = ({ room, data, actor, canManage, 
 
   const addBeds = (n: number) => run('add', () => roomManagementService.addBeds(room, n, bedType, data.beds, actor), `${n} bed${n > 1 ? 's' : ''} added`);
 
+  const pg1 = usePagedRows(past);
   return (
     <div className="space-y-3">
       <Card
@@ -125,10 +127,11 @@ export const BedsTab: React.FC<RoomTabProps> = ({ room, data, actor, canManage, 
 
       <Card title={`Previous residents (${past.length})`}>
         {past.length === 0 ? <p className="text-[11px] text-neutral-500">No one has left this room yet.</p> : (
+          <>
           <table className="w-full text-xs">
             <thead><tr className="text-left text-[10px] uppercase text-[#64748b] border-b border-[#e2e8f0]"><th className="py-1 pr-2">Resident</th><th className="py-1 pr-2">From</th><th className="py-1 pr-2">To</th><th className="py-1">Outcome</th></tr></thead>
             <tbody>
-              {past.slice(0, 50).map(p => (
+              {pg1.rows.map(p => (
                 <tr key={p.id} className="border-b border-[#f1f5f9]">
                   <td className="py-1.5 pr-2">{residentName(data.suById.get(p.suId), p.suId)}</td>
                   <td className="py-1.5 pr-2">{fmtDate(p.startDate)}</td>
@@ -138,6 +141,8 @@ export const BedsTab: React.FC<RoomTabProps> = ({ room, data, actor, canManage, 
               ))}
             </tbody>
           </table>
+          {pg1.footer}
+          </>
         )}
       </Card>
     </div>

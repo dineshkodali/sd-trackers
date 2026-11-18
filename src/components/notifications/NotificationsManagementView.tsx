@@ -363,6 +363,12 @@ export const NotificationsManagementView: React.FC = () => {
         </div>
       )}
 
+      {!emailNotificationService.canSend() && (
+        <div className="bg-sky-50 border border-sky-200 text-sky-900 rounded-xs p-3 text-xs">
+          This site is not connected to the SDTracker server. The settings below are read from and saved to the database, but emails are sent by the server, so none will go out until it is connected (set the site's API URL to the server).
+        </div>
+      )}
+
       {/* Master switch */}
       <div className={`border rounded-xs p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${masterEnabled === false ? 'bg-amber-50 border-amber-300' : 'bg-white border-[#e1dfdd]'}`}>
         <div className="flex items-center gap-3">
@@ -535,7 +541,7 @@ export const NotificationsManagementView: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-[#edebe9]">
                   {moduleRows.length === 0 ? (
-                    <tr><td colSpan={5} className="py-6 text-center text-[#8a8886]">No modules loaded yet. Press Refresh.</td></tr>
+                    <tr><td colSpan={5} className="py-6 text-center text-[#8a8886]">{emailNotificationService.canSend() ? 'No modules loaded yet. Press Refresh.' : 'Module rules (New Record / Record Updated) are created by the SDTracker server the first time it runs against this database.'}</td></tr>
                   ) : moduleRows.map(row => {
                     const anyOn = !!(row.created?.enabled || row.updated?.enabled);
                     const Switch = ({ rule, label }: { rule?: NotificationRule; label: string }) => rule ? (

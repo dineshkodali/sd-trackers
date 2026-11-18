@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { usePagedRows } from '../../common/Pagination';
 import { IconArrowsLeftRight as ArrowRightLeft, IconClipboardCheck as ClipboardCheck, IconPackage as Package, IconPackage as PackagePlus, IconPlus as Plus, IconArrowBackUp as Undo2 } from '@tabler/icons-react';
 import { roomManagementService } from '../../../services/roomManagementService';
 import type { PropertyRoom } from '../../../types/masterData';
@@ -40,6 +41,7 @@ export const InventoryTab: React.FC<RoomTabProps> = ({ room, data, allRooms, act
     try { await finish(await roomManagementService.markRoomChecked(data.items, room, actor), 'Room inventory marked as checked'); } finally { setBusy(false); }
   };
 
+  const pg1 = usePagedRows(visible);
   return (
     <div className="space-y-3">
       <Card
@@ -64,6 +66,7 @@ export const InventoryTab: React.FC<RoomTabProps> = ({ room, data, allRooms, act
             <button type="button" className={primaryBtnCls} onClick={() => setShowAdd(true)}>Add an item</button>
           </EmptyState>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[760px]">
               <thead>
@@ -73,7 +76,7 @@ export const InventoryTab: React.FC<RoomTabProps> = ({ room, data, allRooms, act
                 </tr>
               </thead>
               <tbody>
-                {visible.map(i => (
+                {pg1.rows.map(i => (
                   <tr key={i.id} className="border-b border-[#f1f5f9] align-top">
                     <td className="py-1.5 pr-2"><div className="font-semibold text-[#1e293b]">{i.itemName}</div><div className="text-[10px] text-[#64748b]">{i.category || '—'}{i.notes ? ` · ${i.notes}` : ''}</div></td>
                     <td className="py-1.5 pr-2 font-semibold">{i.quantity}</td>
@@ -96,6 +99,8 @@ export const InventoryTab: React.FC<RoomTabProps> = ({ room, data, allRooms, act
               </tbody>
             </table>
           </div>
+          {pg1.footer}
+          </>
         )}
       </Card>
 

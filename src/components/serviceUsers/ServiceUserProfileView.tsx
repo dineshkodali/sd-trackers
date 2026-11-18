@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { pickActivePlacement } from '../../utils/placementSelection';
 import { repositoryDocsForServiceUser } from '../../utils/repositoryDocuments';
 import { getServiceUserRecords } from '../../utils/serviceUserRecords';
@@ -328,6 +329,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     { id: 'activity', label: 'Activity' }
   ];
 
+  const pg1 = usePagedRows(suWelfare);
   return (
     <div className="space-y-3.5 animate-in fade-in duration-150">
       {/* Breadcrumb Navigation Bar */}
@@ -589,6 +591,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
               {suWelfare.length === 0 ? (
                 <p className="text-neutral-400 italic">No welfare check logs recorded for this resident.</p>
               ) : (
+                <>
                 <div className="border border-neutral-200 rounded-xs overflow-hidden bg-white">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-neutral-50 border-b border-neutral-200 text-[10px] font-bold text-neutral-500 uppercase">
@@ -601,7 +604,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200">
-                      {suWelfare.map(w => (
+                      {pg1.rows.map(w => (
                         <tr key={w.id} className="hover:bg-neutral-50">
                           <td className="p-2.5 font-medium">{w.checkDatetime ? new Date(w.checkDatetime).toLocaleDateString('en-GB') : '—'}</td>
                           <td className="p-2.5">{w.siteName} (Room {w.flatNumber || '—'})</td>
@@ -617,6 +620,8 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
                     </tbody>
                   </table>
                 </div>
+                {pg1.footer}
+                </>
               )}
             </div>
           )}

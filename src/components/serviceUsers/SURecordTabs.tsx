@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePagedRows } from '../common/Pagination';
 import type { ServiceUserRecordSet } from '../../utils/serviceUserRecords';
 
 const fmtDate = (d?: string) => {
@@ -12,19 +13,21 @@ interface Column<T> { label: string; render: (row: T) => React.ReactNode }
 function RecordTable<T extends { id: string }>({ title, rows, columns, empty }: {
   title: string; rows: T[]; columns: Column<T>[]; empty: string;
 }) {
+  const pg1 = usePagedRows(rows);
   return (
     <div className="space-y-3">
       <h4 className="font-bold text-xs text-neutral-800">{title}</h4>
       {rows.length === 0 ? (
         <p className="text-neutral-400 italic">{empty}</p>
       ) : (
+        <>
         <div className="border border-neutral-200 rounded-xs overflow-x-auto bg-white">
           <table className="w-full text-left text-xs">
             <thead className="bg-neutral-50 border-b border-neutral-200 text-[10px] font-bold text-neutral-500 uppercase">
               <tr>{columns.map(c => <th key={c.label} className="p-2.5 whitespace-nowrap">{c.label}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
-              {rows.map(r => (
+              {pg1.rows.map(r => (
                 <tr key={r.id} className="hover:bg-neutral-50 align-top">
                   {columns.map(c => <td key={c.label} className="p-2.5">{c.render(r)}</td>)}
                 </tr>
@@ -32,6 +35,8 @@ function RecordTable<T extends { id: string }>({ title, rows, columns, empty }: 
             </tbody>
           </table>
         </div>
+        {pg1.footer}
+        </>
       )}
     </div>
   );

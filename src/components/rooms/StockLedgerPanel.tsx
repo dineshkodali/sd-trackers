@@ -4,6 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { IconDownload as Download, IconFileText as ScrollText } from '@tabler/icons-react';
 import { exportTableToCsv } from '../../utils/csvExport';
 import type { PropertyRoom } from '../../types/masterData';
@@ -31,6 +32,7 @@ export const StockLedgerPanel: React.FC<{ propertyName: string; movements: Inven
     rows: shown.map(m => [m.performedAt || '', m.movementType, m.itemName, m.quantity, roomLabel(m.fromRoomId), roomLabel(m.toRoomId), m.reference || '', m.reason || '', m.performedByName || '']),
   });
 
+  const pg1 = usePagedRows(shown);
   return (
     <Card title={<><ScrollText className="w-3.5 h-3.5 text-[#0d9488]" /> Stock ledger &middot; {propertyName}</>} actions={<button type="button" className={btnCls} onClick={exportCsv} disabled={shown.length === 0}><Download className="w-3.5 h-3.5" /> Export</button>}>
       <div className="flex flex-wrap gap-2 mb-2">
@@ -42,7 +44,7 @@ export const StockLedgerPanel: React.FC<{ propertyName: string; movements: Inven
           <table className="w-full text-xs min-w-[760px]">
             <thead><tr className="text-left text-[10px] uppercase text-[#64748b] border-b border-[#e2e8f0]"><th className="py-1 pr-2">When</th><th className="py-1 pr-2">Movement</th><th className="py-1 pr-2">Item</th><th className="py-1 pr-2 text-right">Qty</th><th className="py-1 pr-2">From → To</th><th className="py-1 pr-2">Reason / ref</th><th className="py-1">By</th></tr></thead>
             <tbody>
-              {shown.slice(0, 500).map(m => (
+              {pg1.rows.map(m => (
                 <tr key={m.id} className="border-b border-[#f1f5f9] align-top">
                   <td className="py-1.5 pr-2 whitespace-nowrap">{fmtDateTime(m.performedAt)}</td>
                   <td className="py-1.5 pr-2"><Chip tone={TONE[m.movementType] || 'neutral'}>{m.movementType}</Chip></td>
@@ -55,6 +57,7 @@ export const StockLedgerPanel: React.FC<{ propertyName: string; movements: Inven
               ))}
             </tbody>
           </table>
+          {pg1.footer}
           {shown.length > 500 && <p className="text-[10px] text-neutral-500 mt-1">Showing the latest 500 of {shown.length}. Export for the full list.</p>}
         </div>
       )}

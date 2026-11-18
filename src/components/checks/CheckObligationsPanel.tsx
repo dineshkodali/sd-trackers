@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { useApp } from '../../context/AppContext';
 import { useCheckObligations } from '../../hooks/useCheckObligations';
 import { londonNow } from '../../utils/operationsRules';
@@ -90,6 +91,7 @@ export const CheckObligationsPanel: React.FC<Props> = ({ type, onStart, defaultO
   const overdue = count('overdue');
   const noun = type === 'room' ? 'Room' : 'Welfare';
 
+  const pg1 = usePagedRows(rows);
   return (
     <section className="bg-white border border-[#e1dfdd] rounded-xs" aria-label={`${noun} checks due and missed`}>
       <header className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
@@ -144,7 +146,7 @@ export const CheckObligationsPanel: React.FC<Props> = ({ type, onStart, defaultO
                     {rows.length === 0 && (
                       <tr><td colSpan={type === 'welfare' ? 7 : 6} className="px-3 py-3 text-[#605e5c]">{onlyOpen ? 'Every required check is complete.' : 'No checks were required.'}</td></tr>
                     )}
-                    {rows.map(r => (
+                    {pg1.rows.map(r => (
                       <tr key={r.subjectKey} className="border-b border-[#f3f2f1]">
                         <td className="px-2 py-1 align-top">{r.siteName || '–'}</td>
                         <td className="px-2 py-1 align-top">{r.propertyName || '–'}</td>
@@ -158,6 +160,7 @@ export const CheckObligationsPanel: React.FC<Props> = ({ type, onStart, defaultO
                   </tbody>
                 </table>
               </div>
+              {pg1.footer}
               {state.unmatched.length > 0 && (
                 <p className="px-3 py-1.5 text-[11px] text-[#605e5c]">
                   {state.unmatched.length} recorded {state.unmatched.length === 1 ? 'check' : 'checks'} could not be tied to a {type === 'room' ? 'room' : 'resident'} and {state.unmatched.length === 1 ? 'is' : 'are'} not counted above.

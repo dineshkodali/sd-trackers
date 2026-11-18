@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { IconShieldCheck as ShieldCheck, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconAlertCircle as AlertCircle } from '@tabler/icons-react';
 import { DailyRegisterRecord, DailyRegisterRoom } from '../../types';
 
@@ -156,6 +157,7 @@ export const RegisterValidationSection: React.FC<RegisterValidationSectionProps>
   const errorCount = issues.filter(i => i.severity === 'error').length;
   const warningCount = issues.filter(i => i.severity === 'warning').length;
 
+  const pg1 = usePagedRows(issues);
   return (
     <div className="space-y-6">
       {/* Summary Scorecard */}
@@ -225,6 +227,7 @@ export const RegisterValidationSection: React.FC<RegisterValidationSectionProps>
             <p className="text-xs text-[#605e5c] mt-0.5">No capacity overages, missing required fields, or void discrepancies found.</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -237,7 +240,7 @@ export const RegisterValidationSection: React.FC<RegisterValidationSectionProps>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#edebe9] text-[#323130]">
-                {issues.map(issue => (
+                {pg1.rows.map(issue => (
                   <tr key={issue.id} className="hover:bg-[#faf9f8] transition-colors">
                     <td className="p-2.5">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
@@ -257,6 +260,8 @@ export const RegisterValidationSection: React.FC<RegisterValidationSectionProps>
               </tbody>
             </table>
           </div>
+          {pg1.footer}
+          </>
         )}
       </div>
     </div>

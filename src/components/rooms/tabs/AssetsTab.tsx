@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { usePagedRows } from '../../common/Pagination';
 import { IconPencil as Pencil, IconPlus as Plus, IconTrash as Trash2, IconTool as Wrench } from '@tabler/icons-react';
 import { useApp } from '../../../context/AppContext';
 import { roomManagementService } from '../../../services/roomManagementService';
@@ -40,6 +41,7 @@ export const AssetsTab: React.FC<RoomTabProps> = ({ room, data, actor, canManage
     onConfirm: async () => { const r = await roomManagementService.deleteAsset(a, actor); if (r.success) { toast('Asset deleted'); await refresh(); } else toast(r.error || 'Could not delete.', 'error'); },
   });
 
+  const pg1 = usePagedRows(data.assets);
   return (
     <div className="space-y-3">
       <Card
@@ -59,7 +61,7 @@ export const AssetsTab: React.FC<RoomTabProps> = ({ room, data, actor, canManage
                 </tr>
               </thead>
               <tbody>
-                {data.assets.map(a => (
+                {pg1.rows.map(a => (
                   <tr key={a.id} className="border-b border-[#f1f5f9] align-top">
                     <td className="py-1.5 pr-2"><div className="font-semibold text-[#1e293b]">{a.assetName}</div><div className="text-[10px] text-[#64748b]">{a.category}{a.manufacturer ? ` · ${a.manufacturer}` : ''}{a.model ? ` ${a.model}` : ''}</div>{a.locationDetail && <div className="text-[10px] text-[#64748b]">{a.locationDetail}</div>}</td>
                     <td className="py-1.5 pr-2"><div>{a.assetTag || '—'}</div><div className="text-[10px] text-[#64748b]">{a.serialNumber || ''}</div></td>
@@ -76,6 +78,7 @@ export const AssetsTab: React.FC<RoomTabProps> = ({ room, data, actor, canManage
                 ))}
               </tbody>
             </table>
+            {pg1.footer}
           </div>
         )}
       </Card>

@@ -1,4 +1,5 @@
 import { isOutOfUse } from '../../utils/roomManagementLogic';
+import { usePagedRows } from '../common/Pagination';
 import React, { useState } from 'react';
 import { IconPlus as Plus, IconUsers as Users, IconEdit as Edit3 } from '@tabler/icons-react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
@@ -256,6 +257,7 @@ export const PropertyServiceUsersTab: React.FC<PropertyServiceUsersTabProps> = (
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  const pg1 = usePagedRows(occupants);
   return (
   <div className="space-y-4">
     <h3 className="font-bold text-xs text-neutral-800">Service Users Placed at this Property</h3>
@@ -282,7 +284,7 @@ export const PropertyServiceUsersTab: React.FC<PropertyServiceUsersTabProps> = (
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-200">
-            {occupants.map(u => {
+            {pg1.rows.map(u => {
               const plc = activePlacements.find(p => p.suId === u.id);
               const rm = rooms.find(r => r.id === plc?.roomId);
               return (
@@ -310,6 +312,7 @@ export const PropertyServiceUsersTab: React.FC<PropertyServiceUsersTabProps> = (
             })}
           </tbody>
         </table>
+        {pg1.footer}
         
         <BulkActionToolbar
           selectedCount={selectedIds.length}
@@ -333,12 +336,13 @@ export const PropertyComplianceTab: React.FC<PropertyComplianceTabProps> = ({
   complianceList, onAddCompliance, onEditCompliance
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const pg2 = usePagedRows(complianceList);
 
   const handleToggleSelectAll = () => {
     if (selectedIds.length === complianceList.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(complianceList.map(c => c.id));
+      setSelectedIds(pg2.rows.map(c => c.id));
     }
   };
 
@@ -422,6 +426,7 @@ export const PropertyComplianceTab: React.FC<PropertyComplianceTabProps> = ({
           ))}
         </tbody>
       </table>
+      {pg2.footer}
       
       <BulkActionToolbar
         selectedCount={selectedIds.length}
@@ -443,7 +448,9 @@ export interface PropertyAssetsTabProps {
 
 export const PropertyAssetsTab: React.FC<PropertyAssetsTabProps> = ({
   assets, rooms, onAddAsset, onEditAsset
-}) => (
+}) => {
+  const pg3 = usePagedRows(assets);
+  return (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
       <h3 className="font-bold text-xs text-neutral-800">Inventory &amp; Asset Register</h3>
@@ -471,7 +478,7 @@ export const PropertyAssetsTab: React.FC<PropertyAssetsTabProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-200">
-          {assets.map(a => {
+          {pg3.rows.map(a => {
             const rm = rooms.find(r => r.id === a.roomId);
             return (
               <tr key={a.id} className="hover:bg-neutral-50/80">
@@ -498,5 +505,7 @@ export const PropertyAssetsTab: React.FC<PropertyAssetsTabProps> = ({
         </tbody>
       </table>
     </div>
+    {pg3.footer}
   </div>
-);
+  );
+};

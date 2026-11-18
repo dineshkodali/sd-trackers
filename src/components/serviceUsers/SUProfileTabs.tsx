@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { IconArrowsLeftRight as ArrowRightLeft, IconPlus as Plus, IconFileText as FileText, IconTrash as Trash2, IconEye as Eye, IconLink as Link2, IconEdit as Edit3 } from '@tabler/icons-react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { 
@@ -293,6 +294,7 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  const pg1 = usePagedRows(placementHistory);
   return (
   <div className="space-y-4">
     <div className="p-4 bg-teal-50/60 rounded-xs border border-teal-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -353,7 +355,7 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edebe9] text-[#323130]">
-              {placementHistory.map(p => (
+              {pg1.rows.map(p => (
                 <tr 
                   key={p.id} 
                   className={`transition-colors cursor-pointer group ${selectedIds.includes(p.id) ? 'bg-[#e5f3ff]' : 'hover:bg-[#f3f8fd]'}`}
@@ -403,6 +405,7 @@ export const SUAccommodationTab: React.FC<SUAccommodationTabProps> = ({
               ))}
             </tbody>
           </table>
+          {pg1.footer}
           
           <BulkActionToolbar
             selectedCount={selectedIds.length}
@@ -710,6 +713,7 @@ export const SUDocumentsTab: React.FC<SUDocumentsTabProps> = ({
     openStoredDocument(doc.fileUrl, doc.documentName);
   };
 
+  const pg2 = usePagedRows(documents);
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -741,6 +745,7 @@ export const SUDocumentsTab: React.FC<SUDocumentsTabProps> = ({
           </button>
         </div>
       ) : (
+        <>
         <div className="border border-[#e5e5e5] rounded-xs overflow-hidden bg-white shadow-2xs">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -754,7 +759,7 @@ export const SUDocumentsTab: React.FC<SUDocumentsTabProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f0f0]">
-              {documents.map(d => (
+              {pg2.rows.map(d => (
                 <tr key={d.id} className="hover:bg-[#fbfbfa] transition-colors">
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2">
@@ -833,6 +838,8 @@ export const SUDocumentsTab: React.FC<SUDocumentsTabProps> = ({
             </tbody>
           </table>
         </div>
+        {pg2.footer}
+        </>
       )}
     </div>
   );

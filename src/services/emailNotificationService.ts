@@ -1,4 +1,5 @@
 import { NotificationRule, EmailNotificationLog, NotificationEventCode } from '../types';
+import { emailNotificationDirect } from './emailNotificationDirect';
 import { authHeaders, getApiUrl, apiService, shouldPreferDirectSupabase, isDirectSupabaseActive, getApiBaseUrl, fetchWithTimeout } from './apiService';
 
 /**
@@ -14,11 +15,18 @@ function getAuthHeaders(): Record<string, string> {
   return { 'Content-Type': 'application/json', ...authHeaders() };
 }
 
+/** True when this site runs without the SDTracker server (static hosting): settings then go straight to the database. */
+const withoutServer = () => (shouldPreferDirectSupabase() || isDirectSupabaseActive()) && !getApiBaseUrl();
+
 export const emailNotificationService = {
+  /** Whether emails can actually be sent from this site (they are sent by the SDTracker server). */
+  canSend(): boolean { return !withoutServer(); },
+
   /**
    * Fetch all configured notification rules
    */
   async getRules(): Promise<NotificationRule[] | null> {
+    if (withoutServer()) return emailNotificationDirect.getRules();
     try {
       const res = await fetch(getApiUrl('/api/smtp/rules'), {
         headers: getAuthHeaders()
@@ -32,6 +40,8 @@ export const emailNotificationService = {
     } catch (err) {
       console.warn('Failed to fetch notification rules from server:', err);
     }
+    const fromDb = await emailNotificationDirect.getRules();
+    if (fromDb) return fromDb;
     // null = could not load. The caller keeps what is on screen: showing factory defaults here made saved ON/OFF
     // settings look as if they had reverted whenever a refresh failed or timed out.
     return null;
@@ -39,6 +49,7 @@ export const emailNotificationService = {
 
   /** Modules discovered from the app's entity registry, with the fields an update rule can react to. */
   async getModules(): Promise<Array<{ table: string; label: string; fields: string[] }>> {
+    if (withoutServer()) return [];
     try {
       const res = await fetch(getApiUrl('/api/smtp/modules'), { headers: getAuthHeaders() });
       const data = await res.json().catch(() => ({}));
@@ -49,6 +60,7 @@ export const emailNotificationService = {
 
   /** Master switch for every notification email. */
   async getMaster(): Promise<boolean | null> {
+    if (withoutServer()) return emailNotificationDirect.getMaster();
     try {
       const res = await fetch(getApiUrl('/api/smtp/master'), { headers: getAuthHeaders() });
       const data = await res.json().catch(() => ({}));
@@ -58,6 +70,7 @@ export const emailNotificationService = {
   },
 
   async setMaster(enabled: boolean): Promise<{ success: boolean; enabled?: boolean; error?: string }> {
+    if (withoutServer()) { const r = await emailNotificationDirect.setMaster(enabled); return r.success ? { success: true, enabled } : r; }
     try {
       const res = await fetch(getApiUrl('/api/smtp/master'), { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ enabled }) });
       const data = await res.json().catch(() => ({}));
@@ -70,6 +83,7 @@ export const emailNotificationService = {
 
   /** Renders the subject and email for sample data; nothing is sent. */
   async preview(input: { subjectTemplate?: string; bodyTemplate?: string; module?: string; title?: string; includeLink?: boolean }): Promise<{ success: boolean; subject?: string; html?: string; error?: string }> {
+    if (withoutServer()) return { success: false, error: 'Preview needs the SDTracker server, which this site is not connected to.' };
     try {
       const res = await fetch(getApiUrl('/api/smtp/preview'), { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input) });
       const data = await res.json().catch(() => ({}));
@@ -84,6 +98,7 @@ export const emailNotificationService = {
    * Update a specific notification rule
    */
   async updateRule(id: string, updates: Partial<NotificationRule>): Promise<{ success: boolean; rule?: NotificationRule; error?: string }> {
+    if (withoutServer()) return emailNotificationDirect.updateRule(id, updates);
     try {
       const res = await fetch(getApiUrl(`/api/smtp/rules/${encodeURIComponent(id)}`), {
         method: 'PUT',
@@ -104,6 +119,7 @@ export const emailNotificationService = {
    * Reset all notification rules to factory defaults
    */
   async resetRules(): Promise<{ success: boolean; rules?: NotificationRule[]; message?: string }> {
+    if (withoutServer()) return { success: false, message: 'Reset to defaults needs the SDTracker server, which this site is not connected to.' };
     try {
       const res = await fetch(getApiUrl('/api/smtp/rules/reset'), {
         method: 'POST',
@@ -166,6 +182,7 @@ export const emailNotificationService = {
    * Fetch recent delivery logs
    */
   async getLogs(): Promise<EmailNotificationLog[]> {
+    if (withoutServer()) return emailNotificationDirect.getLogs();
     try {
       const res = await fetch(getApiUrl('/api/smtp/logs'), {
         headers: getAuthHeaders()
@@ -186,6 +203,7 @@ export const emailNotificationService = {
    * Test dispatch a specific rule with sample data
    */
   async testRule(ruleId: string, targetEmail: string): Promise<{ success: boolean; simulated?: boolean; message?: string; error?: string }> {
+    if (withoutServer()) return { success: false, error: 'Test emails are sent by the SDTracker server, which this site is not connected to.' };
     try {
       const res = await fetch(getApiUrl('/api/smtp/test-rule'), {
         method: 'POST',

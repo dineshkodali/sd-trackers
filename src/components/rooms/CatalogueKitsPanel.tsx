@@ -3,6 +3,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { IconPencil as Pencil, IconPlus as Plus, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { roomManagementService } from '../../services/roomManagementService';
@@ -49,6 +50,7 @@ export const CatalogueKitsPanel: React.FC<Props> = ({ catalogue, catalogueIsStar
     onConfirm: async () => { const r = await roomManagementService.deleteKit(k); if (r.success) { toast('Kit deleted'); await onChanged(); } else toast(r.error || 'Only administrators can delete kits.', 'error'); },
   });
 
+  const pg1 = usePagedRows(shown);
   return (
     <div className="space-y-3">
       {catalogueIsStarter && (
@@ -65,7 +67,7 @@ export const CatalogueKitsPanel: React.FC<Props> = ({ catalogue, catalogueIsStar
           <table className="w-full text-xs min-w-[640px]">
             <thead><tr className="text-left text-[10px] uppercase text-[#64748b] border-b border-[#e2e8f0]"><th className="py-1 pr-2">Code</th><th className="py-1 pr-2">Item</th><th className="py-1 pr-2">Category</th><th className="py-1 pr-2">Type</th><th className="py-1 pr-2 text-right">Per room</th><th className="py-1 pr-2 text-right">Reorder at</th><th className="py-1" /></tr></thead>
             <tbody>
-              {shown.map(i => (
+              {pg1.rows.map(i => (
                 <tr key={i.id} className="border-b border-[#f1f5f9]">
                   <td className="py-1.5 pr-2 text-[#64748b]">{i.itemCode || '—'}</td>
                   <td className="py-1.5 pr-2 font-semibold text-[#1e293b]">{i.itemName}{i.isActive === false && <span className="ml-1"><Chip tone="grey">Inactive</Chip></span>}</td>
@@ -83,6 +85,7 @@ export const CatalogueKitsPanel: React.FC<Props> = ({ catalogue, catalogueIsStar
             </tbody>
           </table>
         </div>
+        {pg1.footer}
       </Card>
 
       <Card title={`Standard room kits (${kits.length})`} actions={canManage ? <button type="button" className={primaryBtnCls} onClick={() => setKit({ isNew: true, value: { id: `kit-${Date.now()}`, templateName: '', roomType: 'Single', description: '', items: [], isActive: true } })}><Plus className="w-3.5 h-3.5" /> New kit</button> : undefined}>

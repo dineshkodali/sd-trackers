@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { IconPlus as Plus, IconFileText as FileText, IconEye as Eye, IconTrash as Trash2, IconCalendar as Calendar, IconEdit as Edit3, IconLink as Link2 } from '@tabler/icons-react';
 import { PropertyDocument } from '../../types/masterData';
 import { suPropertyDetailsService } from '../../services/suPropertyDetailsService';
@@ -64,6 +65,7 @@ export const PropertyDocumentsSection: React.FC<PropertyDocumentsSectionProps> =
     openStoredDocument(doc.fileUrl, doc.documentName);
   };
 
+  const pg1 = usePagedRows(documents);
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -96,6 +98,7 @@ export const PropertyDocumentsSection: React.FC<PropertyDocumentsSectionProps> =
           </button>
         </div>
       ) : (
+        <>
         <div className="border border-[#e5e5e5] rounded-xs overflow-hidden bg-white shadow-2xs">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -109,7 +112,7 @@ export const PropertyDocumentsSection: React.FC<PropertyDocumentsSectionProps> =
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f0f0]">
-              {documents.map(d => {
+              {pg1.rows.map(d => {
                 const isExpired = d.expiryDate && new Date(d.expiryDate) < new Date();
                 return (
                   <tr key={d.id} className="hover:bg-[#fbfbfa] transition-colors">
@@ -194,6 +197,8 @@ export const PropertyDocumentsSection: React.FC<PropertyDocumentsSectionProps> =
             </tbody>
           </table>
         </div>
+        {pg1.footer}
+        </>
       )}
 
       <MasterDocumentModal

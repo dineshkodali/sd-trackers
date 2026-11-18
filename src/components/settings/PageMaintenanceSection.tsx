@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { usePagedRows } from '../common/Pagination';
 import { IconTool as Wrench, IconSearch as Search, IconCircleCheck as CheckCircle2, IconAlertTriangle as AlertTriangle, IconPower as Power, IconFilter as Filter, IconMessage as MessageSquare } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { APP_PAGES_REGISTRY } from '../../config/pageRegistry';
@@ -47,6 +48,8 @@ export const PageMaintenanceSection: React.FC = () => {
       return matchesSearch && matchesCat && matchesStatus;
     });
   }, [searchQuery, selectedCategory, statusFilter, maintenanceMap]);
+
+  const pg1 = usePagedRows(filteredPages);
 
   // Strict RBAC gate — must come AFTER all hooks (React Rules of Hooks)
   if (currentUserRole !== 'Super Admin') {
@@ -210,6 +213,7 @@ export const PageMaintenanceSection: React.FC = () => {
             No pages match the selected filters.
           </div>
         ) : (
+          <>
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-[#f3f2f1] border-b border-[#e1dfdd] sticky top-0">
@@ -220,7 +224,7 @@ export const PageMaintenanceSection: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredPages.map((page, i) => {
+              {pg1.rows.map((page, i) => {
                 const inMaintenance = Boolean(maintenanceMap[page.id]);
                 return (
                   <tr
@@ -270,6 +274,8 @@ export const PageMaintenanceSection: React.FC = () => {
               })}
             </tbody>
           </table>
+          {pg1.footer}
+          </>
         )}
       </div>
     </div>

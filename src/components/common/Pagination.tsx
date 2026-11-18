@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconChevronsLeft as ChevronsLeft, IconChevronsRight as ChevronsRight } from '@tabler/icons-react';
 
 interface PaginationProps {
@@ -7,6 +7,28 @@ interface PaginationProps {
   pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+}
+
+/**
+ * Pages a list held in memory and gives back the visible rows plus the standard footer.
+ * The page is clamped to the list, so a shrinking list never leaves an empty page.
+ */
+export function usePagedRows<T>(rows: T[], initialSize = 10): { rows: T[]; footer: React.ReactElement } {
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(initialSize);
+  const list = rows || [];
+  const current = Math.min(page, Math.max(1, Math.ceil(list.length / size)));
+  const visible = useMemo(() => list.slice((current - 1) * size, current * size), [list, current, size]);
+  const footer = (
+    <Pagination
+      currentPage={current}
+      pageSize={size}
+      totalItems={list.length}
+      onPageChange={setPage}
+      onPageSizeChange={s => { setSize(s); setPage(1); }}
+    />
+  );
+  return { rows: visible, footer };
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
