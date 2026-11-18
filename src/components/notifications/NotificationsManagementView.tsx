@@ -113,6 +113,14 @@ export const NotificationsManagementView: React.FC = () => {
 
   useEffect(() => { setRulePage(1); }, [searchQuery, selectedModule, selectedStatus, selectedSeverity]);
 
+  // Real settings only: if the server cannot supply them, say so instead of showing anything made up
+  const [rulesLoad, setRulesLoad] = useState<'loading' | 'ok' | 'failed'>('loading');
+  useEffect(() => {
+    let alive = true;
+    emailNotificationService.getRules().then(r => { if (alive) setRulesLoad(r && r.length > 0 ? 'ok' : 'failed'); });
+    return () => { alive = false; };
+  }, []);
+
   useEffect(() => {
     emailNotificationService.getMaster().then(v => { if (v !== null) setMasterEnabled(v); });
     emailNotificationService.getModules().then(setModules);
@@ -161,9 +169,11 @@ export const NotificationsManagementView: React.FC = () => {
     try {
       const status = await emailNotificationService.getStatus();
       setSmtpStatus(status);
-      if (status.user) {
-        setSmtpTestRecipient(status.user);
-        setTestEmailAddress(status.user);
+      // The server masks the account (name@...); only a complete address is a usable default
+      const account = (status as any)?.fullUser || status?.user;
+      if (account && !String(account).includes('...')) {
+        setSmtpTestRecipient(account);
+        setTestEmailAddress(account);
       }
     } catch {
       // ignore
@@ -292,15 +302,20 @@ export const NotificationsManagementView: React.FC = () => {
                 <span className="bg-[#f0fdfa] text-[#0f766e] text-xs font-semibold px-2 py-0.5 rounded-xs border border-[#ccfbf1]">
                   {activeRulesCount} of {totalRulesCount} Active
                 </span>
-                {smtpStatus?.configured ? (
+                {smtpStatus === null ? (
+                  <span className="bg-amber-50 text-amber-800 text-[11px] font-medium px-2 py-0.5 rounded-xs border border-amber-300 flex items-center gap-1">
+                    <Info className="w-3 h-3 text-amber-600" />
+                    Mail server not reachable
+                  </span>
+                ) : smtpStatus.configured ? (
                   <span className="bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2 py-0.5 rounded-xs border border-emerald-300 flex items-center gap-1 shadow-xs">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    Production SMTP Live
+                    SMTP configured
                   </span>
                 ) : (
                   <span className="bg-rose-50 text-rose-800 text-[11px] font-medium px-2 py-0.5 rounded-xs border border-rose-200 flex items-center gap-1">
                     <Info className="w-3 h-3 text-rose-600" />
-                    Production SMTP Offline
+                    SMTP not configured
                   </span>
                 )}
               </div>
@@ -340,6 +355,13 @@ export const NotificationsManagementView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {rulesLoad === 'failed' && notificationRules.length === 0 && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-xs p-3 text-xs flex items-center justify-between gap-3">
+          <span>Notification settings could not be loaded from the SDTracker server, so none are shown. Check that the server is running and connected to the database, then press Refresh.</span>
+          <button type="button" onClick={() => { setRulesLoad('loading'); refreshNotificationData().then(() => emailNotificationService.getRules().then(r => setRulesLoad(r && r.length > 0 ? 'ok' : 'failed'))); }} className="px-3 py-1 text-xs font-semibold bg-white border border-amber-400 rounded-xs shrink-0">Retry</button>
+        </div>
+      )}
 
       {/* Master switch */}
       <div className={`border rounded-xs p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${masterEnabled === false ? 'bg-amber-50 border-amber-300' : 'bg-white border-[#e1dfdd]'}`}>
@@ -823,54 +845,55 @@ export const NotificationsManagementView: React.FC = () => {
             <div className="space-y-3 text-xs">
               <div className="flex justify-between py-1.5 border-b border-[#f3f2f1]">
                 <span className="text-[#605e5c] font-medium">Connection State:</span>
-                {smtpStatus?.configured ? (
+                {smtpStatus === null ? (
+                  <span className="font-bold text-amber-700 flex items-center gap-1">
+                    <Info className="w-3.5 h-3.5" /> The SDTracker server could not be reached
+                  </span>
+                ) : smtpStatus.configured ? (
                   <span className="font-bold text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Production Relay Active
+                    <CheckCircle2 className="w-3.5 h-3.5" /> SMTP credentials configured
                   </span>
                 ) : (
                   <span className="font-bold text-rose-700 flex items-center gap-1">
-                    <Info className="w-3.5 h-3.5" /> Offline (Credentials Required in root .env)
+                    <Info className="w-3.5 h-3.5" /> Not configured (SMTP_HOST, SMTP_USER and SMTP_PASSWORD are missing on the server)
                   </span>
                 )}
               </div>
 
               <div className="flex justify-between py-1.5 border-b border-[#f3f2f1]">
-                <span className="text-[#605e5c] font-medium">Operating Mode:</span>
-                <span className="font-bold text-[#0f766e] bg-[#f0fdfa] px-2 py-0.5 rounded-xs border border-[#ccfbf1]">
-                  Strict Production Mode
-                </span>
-              </div>
-
-              <div className="flex justify-between py-1.5 border-b border-[#f3f2f1]">
                 <span className="text-[#605e5c] font-medium">SMTP Server Host:</span>
-                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.host || 'smtp.gmail.com'}</span>
+                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.host || '-'}</span>
               </div>
 
               <div className="flex justify-between py-1.5 border-b border-[#f3f2f1]">
                 <span className="text-[#605e5c] font-medium">SMTP Port:</span>
-                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.port || '587'} (STARTTLS)</span>
+                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.port || '-'}</span>
               </div>
 
               <div className="flex justify-between py-1.5 border-b border-[#f3f2f1]">
                 <span className="text-[#605e5c] font-medium">Sender Email Address (From):</span>
-                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.from || 'SD Trackers <not-configured>'}</span>
+                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.from || '-'}</span>
               </div>
 
               <div className="flex justify-between py-1.5 border-b border-[#f3f2f1]">
                 <span className="text-[#605e5c] font-medium">Authenticated Account:</span>
-                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.user || 'not-configured'}</span>
+                <span className="font-mono text-[#242424] font-semibold">{smtpStatus?.user || '-'}</span>
               </div>
             </div>
 
-            <div className="bg-[#f0fdf4] border border-[#bbf7d0] p-3 rounded-xs text-xs text-[#166534] space-y-1">
-              <div className="font-bold flex items-center gap-1.5 text-[#15803d]">
-                <Mail className="w-3.5 h-3.5 text-[#16a34a]" />
-                Production Mail Relay Active
+            {smtpStatus === null ? (
+              <div className="bg-amber-50 border border-amber-300 p-3 rounded-xs text-xs text-amber-900">
+                Mail settings come from the SDTracker server. This page cannot reach it, so nothing is shown here rather than guessing. Check that the server is running and that the site's API URL points at it.
               </div>
-              <p className="text-[11px] leading-relaxed text-[#14532d]">
-                Operating in <strong>Production Mode</strong> using server credentials configured in the root <code>.env</code> file. System triggers, urgent alerts, and escalation notices are dispatched directly to designated operational staff via secure TLS transmission.
-              </p>
-            </div>
+            ) : smtpStatus.configured ? (
+              <div className="bg-[#f0fdf4] border border-[#bbf7d0] p-3 rounded-xs text-xs text-[#166534]">
+                The server has SMTP credentials. Use "Send Verification Probe Email" to confirm that mail is actually delivered.
+              </div>
+            ) : (
+              <div className="bg-rose-50 border border-rose-200 p-3 rounded-xs text-xs text-rose-900">
+                No SMTP credentials are set on the server, so no notification email can be sent.
+              </div>
+            )}
           </div>
 
           {/* Card 2: Live Connection Verification */}

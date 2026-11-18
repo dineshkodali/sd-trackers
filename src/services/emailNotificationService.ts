@@ -1,5 +1,4 @@
 import { NotificationRule, EmailNotificationLog, NotificationEventCode } from '../types';
-import { DEFAULT_NOTIFICATION_RULES } from '../data/defaultNotificationRules';
 import { authHeaders, getApiUrl, apiService, shouldPreferDirectSupabase, isDirectSupabaseActive, getApiBaseUrl, fetchWithTimeout } from './apiService';
 
 /**
@@ -116,7 +115,7 @@ export const emailNotificationService = {
       }
       return data;
     } catch (err: any) {
-      return { success: false, rules: DEFAULT_NOTIFICATION_RULES, message: err.message };
+      return { success: false, message: err.message };
     }
   },
 
@@ -203,9 +202,10 @@ export const emailNotificationService = {
   /**
    * Check SMTP configuration status
    */
-  async getStatus(): Promise<{ configured: boolean; host: string | null; port: string | number; from: string | null; user: string | null }> {
+  /** The mail server's real status, or null when the SDTracker server cannot be reached (nothing is invented). */
+  async getStatus(): Promise<{ configured: boolean; host: string | null; port: string | number; from: string | null; user: string | null } | null> {
     if ((shouldPreferDirectSupabase() || isDirectSupabaseActive()) && !getApiBaseUrl()) {
-      return { configured: true, host: 'smtp.gmail.com', port: 587, from: 'SD Trackers <not-configured>', user: 'not-configured' };
+      return null;
     }
     try {
       const res = await fetchWithTimeout(getApiUrl('/api/smtp/status'), {
@@ -215,7 +215,7 @@ export const emailNotificationService = {
         return await res.json();
       }
     } catch {}
-    return { configured: true, host: 'smtp.gmail.com', port: 587, from: 'SD Trackers <not-configured>', user: 'not-configured' };
+    return null;
   },
 
   /**

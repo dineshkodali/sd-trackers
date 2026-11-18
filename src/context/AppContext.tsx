@@ -89,7 +89,6 @@ import {
   FOOD_VENDORS
 } from '../data/commercialCateringLaundryData';
 import { DEFAULT_FIELD_OPTIONS } from '../data/defaultFieldOptions';
-import { DEFAULT_NOTIFICATION_RULES } from '../data/defaultNotificationRules';
 import { emailNotificationService } from '../services/emailNotificationService';
 import { smartCache, fastIndices, SmartCacheStats } from '../utils/smartCache';
 import { roomKey, findRegisterRoom, deriveRoomOccupancy } from '../utils/roomAllocation';
@@ -807,7 +806,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [housekeepingRecords, setHousekeepingRecords] = useState<HousekeepingRecord[]>([]);
   const [foodConsumptionReports, setFoodConsumptionReports] = useState<FoodConsumptionReport[]>([]);
   const [foodBoxRequests, setFoodBoxRequests] = useState<FoodBoxRequest[]>([]);
-  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>([]);
   const [emailNotificationLogs, setEmailNotificationLogs] = useState<EmailNotificationLog[]>([]);
   const [users, setUsers] = useState<UserAccount[]>(() => {
     if (typeof window !== 'undefined') {
@@ -1210,7 +1209,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetNotificationRules = useCallback(async () => {
     const previous = notificationRules;
-    setNotificationRules(DEFAULT_NOTIFICATION_RULES);
     const res = await emailNotificationService.resetRules();
     if (!res.success) {
       setNotificationRules(previous);

@@ -889,13 +889,10 @@ router.post('/test', requireRole(...ADMIN_ROLES), async (req: Request, res: Resp
 // GET /api/smtp/rules - Fetch all configured notification rules
 router.get('/rules', async (req: Request, res: Response) => {
   const loaded = await loadRulesFromDb();
-  res.json({
-    success: true,
-    rules: runtimeRules,
-    source: loaded.persisted ? 'database' : 'runtime-memory',
-    persisted: loaded.persisted,
-    ...(loaded.error ? { warning: loaded.error } : {})
-  });
+  if (!loaded.persisted) {
+    return res.status(503).json({ success: false, rules: [], persisted: false, error: loaded.error || 'Notification settings could not be read from the database.' });
+  }
+  res.json({ success: true, rules: runtimeRules, source: 'database', persisted: true });
 });
 
 // PUT /api/smtp/rules/:id - Update an individual notification rule
