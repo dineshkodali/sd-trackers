@@ -25,7 +25,10 @@ export const INTENT_FILTERS: Record<string, readonly string[]> = {
   // expiry: comma list of expired | due-30 | due-90, decided from the expiry date
   compliance: ['expiry'],
   // open: '1' = not Resolved; urgency: Critical | High | Medium | Low
-  escalations: ['open', 'urgency']
+  escalations: ['open', 'urgency'],
+  // due: all | completed | pending | one_done | none_done | overdue (the page's own status chips); month: 'YYYY-MM'
+  roomChecks: ['due', 'month'],
+  welfareChecks: ['due', 'month']
 };
 
 export const INTENT_MAX_AGE_MS = 10_000;

@@ -37,6 +37,11 @@ test('list values split cleanly', () => {
   assert.deepEqual(splitList(undefined), []);
 });
 
-test('the three first adopters declare their filters', () => {
-  assert.deepEqual(Object.keys(INTENT_FILTERS).sort(), ['compliance', 'escalations', 'maintenance']);
+test('the pages that accept a dashboard link declare their filters', () => {
+  assert.deepEqual(Object.keys(INTENT_FILTERS).sort(), ['compliance', 'escalations', 'maintenance', 'roomChecks', 'welfareChecks']);
+});
+
+test('check pages accept only their own filters', () => {
+  assert.deepEqual(sanitizeIntentFilters('roomChecks', { due: 'overdue', month: '2026-11', sla: 'overdue' }), { due: 'overdue', month: '2026-11' });
+  assert.deepEqual(sanitizeIntentFilters('welfareChecks', { due: 'pending', open: '1' }), { due: 'pending' });
 });

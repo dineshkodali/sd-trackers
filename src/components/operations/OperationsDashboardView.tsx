@@ -3,6 +3,13 @@ import { IconRefresh as RefreshCw, IconSearch as Search } from '@tabler/icons-re
 import { useApp } from '../../context/AppContext';
 import { useOperationsData } from '../../hooks/useOperationsData';
 import { useCheckObligations } from '../../hooks/useCheckObligations';
+import { useOperationsLive } from '../../hooks/useOperationsLive';
+import { useGuestContext } from '../../hooks/useGuestContext';
+import { buildGuests, computeGuestStats } from '../../utils/guestStats';
+import {
+  selectDepartmentRows, selectFlowCounts, selectMaintenanceOverview, selectResidentProfile, selectSiteFlowRows, monitorChecks, listOverdueChecks, type DeptKey
+} from '../../utils/operationsDepartments';
+import { DepartmentTable, ChecksMonitor, MaintenanceOverviewSection, ResidentPropertySection } from './OperationsSections';
 import { GuestAnalyticsWidget } from '../dashboard/GuestAnalyticsWidget';
 import { PriorityVulnerableWidget } from '../dashboard/PriorityVulnerableWidget';
 import { TransportKPIDashboard } from '../transport/TransportKPIDashboard';
@@ -71,7 +78,8 @@ export const OperationsDashboardView: React.FC = () => {
   const {
     sites, maintenanceRecords, complianceRecords, escalations, auditLogs, currentUserRole,
     canAccessPage, canAccessAllSites, allowedSites, defaultSiteFilter,
-    liveDataStatus, navigateWithIntent, refreshLiveData
+    liveDataStatus, navigateWithIntent, refreshLiveData,
+    newArrivalsRecords, dispersalRecords, evictionRecords, laundryRecords, dailyRegisterRooms, dailyRegisterRecords
   } = useApp();
 
   // What this user may see. A source they cannot view is never requested, counted or shown.
@@ -86,10 +94,15 @@ export const OperationsDashboardView: React.FC = () => {
     welfareChecks: canAccessPage('welfareChecks'),
     dailyRegisters: canAccessPage('dailyRegisters'),
     vulnerable: canAccessPage('vulnerable'),
-    publicTransport: canAccessPage('publicTransport')
+    publicTransport: canAccessPage('publicTransport'),
+    dispersal: canAccessPage('dispersal'),
+    laundry: canAccessPage('laundry'),
+    suUsers: canAccessPage('suUsers')
   };
 
-  const master = useOperationsData({ property: can.property, peep: can.peep, followUps: can.followUps });
+  const master = useOperationsData({ property: can.property, peep: can.peep, followUps: can.followUps, residents: can.suUsers });
+  // Live updates: another user's change re-reads the affected data here within a couple of seconds, with no page reload.
+  const live = useOperationsLive(refreshLiveData);
 
   const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   useEffect(() => { setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
@@ -133,40 +146,14 @@ export const OperationsDashboardView: React.FC = () => {
   const roomObligations = useCheckObligations('room', currentMonth, now, can.roomChecks);
   const welfareObligations = useCheckObligations('welfare', currentMonth, now, can.welfareChecks);
 
-  const allowedNames = useMemo(() => {
-    if (canAccessAllSites()) return null;
-    return new Set((allowedSites || []).map(s => String(s).toLowerCase()));
-  }, [canAccessAllSites, allowedSites]);
-
-  const scopedRoomRows = useMemo(() => {
-    return (roomObligations.rows || []).filter(r =>
-      (!allowedNames || allowedNames.has(r.siteName.toLowerCase())) &&
-      (!siteFilter || siteFilter === 'all' || siteFilter === 'All Sites' || r.siteName.toLowerCase() === siteFilter.toLowerCase())
-    );
-  }, [roomObligations.rows, allowedNames, siteFilter]);
-
-  const scopedWelfareRows = useMemo(() => {
-    return (welfareObligations.rows || []).filter(r =>
-      (!allowedNames || allowedNames.has(r.siteName.toLowerCase())) &&
-      (!siteFilter || siteFilter === 'all' || siteFilter === 'All Sites' || r.siteName.toLowerCase() === siteFilter.toLowerCase())
-    );
-  }, [welfareObligations.rows, allowedNames, siteFilter]);
-
-  const roomTotals = useMemo(() => {
-    const total = scopedRoomRows.length;
-    const completed = scopedRoomRows.filter(r => r.overall === 'complete').length;
-    const overdue = scopedRoomRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue').length;
-    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { total, completed, overdue, pct };
-  }, [scopedRoomRows]);
-
-  const welfareTotals = useMemo(() => {
-    const total = scopedWelfareRows.length;
-    const completed = scopedWelfareRows.filter(r => r.overall === 'complete').length;
-    const overdue = scopedWelfareRows.filter(r => r.first?.status === 'overdue' || r.second?.status === 'overdue').length;
-    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { total, completed, overdue, pct };
-  }, [scopedWelfareRows]);
+  // Check rows are limited to the sites this user may see and the site picked in the header (by site id, exact).
+  const inSite = (siteId: string) =>
+    (scope.allowedSiteIds === 'all' || scope.allowedSiteIds.has(siteId)) && (scope.siteId === 'all' || scope.siteId === siteId);
+  const scopedRoomRows = useMemo(() => (roomObligations.rows || []).filter(r => !!r.siteId && inSite(r.siteId)), [roomObligations.rows, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const scopedWelfareRows = useMemo(() => (welfareObligations.rows || []).filter(r => !!r.siteId && inSite(r.siteId)), [welfareObligations.rows, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const roomMonitor = useMemo(() => (roomObligations.result ? monitorChecks(scopedRoomRows) : null), [roomObligations.result, scopedRoomRows]);
+  const welfareMonitor = useMemo(() => (welfareObligations.result ? monitorChecks(scopedWelfareRows) : null), [welfareObligations.result, scopedWelfareRows]);
+  const overdueChecks = useMemo(() => listOverdueChecks(can.roomChecks ? scopedRoomRows : [], can.welfareChecks ? scopedWelfareRows : []), [scopedRoomRows, scopedWelfareRows, can.roomChecks, can.welfareChecks]);
 
   const input: OpsInput = useMemo(() => ({
     sites: siteRefs,
@@ -207,6 +194,99 @@ export const OperationsDashboardView: React.FC = () => {
   ];
 
   const val = (ok: boolean, v: number) => (loading || !ok ? DASH : n(v));
+
+  // ---- Business overview, departments, checks, maintenance, residents (all built from the shared pure selectors)
+  const periodR = useMemo(() => periodRange(period, today), [period, today]);
+  const periodLabel = PERIOD_LABELS[period].toLowerCase();
+  const flowInput = useMemo(() => ({
+    sites: siteRefs,
+    newArrivals: can.dailyRegisters ? newArrivalsRecords : [],
+    dispersals: can.dispersal ? dispersalRecords : [],
+    evictions: can.dailyRegisters || can.dispersal ? evictionRecords : [],
+  }), [siteRefs, can.dailyRegisters, can.dispersal, newArrivalsRecords, dispersalRecords, evictionRecords]);
+  const flow = useMemo(() => selectFlowCounts(flowInput, scope, today), [flowInput, scope, today]);
+  const deptRows = useMemo(() => selectDepartmentRows({
+    ...flowInput,
+    maintenance: can.maintenance ? maintenanceRecords : [],
+    laundry: can.laundry ? laundryRecords : [],
+    escalations: can.escalations ? escalations : [],
+    roomRows: can.roomChecks ? scopedRoomRows : [],
+    welfareRows: can.welfareChecks ? scopedWelfareRows : [],
+    visible: {
+      newArrivals: can.dailyRegisters, dispersals: can.dispersal, evictions: can.dispersal || can.dailyRegisters,
+      roomChecks: can.roomChecks, welfareChecks: can.welfareChecks, maintenance: can.maintenance, laundry: can.laundry, escalations: can.escalations
+    } as Record<DeptKey, boolean>
+  }, scope, periodR, now), [flowInput, can.maintenance, can.laundry, can.escalations, can.roomChecks, can.welfareChecks, can.dailyRegisters, can.dispersal, maintenanceRecords, laundryRecords, escalations, scopedRoomRows, scopedWelfareRows, scope, periodR, now]);
+  const maint = useMemo(() => selectMaintenanceOverview(can.maintenance ? maintenanceRecords : [], siteRefs, scope, periodR, now), [can.maintenance, maintenanceRecords, siteRefs, scope, periodR, now]);
+  const profile = useMemo(() => (can.suUsers || can.property
+    ? selectResidentProfile({ sites: siteRefs, serviceUsers: master.serviceUsers, placements: master.placements, registerRooms: can.dailyRegisters ? dailyRegisterRooms : [] }, scope)
+    : null), [can.suUsers, can.property, can.dailyRegisters, siteRefs, master.serviceUsers, master.placements, dailyRegisterRooms, scope]);
+  const guestCtx = useGuestContext();
+  const demographics = useMemo(() => {
+    if (!can.dailyRegisters || guestCtx.error) return null;
+    const rows = (dailyRegisterRecords || []).filter(r => {
+      const sid = resolveSite(r.hotel);
+      return !!sid && (scope.allowedSiteIds === 'all' || scope.allowedSiteIds.has(sid)) && (scope.siteId === 'all' || scope.siteId === sid);
+    });
+    const st = computeGuestStats(buildGuests(rows, guestCtx.ctx, today));
+    return { male: st.male, female: st.female, other: st.otherOrUnspecified, child: st.child, adult: st.adult, elderly: st.elderly, aspen: st.aspenHolders, families: st.familiesBySize as Record<string, number> };
+  }, [can.dailyRegisters, guestCtx.error, guestCtx.ctx, dailyRegisterRecords, resolveSite, scope, today]);
+  const siteFlow = useMemo(() => selectSiteFlowRows(flowInput, can.roomChecks ? scopedRoomRows : [], can.welfareChecks ? scopedWelfareRows : [], scope, today), [flowInput, can.roomChecks, can.welfareChecks, scopedRoomRows, scopedWelfareRows, scope, today]);
+
+  const checksReady = !loading && !(can.roomChecks && roomObligations.loading && !roomObligations.result) && !(can.welfareChecks && welfareObligations.loading && !welfareObligations.result);
+  const checksFailed = (state: { error: string | null; result: unknown }) => !!state.error && !state.result;
+
+  // Overdue items: only modules with a defined deadline are added up; the title lists exactly which.
+  const dispersalOverdue = deptRows.find(r => r.key === 'dispersals')?.overdue ?? 0;
+  const evictionOverdue = deptRows.find(r => r.key === 'evictions')?.overdue ?? 0;
+  const overdueChecksCount = overdueChecks.length;
+  const overdueTotal = (can.maintenance ? kpis.overdueMaintenance : 0) + (can.compliance ? kpis.complianceExpired : 0) + kpis.overdueActions.total
+    + overdueChecksCount + dispersalOverdue + evictionOverdue;
+  const overdueParts = [
+    can.maintenance && `maintenance ${kpis.overdueMaintenance}`, can.compliance && `expired compliance ${kpis.complianceExpired}`,
+    (can.peep || can.followUps || can.property) && `reviews/inspections/issues ${kpis.overdueActions.total}`,
+    (can.roomChecks || can.welfareChecks) && `checks ${overdueChecksCount}`, can.dispersal && `dispersals ${dispersalOverdue}`, can.dispersal && `evictions ${evictionOverdue}`
+  ].filter(Boolean).join(', ');
+
+  const businessKpis: Kpi[] = [];
+  const delta = (cur: number, prev: number) => (cur === prev ? 'same as yesterday' : `${cur > prev ? '+' : '-'}${Math.abs(cur - prev)} vs yesterday (${prev})`);
+  if (can.suUsers || can.property) {
+    businessKpis.push({
+      id: 'b-residents', label: 'Active service users', value: val(!unavailable.occupancy, kpis.activeResidents), context: 'active placements',
+      onClick: canAccessPage('suUsers') ? () => navigateWithIntent('suUsers') : undefined
+    });
+  }
+  if (can.property) {
+    businessKpis.push(
+      { id: 'b-occupied', label: 'Occupied rooms', value: val(!unavailable.occupancy, kpis.occupancy.roomsOccupied), context: kpis.occupancy.beds > 0 ? `${kpis.occupancy.residents} / ${kpis.occupancy.beds} beds` : 'no rooms set up', onClick: () => navigateWithIntent('propertyManagement') },
+      { id: 'b-available', label: 'Available rooms', value: val(!unavailable.occupancy, kpis.occupancy.roomsAvailable), context: `${n(kpis.occupancy.freeBeds)} free beds`, onClick: () => navigateWithIntent('propertyManagement') },
+      { id: 'b-properties', label: 'Properties', value: val(!unavailable.occupancy, kpis.properties), context: 'active buildings', onClick: () => navigateWithIntent('propertyManagement') }
+    );
+  }
+  if (can.dailyRegisters) {
+    businessKpis.push({
+      id: 'b-arrivals', label: 'New arrivals today', value: loading ? DASH : n(flow.newArrivals.today), context: loading ? undefined : delta(flow.newArrivals.today, flow.newArrivals.yesterday),
+      onClick: () => navigateWithIntent('dailyRegisters'), title: 'Check-in date is today. Opens Live Daily Registers.'
+    });
+  }
+  if (can.dispersal) {
+    businessKpis.push({
+      id: 'b-dispersals', label: 'Dispersals today', value: loading ? DASH : n(flow.dispersals.today), context: loading ? undefined : delta(flow.dispersals.today, flow.dispersals.yesterday),
+      onClick: () => navigateWithIntent('dispersal'), title: 'Dispersal date is today (MM/DD/YYYY on the sheet). Opens the Dispersal Sheet.'
+    });
+  }
+  if (can.maintenance) {
+    businessKpis.push({
+      id: 'b-maint', label: 'Open maintenance', value: val(!unavailable.maintenance, kpis.openMaintenance),
+      context: unavailable.maintenance ? 'could not load' : `${n(maint.overview.newToday)} new today`, onClick: () => navigateWithIntent('maintenance', { filters: { open: '1' } })
+    });
+  }
+  businessKpis.push({
+    id: 'b-overdue', label: 'Overdue items', value: loading ? DASH : n(overdueTotal), context: 'across modules with deadlines', tone: !loading && overdueTotal > 0 ? 'red' : 'none',
+    title: `Sum of: ${overdueParts || 'nothing you can view'}. Jumps to the department table.`,
+    onClick: () => { document.getElementById('ops-departments')?.scrollIntoView({ block: 'start' }); }
+  });
+  const openTarget = (page: string, filters?: Record<string, string>, recordId?: string) => navigateWithIntent(page, { filters, recordId });
 
   // Overview matrix: which rows the user may see, whether each loaded, and where a cell opens.
   type Target = { page: DashboardPage; filters?: Record<string, string> };
@@ -322,9 +402,11 @@ export const OperationsDashboardView: React.FC = () => {
   };
 
   const dateLabel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(now);
-  const updatedLabel = liveDataStatus.lastSyncAt
-    ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(liveDataStatus.lastSyncAt))
+  const lastSyncMs = Math.max(0, ...[liveDataStatus.lastSyncAt, master.loadedAt, live.lastReconciledAt].map(v => (v ? new Date(v).getTime() : 0)));
+  const updatedLabel = lastSyncMs
+    ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date(lastSyncMs))
     : DASH;
+  const linkLabel = live.link === 'live' ? 'Live' : live.link === 'connecting' ? 'Connecting' : live.link === 'reconnecting' ? 'Reconnecting - refreshing every minute' : 'Offline - refreshing every minute';
 
   const siteOptions = (allowedSites || []).filter(Boolean);
   const multiSite = canAccessAllSites() || siteOptions.length > 1;
@@ -361,7 +443,14 @@ export const OperationsDashboardView: React.FC = () => {
               className="pl-7 pr-2 py-1 w-44 bg-white border border-[#8a8886] rounded-xs"
             />
           </div>
-          <span className="text-[#605e5c] whitespace-nowrap" title="Time of the last data load">Updated {updatedLabel}</span>
+          <label className="flex items-center gap-1 text-[#605e5c]">
+            <span>Period</span>
+            <select aria-label="Reporting period" value={period} onChange={e => setPeriod(e.target.value as PeriodKind)} className="px-2 py-1 bg-white border border-[#8a8886] rounded-xs text-[#242424]">
+              {(Object.keys(PERIOD_LABELS) as PeriodKind[]).map(k => <option key={k} value={k}>{PERIOD_LABELS[k]}</option>)}
+            </select>
+          </label>
+          <span className="text-[#605e5c] whitespace-nowrap" title="Time the numbers were last read from the database">Last synchronised {updatedLabel}</span>
+          <span role="status" className={`whitespace-nowrap font-semibold ${live.link === 'live' ? 'text-emerald-800' : live.link === 'connecting' ? 'text-[#605e5c]' : 'text-[#7f6000]'}`} title="Changes made by other users appear here automatically">{linkLabel}</span>
           <button type="button" onClick={handleRefresh} disabled={refreshing} className="inline-flex items-center gap-1 px-2 py-1 font-semibold bg-white border border-[#8a8886] rounded-xs hover:bg-[#edebe9] disabled:opacity-60">
             <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
             {refreshing ? 'Refreshing…' : 'Refresh'}
@@ -375,11 +464,18 @@ export const OperationsDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* KPI strip */}
-      {kpiList.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2">
-          {kpiList.map(k => <KpiCell key={k.id} kpi={k} />)}
-        </div>
+      {/* Business overview */}
+      {businessKpis.length > 0 || kpiList.length > 0 ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2" aria-label="Business overview">
+            {businessKpis.map(k => <KpiCell key={k.id} kpi={k} />)}
+          </div>
+          {kpiList.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2" aria-label="Exceptions">
+              {kpiList.map(k => <KpiCell key={k.id} kpi={k} />)}
+            </div>
+          )}
+        </>
       ) : (
         <p className="text-xs text-[#605e5c] py-2">You do not have access to any page this dashboard summarises.</p>
       )}
@@ -482,123 +578,33 @@ export const OperationsDashboardView: React.FC = () => {
         </section>
       </div>
 
-      {/* Monthly Compliance Summary Cards (Replaces bulky dropdown lists) */}
-      {(can.roomChecks || can.welfareChecks) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {can.roomChecks && (
-            <div className="bg-white border border-[#e1dfdd] rounded-xs p-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-xs font-semibold text-[#242424] truncate">Room Checks Monthly Compliance</span>
-                    <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#faf9f8] text-[#605e5c] border border-[#edebe9] rounded-xs whitespace-nowrap">
-                      {currentMonthLabel}
-                    </span>
-                  </div>
-                  {roomTotals.overdue > 0 ? (
-                    <Tag tone="red">{roomTotals.overdue} overdue</Tag>
-                  ) : (
-                    <Tag tone="grey">On track</Tag>
-                  )}
-                </div>
+      <DepartmentTable
+        rows={deptRows}
+        ready={!loading}
+        unavailable={{ maintenance: unavailable.maintenance, escalations: unavailable.escalations, roomChecks: checksFailed(roomObligations), welfareChecks: checksFailed(welfareObligations) }}
+        periodLabel={periodLabel}
+        onOpen={openTarget}
+      />
 
-                <div className="grid grid-cols-3 gap-2 mb-2.5">
-                  <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2 text-center">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total Rooms</div>
-                    <div className="text-lg font-semibold text-[#242424] tabular-nums mt-0.5">{roomTotals.total}</div>
-                  </div>
-                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-xs p-2 text-center">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800">Completed 2/2</div>
-                    <div className="text-lg font-semibold text-emerald-800 tabular-nums mt-0.5">{roomTotals.completed}</div>
-                  </div>
-                  <div className={`${roomTotals.overdue > 0 ? 'bg-red-50/50 border-red-100' : 'bg-[#faf9f8] border-[#edebe9]'} border rounded-xs p-2 text-center`}>
-                    <div className={`text-[10px] font-semibold uppercase tracking-wider ${roomTotals.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'}`}>Overdue</div>
-                    <div className={`text-lg font-semibold tabular-nums mt-0.5 ${roomTotals.overdue > 0 ? 'text-red-800' : 'text-[#242424]'}`}>{roomTotals.overdue}</div>
-                  </div>
-                </div>
+      <ChecksMonitor
+        month={currentMonthLabel}
+        room={{ monitor: roomMonitor, visible: can.roomChecks, error: checksFailed(roomObligations) }}
+        welfare={{ monitor: welfareMonitor, visible: can.welfareChecks, error: checksFailed(welfareObligations) }}
+        overdue={overdueChecks}
+        ready={checksReady}
+        onOpen={openTarget}
+      />
 
-                <div className="space-y-1 mb-2">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="text-[#605e5c]">Monthly Completion Rate</span>
-                    <span className="font-semibold text-[#242424] tabular-nums">{roomTotals.pct}%</span>
-                  </div>
-                  <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
-                    <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${roomTotals.pct}%` }} />
-                  </div>
-                </div>
-              </div>
+      {can.maintenance && (
+        <MaintenanceOverviewSection overview={maint.overview} rows={maint.rows} ready={!loading} unavailable={unavailable.maintenance} periodLabel={periodLabel} onOpen={openTarget} />
+      )}
 
-              <div className="pt-2 border-t border-[#edebe9] flex items-center justify-between">
-                <span className="text-[11px] text-[#605e5c]">2 checks / month per room (10th & 25th)</span>
-                <button
-                  type="button"
-                  onClick={() => navigateWithIntent('roomChecks')}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0d9488] hover:text-[#0f766e] cursor-pointer"
-                >
-                  <span>Manage Room Checks</span>
-                  <span aria-hidden="true">&rarr;</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {can.welfareChecks && (
-            <div className="bg-white border border-[#e1dfdd] rounded-xs p-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-xs font-semibold text-[#242424] truncate">Welfare Checks Monthly Compliance</span>
-                    <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-[#faf9f8] text-[#605e5c] border border-[#edebe9] rounded-xs whitespace-nowrap">
-                      {currentMonthLabel}
-                    </span>
-                  </div>
-                  {welfareTotals.overdue > 0 ? (
-                    <Tag tone="red">{welfareTotals.overdue} overdue</Tag>
-                  ) : (
-                    <Tag tone="grey">On track</Tag>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 mb-2.5">
-                  <div className="bg-[#faf9f8] border border-[#edebe9] rounded-xs p-2 text-center">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">Total SUs</div>
-                    <div className="text-lg font-semibold text-[#242424] tabular-nums mt-0.5">{welfareTotals.total}</div>
-                  </div>
-                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-xs p-2 text-center">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800">Completed 2/2</div>
-                    <div className="text-lg font-semibold text-emerald-800 tabular-nums mt-0.5">{welfareTotals.completed}</div>
-                  </div>
-                  <div className={`${welfareTotals.overdue > 0 ? 'bg-red-50/50 border-red-100' : 'bg-[#faf9f8] border-[#edebe9]'} border rounded-xs p-2 text-center`}>
-                    <div className={`text-[10px] font-semibold uppercase tracking-wider ${welfareTotals.overdue > 0 ? 'text-red-800' : 'text-[#605e5c]'}`}>Overdue</div>
-                    <div className={`text-lg font-semibold tabular-nums mt-0.5 ${welfareTotals.overdue > 0 ? 'text-red-800' : 'text-[#242424]'}`}>{welfareTotals.overdue}</div>
-                  </div>
-                </div>
-
-                <div className="space-y-1 mb-2">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="text-[#605e5c]">Monthly Completion Rate</span>
-                    <span className="font-semibold text-[#242424] tabular-nums">{welfareTotals.pct}%</span>
-                  </div>
-                  <div className="w-full bg-[#edebe9] rounded-xs h-1.5 overflow-hidden">
-                    <div className="bg-[#0d9488] h-1.5 rounded-xs transition-all duration-300" style={{ width: `${welfareTotals.pct}%` }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-[#edebe9] flex items-center justify-between">
-                <span className="text-[11px] text-[#605e5c]">2 checks / month per placed resident</span>
-                <button
-                  type="button"
-                  onClick={() => navigateWithIntent('welfareChecks')}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0d9488] hover:text-[#0f766e] cursor-pointer"
-                >
-                  <span>Manage Welfare Checks</span>
-                  <span aria-hidden="true">&rarr;</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+      {(can.suUsers || can.property) && (
+        <ResidentPropertySection
+          profile={profile} ready={!loading} unavailable={unavailable.occupancy || masterDown('Service users')}
+          occupancy={can.property ? { residents: kpis.occupancy.residents, beds: kpis.occupancy.beds, pct: kpis.occupancy.pct, roomsOccupied: kpis.occupancy.roomsOccupied, roomsAvailable: kpis.occupancy.roomsAvailable } : null}
+          demographics={demographics} onOpen={openTarget}
+        />
       )}
 
       {/* Operational overview + site comparison (below the fold) */}
@@ -607,12 +613,7 @@ export const OperationsDashboardView: React.FC = () => {
           <section className="xl:col-span-5 bg-white border border-[#e1dfdd] rounded-xs min-w-0" aria-labelledby="ops-overview-h">
             <header className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#e1dfdd]">
               <h2 id="ops-overview-h" className="text-xs font-semibold text-[#242424]">Operational overview</h2>
-              <label className="flex items-center gap-1.5 text-xs text-[#605e5c]">
-                <span>Completed in</span>
-                <select aria-label="Reporting period for the Completed column" value={period} onChange={e => setPeriod(e.target.value as PeriodKind)} className="px-1.5 py-0.5 bg-white border border-[#8a8886] rounded-xs text-[#242424]">
-                  {(Object.keys(PERIOD_LABELS) as PeriodKind[]).map(k => <option key={k} value={k}>{PERIOD_LABELS[k]}</option>)}
-                </select>
-              </label>
+              <span className="text-xs text-[#605e5c]">Completed: {periodLabel}</span>
             </header>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -659,7 +660,7 @@ export const OperationsDashboardView: React.FC = () => {
         {snapshot.sites.length > 1 && (
           <section className="xl:col-span-7 bg-white border border-[#e1dfdd] rounded-xs min-w-0" aria-labelledby="ops-sites-h">
             <header className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#e1dfdd]">
-              <h2 id="ops-sites-h" className="text-xs font-semibold text-[#242424]">Sites by items needing action</h2>
+              <h2 id="ops-sites-h" className="text-xs font-semibold text-[#242424]">Site-wise performance</h2>
               <span className="text-[11px] text-[#605e5c]">Ranked by overdue maintenance + CAT 1 + expired compliance + overdue reviews</span>
             </header>
             <div className="overflow-x-auto">
@@ -668,6 +669,9 @@ export const OperationsDashboardView: React.FC = () => {
                   <tr className="border-b border-[#edebe9]">
                     <th className={TH}>Site</th>
                     {can.property && <th className={`${TH} text-right`}>Occupancy</th>}
+                    {can.dailyRegisters && <th className={`${TH} text-right`}>Arrivals today</th>}
+                    {can.dispersal && <th className={`${TH} text-right`}>Dispersals today · overdue</th>}
+                    {(can.roomChecks || can.welfareChecks) && <th className={`${TH} text-right`}>Overdue checks</th>}
                     {can.maintenance && <><th className={`${TH} text-right`}>Open maint.</th><th className={`${TH} text-right`}>Overdue</th><th className={`${TH} text-right`}>CAT 1</th></>}
                     {can.compliance && <th className={`${TH} text-right`}>Compliance exp. · ≤30 d</th>}
                     {actionParts.length > 0 && <th className={`${TH} text-right`}>Overdue reviews</th>}
@@ -691,6 +695,13 @@ export const OperationsDashboardView: React.FC = () => {
                             {loading || unavailable.occupancy ? DASH : s.beds > 0 ? `${n(s.residents)} / ${n(s.beds)}${s.occupancyPct !== null ? ` · ${s.occupancyPct}%` : ''}` : DASH}
                           </td>
                         )}
+                        {can.dailyRegisters && num(true, siteFlow.get(s.siteId)?.newArrivalsToday ?? 0)}
+                        {can.dispersal && (
+                          <td className={`${TD} text-right tabular-nums whitespace-nowrap ${(siteFlow.get(s.siteId)?.dispersalsOverdue ?? 0) > 0 && !loading ? 'text-[#a4262c] font-bold' : 'text-[#242424]'}`}>
+                            {loading ? DASH : `${n(siteFlow.get(s.siteId)?.dispersalsToday ?? 0)} · ${n(siteFlow.get(s.siteId)?.dispersalsOverdue ?? 0)}`}
+                          </td>
+                        )}
+                        {(can.roomChecks || can.welfareChecks) && num(checksReady, siteFlow.get(s.siteId)?.overdueChecks ?? 0, true)}
                         {can.maintenance && <>{num(!unavailable.maintenance, s.openMaintenance)}{num(!unavailable.maintenance, s.overdueMaintenance, true)}{num(!unavailable.maintenance, s.openCat1, true)}</>}
                         {can.compliance && (
                           <td className={`${TD} text-right tabular-nums whitespace-nowrap ${s.complianceExpired > 0 && !unavailable.compliance && !loading ? 'text-[#a4262c] font-bold' : 'text-[#242424]'}`}>
@@ -765,7 +776,7 @@ export const OperationsDashboardView: React.FC = () => {
             <button
               type="button"
               onClick={() => navigateWithIntent('publicTransport')}
-              className="text-xs font-semibold text-[#8764b8] hover:text-[#6b4f98] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-xs transition-colors self-start sm:self-auto cursor-pointer"
+              className="text-xs font-semibold text-[#8764b8] hover:text-[#6b4f98] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-xs self-start sm:self-auto cursor-pointer"
             >
               Open Transport Tracker
             </button>

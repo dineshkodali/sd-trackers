@@ -298,7 +298,9 @@ function occupancyFor(facts: Facts, siteId?: string) {
 export interface OpsKpis {
   /** Sites in the user's scope. Per-site "active" status is not on the data the selectors receive, so this is a count of sites, not of operational ones. */
   activeSites: number;
-  occupancy: { residents: number; beds: number; pct: number | null; freeBeds: number; roomsOutOfUse: number };
+  occupancy: { residents: number; beds: number; pct: number | null; freeBeds: number; roomsOutOfUse: number; roomsOccupied: number; roomsAvailable: number };
+  /** Active buildings (master properties) in scope */
+  properties: number;
   activeResidents: number;
   openMaintenance: number;
   openCat1: number;
@@ -325,7 +327,8 @@ function kpisFrom(facts: Facts): OpsKpis {
   const escOpen = facts.escalations.filter(e => isEscalationOpen(e.r));
   return {
     activeSites: sitesInScope.length,
-    occupancy: { residents: occ.residents, beds: occ.beds, pct: occ.occupancyPct, freeBeds: occ.freeBeds, roomsOutOfUse: occ.outOfUse },
+    occupancy: { residents: occ.residents, beds: occ.beds, pct: occ.occupancyPct, freeBeds: occ.freeBeds, roomsOutOfUse: occ.outOfUse, roomsOccupied: occ.roomsOccupied, roomsAvailable: occ.roomsAvailable },
+    properties: ctx.input.properties.filter(p => p.status === 'Active' && ctx.inScope(ctx.propertySite.get(p.id) ?? null)).length,
     activeResidents: facts.placements.length,
     openMaintenance: open.length,
     openCat1: open.filter(m => m.r.priority === 'CAT 1').length,

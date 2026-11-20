@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { suPropertyService } from '../services/suPropertyService';
 import { suTrackerService, type AbsenceFollowUp, type PeepPlan } from '../services/suTrackerService';
 import { roomManagementService } from '../services/roomManagementService';
-import type { Placement, PropertyMaster, PropertyRoom } from '../types/masterData';
+import type { Placement, PropertyMaster, PropertyRoom, ServiceUserMaster } from '../types/masterData';
 import type { RoomIssue } from '../types/roomManagement';
 
 /**
@@ -17,6 +17,8 @@ export interface OperationsMasterData {
   roomIssues: RoomIssue[];
   peepPlans: PeepPlan[];
   followUps: AbsenceFollowUp[];
+  /** Service users (Service Users page); used for counts only */
+  serviceUsers: ServiceUserMaster[];
   /** Sources that were requested and failed (display names) */
   failed: string[];
   loading: boolean;
@@ -32,9 +34,11 @@ export interface OperationsDataWanted {
   peep: boolean;
   /** absence follow-ups (SU Attendance) */
   followUps: boolean;
+  /** service users (Service Users page) */
+  residents?: boolean;
 }
 
-const EMPTY = { properties: [] as PropertyMaster[], rooms: [] as PropertyRoom[], placements: [] as Placement[], roomIssues: [] as RoomIssue[], peepPlans: [] as PeepPlan[], followUps: [] as AbsenceFollowUp[] };
+const EMPTY = { properties: [] as PropertyMaster[], rooms: [] as PropertyRoom[], placements: [] as Placement[], roomIssues: [] as RoomIssue[], peepPlans: [] as PeepPlan[], followUps: [] as AbsenceFollowUp[], serviceUsers: [] as ServiceUserMaster[] };
 
 export function useOperationsData(wanted: OperationsDataWanted, enabled = true): OperationsMasterData {
   const [data, setData] = useState(EMPTY);
@@ -43,25 +47,29 @@ export function useOperationsData(wanted: OperationsDataWanted, enabled = true):
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
   const alive = useRef(true);
   const seq = useRef(0);
+  const loadedOnce = useRef(false);
 
   const { property, peep, followUps } = wanted;
+  const residents = !!wanted.residents;
 
   const reload = useCallback(async () => {
     if (!enabled) return;
     const mine = ++seq.current;
-    setLoading(true);
+    // Only the first load shows "Loading"; later re-reads (live updates) replace the numbers in place without blanking the page.
+    if (!loadedOnce.current) setLoading(true);
     // Placements are needed to place a resident at a site (PEEP, follow-ups) as well as for occupancy.
-    const needPlacements = property || peep || followUps;
+    const needPlacements = property || peep || followUps || residents;
     const none = Promise.resolve({ success: true, data: [] as any[] });
 
-    const [props, rooms, plcs, issues, plans, fus] = await Promise.all([
+    const [props, rooms, plcs, issues, plans, fus, sus] = await Promise.all([
       property ? suPropertyService.getProperties() : none,
       property ? suPropertyService.getRooms() : none,
       needPlacements ? suPropertyService.getPlacements({ status: 'Active' }) : none,
       property ? roomManagementService.getIssues({}) : none,
       peep ? suTrackerService.listPeepPlans() : none,
       followUps ? suTrackerService.listFollowUps() : none,
-    ]).catch(() => [null, null, null, null, null, null] as any[]);
+      residents ? suPropertyService.getServiceUsers(undefined, { includeArchived: false }) : none,
+    ]).catch(() => [null, null, null, null, null, null, null] as any[]);
 
     if (!alive.current || mine !== seq.current) return; // a newer load superseded this one
 
@@ -77,11 +85,13 @@ export function useOperationsData(wanted: OperationsDataWanted, enabled = true):
       roomIssues: take<RoomIssue>(issues, 'Room issues'),
       peepPlans: take<PeepPlan>(plans, 'PEEP plans'),
       followUps: take<AbsenceFollowUp>(fus, 'Absence follow-ups'),
+      serviceUsers: take<ServiceUserMaster>(sus, 'Service users'),
     });
     setFailed(bad);
     setLoadedAt(new Date().toISOString());
+    loadedOnce.current = true;
     setLoading(false);
-  }, [enabled, property, peep, followUps]);
+  }, [enabled, property, peep, followUps, residents]);
 
   useEffect(() => {
     alive.current = true;

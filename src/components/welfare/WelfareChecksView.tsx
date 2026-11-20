@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconHeartHandshake as HeartHandshake, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconShieldExclamation as ShieldAlert, IconCircleCheck as CheckCircle2, IconCircleX as XCircle, IconBuilding as Building2, IconUser as User, IconActivity as Activity, IconStethoscope as Stethoscope, IconHome as Home, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock, IconAlertOctagon as AlertOctagon, IconAlertTriangle as AlertTriangle, IconClock as Clock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
+import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 import { WelfareCheckRecord } from '../../types';
 import { ServiceUserSection } from '../common/ServiceUserSection';
 import { StandardModal } from '../common/StandardModal';
@@ -130,6 +131,16 @@ export const WelfareChecksView: React.FC = () => {
   };
   const [compliancePage, setCompliancePage] = useState(1);
   const [compliancePageSize, setCompliancePageSize] = useState(10);
+
+  // Opened from the Operations Dashboard: show exactly the rows behind the number that was clicked.
+  useNavigationIntent('welfareChecks', intent => {
+    const due = (['all', 'completed', 'pending', 'one_done', 'none_done', 'overdue'] as const).find(v => v === intent.filters.due) as DueFilter | undefined;
+    const month = intent.filters.month;
+    if (month && /^\d{4}-\d{2}$/.test(month)) setSelectedMonth(month);
+    setPageTab('required');
+    setStatusChip(due || 'all');
+    setCompliancePage(1);
+  });
 
   // Real-time Monthly Obligation Calculation
   const obligationsMonth = selectedMonth === 'all' ? today.slice(0, 7) : selectedMonth;

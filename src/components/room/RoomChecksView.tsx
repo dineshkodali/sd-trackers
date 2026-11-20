@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconBuilding as Building2, IconPlus as Plus, IconSearch as Search, IconEdit as Edit3, IconTrash as Trash2, IconEye as Eye, IconCircleCheck as CheckCircle2, IconAlertTriangle as AlertTriangle, IconAlertOctagon as AlertOctagon, IconClock as Clock, IconUser as User, IconMessage as MessageSquare, IconAdjustmentsHorizontal as SlidersHorizontal, IconArrowUp as ArrowUp, IconArrowDown as ArrowDown, IconArrowsSort as ArrowUpDown, IconLock as Lock } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
+import { useNavigationIntent } from '../../hooks/useNavigationIntent';
 import { RoomCheckRecord, RoomCheckItem, RoomCheckResponse, RoomCheckOverallStatus } from '../../types';
 import { SiteServiceUserSelector } from '../common/SiteServiceUserSelector';
 import { Pagination } from '../common/Pagination';
@@ -188,6 +189,16 @@ export const RoomChecksView: React.FC = () => {
   };
   const [compliancePage, setCompliancePage] = useState(1);
   const [compliancePageSize, setCompliancePageSize] = useState(10);
+
+  // Opened from the Operations Dashboard: show exactly the rows behind the number that was clicked.
+  useNavigationIntent('roomChecks', intent => {
+    const due = (['all', 'completed', 'pending', 'one_done', 'none_done', 'overdue'] as const).find(v => v === intent.filters.due) as DueFilter | undefined;
+    const month = intent.filters.month;
+    if (month && /^\d{4}-\d{2}$/.test(month)) setSelectedMonth(month);
+    setPageTab('required');
+    setStatusChip(due || 'all');
+    setCompliancePage(1);
+  });
 
   // Which of the month's two checks the open form is recording (null for a free-standing check, counted by its date)
   const [recording, setRecording] = useState<{ period: 1 | 2; month: string; deadline: string } | null>(null);
