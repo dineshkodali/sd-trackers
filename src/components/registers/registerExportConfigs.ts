@@ -9,16 +9,11 @@ import {
 import { exportTableToCsv } from '../../utils/csvExport';
 import { exportTableToPdf } from '../../utils/pdfExport';
 
-export type DailyRegisterTab = 
-  | 'stats'
+export type DailyRegisterTab =
   | 'roomList'
-  | 'userGuide'
   | 'dailyRegister'
-  | 'validation'
-  | 'languages'
   | 'newArrivals'
-  | 'families'
-  | 'summary';
+  | 'families';
 
 export const DAILY_REGISTER_EXPORT_COLUMNS: ExportColumnOption[] = [
   { id: 'roomNo', label: 'Room No.', defaultSelected: true },

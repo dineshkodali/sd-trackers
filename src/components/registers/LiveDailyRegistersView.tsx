@@ -1,21 +1,17 @@
 import { IconX as CloseIcon } from '@tabler/icons-react';
 import React, { useState, useMemo, useEffect } from 'react';
-import { IconBuilding as Building2, IconSearch as Search, IconPlus as Plus, IconAdjustmentsHorizontal as SlidersHorizontal, IconLock as Lock, IconRefresh as RefreshCw } from '@tabler/icons-react';
+import { IconBuilding as Building2, IconSearch as Search, IconPlus as Plus, IconAdjustmentsHorizontal as SlidersHorizontal, IconLock as Lock, IconRefresh as RefreshCw, IconBook as BookOpen } from '@tabler/icons-react';
 import { suPropertyService } from '../../services/suPropertyService';
 import { buildRegisterSyncPlan } from '../../utils/registerMasterSync';
 import { useApp } from '../../context/AppContext';
 import { ExportDropdown } from '../common/ExportDropdown';
 import { ExportFormat, ExportScope, ExportOrientation } from '../common/ExportModal';
 import { getActiveRegisterExportConfig, executeRegisterExport } from './registerExportConfigs';
-import { LiveRegisterStatsSection } from './LiveRegisterStatsSection';
 import { RoomListSection } from './RoomListSection';
 import { UserGuideSection } from './UserGuideSection';
 import { DailyRegisterSection } from './DailyRegisterSection';
-import { RegisterValidationSection } from './RegisterValidationSection';
-import { LanguageSummarySection } from './LanguageSummarySection';
 import { NewArrivalsSection } from './NewArrivalsSection';
 import { FamilyGroupsSection } from './FamilyGroupsSection';
-import { RegisterSummarySection } from './RegisterSummarySection';
 import { LiveRegisterKpiCards } from './LiveRegisterKpiCards';
 import { RegisterGuestFilters } from './RegisterGuestFilters';
 import { useGuestContext } from '../../hooks/useGuestContext';
@@ -24,33 +20,25 @@ import {
   type GuestFilter,
 } from '../../utils/guestStats';
 import { isArrivalAllocated } from '../../utils/roomAllocation';
+import { dedupeRooms, registerOverview } from '../../utils/registerCounts';
 
-export type DailyRegisterTab = 
+export type DailyRegisterTab =
   | 'dailyRegister'
-  | 'summary'
-  | 'stats'
   | 'roomList'
   | 'newArrivals'
-  | 'families'
-  | 'languages'
-  | 'validation'
-  | 'userGuide';
+  | 'families';
 
 interface SheetTabConfig {
   id: DailyRegisterTab;
   label: string;
 }
 
+// Guest statistics, nationality & language, and the register statistics live on the Operations Dashboard.
 const SHEET_TABS: SheetTabConfig[] = [
   { id: 'dailyRegister', label: 'Daily Register' },
-  { id: 'summary', label: 'Summary & Guest Statistics' },
-  { id: 'stats', label: 'Live Register Statistics' },
   { id: 'roomList', label: 'Room List' },
   { id: 'newArrivals', label: 'New Arrivals' },
-  { id: 'families', label: 'Family Groups' },
-  { id: 'languages', label: 'Nationality & Language Summary' },
-  { id: 'validation', label: 'Cross Checks & Validation' },
-  { id: 'userGuide', label: 'User Guide' }
+  { id: 'families', label: 'Family Groups' }
 ];
 
 export const LiveDailyRegistersView: React.FC = () => {
@@ -132,6 +120,7 @@ export const LiveDailyRegistersView: React.FC = () => {
   const { ctx: guestCtx, error: guestCtxError } = useGuestContext();
 
   const [activeTab, setActiveTab] = useState<DailyRegisterTab>('dailyRegister');
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'newArrivals') {
@@ -176,9 +165,11 @@ export const LiveDailyRegistersView: React.FC = () => {
   };
 
   // Scoped Data strictly bounded by effectiveSite
+  // Each room once: the register holds repeated rows for the same room, which would inflate every count.
   const scopedRooms = useMemo(() => {
-    return dailyRegisterRooms.filter(r => isSiteMatch(r.hotel, effectiveSite));
+    return dedupeRooms(dailyRegisterRooms.filter(r => isSiteMatch(r.hotel, effectiveSite))).rooms;
   }, [dailyRegisterRooms, effectiveSite]);
+  const duplicateRoomRows = useMemo(() => dedupeRooms(dailyRegisterRooms.filter(r => isSiteMatch(r.hotel, effectiveSite))).duplicates, [dailyRegisterRooms, effectiveSite]);
 
   const scopedRecords = useMemo(() => {
     return dailyRegisterRecords.filter(r => isSiteMatch(r.hotel, effectiveSite));
@@ -201,26 +192,14 @@ export const LiveDailyRegistersView: React.FC = () => {
     [scopedRecords, guestCtx, guestFilter, registerDate]
   );
 
-  // Operational KPI calculations: deduplicated active occupants staying on registerDate
-  const activeResidentsCount = useMemo(() => {
-    return buildGuests(scopedRecords, guestCtx, registerDate).length;
-  }, [scopedRecords, guestCtx, registerDate]);
-
-  const totalCapacity = useMemo(() => {
-    return scopedRooms.reduce((sum, r) => sum + (Number(r.currentMaxOccupancy) || 0), 0);
-  }, [scopedRooms]);
-
-  const availableBedspaces = useMemo(() => {
-    return scopedRooms.reduce((sum, r) => sum + (Number(r.bedspacesAvailable) || 0), 0);
-  }, [scopedRooms]);
-
-  const voidBedspaces = useMemo(() => {
-    return scopedRooms.reduce((sum, r) => sum + (Number(r.voidBedspaces) || 0), 0);
-  }, [scopedRooms]);
-
-  const occupancyRate = totalCapacity > 0 
-    ? Math.min(100, Math.round((activeResidentsCount / totalCapacity) * 100))
-    : 0;
+  // Headline counts: each room and each person once, for the chosen date.
+  const overview = useMemo(
+    () => registerOverview(dailyRegisterRooms.filter(r => isSiteMatch(r.hotel, effectiveSite)), scopedRecords, registerDate),
+    [dailyRegisterRooms, scopedRecords, registerDate, effectiveSite] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const activeResidentsCount = overview.present;
+  const availableBedspaces = overview.bedsLeft;
+  void duplicateRoomRows;
 
   // Active dynamic export configuration matching all other application pages
   const exportConfig = useMemo(() => {
@@ -282,7 +261,7 @@ export const LiveDailyRegistersView: React.FC = () => {
 
   // Tab Badge Resolver
   const getTabBadge = (id: DailyRegisterTab) => {
-    if (id === 'roomList') return scopedRooms.length;
+    if (id === 'roomList') return overview.rooms;
     if (id === 'dailyRegister') return activeResidentsCount;
     if (id === 'newArrivals') return scopedPendingArrivals.length;
     return undefined;
@@ -325,6 +304,15 @@ export const LiveDailyRegistersView: React.FC = () => {
             >
               <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-[#0d9488]' : ''}`} />
               <span>{isSyncing ? 'Syncing...' : 'Sync with DB'}</span>
+            </button>
+
+            <button
+              onClick={() => setGuideOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-neutral-50 text-neutral-700 border border-[#e5e5e5] rounded-xs cursor-pointer"
+              title="How to use the Live Daily Registers"
+            >
+              <BookOpen className="w-3 h-3 text-[#0d9488]" />
+              <span>User Guide</span>
             </button>
 
             {currentUserRole === 'Super Admin' && isCustomizableTab && (
@@ -476,16 +464,8 @@ export const LiveDailyRegistersView: React.FC = () => {
         )}
       </div>
 
-      {/* 4. Operational KPI Metrics Scorecard */}
-      <LiveRegisterKpiCards
-        activeResidentsCount={activeResidentsCount}
-        totalCapacity={totalCapacity}
-        occupancyRate={occupancyRate}
-        availableBedspaces={availableBedspaces}
-        roomCount={scopedRooms.length}
-        voidBedspaces={voidBedspaces}
-        pendingArrivalsCount={scopedPendingArrivals.length}
-      />
+      {/* Headline counts (Daily Register tab only; the other tabs have their own figures) */}
+      {activeTab === 'dailyRegister' && <LiveRegisterKpiCards overview={overview} dateLabel={registerDate} />}
 
       {/* 5. Active Tab Viewport Area */}
       <div className="w-full">
@@ -505,6 +485,7 @@ export const LiveDailyRegistersView: React.FC = () => {
 
         {activeTab === 'roomList' && (
           <RoomListSection 
+            registerDate={registerDate}
             selectedSite={effectiveSite}
             searchQuery={searchQuery}
             createTrigger={createTrigger}
@@ -521,52 +502,23 @@ export const LiveDailyRegistersView: React.FC = () => {
           />
         )}
 
-        {activeTab === 'stats' && (
-          <LiveRegisterStatsSection
-            records={scopedRecords}
-            selectedSite={effectiveSite}
-            selectedDate={registerDate}
-          />
-        )}
-
-        {activeTab === 'summary' && (
-          <RegisterSummarySection
-            rooms={scopedRooms}
-            records={scopedRecords}
-            selectedSite={effectiveSite}
-            selectedDate={registerDate}
-            onDateChange={setRegisterDate}
-            onSelectFilter={(filter) => {
-              setGuestFilter(prev => ({ ...prev, ...filter }));
-              setActiveTab('dailyRegister');
-            }}
-          />
-        )}
-
-        {activeTab === 'validation' && (
-          <RegisterValidationSection
-            records={scopedRecords}
-            rooms={scopedRooms}
-            selectedSite={effectiveSite}
-          />
-        )}
-
-        {activeTab === 'languages' && (
-          <LanguageSummarySection
-            records={scopedRecords}
-            selectedSite={effectiveSite}
-          />
-        )}
-
 
         {activeTab === 'families' && (
           <FamilyGroupsSection onOpenProfile={(_suId, reference) => navigateToPageWithSearch('suUsers', reference)} />
         )}
 
-        {activeTab === 'userGuide' && (
-          <UserGuideSection />
-        )}
       </div>
+
+      {guideOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Live Daily Registers user guide" onClick={() => setGuideOpen(false)}>
+          <div className="relative w-full max-w-5xl my-6 bg-[#faf9f8] border border-[#e1dfdd] rounded-xs p-4" onClick={e => e.stopPropagation()}>
+            <button type="button" onClick={() => setGuideOpen(false)} className="absolute top-3 right-3 p-1 text-neutral-500 hover:text-neutral-900 cursor-pointer" aria-label="Close user guide">
+              <CloseIcon className="w-4 h-4" />
+            </button>
+            <UserGuideSection />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

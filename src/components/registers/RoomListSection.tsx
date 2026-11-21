@@ -16,7 +16,8 @@ import {
   GROUP_AVAILABILITY_LABEL, canConfigureInterconnecting, connectedRooms, groupRooms, groupStatus, isInterconnecting, planGroupDissolve,
   roomAvailability, type RoomAvailability, type RoomChange,
 } from '../../utils/interconnectingRooms';
-import { roomOccupants } from '../../utils/roomAllocation';
+import { roomKey } from '../../utils/roomAllocation';
+import { dedupeRooms, roomPresence } from '../../utils/registerCounts';
 
 interface RoomListSectionProps {
   selectedSite: string;
@@ -24,9 +25,12 @@ interface RoomListSectionProps {
   createTrigger?: number;
   exportTrigger?: { format: 'csv' | 'pdf'; ts: number } | null;
   customizeTrigger?: number;
+  /** Day the occupancy is worked out for (YYYY-MM-DD) */
+  registerDate?: string;
 }
 
 export const RoomListSection: React.FC<RoomListSectionProps> = ({ 
+  registerDate,
   selectedSite,
   searchQuery: externalSearchQuery,
   createTrigger,
@@ -106,8 +110,11 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
     }
   }, [customizeTrigger]);
 
+  // Each room once, and each person once per room: repeated register rows made rooms show "4 / 1" and inflated the count.
+  const uniqueRooms = useMemo(() => dedupeRooms(dailyRegisterRooms), [dailyRegisterRooms]);
+  const presence = useMemo(() => roomPresence(dailyRegisterRecords, registerDate), [dailyRegisterRecords, registerDate]);
   const filteredRooms = useMemo(() => {
-    return dailyRegisterRooms.filter(r => {
+    return uniqueRooms.rooms.filter(r => {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || 
         r.roomNo.toLowerCase().includes(q) ||
@@ -119,7 +126,7 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
       const matchesSite = isSitePermitted(r.hotel, selectedSite);
       return matchesSearch && matchesSite;
     });
-  }, [dailyRegisterRooms, searchQuery, selectedSite, isSitePermitted]);
+  }, [uniqueRooms, searchQuery, selectedSite, isSitePermitted]);
 
   const sortedRooms = useMemo(() => {
     return [...filteredRooms].sort((a: any, b: any) => {
@@ -236,8 +243,7 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
       return <span className="font-semibold text-[#242424]">{val}</span>;
     }
     if (col.key === 'currentOccupancy') {
-      const liveOccupants = roomOccupants(dailyRegisterRecords, item.hotel, item.roomNo).length;
-      const count = liveOccupants > 0 ? liveOccupants : (Number(item.currentOccupancy) || 0);
+      const count = presence.get(roomKey(item.hotel, item.roomNo)) ?? 0;
       const max = Number(item.currentMaxOccupancy) || 0;
       const isFull = count >= (max || 1);
       return (
@@ -249,8 +255,7 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
       );
     }
     if (col.key === 'bedspacesAvailable') {
-      const liveOccupants = roomOccupants(dailyRegisterRecords, item.hotel, item.roomNo).length;
-      const count = liveOccupants > 0 ? liveOccupants : (Number(item.currentOccupancy) || 0);
+      const count = presence.get(roomKey(item.hotel, item.roomNo)) ?? 0;
       const max = Number(item.currentMaxOccupancy) || 0;
       const voids = Number(item.voidBedspaces) || 0;
       const avail = Math.max(0, max - voids - count);
@@ -299,6 +304,11 @@ export const RoomListSection: React.FC<RoomListSectionProps> = ({
 
   return (
     <div className="space-y-4">
+      {uniqueRooms.duplicates > 0 && (
+        <p className="px-2 py-1 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-xs">
+          {uniqueRooms.duplicates} repeated row{uniqueRooms.duplicates === 1 ? '' : 's'} for rooms already listed {uniqueRooms.duplicates === 1 ? 'is' : 'are'} hidden, so each room shows once (the newest entry).
+        </p>
+      )}
       {canConfigure && (
         <div className="flex justify-end">
           <button
