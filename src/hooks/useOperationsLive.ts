@@ -9,8 +9,6 @@ const CONTEXT_TABLES = new Set(['room_checks', 'welfare_checks']);
 /** Quiet period before re-reading, so a burst of edits (e.g. a bulk import) causes one reload, and the longest a burst may delay it. */
 export const LIVE_DEBOUNCE_MS = 800;
 export const LIVE_MAX_WAIT_MS = 3000;
-/** Safety net while the live link is down: re-read this often (the app-wide poll is slower still). */
-const FALLBACK_POLL_MS = 60_000;
 
 export interface OperationsLive {
   link: OperationsLinkState;
@@ -22,7 +20,8 @@ export interface OperationsLive {
  * Keeps the Operations Dashboard in step with the database without a reload of the page.
  * A change event never edits a number: it only schedules a re-read of the authoritative rows (debounced, coalesced).
  * After a gap (link re-established, network back, tab visible again) everything is re-read, so missed events cannot leave
- * stale figures. All listeners are removed when the dashboard unmounts.
+ * stale figures. There is no polling: while the link is down the service retries the connection itself, and everything is
+ * re-read once when it is back. All listeners are removed when the dashboard unmounts.
  */
 export function useOperationsLive(refreshLiveData: () => Promise<void>, enabled = true): OperationsLive {
   const [link, setLink] = useState<OperationsLinkState>('connecting');
@@ -72,16 +71,6 @@ export function useOperationsLive(refreshLiveData: () => Promise<void>, enabled 
       release();
     };
   }, [enabled]);
-
-  // While the live link is not up, re-read every minute instead; once it is up there is no polling from here.
-  useEffect(() => {
-    if (!enabled || link === 'live' || link === 'connecting') return;
-    const t = setInterval(() => {
-      window.dispatchEvent(new Event('sdtracker:masterDataUpdated'));
-      void refresh.current().then(() => setLastReconciledAt(new Date().toISOString())).catch(() => undefined);
-    }, FALLBACK_POLL_MS);
-    return () => clearInterval(t);
-  }, [enabled, link]);
 
   return { link, lastReconciledAt };
 }

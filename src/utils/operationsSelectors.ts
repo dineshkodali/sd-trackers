@@ -153,11 +153,11 @@ function buildCtx(input: OpsInput, scope: OpsScope, now: Date): Ctx {
 
 /* ------------------------------------------------------------------ per-source facts (computed once) */
 
-interface MaintFact { r: MaintenanceRecord; siteId: string; overdue: boolean; dueSoon24: boolean; due: string | null; minutesLate: number }
-interface ComplFact { r: SDComplianceRecord; siteId: string; info: ReturnType<typeof complianceInfo> }
-interface ActionFact { key: string; kind: 'peep' | 'followUp' | 'inspection' | 'issue'; siteId: string; recordId: string; overdue: boolean; dueDate: string | null; label: string; location: string; owner: string; openId?: string }
+export interface MaintFact { r: MaintenanceRecord; siteId: string; overdue: boolean; dueSoon24: boolean; due: string | null; minutesLate: number }
+export interface ComplFact { r: SDComplianceRecord; siteId: string; info: ReturnType<typeof complianceInfo> }
+export interface ActionFact { key: string; kind: 'peep' | 'followUp' | 'inspection' | 'issue'; siteId: string; recordId: string; overdue: boolean; dueDate: string | null; label: string; location: string; owner: string; openId?: string }
 
-interface Facts {
+export interface Facts {
   ctx: Ctx;
   maintenance: MaintFact[];
   compliance: ComplFact[];
@@ -166,7 +166,7 @@ interface Facts {
   placements: Array<{ p: Placement; siteId: string }>;
 }
 
-function collectFacts(input: OpsInput, scope: OpsScope, now: Date): Facts {
+export function collectFacts(input: OpsInput, scope: OpsScope, now: Date): Facts {
   const ctx = buildCtx(input, scope, now);
   const { today, nowWall, quality } = ctx;
 
