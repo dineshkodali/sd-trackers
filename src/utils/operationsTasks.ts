@@ -280,3 +280,24 @@ export function filterTasks(tasks: UnifiedTask[], f: TaskFilter): UnifiedTask[] 
     (f.assignedTo === 'all' || t.assignedTo === f.assignedTo) &&
     (f.when === 'all' || (f.when === 'overdue' ? t.bucket === 'overdue' : f.when === 'today' ? t.bucket === 'today' : t.bucket === 'tomorrow' || t.bucket === 'week' || t.bucket === 'today')));
 }
+
+/* ------------------------------------------------------------------ "view all" landing per module */
+
+/** Where "View all" goes for a module: the owning page, filtered as far as that page can be (never a filter it cannot apply). */
+export function moduleLanding(module: TaskModule, overdueOnly: boolean): { page: string; filters?: Record<string, string> } {
+  switch (module) {
+    case 'Maintenance': return { page: 'maintenance', filters: overdueOnly ? { sla: 'overdue' } : { open: '1' } };
+    case 'Compliance': return { page: 'compliance', filters: { expiry: overdueOnly ? 'expired' : 'expired,due-30,due-90' } };
+    case 'Escalations': return { page: 'escalations', filters: { open: '1' } };
+    case 'Room check': return { page: 'roomChecks', filters: { due: overdueOnly ? 'overdue' : 'all' } };
+    case 'Welfare check': return { page: 'welfareChecks', filters: { due: overdueOnly ? 'overdue' : 'all' } };
+    case 'PEEP': return { page: 'peepTracker' };
+    case 'Absence follow-up': return { page: 'suAttendance' };
+    case 'Room inspection':
+    case 'Room issue': return { page: 'propertyManagement' };
+    case 'Dispersal':
+    case 'Eviction': return { page: 'dispersal' };
+    case 'Finance': return { page: 'finance' };
+    case 'Transport': return { page: 'publicTransport' };
+  }
+}

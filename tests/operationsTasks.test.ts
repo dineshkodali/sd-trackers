@@ -161,3 +161,13 @@ test('activity respects scope and the limit, and never invents a link', () => {
   const unknown = selectRecentActivity([log({ entityType: 'somethingNew' })], { inScope })[0];
   assert.equal(unknown.page, null);
 });
+
+import { moduleLanding } from '../src/utils/operationsTasks.ts';
+import { sanitizeIntentFilters } from '../src/utils/navigationIntent.ts';
+
+test('"view all" only ever carries filters the target page accepts', () => {
+  for (const m of MODULES) for (const overdue of [true, false]) {
+    const l = moduleLanding(m, overdue);
+    assert.deepEqual(sanitizeIntentFilters(l.page, l.filters), l.filters || {}, `${m} ${overdue}`);
+  }
+});

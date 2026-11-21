@@ -10,7 +10,7 @@ import { TransportKPIDashboard } from '../transport/TransportKPIDashboard';
 import { selectKpis, type OpsInput, type OpsScope } from '../../utils/operationsSelectors';
 import { selectFlowCounts } from '../../utils/operationsDepartments';
 import {
-  selectUnifiedTasks, countTasks, filterTasks, NO_TASK_FILTER, BUCKET_LABEL, type TaskFilter, type TaskModule, type UnifiedTask
+  selectUnifiedTasks, countTasks, moduleLanding, type TaskModule, type UnifiedTask
 } from '../../utils/operationsTasks';
 import { selectRecentActivity } from '../../utils/operationsActivity';
 import { createSiteResolver, londonNow } from '../../utils/operationsRules';
@@ -28,7 +28,8 @@ import { createSiteResolver, londonNow } from '../../utils/operationsRules';
 const TH = 'px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#605e5c] whitespace-nowrap';
 const TD = 'px-2 py-1.5 align-top';
 const DASH = '—';
-const PAGE_SIZE = 25;
+const ALL_ROWS = 8; // rows on the All tab
+const TAB_ROWS = 5; // rows on a module tab; the module page has the rest
 const n = (v: number) => v.toLocaleString('en-GB');
 
 const Tag: React.FC<{ tone: 'red' | 'amber' | 'green' | 'grey'; children: React.ReactNode }> = ({ tone, children }) => (
@@ -96,8 +97,9 @@ export const OperationsDashboardView: React.FC = () => {
 
   const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
   useEffect(() => { setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
-  const [filter, setFilter] = useState<TaskFilter>(NO_TASK_FILTER);
-  const [page, setPage] = useState(1);
+  const [tab, setTab] = useState<'all' | TaskModule>('all');
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // The clock the deadlines are measured against. It only moves the clock (no data is fetched): tasks turn overdue on time.
@@ -180,8 +182,8 @@ export const OperationsDashboardView: React.FC = () => {
   const val = (ok: boolean, v: number) => (loading || !ok ? DASH : n(v));
   const delta = (cur: number, prev: number) => (cur === prev ? 'same as yesterday' : `${cur > prev ? '+' : '-'}${Math.abs(cur - prev)} vs yesterday (${prev})`);
 
-  const goTable = (f: TaskFilter) => {
-    setFilter(f); setPage(1);
+  const goTable = (overdue: boolean) => {
+    setTab('all'); setOverdueOnly(overdue);
     document.getElementById('ops-tasks')?.scrollIntoView({ block: 'start' });
   };
 
@@ -206,20 +208,24 @@ export const OperationsDashboardView: React.FC = () => {
     kpiList.push({ id: 'open-maint', label: 'Open maintenance', value: val(!maintenanceDown, kpis.openMaintenance), context: maintenanceDown ? 'could not load' : `${n(kpis.openCat1)} CAT 1`, onClick: () => navigateWithIntent('maintenance', { filters: { open: '1' } }) });
   }
   kpiList.push(
-    { id: 'outstanding', label: 'Outstanding tasks', value: tasksReady ? n(counts.outstanding) : DASH, context: 'rows in the table below', title: 'Every open task with its deadline, from all modules you can view. Shows the table.', onClick: () => goTable(NO_TASK_FILTER) },
-    { id: 'overdue', label: 'Overdue tasks', value: tasksReady ? n(counts.overdue) : DASH, context: tasksReady ? `${n(counts.dueToday)} due today` : undefined, tone: tasksReady && counts.overdue > 0 ? 'red' : 'none', title: 'Past their deadline. Shows the table filtered to Overdue.', onClick: () => goTable({ ...NO_TASK_FILTER, when: 'overdue' }) }
+    { id: 'outstanding', label: 'Outstanding tasks', value: tasksReady ? n(counts.outstanding) : DASH, context: 'rows in the table below', title: 'Every open task with its deadline, from all modules you can view. Shows the table.', onClick: () => goTable(false) },
+    { id: 'overdue', label: 'Overdue tasks', value: tasksReady ? n(counts.overdue) : DASH, context: tasksReady ? `${n(counts.dueToday)} due today` : undefined, tone: tasksReady && counts.overdue > 0 ? 'red' : 'none', title: 'Past their deadline. Shows the table filtered to Overdue.', onClick: () => goTable(true) }
   );
 
-  // ---- 2. Operations & deadlines
-  const moduleOptions = useMemo(() => Array.from(new Set(tasks.map(t => t.module))).sort(), [tasks]);
-  const statusOptions = useMemo(() => Array.from(new Set(tasks.map(t => t.status))).sort(), [tasks]);
-  const staffOptions = useMemo(() => Array.from(new Set(tasks.map(t => t.assignedTo).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [tasks]);
-  const shownAll = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
-  const pages = Math.max(1, Math.ceil(shownAll.length / PAGE_SIZE));
-  const pageNow = Math.min(page, pages);
-  const shown = shownAll.slice((pageNow - 1) * PAGE_SIZE, pageNow * PAGE_SIZE);
-  const filtered = JSON.stringify(filter) !== JSON.stringify(NO_TASK_FILTER);
-  const setF = (patch: Partial<TaskFilter>) => { setFilter(f => ({ ...f, ...patch })); setPage(1); };
+  // ---- 2. Operations & deadlines: one tab per module, a few top records each; the module page holds the rest
+  const byModule = useMemo(() => {
+    const m = new Map<TaskModule, { total: number; overdue: number }>();
+    for (const t of tasks) {
+      const c = m.get(t.module) || { total: 0, overdue: 0 };
+      c.total++; if (t.bucket === 'overdue') c.overdue++;
+      m.set(t.module, c);
+    }
+    return [...m.entries()].sort((a, b) => b[1].overdue - a[1].overdue || b[1].total - a[1].total || a[0].localeCompare(b[0]));
+  }, [tasks]);
+  const activeTab: 'all' | TaskModule = tab === 'all' || byModule.some(([m]) => m === tab) ? tab : 'all';
+  const pool = useMemo(() => tasks.filter(t => (activeTab === 'all' || t.module === activeTab) && (!overdueOnly || t.bucket === 'overdue')), [tasks, activeTab, overdueOnly]);
+  const shown = pool.slice(0, activeTab === 'all' ? ALL_ROWS : TAB_ROWS);
+  const landing = activeTab === 'all' ? null : moduleLanding(activeTab, overdueOnly);
 
   const openTask = (t: UnifiedTask) => navigateWithIntent(t.page, { filters: t.filters, recordId: t.openId || t.recordId });
 
@@ -228,7 +234,7 @@ export const OperationsDashboardView: React.FC = () => {
   const activity = useMemo(() => {
     if (!canSeeActivity) return [];
     return selectRecentActivity((auditLogs || []) as any[], {
-      limit: 12,
+      limit: 5,
       inScope: site => (scope.siteId === 'all' ? true : resolveSite(site) === scope.siteId)
     });
   }, [canSeeActivity, auditLogs, scope.siteId, resolveSite]);
@@ -260,7 +266,7 @@ export const OperationsDashboardView: React.FC = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {multiSite && (
-            <select aria-label="Site" value={siteFilter} onChange={e => { setSiteFilter(e.target.value); setPage(1); }} className="px-2 py-1 bg-white border border-[#8a8886] rounded-xs">
+            <select aria-label="Site" value={siteFilter} onChange={e => setSiteFilter(e.target.value)} className="px-2 py-1 bg-white border border-[#8a8886] rounded-xs">
               <option value="all">All sites</option>
               {siteOptions.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -293,92 +299,66 @@ export const OperationsDashboardView: React.FC = () => {
         <p className="text-xs text-[#605e5c] py-2">You do not have access to any page this dashboard summarises.</p>
       )}
 
-      {/* 2. Operations & deadlines: the one table */}
+      {/* 2. Operations & deadlines: tabs per module, top records only */}
       <section id="ops-tasks" className="bg-white border border-[#e1dfdd] rounded-xs min-w-0" aria-labelledby="ops-tasks-h">
         <header className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 border-b border-[#e1dfdd]">
-          <h2 id="ops-tasks-h" className="text-xs font-semibold text-[#242424]">
-            Operations &amp; deadlines{tasksReady && ` (${n(shownAll.length)}${filtered ? ` of ${n(tasks.length)}` : ''})`}
-          </h2>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <select aria-label="Module" value={filter.module} onChange={e => setF({ module: e.target.value as TaskFilter['module'] })} className={SELECT}>
-              <option value="all">All modules</option>
-              {moduleOptions.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <select aria-label="Status" value={filter.status} onChange={e => setF({ status: e.target.value })} className={SELECT}>
-              <option value="all">All statuses</option>
-              {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select aria-label="When" value={filter.when} onChange={e => setF({ when: e.target.value as TaskFilter['when'] })} className={SELECT}>
-              <option value="all">Any deadline</option>
-              <option value="overdue">Overdue</option>
-              <option value="today">Due today</option>
-              <option value="week">Due this week</option>
-            </select>
-            <select aria-label="Assigned to" value={filter.assignedTo} onChange={e => setF({ assignedTo: e.target.value })} className={SELECT}>
-              <option value="all">All staff</option>
-              {staffOptions.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            {filtered && <button type="button" onClick={() => { setFilter(NO_TASK_FILTER); setPage(1); }} className="font-semibold text-[#0d9488] hover:underline">Clear</button>}
-          </div>
+          <h2 id="ops-tasks-h" className="text-xs font-semibold text-[#242424]">Operations &amp; deadlines</h2>
+          <label className="flex items-center gap-1.5 text-xs text-[#323130]">
+            <input type="checkbox" checked={overdueOnly} onChange={e => setOverdueOnly(e.target.checked)} />
+            Overdue only
+          </label>
         </header>
+        <div role="tablist" aria-label="Modules" className="flex flex-wrap gap-x-1 border-b border-[#e1dfdd] px-1.5">
+          {[{ key: 'all' as const, label: 'All', total: counts.outstanding, overdue: counts.overdue }, ...byModule.map(([m, c]) => ({ key: m, label: m, total: c.total, overdue: c.overdue }))].map(t => (
+            <button
+              key={t.key} type="button" role="tab" aria-selected={activeTab === t.key} onClick={() => setTab(t.key)}
+              className={`px-2 py-1.5 text-xs whitespace-nowrap border-b-2 ${activeTab === t.key ? 'border-[#0d9488] font-semibold text-[#242424]' : 'border-transparent text-[#605e5c] hover:text-[#242424]'}`}
+            >
+              {t.label} <span className="tabular-nums text-[#605e5c]">{tasksReady ? n(t.total) : DASH}</span>
+              {tasksReady && t.overdue > 0 && <span className="ml-1 tabular-nums font-bold text-[#a4262c]" title="Overdue">{n(t.overdue)}</span>}
+            </button>
+          ))}
+        </div>
         {!tasksReady ? (
           <p className="px-2.5 py-3 text-xs text-[#605e5c]" aria-busy="true">Loading…</p>
-        ) : shownAll.length === 0 ? (
+        ) : shown.length === 0 ? (
           <p className="px-2.5 py-3 text-xs text-[#605e5c]">
-            {tasks.length > 0 ? 'No task matches the filters.' : failures.length > 0 ? 'Nothing found in the sources that loaded.' : 'No outstanding tasks at the selected site(s).'}
+            {tasks.length > 0 ? 'Nothing overdue here.' : failures.length > 0 ? 'Nothing found in the sources that loaded.' : 'No outstanding tasks at the selected site(s).'}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[#edebe9]">
-                  <th className={TH}>Priority</th><th className={TH}>Task / activity</th><th className={TH}>Module</th><th className={TH}>Site</th>
-                  <th className={TH}>Property / room</th><th className={TH}>Assigned to</th><th className={TH}>Created</th><th className={TH}>Due</th>
-                  <th className={TH}>Remaining</th><th className={TH}>Status</th><th className={TH}>Action</th>
+                  <th className={TH}>Priority</th><th className={TH}>Task</th>{activeTab === 'all' && <th className={TH}>Module</th>}<th className={TH}>Site</th>
+                  <th className={TH}>Assigned to</th><th className={TH}>Due</th><th className={TH}>Remaining</th><th className={TH}>Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f3f2f1]">
-                {shown.map((t, i) => {
-                  const startsGroup = i === 0 || shown[i - 1].bucket !== t.bucket;
-                  return (
-                    <React.Fragment key={t.key}>
-                      {startsGroup && (
-                        <tr className="bg-[#faf9f8]"><td colSpan={11} className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#605e5c]">{BUCKET_LABEL[t.bucket]}</td></tr>
-                      )}
-                      <tr onClick={() => openTask(t)} className="cursor-pointer hover:bg-[#f3f2f1]">
-                        <td className={TD}>{priorityTag(t)}</td>
-                        <td className={`${TD} max-w-[300px]`}><span className="block truncate text-[#242424]" title={t.task}>{t.task}</span></td>
-                        <td className={`${TD} whitespace-nowrap`}>{t.module}</td>
-                        <td className={`${TD} whitespace-nowrap font-medium text-[#323130]`}>{t.siteName}</td>
-                        <td className={`${TD} max-w-[180px]`}><span className="block truncate" title={t.location}>{t.location || DASH}</span></td>
-                        <td className={`${TD} text-[#605e5c]`}>{t.assignedTo || DASH}</td>
-                        <td className={`${TD} whitespace-nowrap tabular-nums`}>{t.created || DASH}</td>
-                        <td className={`${TD} whitespace-nowrap tabular-nums`}>{t.due ? (t.due.endsWith('23:59') ? t.due.slice(0, 10) : t.due) : DASH}</td>
-                        <td className={`${TD} whitespace-nowrap tabular-nums ${remainingClass(t)}`}>{t.remaining}</td>
-                        <td className={`${TD} whitespace-nowrap`}><Tag tone={t.bucket === 'overdue' ? 'red' : 'grey'}>{t.status}</Tag></td>
-                        <td className={TD}>
-                          <button type="button" className="font-semibold text-[#0d9488] hover:underline focus:underline focus:outline-none" onClick={e => { e.stopPropagation(); openTask(t); }}>Open</button>
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  );
-                })}
+                {shown.map(t => (
+                  <tr key={t.key} onClick={() => openTask(t)} className="cursor-pointer hover:bg-[#f3f2f1]" title="Open the record">
+                    <td className={TD}>{priorityTag(t)}</td>
+                    <td className={`${TD} max-w-[320px]`}><span className="block truncate text-[#242424]" title={`${t.task}${t.location ? ` - ${t.location}` : ''}`}>{t.task}</span></td>
+                    {activeTab === 'all' && <td className={`${TD} whitespace-nowrap`}>{t.module}</td>}
+                    <td className={`${TD} whitespace-nowrap font-medium text-[#323130]`}>{t.siteName}</td>
+                    <td className={`${TD} text-[#605e5c]`}>{t.assignedTo || DASH}</td>
+                    <td className={`${TD} whitespace-nowrap tabular-nums`}>{t.due ? (t.due.endsWith('23:59') ? t.due.slice(0, 10) : t.due) : DASH}</td>
+                    <td className={`${TD} whitespace-nowrap tabular-nums ${remainingClass(t)}`}>{t.remaining}</td>
+                    <td className={`${TD} whitespace-nowrap`}><Tag tone={t.bucket === 'overdue' ? 'red' : 'grey'}>{t.status}</Tag></td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-            {pages > 1 && (
-              <div className="flex items-center justify-between px-2.5 py-1.5 text-xs border-t border-[#edebe9]">
-                <span className="text-[#605e5c]">Page {pageNow} of {pages}</span>
-                <span className="space-x-3">
-                  <button type="button" disabled={pageNow <= 1} onClick={() => setPage(pageNow - 1)} className="font-semibold text-[#0d9488] disabled:text-neutral-400">Previous</button>
-                  <button type="button" disabled={pageNow >= pages} onClick={() => setPage(pageNow + 1)} className="font-semibold text-[#0d9488] disabled:text-neutral-400">Next</button>
-                </span>
-              </div>
-            )}
+            <div className="flex items-center justify-between px-2.5 py-1.5 text-xs border-t border-[#edebe9]">
+              <span className="text-[#605e5c]">Showing {shown.length} of {n(pool.length)}, most urgent first</span>
+              {landing ? (
+                <button type="button" className="font-semibold text-[#0d9488] hover:underline" onClick={() => navigateWithIntent(landing.page, { filters: landing.filters })}>View all in {activeTab} →</button>
+              ) : (
+                <span className="text-[#605e5c]">Choose a module tab to see more</span>
+              )}
+            </div>
           </div>
         )}
-        <p className="px-2.5 py-1.5 text-[11px] text-[#605e5c] border-t border-[#edebe9]">
-          One row per open record, with the deadline stored on it. Room and welfare checks are due by the 10th and 25th. Dated work more than 30 days away is not listed. Records with no deadline show {DASH}.
-        </p>
       </section>
 
       {/* 3. Recent activity: what changed, not what is pending */}
@@ -418,12 +398,21 @@ export const OperationsDashboardView: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+              <div className="flex justify-end px-2.5 py-1.5 text-xs border-t border-[#edebe9]">
+                <button type="button" className="font-semibold text-[#0d9488] hover:underline" onClick={() => navigateWithIntent('audit')}>View full audit trail →</button>
+              </div>
             </div>
           )}
         </section>
       )}
 
-      {/* Guest statistics, priority safeguarding and public transport (placed here by an earlier change; untouched) */}
+      {/* Analytics placed here by an earlier change: kept, but collapsed and only loaded when opened, so the page stays small */}
+      {(can.dailyRegisters || can.vulnerable || can.publicTransport) && (
+        <div className="bg-white border border-[#e1dfdd] rounded-xs">
+          <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen(v => !v)} className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-[#242424] hover:bg-[#f3f2f1]">
+            {moreOpen ? 'Hide' : 'Show'} guest statistics, priority safeguarding and transport
+          </button>
+          {moreOpen && <div className="space-y-2 p-2 border-t border-[#e1dfdd]">
       {can.dailyRegisters && (
         <GuestAnalyticsWidget siteFilter={siteFilter} onNavigate={p => navigateWithIntent(p)} />
       )}
@@ -447,6 +436,9 @@ export const OperationsDashboardView: React.FC = () => {
           </div>
           <TransportKPIDashboard selectedSiteFilter={siteFilter} onNavigate={p => navigateWithIntent(p)} />
         </section>
+      )}
+          </div>}
+        </div>
       )}
 
       {!loading && qualityNotes.length > 0 && (
