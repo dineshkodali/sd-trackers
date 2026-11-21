@@ -150,6 +150,14 @@ export const LiveDailyRegistersView: React.FC = () => {
   const [createTrigger, setCreateTrigger] = useState(0);
   const [customizeTrigger, setCustomizeTrigger] = useState(0);
 
+  // The Add / Customize buttons ask the open tab to show a dialog by raising a counter. A tab that mounts later must not
+  // see an old count and open that dialog by itself, so switching tabs resets both.
+  const switchTab = (tab: DailyRegisterTab) => {
+    setCreateTrigger(0);
+    setCustomizeTrigger(0);
+    setActiveTab(tab);
+  };
+
   // Strict Site Isolation - only single-site staff are locked
   const isLockedToSingleSite = !canAccessAllSites() && (allowedSites || []).length <= 1;
   const effectiveSite = isLockedToSingleSite && assignedSite && assignedSite !== 'All Sites'
@@ -358,7 +366,7 @@ export const LiveDailyRegistersView: React.FC = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => switchTab(tab.id)}
                 className={`text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 px-2.5 py-1 rounded-xs ${
                   isActive
                     ? 'bg-white text-[#0f766e] font-bold shadow-xs border border-[#99f6e4] ring-1 ring-[#0d9488]/20'
