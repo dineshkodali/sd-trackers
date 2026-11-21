@@ -25,6 +25,8 @@ import { useTableSchema } from '../../hooks/useTableSchema';
 import { TableSchemaEditorModal } from '../common/TableSchemaEditorModal';
 import type { TableColumnConfig } from '../../types/tableSchema';
 import { useNavigationIntent } from '../../hooks/useNavigationIntent';
+import { operationsRealtime } from '../../services/operationsRealtime';
+import { slotKey, attendanceRecordId, upsertRecord, removeSlot, applyLiveEvent, reconcile } from '../../utils/attendanceMerge';
 
 const inputCls = 'w-full px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-xs text-xs focus:outline-none focus:border-[#0d9488]';
 const lockedCls = 'w-full px-2.5 py-1.5 bg-neutral-100 border border-[#e5e5e5] rounded-xs text-xs text-neutral-700';
@@ -150,7 +152,11 @@ export const SUAttendanceTrackerView: React.FC = () => {
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [followUpFor, setFollowUpFor] = useState<AbsenceFollowUp | null>(null);
   const [isSchemaOpen, setIsSchemaOpen] = useState(false);
-  const [saving, setSaving] = useState<string | null>(null);
+  // Per-row feedback for the daily roll: saving -> saved, or not saved (with a retry). Never a whole-page loading state.
+  type RowPhase = { phase: 'saving' | 'saved' | 'error'; message?: string; retry?: { status: 'Present' | 'Absent' } | null };
+  const [rowPhase, setRowPhase] = useState<Record<string, RowPhase>>({});
+  const setPhase = (suId: string, p: RowPhase | null) => setRowPhase(m => { if (!p) { const { [suId]: _g, ...rest } = m; return rest; } return { ...m, [suId]: p }; });
+  const flash = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const [rollNotes, setRollNotes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
@@ -265,34 +271,103 @@ export const SUAttendanceTrackerView: React.FC = () => {
   const switchTab = (id: string) => { setTab(id as Tab); setPage(1); };
   const sortBy = (k: string) => { if (k === sortKey) setSortAsc(a => !a); else { setSortKey(k); setSortAsc(true); } setPage(1); };
 
-  // What each resident's day looked like before the last mark made on this screen, so it can be undone.
-  const [lastMark, setLastMark] = useState<Record<string, { date: string; previous: { status: 'Present' | 'Absent'; notes: string } | null }>>({});
+  // ---- Marking works like Meal Marking: the tap changes ONE row in state at once, the save runs in the background, and the
+  // row goes back to the last confirmed value if it fails. Nothing is reloaded and no filter, date or section is reset.
+  type Desired = { status: 'Present' | 'Absent'; notes: string } | null;     // null = remove the record (back to Not recorded)
+  const recordsRef = useRef<AttendanceRecord[]>([]);
+  recordsRef.current = records;
+  const followUpsRef = useRef<AbsenceFollowUp[]>([]);
+  followUpsRef.current = followUps;
+  const directoryIds = useRef<Set<string>>(new Set());
+  directoryIds.current = new Set(allDirectory.map(d => d.su.id));
+  const inFlight = useRef(new Set<string>());
+  const queued = useRef(new Map<string, Desired>());
+  // What each resident's day was before the last mark made on this screen, so Undo can put it back.
+  const [lastMark, setLastMark] = useState<Record<string, { date: string; previous: Desired }>>({});
 
-  const mark = async (suId: string, status: 'Present' | 'Absent') => {
-    const before = forDay.get(suId);
-    setSaving(suId);
-    const res = await suTrackerService.saveAttendance({ suId, date: rollDate, status, notes: rollNotes[suId] ?? before?.additionalNotes ?? '' }, currentUserName);
-    setSaving(null);
-    if (!res.success) { setNotice(res.error || 'Could not save.'); return; }
+  const announce = (suId: string) => window.dispatchEvent(new CustomEvent('sdtracker:attendanceChanged', { detail: { suId } }));
+
+  /** Opens the absence follow-ups that this resident's attendance now calls for (only this resident; same idempotent rule). */
+  const ensureFollowUpsFor = async (suId: string) => {
+    if (!canEdit) return;
+    const entries: AttendanceEntry[] = recordsRef.current.filter(r => r.suId === suId).map(r => ({ suId: r.suId, date: r.attendanceDate, status: r.attendanceStatus, updatedAt: r.updatedAt }));
+    const res = await suTrackerService.ensureFollowUps([suId], entries, followUpsRef.current.filter(f => f.suId === suId), todayIso(), currentUserName, policy);
+    if (res.success && res.data.length > 0) setFollowUps(prev => [...res.data.filter(n => !prev.some(p => p.id === n.id)), ...prev]);
+    else if (!res.success) setNotice(`Absence follow-ups could not be updated: ${res.error}`);
+  };
+
+  const commit = async (suId: string, date: string, desired: Desired): Promise<string | null> => {
+    const key = slotKey(suId, date);
+    const match = (r: AttendanceRecord) => r.suId === suId && String(r.attendanceDate).slice(0, 10) === date;
+    const previous = recordsRef.current.find(match) || null;
+
+    const stamp = new Date().toISOString();
+    if (desired) {
+      const optimistic: AttendanceRecord = {
+        ...(previous || { id: attendanceRecordId(suId, date), suId, attendanceDate: date, recordedBy: currentUserName, createdAt: stamp }),
+        attendanceStatus: desired.status, additionalNotes: desired.notes, updatedBy: currentUserName, updatedAt: stamp
+      };
+      setRecords(prev => upsertRecord(prev, optimistic));
+    } else {
+      setRecords(prev => removeSlot(prev, suId, date));
+    }
     setNotice(null);
+    setPhase(suId, { phase: 'saving' });
+    clearTimeout(flash.current.get(suId));
+
+    // A save for this day is already running: remember the latest choice and send it when that one finishes (no duplicate rows)
+    if (inFlight.current.has(key)) { queued.current.set(key, desired); return null; }
+
+    inFlight.current.add(key);
+    let err: string | null = null;
+    let confirmed: AttendanceRecord | null = previous;         // the last value the database confirmed
+    let next: Desired | undefined = desired;
+    while (next !== undefined) {
+      queued.current.delete(key);
+      const res = next
+        ? await suTrackerService.saveAttendance({ suId, date, status: next.status, notes: next.notes }, currentUserName, confirmed)
+        : (confirmed ? await suTrackerService.deleteAttendance(confirmed.id) : { success: true as const, data: null });
+      if (!res.success) { err = res.error || 'Could not save.'; break; }
+      if (next) {
+        confirmed = res.data as AttendanceRecord;
+        setRecords(prev => upsertRecord(prev, { ...(res.data as AttendanceRecord), attendanceDate: date }));
+      } else {
+        confirmed = null;
+      }
+      next = queued.current.has(key) ? queued.current.get(key) : undefined;
+    }
+    inFlight.current.delete(key);
+    queued.current.delete(key);
+
+    if (err) {
+      // Back to what the database last confirmed; the row says so and offers a retry.
+      setRecords(prev => (confirmed ? upsertRecord(prev, confirmed) : removeSlot(prev, suId, date)));
+      setPhase(suId, { phase: 'error', message: err, retry: desired ? { status: desired.status } : null });
+      return err;
+    }
+    setPhase(suId, { phase: 'saved' });
+    flash.current.set(suId, setTimeout(() => setPhase(suId, null), 2500));
+    announce(suId);
+    void ensureFollowUpsFor(suId);
+    return null;
+  };
+
+  const mark = (suId: string, status: 'Present' | 'Absent') => {
+    const before = recordsRef.current.find(r => r.suId === suId && String(r.attendanceDate).slice(0, 10) === rollDate);
+    if (before?.attendanceStatus === status) return;                      // already that status: nothing to save
     setLastMark(m => ({ ...m, [suId]: { date: rollDate, previous: before ? { status: before.attendanceStatus as 'Present' | 'Absent', notes: before.additionalNotes || '' } : null } }));
-    load();
+    void commit(suId, rollDate, { status, notes: rollNotes[suId] ?? before?.additionalNotes ?? '' });
   };
 
   /** Puts the day back as it was before the last mark on this screen (or Not recorded if it had no record). */
-  const undoMark = async (suId: string, rec: AttendanceRecord) => {
+  const undoMark = (suId: string) => {
     const last = lastMark[suId];
     if (!last || last.date !== rollDate) return;
-    setSaving(suId);
-    const res = last.previous
-      ? await suTrackerService.saveAttendance({ suId, date: rollDate, status: last.previous.status, notes: last.previous.notes }, currentUserName)
-      : await suTrackerService.deleteAttendance(rec.id);
-    setSaving(null);
-    if (!res.success) { setNotice(res.error || 'Could not undo.'); return; }
-    setNotice(null);
     setLastMark(m => { const { [suId]: _gone, ...rest } = m; return rest; });
-    load();
+    void commit(suId, rollDate, last.previous);
   };
+
+  const retryMark = (suId: string) => { const r = rowPhase[suId]?.retry; void commit(suId, rollDate, r ? { status: r.status, notes: rollNotes[suId] ?? '' } : null); };
 
   /** For a mark made earlier (not on this screen): remove it so the day shows Not recorded again. */
   const clearMark = (rec: AttendanceRecord, name: string) => requestConfirmation({
@@ -300,10 +375,7 @@ export const SUAttendanceTrackerView: React.FC = () => {
     message: `Clear the attendance marked for ${name} on ${formatUkDate(rec.attendanceDate)}? It will show as Not recorded.`,
     confirmLabel: 'Clear',
     isDanger: true,
-    onConfirm: async () => {
-      const res = await suTrackerService.deleteAttendance(rec.id);
-      if (!res.success) setNotice(res.error || 'Could not clear the record.'); else { setNotice(null); load(); }
-    }
+    onConfirm: async () => { const err = await commit(rec.suId, String(rec.attendanceDate).slice(0, 10), null); if (err) setNotice(err); }
   });
 
   const confirmDelete = (r: AttendanceRecord, name: string) => requestConfirmation({
@@ -311,11 +383,26 @@ export const SUAttendanceTrackerView: React.FC = () => {
     message: `Delete the attendance record for ${name} on ${formatUkDate(r.attendanceDate)}? It will then show as Not recorded.`,
     confirmLabel: 'Delete record',
     isDanger: true,
-    onConfirm: async () => {
-      const res = await suTrackerService.deleteAttendance(r.id);
-      if (!res.success) setNotice(res.error || 'Could not delete the record.'); else load();
-    }
+    onConfirm: async () => { const err = await commit(r.suId, String(r.attendanceDate).slice(0, 10), null); if (err) setNotice(err); }
   });
+
+  // ---- Live: another user's change is merged into the row it concerns. A row being saved here is never overwritten, a late
+  // or repeated event never replaces a newer row, and a reconnect re-reads once (not on every click).
+  useEffect(() => {
+    const quietReload = async () => {
+      const res = await suTrackerService.listAttendance();
+      if (!res.success) return;
+      setRecords(prev => reconcile(prev, res.data.filter(r => directoryIds.current.has(r.suId)), inFlight.current));
+    };
+    const release = operationsRealtime.acquire({
+      onChange: c => {
+        if (c.table !== 'su_attendance_records') return;
+        setRecords(prev => applyLiveEvent(prev, { eventType: c.eventType, row: c.row }, inFlight.current, id => directoryIds.current.has(id)));
+      },
+      onResync: () => { void quietReload(); }
+    });
+    return () => { release(); flash.current.forEach(t => clearTimeout(t)); };
+  }, []);
 
   const recCell = (key: string, { r, d }: RecRow) => {
     switch (key) {
@@ -817,19 +904,28 @@ export const SUAttendanceTrackerView: React.FC = () => {
                 <EmptyRow colSpan={rollSchema.visibleColumns.length + 1} icon={<CalendarCheck className="w-8 h-8" />} title="No Service Users to show" hint="Change the site or filters to see residents." />
               ) : rollRows.slice(from, from + pageSize).map(d => {
                 const rec = forDay.get(d.su.id);
-                const busy = saving === d.su.id;
+                const phase = rowPhase[d.su.id];
                 return (
                   <tr key={d.su.id} className="hover:bg-[#f3f8fd] transition-colors">
                     {rollSchema.visibleColumns.map(col => <React.Fragment key={String(col.key)}>{rollCell(String(col.key), d, rec)}</React.Fragment>)}
                     {canEdit && (
                       <td className={actionsTdCls}>
-                        <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Present')} className={`px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}`}>Present</button>
-                        <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Absent')} className={`ml-1.5 px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Absent' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>Absent</button>
-                        {rec && (
-                          lastMark[d.su.id]?.date === rollDate
-                            ? <button type="button" disabled={busy} onClick={() => undoMark(d.su.id, rec)} title="Put this day back as it was before your last change" className="ml-1.5 px-2.5 py-1 rounded-xs border border-[#8a8886] bg-white text-[#323130] font-semibold hover:bg-[#edebe9] cursor-pointer disabled:opacity-50">Undo</button>
-                            : <button type="button" disabled={busy} onClick={() => clearMark(rec, `${d.su.firstName} ${d.su.lastName}`)} title="Remove this mark so the day shows Not recorded" className="ml-1.5 px-2.5 py-1 rounded-xs border border-[#8a8886] bg-white text-[#323130] font-semibold hover:bg-[#edebe9] cursor-pointer disabled:opacity-50">Clear</button>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          <button type="button" aria-pressed={rec?.attendanceStatus === 'Present'} onClick={() => mark(d.su.id, 'Present')} className={`px-2.5 py-1 rounded-xs border font-semibold cursor-pointer ${rec?.attendanceStatus === 'Present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}`}>Present</button>
+                          <button type="button" aria-pressed={rec?.attendanceStatus === 'Absent'} onClick={() => mark(d.su.id, 'Absent')} className={`px-2.5 py-1 rounded-xs border font-semibold cursor-pointer ${rec?.attendanceStatus === 'Absent' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>Absent</button>
+                          {rec && !phase && (
+                            lastMark[d.su.id]?.date === rollDate
+                              ? <button type="button" onClick={() => undoMark(d.su.id)} title="Put this day back as it was before your last change" className="px-2.5 py-1 rounded-xs border border-[#8a8886] bg-white text-[#323130] font-semibold hover:bg-[#edebe9] cursor-pointer">Undo</button>
+                              : <button type="button" onClick={() => clearMark(rec, `${d.su.firstName} ${d.su.lastName}`)} title="Remove this mark so the day shows Not recorded" className="px-2.5 py-1 rounded-xs border border-[#8a8886] bg-white text-[#323130] font-semibold hover:bg-[#edebe9] cursor-pointer">Clear</button>
+                          )}
+                          <span role="status" aria-live="polite" className="min-w-[4.5rem] text-left text-[11px]">
+                            {phase?.phase === 'saving' && <span className="text-[#605e5c]">Saving…</span>}
+                            {phase?.phase === 'saved' && <span className="font-semibold text-emerald-700">Saved</span>}
+                            {phase?.phase === 'error' && (
+                              <span className="text-[#a4262c]" title={phase.message}>Not saved <button type="button" onClick={() => retryMark(d.su.id)} className="font-semibold underline cursor-pointer">Retry</button></span>
+                            )}
+                          </span>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -894,7 +990,7 @@ export const SUAttendanceTrackerView: React.FC = () => {
 
       {editFor && (
         <AttendanceForm directory={directory} records={records} initial={editFor} user={currentUserName} canSeeNotes={canSeeNotes}
-          onClose={() => setEditFor(null)} onSaved={() => { setEditFor(null); load(); }} />
+          onClose={() => setEditFor(null)} onSaved={saved => { setEditFor(null); if (saved) { setRecords(prev => upsertRecord(prev, saved)); announce(saved.suId); void ensureFollowUpsFor(saved.suId); } }} />
       )}
       {historyFor && byId.get(historyFor) && (
         <HistoryDialog row={byId.get(historyFor)!} records={records.filter(r => r.suId === historyFor)} entries={entries} canSeeNotes={canSeeNotes} onClose={() => setHistoryFor(null)} />
@@ -983,7 +1079,7 @@ const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; c
 
 const AttendanceForm: React.FC<{
   directory: SuDirectoryRow[]; records: AttendanceRecord[]; initial: { suId?: string; date?: string }; user: string; canSeeNotes: boolean;
-  onClose: () => void; onSaved: () => void;
+  onClose: () => void; onSaved: (saved: AttendanceRecord | null) => void;
 }> = ({ directory, records, initial, user, canSeeNotes, onClose, onSaved }) => {
   const [suId, setSuId] = useState(initial.suId || '');
   const [date, setDate] = useState(initial.date || todayIso());
@@ -1014,9 +1110,9 @@ const AttendanceForm: React.FC<{
     if (!suId) { setError('Choose a Service User.'); return; }
     if (!status) { setError('Choose Present or Absent.'); return; }
     setSaving(true);
-    const res = await suTrackerService.saveAttendance({ suId, date, status, notes }, user);
+    const res = await suTrackerService.saveAttendance({ suId, date, status, notes }, user, existing || null);
     setSaving(false);
-    if (!res.success) setError(res.error || 'Could not save.'); else onSaved();
+    if (!res.success) setError(res.error || 'Could not save.'); else onSaved(res.data);
   };
 
   return (

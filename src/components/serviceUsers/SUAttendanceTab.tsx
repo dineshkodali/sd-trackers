@@ -54,7 +54,10 @@ export const SUAttendanceTab: React.FC<{ suId: string; reference?: string }> = (
       onChange: c => { if (c.table === 'su_attendance_records' && (!c.suId || c.suId === suId)) soon(); },
       onResync: soon
     });
-    return () => { if (timer) clearTimeout(timer); release(); };
+    // The Attendance page announces its own saves in this browser, so the calendar follows even before a live event arrives.
+    const onLocal = (e: Event) => { if ((e as CustomEvent).detail?.suId === suId) soon(); };
+    window.addEventListener('sdtracker:attendanceChanged', onLocal);
+    return () => { window.removeEventListener('sdtracker:attendanceChanged', onLocal); if (timer) clearTimeout(timer); release(); };
   }, [suId, load]);
 
   const days = useMemo(() => buildMonth(month, rows, suId, today), [month, rows, suId, today]);

@@ -25,7 +25,13 @@ export const OPERATIONS_REALTIME_TABLES = [
 export type OperationsTable = typeof OPERATIONS_REALTIME_TABLES[number];
 export type OperationsLinkState = 'connecting' | 'live' | 'reconnecting' | 'offline';
 
-export interface OperationsChange { table: string; eventType: string; id: string; /** su_id of the changed row, when it has one */ suId: string }
+export interface OperationsChange {
+  table: string; eventType: string; id: string;
+  /** su_id of the changed row, when it has one */
+  suId: string;
+  /** the changed row as the database sent it (the new row, or the old row for a delete) */
+  row: Record<string, any> | null;
+}
 type ChangeListener = (c: OperationsChange) => void;
 type StateListener = (s: OperationsLinkState) => void;
 type ResyncListener = (reason: 'reconnected' | 'online' | 'visible') => void;
@@ -172,7 +178,7 @@ class OperationsRealtime {
     if (this.seenSet.has(key)) return;
     this.seenSet.add(key); this.seen.push(key);
     if (this.seen.length > DEDUPE_WINDOW) this.seenSet.delete(this.seen.shift()!);
-    const change: OperationsChange = { table, eventType, id, suId: String(row.su_id ?? '') };
+    const change: OperationsChange = { table, eventType, id, suId: String(row.su_id ?? ''), row: Object.keys(row).length ? row : null };
     this.changeListeners.forEach(l => { try { l(change); } catch { /* ignore */ } });
   }
 }

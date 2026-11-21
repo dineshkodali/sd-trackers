@@ -67,3 +67,23 @@ NHS check digit/format/mask; blank values change nothing; new person fully fille
 * **Sanitising and validation** (`utils/arrivalFormRules.ts`, used for the inline field messages **and** again on save, for create and edit): control and zero-width characters removed, spaces collapsed, `<`/`>` rejected in structured fields and stripped from notes, lengths capped, port reference upper-cased (letters, numbers, `/ - .` and spaces, 3–30), name letters/spaces/`'`/`-`/`.` only (non-English letters allowed), date of birth real, not future, within 120 years, phone 7–15 digits, email format and lower-cased, check-in date real, after 2000 and at most 14 days ahead, aspen card, room, country/language text-only, NHS number check digit, notes ≤ 2,000 characters, dietary ≤ 20 lines of ≤ 300, Yes/No fields only accept Yes/No. If anything fails on save, nothing is saved and every problem is listed.
 * Legacy records: opening Edit on an old arrival runs the same checks on its existing values, so an old record with, for example, a symbol in the port reference must be corrected before the edit can be saved.
 * Tests: `tests/arrivalFormRules.test.ts` (12). Not tested in a browser.
+
+## 9. Update: Attendance marking behaves like Meal Marking
+
+**What Meal Marking does (reference, not changed):** the tap changes one record in React state at once; the save runs in the background; one in-flight save per slot with the latest choice queued (so fast taps cannot create duplicates); on failure the slot returns to what it was and an error is shown; a deterministic record id per slot; the known existing record is passed to the save so no lookup is needed; no reload.
+
+**What Attendance did:** every click saved (after a lookup read) and then called `load()`, which put the whole table into its loading state and re-read all residents, all attendance (up to 20,000 rows) and all follow-ups, then recomputed follow-ups for everyone.
+
+**Now (`SUAttendanceTrackerView`, `utils/attendanceMerge.ts`, `suTrackerService.saveAttendance`):**
+* Tap Present/Absent → that one row changes immediately and shows the selected state; a small "Saving…" then "Saved" appears beside the buttons; the summary counts, filters, search, site, date, tab and page position are untouched (they all derive from the same in-memory records).
+* One save per resident per day at a time; extra taps are queued (latest wins); tapping the status already shown does nothing.
+* The record id for a new day is fixed (`att-<su>-<date>`) and the table already has UNIQUE (su_id, attendance_date), so two browsers cannot create two rows: the second insert collides and is converted into an update of the first. The known existing row is passed in, so no lookup read on normal taps.
+* On failure the row returns to the last value the database confirmed, shows "Not saved – Retry", and "Saved" is never shown without database confirmation. The error text is in the tooltip.
+* Undo / Clear and the Records-tab Delete and the Record-Attendance dialog use the same path (no full reload).
+* Follow-ups: only the marked resident's absence follow-ups are re-evaluated (same idempotent rule), instead of everyone's.
+* **Live:** the page joins the shared Realtime connection. Another user's insert/update/delete is merged into just that row; a row being saved here is never overwritten; an older or repeated event never replaces a newer row; events for residents the user may not see are ignored. After a reconnect (not after each click) attendance is re-read once and merged, keeping days currently being saved.
+* **SU profile calendar:** updates from the live event, and also immediately in the same browser through an in-page notification, so it follows even before the migration is applied.
+* **Operations Dashboard:** attendance itself is not a dashboard metric; absence follow-ups are, and they re-read on their own live events (migration 039).
+* Not changed: attendance statuses (still Present/Absent, from the existing check constraint), business rules, permissions (`canEditSuTrackers` for marking, `canDeleteRecord` for the Records-tab delete), tables.
+* Tests: `tests/attendanceMerge.test.ts` (10: identity and fixed id, row mapping, upsert/remove, live merge, echo ignored, stale ignored, in-flight protected, delete, scope, reconnect reconcile). **Not tested:** the save against Supabase, network failure in a browser, two-browser races, mobile layout, absence of a page reload (the code contains no reload or full-table loading state after a mark).
+* Absence follow-up rows and the other Attendance tabs are not live-merged; they update on the user's own actions and on a manual refresh.

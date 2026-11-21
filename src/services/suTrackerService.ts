@@ -2,6 +2,7 @@ import { apiService } from './apiService';
 import { suPropertyService } from './suPropertyService';
 import { activePlacementBySu } from '../utils/placementSelection';
 import { isValidNhsNumber } from '../utils/suTrackerAccess';
+import { attendanceRecordId } from '../utils/attendanceMerge';
 import {
   followUpsToCreate, isIsoDate, type AbsencePolicy, type AttendanceEntry, DEFAULT_ABSENCE_POLICY
 } from '../utils/attendanceLogic';
@@ -217,23 +218,37 @@ export const suTrackerService = {
     return { success: true, data: res.data.filter(r => (!range.from || r.attendanceDate >= range.from) && (!range.to || r.attendanceDate <= range.to)) };
   },
 
-  /** One record per resident per day: saving the same day again updates it. */
-  async saveAttendance(input: { suId: string; date: string; status: 'Present' | 'Absent'; notes?: string }, user: string): Promise<Result<AttendanceRecord>> {
+  /**
+   * One record per resident per day: saving the same day again updates it. Pass `existing` (the row the screen already holds
+   * for that day) to skip the lookup. A new record gets a fixed id per resident and day, so two browsers saving the same day
+   * at once cannot create two rows: the second insert collides, and is then turned into an update of the first.
+   */
+  async saveAttendance(input: { suId: string; date: string; status: 'Present' | 'Absent'; notes?: string }, user: string, existing?: AttendanceRecord | null): Promise<Result<AttendanceRecord>> {
     if (!input.suId) return fail('Choose a Service User.');
     if (!isIsoDate(input.date)) return fail('Choose a valid date.');
     if (input.status !== 'Present' && input.status !== 'Absent') return fail('Choose Present or Absent.');
-    const existing = await list<AttendanceRecord>('suAttendance', { eq: { su_id: input.suId, attendance_date: input.date }, limit: 1 });
-    if (!existing.success) return fail(existing.error);
-    const current = existing.data[0];
+    let current: AttendanceRecord | undefined = existing || undefined;
+    if (!current) {
+      const found = await list<AttendanceRecord>('suAttendance', { eq: { su_id: input.suId, attendance_date: input.date }, limit: 1 });
+      if (!found.success) return fail(found.error);
+      current = found.data[0];
+    }
     const audit = { module: 'SU Attendance', targetItem: `${input.suId} ${input.date}` };
     const fields = { suId: input.suId, attendanceDate: input.date, attendanceStatus: input.status, additionalNotes: (input.notes || '').trim(), updatedBy: user };
-    if (current) {
-      const res = await apiService.updateEntityRecord<AttendanceRecord>('suAttendance', current.id, fields, { ...audit, action: 'UPDATE', details: `Attendance changed to ${input.status}` });
-      return res.success ? { success: true, data: { ...current, ...fields, ...(res.record || {}) } } : fail(res.error);
-    }
-    const record: AttendanceRecord = { id: newId('att'), ...fields, recordedBy: user, createdAt: nowIso(), updatedAt: nowIso() };
+    const doUpdate = async (row: AttendanceRecord): Promise<Result<AttendanceRecord>> => {
+      const res = await apiService.updateEntityRecord<AttendanceRecord>('suAttendance', row.id, fields, { ...audit, action: 'UPDATE', details: `Attendance changed to ${input.status}` });
+      return res.success ? { success: true, data: { ...row, ...fields, ...(res.record || {}) } } : fail(res.error);
+    };
+    if (current) return doUpdate(current);
+    const record: AttendanceRecord = { id: attendanceRecordId(input.suId, input.date), ...fields, recordedBy: user, createdAt: nowIso(), updatedAt: nowIso() };
     const res = await apiService.saveEntityRecord<AttendanceRecord>('suAttendance', record, { ...audit, action: 'CREATE', details: `Attendance recorded: ${input.status}` });
-    return res.success ? { success: true, data: { ...record, ...(res.record || {}) } } : fail(res.error);
+    if (res.success) return { success: true, data: { ...record, ...(res.record || {}) } };
+    if (/duplicate|unique|23505|409/i.test(String(res.error))) {
+      // Someone else recorded this day first: update their record instead of failing or duplicating.
+      const found = await list<AttendanceRecord>('suAttendance', { eq: { su_id: input.suId, attendance_date: input.date }, limit: 1 });
+      if (found.success && found.data[0]) return doUpdate(found.data[0]);
+    }
+    return fail(res.error);
   },
 
   /* ------------------------------------------------------------------------------------------- Follow-ups */
