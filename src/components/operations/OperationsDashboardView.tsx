@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { useOperationsData } from '../../hooks/useOperationsData';
 import { useCheckObligations } from '../../hooks/useCheckObligations';
@@ -131,22 +130,18 @@ export const OperationsDashboardView: React.FC = () => {
 
   const master = useOperationsData({ property: can.property, peep: can.peep, followUps: can.followUps, residents: false });
   // One shared live link: another user's change re-reads the affected data here within seconds, with no page reload.
-  const live = useOperationsLive(refreshLiveData);
+  useOperationsLive(refreshLiveData);
 
   // Where this profile last was (tab, site, overdue-only) - preferences only, never data.
   const userId = authProfile?.id;
   const prefs = useRef(loadPrefs(userId));
-  const [siteFilter, setSiteFilter] = useState<string>(() => {
-    const p = prefs.current.site;
-    return p && (p === 'all' || (allowedSites || []).includes(p)) ? p : defaultSiteFilter;
-  });
-  useEffect(() => { if (!prefs.current.site) setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
+  // The site is the one chosen in the top bar; the dashboard has no second selector, so every section follows it.
+  const siteFilter = defaultSiteFilter;
   const [tab, setTab] = useState<string>(prefs.current.tab);
   const [factTab, setFactTab] = useState<string>(prefs.current.factTab);
   const [overdueOnly, setOverdueOnly] = useState(prefs.current.overdueOnly);
   const [moreOpen, setMoreOpen] = useState(prefs.current.moreOpen);
-  useEffect(() => { savePrefs(userId, { tab, factTab, site: siteFilter, overdueOnly, moreOpen }); }, [userId, tab, factTab, siteFilter, overdueOnly, moreOpen]);
-  const [refreshing, setRefreshing] = useState(false);
+  useEffect(() => { savePrefs(userId, { tab, factTab, site: '', overdueOnly, moreOpen }); }, [userId, tab, factTab, overdueOnly, moreOpen]);
 
   // The clock the deadlines are measured against. It only moves the clock (no data is fetched): tasks turn overdue on time.
   const [now, setNow] = useState<Date>(() => new Date());
@@ -298,47 +293,16 @@ export const OperationsDashboardView: React.FC = () => {
 
   const openTask = (t: UnifiedTask) => navigateWithIntent(t.page, { filters: t.filters, recordId: t.openId || t.recordId });
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try { await Promise.all([refreshLiveData(), master.reload()]); } finally { setRefreshing(false); setNow(new Date()); }
-  };
-
   const dateLabel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(now);
-  const lastSyncMs = Math.max(0, ...[liveDataStatus.lastSyncAt, master.loadedAt, live.lastReconciledAt].map(v => (v ? new Date(v).getTime() : 0)));
-  const updatedLabel = lastSyncMs
-    ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date(lastSyncMs))
-    : DASH;
-  const linkLabel = live.link === 'live' ? 'Live' : live.link === 'connecting' ? 'Connecting' : live.link === 'reconnecting' ? 'Reconnecting' : 'Offline';
-  const siteOptions = (allowedSites || []).filter(Boolean);
-  const multiSite = canAccessAllSites() || siteOptions.length > 1;
-
   const qualityNotes = Object.entries(tasksResult.unreadableDates).map(([k, c]) => `${c} ${k} record${c > 1 ? 's' : ''} with a missing or unreadable date`);
 
   return (
     <div className="space-y-2" id="operations-dashboard">
-      {/* Header: one row. The site picked here governs every section. */}
+      {/* Header: title and date only. The site chosen in the top bar governs every section; data updates arrive by themselves. */}
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#e1dfdd]">
         <div className="flex items-baseline gap-3 min-w-0">
           <h1 className="text-base font-semibold text-[#242424] whitespace-nowrap">Operations Dashboard</h1>
           <span className="text-xs text-[#605e5c] whitespace-nowrap">{dateLabel}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {multiSite && (
-            <select aria-label="Site" value={siteFilter} onChange={e => setSiteFilter(e.target.value)} className="px-2 py-1 bg-white border border-[#8a8886] rounded-xs">
-              <option value="all">All sites</option>
-              {siteOptions.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          )}
-          <span className="text-[#605e5c] whitespace-nowrap" title="Time the numbers were last read from the database">Last synchronised {updatedLabel}</span>
-          <span
-            role="status"
-            className={`whitespace-nowrap font-semibold ${live.link === 'live' ? 'text-emerald-800' : live.link === 'connecting' ? 'text-[#605e5c]' : 'text-[#a4262c]'}`}
-            title={live.link === 'live' ? 'Connected. Changes by other users appear here automatically.' : live.link === 'connecting' ? 'Opening the live connection.' : 'The live connection is down. It reconnects on its own and re-reads everything when it is back.'}
-          >{linkLabel}</span>
-          <button type="button" onClick={handleRefresh} disabled={refreshing} className="inline-flex items-center gap-1 px-2 py-1 font-semibold bg-white border border-[#8a8886] rounded-xs hover:bg-[#edebe9] disabled:opacity-60">
-            <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
         </div>
       </div>
 
