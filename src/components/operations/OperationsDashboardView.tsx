@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { useApp } from '../../context/AppContext';
 import { useOperationsData } from '../../hooks/useOperationsData';
@@ -12,15 +12,17 @@ import { selectFlowCounts } from '../../utils/operationsDepartments';
 import {
   selectUnifiedTasks, countTasks, moduleLanding, type TaskModule, type UnifiedTask
 } from '../../utils/operationsTasks';
-import { selectRecentActivity } from '../../utils/operationsActivity';
+import { RECORD_TABS, selectRecordTab, type RecordTabSpec } from '../../utils/operationsRecords';
+import { loadPrefs, savePrefs } from '../../utils/profileCache';
 import { createSiteResolver, londonNow } from '../../utils/operationsRules';
 
 /**
- * Operations Dashboard - three sections, each number defined once:
+ * Operations Dashboard - each number defined once:
  *   1. Business overview  - eight KPIs
  *   2. Operations & deadlines - ONE table of every actionable task (utils/operationsTasks.ts); "Outstanding" and "Overdue"
  *      are counted from that same list, so they always equal its rows
- *   3. Recent activity - the audit trail only
+ *   3. Facilities & site services - the newest few records of each site-service page
+ * Pages that are logs rather than deadlines appear as tabs showing their newest records; only the open tab is computed.
  * Module detail stays in the module pages. Static by design: no animation, charts or transitions. A figure whose source
  * could not be loaded is a dash, never zero.
  */
@@ -62,14 +64,51 @@ const KpiCell: React.FC<{ kpi: Kpi }> = ({ kpi }) => {
 const priorityTag = (t: UnifiedTask) => <Tag tone={t.priority === 'Critical' ? 'red' : t.priority === 'High' ? 'amber' : 'grey'}>{t.priority}</Tag>;
 const remainingClass = (t: UnifiedTask) => (t.bucket === 'overdue' ? 'text-[#a4262c] font-bold' : t.bucket === 'today' || t.bucket === 'tomorrow' ? 'text-[#7f6000] font-semibold' : 'text-[#323130]');
 
+const RecordPanel: React.FC<{
+  spec: RecordTabSpec;
+  result: { rows: Array<{ id: string; title: string; detail: string; siteName: string; date: string; status: string }>; total: number; unmatchedSite: number };
+  ready: boolean;
+  onOpen: (page: string, recordId?: string) => void;
+}> = ({ spec, result, ready, onOpen }) => {
+  if (!ready) return <p className="px-2.5 py-3 text-xs text-[#605e5c]" aria-busy="true">Loading…</p>;
+  if (result.rows.length === 0) return <p className="px-2.5 py-3 text-xs text-[#605e5c]">No {spec.label.toLowerCase()} records at the selected site(s).</p>;
+  const hasStatus = result.rows.some(r => r.status);
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-[#edebe9]"><th className={TH}>Date</th><th className={TH}>Record</th><th className={TH}>Site</th>{hasStatus && <th className={TH}>Status</th>}</tr>
+        </thead>
+        <tbody className="divide-y divide-[#f3f2f1]">
+          {result.rows.map(r => (
+            <tr key={r.id} onClick={() => onOpen(spec.page, r.id)} className="cursor-pointer hover:bg-[#f3f2f1]" title="Open the record">
+              <td className={`${TD} whitespace-nowrap tabular-nums`}>{r.date || DASH}</td>
+              <td className={`${TD} max-w-[360px]`}><span className="block truncate text-[#242424]" title={r.title}>{r.title}</span>{r.detail && <span className="block truncate text-[#605e5c]">{r.detail}</span>}</td>
+              <td className={`${TD} whitespace-nowrap font-medium text-[#323130]`}>{r.siteName}</td>
+              {hasStatus && <td className={`${TD} whitespace-nowrap`}>{r.status ? <Tag tone="grey">{r.status}</Tag> : DASH}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex items-center justify-between px-2.5 py-1.5 text-xs border-t border-[#edebe9]">
+        <span className="text-[#605e5c]">Newest {result.rows.length} of {n(result.total)}</span>
+        <button type="button" className="font-semibold text-[#0d9488] hover:underline" onClick={() => onOpen(spec.page)}>View all in {spec.label} →</button>
+      </div>
+    </div>
+  );
+};
+
 const SELECT = 'px-1.5 py-1 text-xs bg-white border border-[#8a8886] rounded-xs max-w-[11rem]';
 
 export const OperationsDashboardView: React.FC = () => {
   const {
-    sites, maintenanceRecords, complianceRecords, escalations, auditLogs, currentUserRole,
+    sites, maintenanceRecords, complianceRecords, escalations, authProfile,
     canAccessPage, canAccessAllSites, allowedSites, defaultSiteFilter,
     liveDataStatus, navigateWithIntent, refreshLiveData,
-    newArrivalsRecords, dispersalRecords, evictionRecords, financeBills, transportFundingRequests
+    newArrivalsRecords, dispersalRecords, evictionRecords, financeBills, transportFundingRequests,
+    referrals, vulnerableSUs, challengingSUs, laundryRecords, foodRecords, propertyLaundryLogs, foodVendorBuffetLogs, spcdRecords,
+    publicTransportRecords, gpAppointmentRecords, rfaWelfareRecords, mhComplaintWelfareRecords, bookletRecords, irRecords,
+    foodWastageRecords, dailyRegisterRecords, welfareChecks, foodSurveys, roomChecks
   } = useApp();
 
   // What this user may see. A source they cannot view is never requested, counted or shown.
@@ -87,19 +126,26 @@ export const OperationsDashboardView: React.FC = () => {
     publicTransport: canAccessPage('publicTransport'),
     dispersal: canAccessPage('dispersal'),
     finance: canAccessPage('finance'),
-    suUsers: canAccessPage('suUsers'),
-    audit: canAccessPage('audit')
+    suUsers: canAccessPage('suUsers')
   };
 
   const master = useOperationsData({ property: can.property, peep: can.peep, followUps: can.followUps, residents: false });
   // One shared live link: another user's change re-reads the affected data here within seconds, with no page reload.
   const live = useOperationsLive(refreshLiveData);
 
-  const [siteFilter, setSiteFilter] = useState<string>(defaultSiteFilter);
-  useEffect(() => { setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
-  const [tab, setTab] = useState<'all' | TaskModule>('all');
-  const [overdueOnly, setOverdueOnly] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  // Where this profile last was (tab, site, overdue-only) - preferences only, never data.
+  const userId = authProfile?.id;
+  const prefs = useRef(loadPrefs(userId));
+  const [siteFilter, setSiteFilter] = useState<string>(() => {
+    const p = prefs.current.site;
+    return p && (p === 'all' || (allowedSites || []).includes(p)) ? p : defaultSiteFilter;
+  });
+  useEffect(() => { if (!prefs.current.site) setSiteFilter(defaultSiteFilter); }, [defaultSiteFilter]);
+  const [tab, setTab] = useState<string>(prefs.current.tab);
+  const [factTab, setFactTab] = useState<string>(prefs.current.factTab);
+  const [overdueOnly, setOverdueOnly] = useState(prefs.current.overdueOnly);
+  const [moreOpen, setMoreOpen] = useState(prefs.current.moreOpen);
+  useEffect(() => { savePrefs(userId, { tab, factTab, site: siteFilter, overdueOnly, moreOpen }); }, [userId, tab, factTab, siteFilter, overdueOnly, moreOpen]);
   const [refreshing, setRefreshing] = useState(false);
 
   // The clock the deadlines are measured against. It only moves the clock (no data is fetched): tasks turn overdue on time.
@@ -222,23 +268,28 @@ export const OperationsDashboardView: React.FC = () => {
     }
     return [...m.entries()].sort((a, b) => b[1].overdue - a[1].overdue || b[1].total - a[1].total || a[0].localeCompare(b[0]));
   }, [tasks]);
-  const activeTab: 'all' | TaskModule = tab === 'all' || byModule.some(([m]) => m === tab) ? tab : 'all';
-  const pool = useMemo(() => tasks.filter(t => (activeTab === 'all' || t.module === activeTab) && (!overdueOnly || t.bucket === 'overdue')), [tasks, activeTab, overdueOnly]);
-  const shown = pool.slice(0, activeTab === 'all' ? ALL_ROWS : TAB_ROWS);
-  const landing = activeTab === 'all' ? null : moduleLanding(activeTab, overdueOnly);
+  // Log pages as tabs. A tab exists only for pages this user may open; only the open one is computed.
+  const lists: Record<string, any[]> = {
+    newArrivalsRecords, dailyRegisterRecords, referrals, vulnerableSUs, challengingSUs, welfareChecks, rfaWelfareRecords, mhComplaintWelfareRecords,
+    gpAppointmentRecords, irRecords, publicTransportRecords, spcdRecords, laundryRecords, propertyLaundryLogs, foodRecords, foodVendorBuffetLogs,
+    foodWastageRecords, foodSurveys, bookletRecords, roomChecks
+  };
+  const opsRecordTabs = RECORD_TABS.filter(r => r.group === 'operations' && canAccessPage(r.page));
+  const facilityTabs = RECORD_TABS.filter(r => r.group === 'facilities' && canAccessPage(r.page));
+  const activeRecord = opsRecordTabs.find(r => `rec:${r.key}` === tab) || null;
+  // A remembered tab that no longer exists (module has no work now, or access changed) falls back to All.
+  const taskTab: 'all' | TaskModule | null = activeRecord ? null : (tab !== 'all' && byModule.some(([m]) => m === tab) ? (tab as TaskModule) : 'all');
+  const pool = useMemo(() => tasks.filter(t => (taskTab === 'all' || t.module === taskTab) && (!overdueOnly || t.bucket === 'overdue')), [tasks, taskTab, overdueOnly]);
+  const shown = taskTab ? pool.slice(0, taskTab === 'all' ? ALL_ROWS : TAB_ROWS) : [];
+  const landing = taskTab && taskTab !== 'all' ? moduleLanding(taskTab, overdueOnly) : null;
+
+  const activeFacility = facilityTabs.find(r => r.key === factTab) || facilityTabs[0] || null;
+  const recordResult = useMemo(() => (activeRecord ? selectRecordTab(activeRecord, lists[activeRecord.source], siteRefs, scope, TAB_ROWS) : null),
+    [activeRecord, lists[activeRecord?.source || ''], siteRefs, scope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const facilityResult = useMemo(() => (activeFacility ? selectRecordTab(activeFacility, lists[activeFacility.source], siteRefs, scope, TAB_ROWS) : null),
+    [activeFacility, lists[activeFacility?.source || ''], siteRefs, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openTask = (t: UnifiedTask) => navigateWithIntent(t.page, { filters: t.filters, recordId: t.openId || t.recordId });
-
-  // ---- 3. Recent activity: the audit trail, scoped and de-duplicated. Same visibility as the Audit page.
-  const canSeeActivity = (currentUserRole === 'Super Admin' || currentUserRole === 'Admin') && can.audit;
-  const activity = useMemo(() => {
-    if (!canSeeActivity) return [];
-    return selectRecentActivity((auditLogs || []) as any[], {
-      limit: 5,
-      inScope: site => (scope.siteId === 'all' ? true : resolveSite(site) === scope.siteId)
-    });
-  }, [canSeeActivity, auditLogs, scope.siteId, resolveSite]);
-  const activityTime = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -308,18 +359,27 @@ export const OperationsDashboardView: React.FC = () => {
             Overdue only
           </label>
         </header>
-        <div role="tablist" aria-label="Modules" className="flex flex-wrap gap-x-1 border-b border-[#e1dfdd] px-1.5">
-          {[{ key: 'all' as const, label: 'All', total: counts.outstanding, overdue: counts.overdue }, ...byModule.map(([m, c]) => ({ key: m, label: m, total: c.total, overdue: c.overdue }))].map(t => (
+        <div role="tablist" aria-label="Modules" className="flex flex-wrap items-center gap-x-1 border-b border-[#e1dfdd] px-1.5">
+          {[{ key: 'all', label: 'All', total: counts.outstanding, overdue: counts.overdue }, ...byModule.map(([m, c]) => ({ key: m as string, label: m as string, total: c.total, overdue: c.overdue }))].map(t => (
             <button
-              key={t.key} type="button" role="tab" aria-selected={activeTab === t.key} onClick={() => setTab(t.key)}
-              className={`px-2 py-1.5 text-xs whitespace-nowrap border-b-2 ${activeTab === t.key ? 'border-[#0d9488] font-semibold text-[#242424]' : 'border-transparent text-[#605e5c] hover:text-[#242424]'}`}
+              key={t.key} type="button" role="tab" aria-selected={taskTab === t.key} onClick={() => setTab(t.key)}
+              className={`px-2 py-1.5 text-xs whitespace-nowrap border-b-2 ${taskTab === t.key ? 'border-[#0d9488] font-semibold text-[#242424]' : 'border-transparent text-[#605e5c] hover:text-[#242424]'}`}
             >
               {t.label} <span className="tabular-nums text-[#605e5c]">{tasksReady ? n(t.total) : DASH}</span>
               {tasksReady && t.overdue > 0 && <span className="ml-1 tabular-nums font-bold text-[#a4262c]" title="Overdue">{n(t.overdue)}</span>}
             </button>
           ))}
+          {opsRecordTabs.length > 0 && <span className="mx-1 h-4 w-px bg-[#e1dfdd]" aria-hidden="true" />}
+          {opsRecordTabs.map(r => (
+            <button
+              key={r.key} type="button" role="tab" aria-selected={activeRecord?.key === r.key} onClick={() => setTab(`rec:${r.key}`)}
+              className={`px-2 py-1.5 text-xs whitespace-nowrap border-b-2 ${activeRecord?.key === r.key ? 'border-[#0d9488] font-semibold text-[#242424]' : 'border-transparent text-[#605e5c] hover:text-[#242424]'}`}
+            >{r.label}</button>
+          ))}
         </div>
-        {!tasksReady ? (
+        {activeRecord && recordResult ? (
+          <RecordPanel spec={activeRecord} result={recordResult} ready={!loading} onOpen={(page, id) => navigateWithIntent(page, { recordId: id })} />
+        ) : !tasksReady ? (
           <p className="px-2.5 py-3 text-xs text-[#605e5c]" aria-busy="true">Loading…</p>
         ) : shown.length === 0 ? (
           <p className="px-2.5 py-3 text-xs text-[#605e5c]">
@@ -330,7 +390,7 @@ export const OperationsDashboardView: React.FC = () => {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[#edebe9]">
-                  <th className={TH}>Priority</th><th className={TH}>Task</th>{activeTab === 'all' && <th className={TH}>Module</th>}<th className={TH}>Site</th>
+                  <th className={TH}>Priority</th><th className={TH}>Task</th>{taskTab === 'all' && <th className={TH}>Module</th>}<th className={TH}>Site</th>
                   <th className={TH}>Assigned to</th><th className={TH}>Due</th><th className={TH}>Remaining</th><th className={TH}>Status</th>
                 </tr>
               </thead>
@@ -339,7 +399,7 @@ export const OperationsDashboardView: React.FC = () => {
                   <tr key={t.key} onClick={() => openTask(t)} className="cursor-pointer hover:bg-[#f3f2f1]" title="Open the record">
                     <td className={TD}>{priorityTag(t)}</td>
                     <td className={`${TD} max-w-[320px]`}><span className="block truncate text-[#242424]" title={`${t.task}${t.location ? ` - ${t.location}` : ''}`}>{t.task}</span></td>
-                    {activeTab === 'all' && <td className={`${TD} whitespace-nowrap`}>{t.module}</td>}
+                    {taskTab === 'all' && <td className={`${TD} whitespace-nowrap`}>{t.module}</td>}
                     <td className={`${TD} whitespace-nowrap font-medium text-[#323130]`}>{t.siteName}</td>
                     <td className={`${TD} text-[#605e5c]`}>{t.assignedTo || DASH}</td>
                     <td className={`${TD} whitespace-nowrap tabular-nums`}>{t.due ? (t.due.endsWith('23:59') ? t.due.slice(0, 10) : t.due) : DASH}</td>
@@ -352,7 +412,7 @@ export const OperationsDashboardView: React.FC = () => {
             <div className="flex items-center justify-between px-2.5 py-1.5 text-xs border-t border-[#edebe9]">
               <span className="text-[#605e5c]">Showing {shown.length} of {n(pool.length)}, most urgent first</span>
               {landing ? (
-                <button type="button" className="font-semibold text-[#0d9488] hover:underline" onClick={() => navigateWithIntent(landing.page, { filters: landing.filters })}>View all in {activeTab} →</button>
+                <button type="button" className="font-semibold text-[#0d9488] hover:underline" onClick={() => navigateWithIntent(landing.page, { filters: landing.filters })}>View all in {taskTab} →</button>
               ) : (
                 <span className="text-[#605e5c]">Choose a module tab to see more</span>
               )}
@@ -361,51 +421,23 @@ export const OperationsDashboardView: React.FC = () => {
         )}
       </section>
 
-      {/* 3. Recent activity: what changed, not what is pending */}
-      {canSeeActivity && (
-        <section className="bg-white border border-[#e1dfdd] rounded-xs min-w-0" aria-labelledby="ops-activity-h">
-          <header className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#e1dfdd]">
-            <h2 id="ops-activity-h" className="text-xs font-semibold text-[#242424]">Recent activity</h2>
-            <span className="text-[11px] text-[#605e5c]">Latest record changes from the audit trail</span>
+      {/* Facilities & site services: the newest few records of each page */}
+      {facilityTabs.length > 0 && activeFacility && facilityResult && (
+        <section id="ops-facilities" className="bg-white border border-[#e1dfdd] rounded-xs min-w-0" aria-labelledby="ops-facilities-h">
+          <header className="px-2.5 py-1.5 border-b border-[#e1dfdd]">
+            <h2 id="ops-facilities-h" className="text-xs font-semibold text-[#242424]">Facilities &amp; site services</h2>
           </header>
-          {loading ? (
-            <p className="px-2.5 py-3 text-xs text-[#605e5c]" aria-busy="true">Loading…</p>
-          ) : activity.length === 0 ? (
-            <p className="px-2.5 py-3 text-xs text-[#605e5c]">No recent changes at the selected site(s).</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-[#edebe9]">
-                    <th className={TH}>Time</th><th className={TH}>Module</th><th className={TH}>Record</th><th className={TH}>Activity</th><th className={TH}>Updated by</th><th className={TH}>Site</th><th className={TH}>Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f3f2f1]">
-                  {activity.map(a => (
-                    <tr key={a.id}>
-                      <td className={`${TD} whitespace-nowrap tabular-nums`}>{activityTime(a.at)}</td>
-                      <td className={`${TD} whitespace-nowrap`}>{a.module}</td>
-                      <td className={`${TD} max-w-[260px] truncate`} title={a.record}>{a.record}</td>
-                      <td className={`${TD} whitespace-nowrap`}><Tag tone={a.verb === 'Deleted' ? 'red' : a.verb === 'Created' || a.verb === 'Restored' ? 'green' : 'grey'}>{a.verb}</Tag></td>
-                      <td className={`${TD} whitespace-nowrap`}>{a.by}</td>
-                      <td className={`${TD} whitespace-nowrap`}>{a.site}</td>
-                      <td className={TD}>
-                        {a.page && canAccessPage(a.page)
-                          ? <button type="button" className="font-semibold text-[#0d9488] hover:underline focus:underline focus:outline-none" onClick={() => navigateWithIntent(a.page!, { recordId: a.recordId || undefined })}>Open</button>
-                          : DASH}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="flex justify-end px-2.5 py-1.5 text-xs border-t border-[#edebe9]">
-                <button type="button" className="font-semibold text-[#0d9488] hover:underline" onClick={() => navigateWithIntent('audit')}>View full audit trail →</button>
-              </div>
-            </div>
-          )}
+          <div role="tablist" aria-label="Facilities and site services" className="flex flex-wrap gap-x-1 border-b border-[#e1dfdd] px-1.5">
+            {facilityTabs.map(r => (
+              <button
+                key={r.key} type="button" role="tab" aria-selected={activeFacility.key === r.key} onClick={() => setFactTab(r.key)}
+                className={`px-2 py-1.5 text-xs whitespace-nowrap border-b-2 ${activeFacility.key === r.key ? 'border-[#0d9488] font-semibold text-[#242424]' : 'border-transparent text-[#605e5c] hover:text-[#242424]'}`}
+              >{r.label}</button>
+            ))}
+          </div>
+          <RecordPanel spec={activeFacility} result={facilityResult} ready={!loading} onOpen={(page, id) => navigateWithIntent(page, { recordId: id })} />
         </section>
       )}
-
       {/* Analytics placed here by an earlier change: kept, but collapsed and only loaded when opened, so the page stays small */}
       {(can.dailyRegisters || can.vulnerable || can.publicTransport) && (
         <div className="bg-white border border-[#e1dfdd] rounded-xs">

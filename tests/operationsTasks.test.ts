@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { selectUnifiedTasks, classifyDeadline, countTasks, filterTasks, NO_TASK_FILTER, type TaskInput, type TaskModule } from '../src/utils/operationsTasks.ts';
-import { selectRecentActivity } from '../src/utils/operationsActivity.ts';
 
 const NOW = new Date('2026-11-12T10:00:00Z'); // Thu 12 Nov 2026, 10:00 GMT
 const SITES = [{ id: 'site-1', name: 'Brit Hotel' }, { id: 'site-2', name: 'Atlantic BW' }];
@@ -129,37 +128,6 @@ test('site scope and module visibility are enforced before anything is counted',
 
 test('far-future dated work is not listed', () => {
   assert.equal(selectUnifiedTasks(input({ maintenance: [maint({ closeDueDate: '2027-03-01' })] }), ALL, NOW).tasks.length, 0);
-});
-
-/* ----------------------------------------------------------------- recent activity */
-
-const log = (o: Record<string, any>): any => ({ id: 'a1', timestamp: '2026-11-12T09:00:00Z', action: 'UPDATE', module: 'Maintenance', targetItem: 'Leak', performedByUser: 'Sam', site: 'Brit Hotel', entityType: 'maintenance', entityId: 'm1', ...o });
-const inScope = () => true;
-
-test('activity is the audit trail only: record changes, newest first, deduplicated', () => {
-  const rows = selectRecentActivity([
-    log({ id: 'a1', timestamp: '2026-11-12T09:00:05Z' }),
-    log({ id: 'a1', timestamp: '2026-11-12T09:00:05Z' }),                          // same audit id delivered twice
-    log({ id: 'a2', timestamp: '2026-11-12T09:00:40Z' }),                          // same change saved twice in one minute
-    log({ id: 'a3', timestamp: '2026-11-12T09:30:00Z', action: 'CREATE', entityId: 'm2' }),
-    log({ id: 'a4', timestamp: '2026-11-12T09:31:00Z', action: 'ROLE_CHANGE' }),   // not a record change
-    log({ id: 'a5', timestamp: '2026-11-12T09:32:00Z', action: 'DELETE', entityId: 'm3' }),
-    log({ id: 'a6', timestamp: 'garbage' })
-  ], { inScope });
-  assert.deepEqual(rows.map(r => r.id), ['a5', 'a3', 'a2']);                        // a2 (09:00:40) is the surviving burst row
-  assert.equal(rows[0].verb, 'Deleted');
-  assert.equal(rows[0].recordId, null);                                             // nothing left to open
-  assert.equal(rows[1].verb, 'Created');
-  assert.equal(rows[1].page, 'maintenance');
-  assert.equal(rows[1].recordId, 'm2');
-});
-
-test('activity respects scope and the limit, and never invents a link', () => {
-  const logs = Array.from({ length: 20 }, (_, i) => log({ id: `x${i}`, entityId: `r${i}`, timestamp: `2026-11-12T08:${String(i).padStart(2, '0')}:00Z` }));
-  assert.equal(selectRecentActivity(logs, { inScope, limit: 12 }).length, 12);
-  assert.equal(selectRecentActivity(logs, { inScope: () => false }).length, 0);
-  const unknown = selectRecentActivity([log({ entityType: 'somethingNew' })], { inScope })[0];
-  assert.equal(unknown.page, null);
 });
 
 import { moduleLanding } from '../src/utils/operationsTasks.ts';

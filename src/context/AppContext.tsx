@@ -1,4 +1,5 @@
 import { APP_PAGES_REGISTRY } from '../config/pageRegistry';
+import { clearProfileCache } from '../utils/profileCache';
 import { pageForPath, pathForPage } from '../config/pageRoutes';
 import { isLifecycleEditor } from '../config/recordLifecycle';
 import { evaluateOverride, type PageAction, type UserPagePermissions } from '../config/pagePermissionsConfig';
@@ -1570,6 +1571,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
   const logout = useCallback(async () => {
+    clearProfileCache(); // dashboard data kept in memory for this profile must not outlive the session
     const prevUser = authProfile?.email || currentUserRole;
     const token = sessionToken;
     try {
