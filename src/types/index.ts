@@ -857,6 +857,17 @@ export interface NewArrivalRecord {
   aspenCard?: string; // Aspen Card
   checkInDate?: string; // Check-in date (YYYY-MM-DD)
   status?: string; // Status (e.g. Arrived, Checked In)
+  /**
+   * Intake-only details typed in the New Arrivals form. They are saved to the Service User's profile (Support, GP and
+   * booking sections) and are NOT stored on the arrival record, so sensitive details are not copied into a second place.
+   */
+  suComments?: string;
+  dietaryRequirements?: string;
+  availableToBook?: string;
+  gpRegistered?: string;
+  gpPractice?: string;
+  pharmacy?: string;
+  nhsNumber?: string;
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
   attachment_url?: string;

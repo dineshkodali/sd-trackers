@@ -1,5 +1,7 @@
 import React from 'react';
 import { LANGUAGE_OPTIONS } from './languages';
+import { GP_PRACTICE_OPTIONS } from '../types/masterData';
+import { nhsNumberError } from '../utils/nhsNumber';
 import { TableColumnConfig } from '../types/tableSchema';
 import { TableAttachmentCell } from '../components/common/TableAttachmentCell';
 import { 
@@ -751,7 +753,15 @@ export const NEW_ARRIVALS_TABLE_COLUMNS: TableColumnConfig<NewArrivalRecord>[] =
       'Cancelled': 'bg-gray-100 text-gray-700'
     },
     section: 'Allocation' 
-  }
+  },
+  // Intake details: saved to the Service User's profile, not onto the arrival (see NewArrivalRecord). Kept out of the table and view.
+  { key: 'suComments', label: 'SU Comments (e.g. Safeguarding)', type: 'textarea', colSpan: 2, visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking', helperText: 'Added to the Safeguarding notes on the profile. Existing notes are kept.' },
+  { key: 'dietaryRequirements', label: 'Dietary Requirements', type: 'textarea', colSpan: 2, visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking', helperText: 'One per line, e.g. Halal, Nut allergy. Added to the dietary requirements on the profile.' },
+  { key: 'availableToBook', label: 'Available to Book', type: 'select', options: ['Yes', 'No'], fixedOptions: true, defaultValue: 'No', visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking' },
+  { key: 'gpRegistered', label: 'GP Registered', type: 'select', options: ['Yes', 'No'], fixedOptions: true, visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking' },
+  { key: 'gpPractice', label: 'GP', type: 'select', options: [...GP_PRACTICE_OPTIONS], optionCategory: 'gpPractices', allowQuickAdd: true, placeholder: 'Select GP practice', visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking', helperText: 'Fills the GP details on the profile only if none is recorded yet.' },
+  { key: 'pharmacy', label: 'Registered Pharmacy', type: 'text', visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking' },
+  { key: 'nhsNumber', label: 'NHS Number', type: 'text', placeholder: '943 476 5919', visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking', helperText: '10 digits. Saved to the GP details on the profile and shown masked there.', validate: v => nhsNumberError(v) }
 ];
 
 export const EVICTION_TABLE_COLUMNS: TableColumnConfig<EvictionRecord>[] = [

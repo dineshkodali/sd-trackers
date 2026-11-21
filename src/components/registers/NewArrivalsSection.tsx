@@ -14,6 +14,11 @@ import { exportTableToPdf } from '../../utils/pdfExport';
 import { evaluateRegisterAllocation, isArrivalAllocated } from '../../utils/roomAllocation';
 import { roomChoices } from '../../utils/interconnectingRooms';
 import { syncArrivalToServiceUser } from '../../utils/arrivalServiceUserSync';
+import { applyArrivalProfileDetails } from '../../services/arrivalProfileService';
+import { hasAnyDetail, type ArrivalProfileDetails } from '../../utils/arrivalProfileSync';
+
+/** Form fields that belong to the Service User's profile, not to the arrival record. */
+const INTAKE_KEYS = ['suComments', 'dietaryRequirements', 'availableToBook', 'gpRegistered', 'gpPractice', 'pharmacy', 'nhsNumber'];
 
 interface NewArrivalsSectionProps {
   selectedSite: string;
@@ -44,8 +49,12 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     syncFromDatabase,
     liveDataStatus,
     isSitePermitted,
+    currentUserName,
     sites
   } = useApp();
+
+  // One save at a time: a double click (or Enter twice) must not create two arrivals or two profile updates.
+  const savingRef = React.useRef(false);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const handleManualSync = async () => {
@@ -179,7 +188,20 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     };
   }), [columns, dailyRegisterRooms, dailyRegisterRecords]);
 
+  // Editing an arrival changes the arrival only; the intake details live on the profile, so they are not offered here.
+  const editColumns = useMemo(() => formColumns.filter(c => !INTAKE_KEYS.includes(String(c.key))), [formColumns]);
+
   const handleCreateSubmit = async (data: Partial<NewArrivalRecord>) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    try {
+      await createArrival(data);
+    } finally {
+      savingRef.current = false;
+    }
+  };
+
+  const createArrival = async (data: Partial<NewArrivalRecord>) => {
     const finalHotel = (data.hotel && data.hotel !== 'All Sites' && data.hotel !== 'all')
       ? data.hotel
       : defaultSite;
@@ -244,7 +266,8 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         cot: 0,
         occupied: 'Yes',
         isVoid: 'No',
-        availableToBook: 'No'
+        availableToBook: data.availableToBook === 'Yes' ? 'Yes' : 'No',
+        suComments: (data.suComments || '').trim() || undefined
       });
     } else if (check && !check.ok) {
       alert(`${data.name} was recorded as Arrived, but not placed in room ${roomInput}: ${check.error}`);
@@ -264,7 +287,25 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         room: allocatedRoom?.roomNo || roomInput,
         checkInDate
       }, sites as any);
-      if (sync.warnings.length) alert(sync.warnings.join('\n'));
+      const gpNo = data.gpRegistered === 'No';
+      const details: ArrivalProfileDetails = {
+        suComments: data.suComments, dietaryRequirements: data.dietaryRequirements,
+        gpRegistered: data.gpRegistered, gpPractice: gpNo ? '' : data.gpPractice, pharmacy: gpNo ? '' : data.pharmacy, nhsNumber: data.nhsNumber
+      };
+      const lines: string[] = [...sync.warnings];
+      if (hasAnyDetail(details)) {
+        if (!sync.serviceUser) {
+          lines.push('The health, safeguarding and GP details were NOT saved to a profile because no Service User could be created or found. Add them from the Service User profile.');
+        } else {
+          const res = await applyArrivalProfileDetails(sync.serviceUser.id, details, currentUserName);
+          if (!res.ok) lines.push(`The arrival was saved, but the extra details were NOT saved to the Service User profile: ${res.error}`);
+          else {
+            if (res.saved.length) lines.push(`Saved to ${data.name}'s profile: ${res.saved.join(', ')}.`);
+            if (res.kept.length) lines.push(`Not changed because the profile already has a value (${res.kept.join('; ')}).`);
+          }
+        }
+      }
+      if (lines.length) alert(lines.join('\n'));
     } catch (err: any) {
       alert(`Arrival saved, but the Service User record could not be created: ${err?.message || 'unknown error'}`);
     }
@@ -603,7 +644,7 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
           isOpen={Boolean(editingRecord)}
           onClose={() => setEditingRecord(null)}
           title={`Edit Arrival: ${editingRecord.name}`}
-          columns={formColumns}
+          columns={editColumns}
           initialValues={editingRecord}
           onSubmit={handleEditSubmit}
           submitLabel="Save Changes"

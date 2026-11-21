@@ -952,6 +952,11 @@ export function DynamicRecordFormModal<T = any>({
         }
       }
 
+      if (col.validate) {
+        const problem = col.validate(formData[key], formData);
+        if (problem) { newErrors[key] = problem; return; }
+      }
+
       if (col.required && !(hasSingleSu && !isServiceUserColumn(col) && !isRoomColumn(col) && isSuProfileColumn(col))) {
         if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
           newErrors[key] = `${col.label} is required`;

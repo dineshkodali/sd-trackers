@@ -17,13 +17,15 @@ import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 /** Tables whose changes move a dashboard number but are not patched into AppContext. Must be in the supabase_realtime publication (migration 039). */
 export const OPERATIONS_REALTIME_TABLES = [
   'properties', 'property_rooms', 'room_beds', 'placements', 'service_users',
-  'peep_plans', 'absence_followups', 'room_issues', 'room_checks', 'welfare_checks'
+  'peep_plans', 'absence_followups', 'room_issues', 'room_checks', 'welfare_checks',
+  // Service User profile: attendance calendar and GP details
+  'su_attendance_records', 'gp_registrations'
 ] as const;
 
 export type OperationsTable = typeof OPERATIONS_REALTIME_TABLES[number];
 export type OperationsLinkState = 'connecting' | 'live' | 'reconnecting' | 'offline';
 
-export interface OperationsChange { table: string; eventType: string; id: string }
+export interface OperationsChange { table: string; eventType: string; id: string; /** su_id of the changed row, when it has one */ suId: string }
 type ChangeListener = (c: OperationsChange) => void;
 type StateListener = (s: OperationsLinkState) => void;
 type ResyncListener = (reason: 'reconnected' | 'online' | 'visible') => void;
@@ -170,7 +172,7 @@ class OperationsRealtime {
     if (this.seenSet.has(key)) return;
     this.seenSet.add(key); this.seen.push(key);
     if (this.seen.length > DEDUPE_WINDOW) this.seenSet.delete(this.seen.shift()!);
-    const change: OperationsChange = { table, eventType, id };
+    const change: OperationsChange = { table, eventType, id, suId: String(row.su_id ?? '') };
     this.changeListeners.forEach(l => { try { l(change); } catch { /* ignore */ } });
   }
 }

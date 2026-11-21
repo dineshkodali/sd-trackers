@@ -4,6 +4,8 @@ import { pickActivePlacement } from '../../utils/placementSelection';
 import { repositoryDocsForServiceUser } from '../../utils/repositoryDocuments';
 import { getServiceUserRecords } from '../../utils/serviceUserRecords';
 import { SUPeepTab } from './SUPeepTab';
+import { SUAttendanceTab } from './SUAttendanceTab';
+import { SUHealthcareCard } from './SUHealthcareCard';
 import { SUIncidentsTab, SUReferralsTab, SUGpTab, SUTransportTab, SUOtherWelfareTable } from './SURecordTabs';
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
 import { IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight, IconBuilding as Building2, IconDoorEnter as DoorOpen, IconEdit as Edit3, IconArrowsLeftRight as ArrowRightLeft, IconFileText as FileText, IconUserMinus as UserMinus, IconTrash as Trash2 } from '@tabler/icons-react';
@@ -59,7 +61,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
   onRefreshData
 }) => {
   const {
-    sites, welfareChecks, foodSurveys, roomChecks, canManageUsers, requestConfirmation,
+    sites, welfareChecks, foodSurveys, roomChecks, canManageUsers, requestConfirmation, canAccessPage, dailyRegisterRecords,
     irRecords, challengingSUs, referrals, rfaWelfareRecords, mhComplaintWelfareRecords,
     gpAppointmentRecords, publicTransportRecords, documents: repositoryDocuments
   } = useApp();
@@ -322,6 +324,7 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
     { id: 'gp', label: `GP Appointments (${suRecords.gp.length})` },
     { id: 'transport', label: `Public Transport (${suRecords.transport.length})` },
     { id: 'peep', label: 'PEEP' },
+    ...(canAccessPage('suAttendance') ? [{ id: 'attendance', label: 'Attendance' }] : []),
     // Shown only when the date of birth says the person is under 18
     ...(isChildByDob(serviceUser.dateOfBirth) ? [{ id: 'education', label: 'Education' }] : []),
     { id: 'foodSurveys', label: `Food Surveys (${suFood.length})` },
@@ -575,7 +578,13 @@ export const ServiceUserProfileView: React.FC<ServiceUserProfileViewProps> = ({
 
           {activeTab === 'incidents' && <SUIncidentsTab rows={suRecords.incidents} />}
           {activeTab === 'referrals' && <SUReferralsTab rows={suRecords.referrals} />}
-          {activeTab === 'gp' && <SUGpTab rows={suRecords.gp} />}
+          {activeTab === 'gp' && (
+            <div className="space-y-4">
+              <SUHealthcareCard serviceUser={serviceUser} />
+              <SUGpTab rows={suRecords.gp} />
+            </div>
+          )}
+          {activeTab === 'attendance' && canAccessPage('suAttendance') && <SUAttendanceTab suId={serviceUser.id} reference={serviceUser.externalReference || serviceUser.suReference} />}
           {activeTab === 'peep' && <SUPeepTab suId={serviceUser.id} searchText={serviceUser.externalReference || serviceUser.suReference} />}
           {activeTab === 'transport' && (
             <div className="space-y-3">
