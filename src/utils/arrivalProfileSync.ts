@@ -19,6 +19,8 @@ export interface ArrivalProfileDetails {
   gpPractice?: string;
   pharmacy?: string;
   nhsNumber?: string;
+  disabilityCategory?: string;
+  disabilityType?: string;
 }
 
 export interface ProfileState {
@@ -27,12 +29,17 @@ export interface ProfileState {
   dietary: string[];
   /** service_users.gp_registration */
   suGpPractice: string;
+  /** service_users.disability_category / disability_type */
+  suDisabilityCategory?: string;
+  suDisabilityType?: string;
   gp: { id?: string; gpPractice?: string; pharmacy?: string; nhsNumber?: string; notes?: string } | null;
 }
 
 export interface ProfilePlan {
   safeguarding: { write: boolean; value: string };
   dietary: { write: boolean; value: string[] };
+  /** set service_users.disability_category / disability_type (only the parts that fill a blank) */
+  suDisability: { write: boolean; fields: { disabilityCategory?: string; disabilityType?: string } };
   /** set service_users.gp_registration */
   suGpPractice: { write: boolean; value: string };
   /** upsert gp_registrations with exactly these fields (only the ones that change) */
@@ -79,6 +86,20 @@ export function planProfileSync(state: ProfileState, d: ArrivalProfileDetails): 
     return { write: false, value: c };
   };
 
+  // Disability: "None" and blank both mean nothing is recorded yet, so a real category may fill them; a recorded one is kept.
+  const noneLike = (v?: string) => ['', 'none', 'no', 'n/a', 'na', 'nil'].includes(norm(v ?? ''));
+  const disabilityFields: ProfilePlan['suDisability']['fields'] = {};
+  const typedCat = String(d.disabilityCategory ?? '').trim();
+  const typedType = String(d.disabilityType ?? '').trim();
+  if (!noneLike(typedCat)) {
+    if (noneLike(state.suDisabilityCategory)) { disabilityFields.disabilityCategory = typedCat; saved.push('disability category'); }
+    else if (norm(state.suDisabilityCategory ?? '') !== norm(typedCat)) kept.push(`disability category: kept "${state.suDisabilityCategory}"`);
+  }
+  if (typedType) {
+    if (!String(state.suDisabilityType ?? '').trim()) { disabilityFields.disabilityType = typedType; saved.push('disability type'); }
+    else if (norm(state.suDisabilityType ?? '') !== norm(typedType)) kept.push(`disability type: kept "${state.suDisabilityType}"`);
+  }
+
   const practiceTyped = String(d.gpPractice ?? '').trim();
   const suGp = fill('GP', state.suGpPractice, practiceTyped);
   const gpPractice = fill('GP details', state.gp?.gpPractice, practiceTyped);
@@ -94,6 +115,7 @@ export function planProfileSync(state: ProfileState, d: ArrivalProfileDetails): 
     safeguarding: { write: safeLines.added.length > 0, value: safeLines.merged.join('\n') },
     dietary: { write: diet.added.length > 0, value: diet.merged },
     suGpPractice: suGp,
+    suDisability: { write: Object.keys(disabilityFields).length > 0, fields: disabilityFields },
     gp: { write: Object.keys(fields).length > 0, id: state.gp?.id, fields },
     keptExisting: kept,
     saved

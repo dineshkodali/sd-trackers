@@ -16,9 +16,11 @@ import { roomChoices } from '../../utils/interconnectingRooms';
 import { syncArrivalToServiceUser } from '../../utils/arrivalServiceUserSync';
 import { applyArrivalProfileDetails } from '../../services/arrivalProfileService';
 import { hasAnyDetail, type ArrivalProfileDetails } from '../../utils/arrivalProfileSync';
+import { sanitizeArrival, arrivalFormErrors } from '../../utils/arrivalFormRules';
+import { londonToday } from '../../utils/operationsRules';
 
 /** Form fields that belong to the Service User's profile, not to the arrival record. */
-const INTAKE_KEYS = ['suComments', 'dietaryRequirements', 'availableToBook', 'gpRegistered', 'gpPractice', 'pharmacy', 'nhsNumber'];
+const INTAKE_KEYS = ['disabilityCategory', 'disabilityType', 'suComments', 'dietaryRequirements', 'availableToBook', 'gpRegistered', 'gpPractice', 'pharmacy', 'nhsNumber'];
 
 interface NewArrivalsSectionProps {
   selectedSite: string;
@@ -201,7 +203,14 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
     }
   };
 
-  const createArrival = async (data: Partial<NewArrivalRecord>) => {
+  const createArrival = async (raw: Partial<NewArrivalRecord>) => {
+    // Clean every value, then check the whole form once more (the form already showed field messages; this is the safety net).
+    const data = sanitizeArrival(raw as any) as Partial<NewArrivalRecord>;
+    const problems = arrivalFormErrors(data as any, londonToday());
+    if (Object.keys(problems).length) {
+      alert(`The arrival was not saved. Please correct:\n- ${Object.values(problems).join('\n- ')}`);
+      return;
+    }
     const finalHotel = (data.hotel && data.hotel !== 'All Sites' && data.hotel !== 'all')
       ? data.hotel
       : defaultSite;
@@ -285,12 +294,15 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
         email: data.email,
         hotel: allocatedRoom?.hotel || finalHotel,
         room: allocatedRoom?.roomNo || roomInput,
-        checkInDate
+        checkInDate,
+        disabilityCategory: data.disabilityCategory,
+        disabilityType: data.disabilityType
       }, sites as any);
       const gpNo = data.gpRegistered === 'No';
       const details: ArrivalProfileDetails = {
         suComments: data.suComments, dietaryRequirements: data.dietaryRequirements,
-        gpRegistered: data.gpRegistered, gpPractice: gpNo ? '' : data.gpPractice, pharmacy: gpNo ? '' : data.pharmacy, nhsNumber: data.nhsNumber
+        gpRegistered: data.gpRegistered, gpPractice: gpNo ? '' : data.gpPractice, pharmacy: data.pharmacy, nhsNumber: data.nhsNumber,
+        disabilityCategory: data.disabilityCategory, disabilityType: data.disabilityType
       };
       const lines: string[] = [...sync.warnings];
       if (hasAnyDetail(details)) {
@@ -315,8 +327,14 @@ export const NewArrivalsSection: React.FC<NewArrivalsSectionProps> = ({
   // Records are never deleted from here.
   const canEditArrival = (a: NewArrivalRecord) => isSitePermitted(a.hotel, 'all') || canEditRecord(a.hotel);
 
-  const handleEditSubmit = (data: Partial<NewArrivalRecord>) => {
+  const handleEditSubmit = (raw: Partial<NewArrivalRecord>) => {
     if (!editingRecord) return;
+    const data = sanitizeArrival(raw as any) as Partial<NewArrivalRecord>;
+    const problems = arrivalFormErrors({ ...(editingRecord as any), ...data }, londonToday(), ['portReference', 'name', 'dob', 'country', 'language', 'contactNumber', 'email', 'checkInDate', 'hotel', 'room', 'aspenCard']);
+    if (Object.keys(problems).length) {
+      alert(`The changes were not saved. Please correct:\n- ${Object.values(problems).join('\n- ')}`);
+      return;
+    }
     updateNewArrivalRecord(editingRecord.id, { ...editingRecord, ...data });
     setEditingRecord(null);
   };

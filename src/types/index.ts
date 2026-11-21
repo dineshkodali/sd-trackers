@@ -868,6 +868,8 @@ export interface NewArrivalRecord {
   gpPractice?: string;
   pharmacy?: string;
   nhsNumber?: string;
+  disabilityCategory?: string;
+  disabilityType?: string;
   attachments?: RecordAttachment[];
   attachmentUrl?: string;
   attachment_url?: string;

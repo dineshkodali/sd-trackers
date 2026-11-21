@@ -3,6 +3,7 @@
  *
  *   SU Comments (safeguarding)  -> support row "Safeguarding" (marked su-form:vulnerability)   -> Support tab
  *   Dietary requirements        -> support row "Dietary Requirements & Allergies" (su-form:dietary) -> Support tab
+ *   Disability category / type  -> service_users.disability_category / disability_type              -> Personal tab
  *   GP                          -> service_users.gp_registration and gp_registrations.gp_practice  -> Overview / GP tab
  *   Registered pharmacy         -> gp_registrations.pharmacy                                        -> GP tab
  *   NHS number                  -> gp_registrations.nhs_number (validated, shown masked)            -> GP tab
@@ -49,6 +50,8 @@ export async function applyArrivalProfileDetails(suId: string, details: ArrivalP
       safeguarding: needs.vulnerabilityFlags,
       dietary: needs.dietaryNeeds,
       suGpPractice: suRes.data.gpRegistration || '',
+      suDisabilityCategory: suRes.data.disabilityCategory || '',
+      suDisabilityType: suRes.data.disabilityType || '',
       gp: gp ? { id: gp.id, gpPractice: gp.gpPractice, pharmacy: gp.pharmacy, nhsNumber: gp.nhsNumber, notes: gp.notes } : null
     }, details);
 
@@ -64,6 +67,11 @@ export async function applyArrivalProfileDetails(suId: string, details: ArrivalP
         mobilityNeeds: needs.mobilityNeeds,
         newDocs: [], suPropertyDetailsService
       });
+    }
+
+    if (plan.suDisability.write) {
+      const res = await suPropertyService.updateServiceUser(suId, plan.suDisability.fields);
+      if (!res.success) throw new Error(res.error || 'The disability details could not be saved on the profile.');
     }
 
     if (plan.suGpPractice.write) {

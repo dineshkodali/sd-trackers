@@ -1,7 +1,8 @@
 import React from 'react';
 import { LANGUAGE_OPTIONS } from './languages';
-import { GP_PRACTICE_OPTIONS } from '../types/masterData';
-import { nhsNumberError } from '../utils/nhsNumber';
+import { GP_PRACTICE_OPTIONS, DISABILITY_CATEGORY_OPTIONS, DEFAULT_DISABILITY_TYPE_OPTIONS } from '../types/masterData';
+import { arrivalFieldError, type FieldKey as ArrivalFieldKey } from '../utils/arrivalFormRules';
+import { londonToday } from '../utils/operationsRules';
 import { TableColumnConfig } from '../types/tableSchema';
 import { TableAttachmentCell } from '../components/common/TableAttachmentCell';
 import { 
@@ -728,22 +729,35 @@ export const DAILY_REGISTER_TABLE_COLUMNS: TableColumnConfig<DailyRegisterRecord
   { key: 'occupied', label: 'Occupied', type: 'select', options: ['Yes', 'No'], required: true, section: 'Occupancy Controls' }
 ];
 
+/**
+ * New Arrival form, in the order staff work through it:
+ *   1 Identity -> 2 Contact -> 3 Arrival & allocation -> 4 Disability -> 5 GP & healthcare -> 6 Safeguarding, diet & booking
+ * Every field is checked by utils/arrivalFormRules.ts (the same rules clean the values on save). Sections 4-6 are saved to the
+ * Service User's profile and are kept out of the arrivals table and view (see NewArrivalRecord).
+ */
+const arrivalCheck = (key: ArrivalFieldKey) => (value: any, form: Record<string, any>) => arrivalFieldError(key, value, form, londonToday());
+const noneLike = (v: unknown) => ['', 'none', 'no', 'n/a', 'na', 'nil'].includes(String(v ?? '').trim().toLowerCase());
+const PROFILE_ONLY = { visibleInTable: false, visibleInView: false } as const;
+
 export const NEW_ARRIVALS_TABLE_COLUMNS: TableColumnConfig<NewArrivalRecord>[] = [
-  { key: 'portReference', label: 'Port Reference', type: 'text', required: true, section: 'Arrival Information' },
-  { key: 'name', label: 'Name', type: 'text', required: true, section: 'Arrival Information' },
-  { key: 'dob', label: 'Date of Birth', type: 'date', section: 'Arrival Information' },
-  { key: 'country', label: 'Country', type: 'text', section: 'Arrival Information' },
-  { key: 'language', label: 'Language', type: 'select', options: LANGUAGE_OPTIONS, allowQuickAdd: false, section: 'Arrival Information' },
-  { key: 'contactNumber', label: 'Contact Number', type: 'text', section: 'Arrival Information' },
-  { key: 'checkInDate', label: 'Check-in Date', type: 'date', required: true, defaultValue: () => new Date().toISOString().slice(0, 10), section: 'Arrival Information' },
-  { key: 'hotel', label: 'Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: 'Allocation' },
-  { key: 'room', label: 'Room', type: 'text', section: 'Allocation' },
-  { key: 'email', label: 'Email', type: 'text', section: 'Allocation' },
-  { key: 'aspenCard', label: 'Aspen Card', type: 'text', section: 'Allocation' },
-  { 
-    key: 'status', 
-    label: 'Arrival Status', 
-    type: 'select', 
+  // 1. Identity
+  { key: 'portReference', label: 'Port Reference', type: 'text', required: true, placeholder: 'MST/9412027', section: '1. Identity', validate: arrivalCheck('portReference') },
+  { key: 'name', label: 'Full Name', type: 'text', required: true, section: '1. Identity', validate: arrivalCheck('name') },
+  { key: 'dob', label: 'Date of Birth', type: 'date', section: '1. Identity', validate: arrivalCheck('dob') },
+  { key: 'country', label: 'Country', type: 'text', section: '1. Identity', validate: arrivalCheck('country') },
+  { key: 'language', label: 'Language', type: 'select', options: LANGUAGE_OPTIONS, allowQuickAdd: false, section: '1. Identity', validate: arrivalCheck('language') },
+  // 2. Contact
+  { key: 'contactNumber', label: 'Contact Number', type: 'text', placeholder: '07123 456789', section: '2. Contact', validate: arrivalCheck('contactNumber') },
+  { key: 'email', label: 'Email', type: 'text', placeholder: 'name@example.com', section: '2. Contact', validate: arrivalCheck('email') },
+  // 3. Arrival & allocation
+  { key: 'checkInDate', label: 'Check-in Date', type: 'date', required: true, defaultValue: () => londonToday(), section: '3. Arrival & Allocation', validate: arrivalCheck('checkInDate') },
+  { key: 'hotel', label: 'Hotel', type: 'select', required: true, options: resolveSiteOptions, defaultValue: resolveSiteDefault, section: '3. Arrival & Allocation' },
+  { key: 'room', label: 'Room', type: 'text', section: '3. Arrival & Allocation', validate: arrivalCheck('room') },
+  { key: 'aspenCard', label: 'Aspen Card', type: 'text', section: '3. Arrival & Allocation', validate: arrivalCheck('aspenCard') },
+  {
+    key: 'status',
+    label: 'Arrival Status',
+    type: 'select',
     options: ['Arrived', 'Pending Room Assignment', 'Checked In', 'Transferred', 'Cancelled'],
     badgeColors: {
       'Arrived': 'bg-blue-100 text-blue-800',
@@ -752,16 +766,28 @@ export const NEW_ARRIVALS_TABLE_COLUMNS: TableColumnConfig<NewArrivalRecord>[] =
       'Transferred': 'bg-purple-100 text-purple-800',
       'Cancelled': 'bg-gray-100 text-gray-700'
     },
-    section: 'Allocation' 
+    section: '3. Arrival & Allocation'
   },
-  // Intake details: saved to the Service User's profile, not onto the arrival (see NewArrivalRecord). Kept out of the table and view.
-  { key: 'suComments', label: 'SU Comments (e.g. Safeguarding)', type: 'textarea', colSpan: 2, visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking', helperText: 'Added to the Safeguarding notes on the profile. Existing notes are kept.' },
-  { key: 'dietaryRequirements', label: 'Dietary Requirements', type: 'textarea', colSpan: 2, visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking', helperText: 'One per line, e.g. Halal, Nut allergy. Added to the dietary requirements on the profile.' },
-  { key: 'availableToBook', label: 'Available to Book', type: 'select', options: ['Yes', 'No'], fixedOptions: true, defaultValue: 'No', visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking' },
-  { key: 'gpRegistered', label: 'GP Registered', type: 'select', options: ['Yes', 'No'], fixedOptions: true, visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking' },
-  { key: 'gpPractice', label: 'GP', type: 'select', options: [...GP_PRACTICE_OPTIONS], optionCategory: 'gpPractices', allowQuickAdd: true, placeholder: 'Select GP practice', visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking', helperText: 'Fills the GP details on the profile only if none is recorded yet.' },
-  { key: 'pharmacy', label: 'Registered Pharmacy', type: 'text', visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking' },
-  { key: 'nhsNumber', label: 'NHS Number', type: 'text', placeholder: '943 476 5919', visibleInTable: false, visibleInView: false, section: 'Health, Safeguarding & Booking', helperText: '10 digits. Saved to the GP details on the profile and shown masked there.', validate: v => nhsNumberError(v) }
+  // 4. Disability (saved to the Service User profile: service_users.disability_category / disability_type)
+  {
+    key: 'disabilityCategory', label: 'Disability Category', type: 'select', options: [...DISABILITY_CATEGORY_OPTIONS], optionCategory: 'disabilityCategories', allowQuickAdd: true,
+    defaultValue: 'None', ...PROFILE_ONLY, section: '4. Disability', helperText: 'Choose None if there is no disability. Saved to the Service User profile.',
+    validate: arrivalCheck('disabilityCategory'),
+    onValueChange: v => (noneLike(v) ? { disabilityType: '' } : undefined)
+  },
+  {
+    key: 'disabilityType', label: 'Disability Type / Specification', type: 'select', options: [...DEFAULT_DISABILITY_TYPE_OPTIONS], optionCategory: 'disabilityTypes', allowQuickAdd: true,
+    placeholder: 'Select type', ...PROFILE_ONLY, section: '4. Disability', helperText: 'Required when a category is chosen.', validate: arrivalCheck('disabilityType')
+  },
+  // 5. GP & healthcare
+  { key: 'gpRegistered', label: 'GP Registered', type: 'select', options: ['Yes', 'No'], fixedOptions: true, ...PROFILE_ONLY, section: '5. GP & Healthcare', validate: arrivalCheck('gpRegistered'), onValueChange: v => (v === 'No' ? { gpPractice: '' } : undefined) },
+  { key: 'gpPractice', label: 'GP Practice', type: 'select', options: [...GP_PRACTICE_OPTIONS], optionCategory: 'gpPractices', allowQuickAdd: true, placeholder: 'Select GP practice', ...PROFILE_ONLY, section: '5. GP & Healthcare', helperText: 'The surgery the resident is registered with. Fills the profile only if none is recorded.', validate: arrivalCheck('gpPractice') },
+  { key: 'pharmacy', label: 'Registered Pharmacy', type: 'select', options: [], optionCategory: 'gpPharmacies', allowQuickAdd: true, placeholder: 'Select pharmacy', ...PROFILE_ONLY, section: '5. GP & Healthcare', helperText: 'A pharmacy, from its own list (not the GP list). Use + Add if it is not listed.', validate: arrivalCheck('pharmacy') },
+  { key: 'nhsNumber', label: 'NHS Number', type: 'text', placeholder: '943 476 5919', ...PROFILE_ONLY, section: '5. GP & Healthcare', helperText: '10 digits with a valid check digit. Saved to the GP details and shown masked on the profile.', validate: arrivalCheck('nhsNumber') },
+  // 6. Safeguarding, diet & booking
+  { key: 'suComments', label: 'SU Comments (e.g. Safeguarding)', type: 'textarea', colSpan: 2, ...PROFILE_ONLY, section: '6. Safeguarding, Diet & Booking', helperText: 'Added to the Safeguarding notes on the profile. Existing notes are kept.', validate: arrivalCheck('suComments') },
+  { key: 'dietaryRequirements', label: 'Dietary Requirements', type: 'textarea', colSpan: 2, ...PROFILE_ONLY, section: '6. Safeguarding, Diet & Booking', helperText: 'One per line, e.g. Halal, Nut allergy (up to 20). Added to the dietary requirements on the profile.', validate: arrivalCheck('dietaryRequirements') },
+  { key: 'availableToBook', label: 'Available to Book', type: 'select', options: ['Yes', 'No'], fixedOptions: true, defaultValue: 'No', ...PROFILE_ONLY, section: '6. Safeguarding, Diet & Booking' }
 ];
 
 export const EVICTION_TABLE_COLUMNS: TableColumnConfig<EvictionRecord>[] = [

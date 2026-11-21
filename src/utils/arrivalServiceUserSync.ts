@@ -13,6 +13,8 @@ export interface ArrivalSyncInput {
   hotel: string;
   room?: string;
   checkInDate?: string;
+  disabilityCategory?: string;
+  disabilityType?: string;
 }
 
 export interface ArrivalSyncResult {
@@ -65,6 +67,9 @@ export async function syncArrivalToServiceUser(
     (arrival.dob && u.dateOfBirth === arrival.dob && norm(`${u.firstName} ${u.lastName}`) === fullName)
   );
   let created = false;
+  // Only a real category is sent: "None" is the profile's default, so there is nothing to record for it.
+  const hasDisability = !!arrival.disabilityCategory && !['none', 'no', 'n/a'].includes(arrival.disabilityCategory.trim().toLowerCase());
+  const disability = hasDisability ? { disabilityCategory: arrival.disabilityCategory, disabilityType: arrival.disabilityType || undefined } : {};
 
   const checkIn = arrival.checkInDate || new Date().toISOString().slice(0, 10);
   const placementData = siteId && propertyId && roomId ? {
@@ -83,7 +88,8 @@ export async function syncArrivalToServiceUser(
       externalReference: arrival.portReference?.trim() || undefined,
       referralDate: checkIn,
       arrivalDate: checkIn,
-      siteId: siteId || undefined
+      siteId: siteId || undefined,
+      ...disability
     }, { mobile: arrival.contactNumber || '', email: arrival.email || '' }, [], placementData);
 
     if (!res.success || !res.record) {
@@ -96,7 +102,8 @@ export async function syncArrivalToServiceUser(
         status: 'Active',
         externalReference: arrival.portReference?.trim() || undefined,
         referralDate: checkIn, arrivalDate: checkIn,
-        siteId: siteId || undefined
+        siteId: siteId || undefined,
+        ...disability
       }, { mobile: arrival.contactNumber || '', email: arrival.email || '' }, []);
       if (!retry.success || !retry.record) {
         return { created: false, placed: false, warnings: [...warnings, retry.error || res.error || 'Could not create the Service User.'] };
