@@ -139,3 +139,16 @@ test('"view all" only ever carries filters the target page accepts', () => {
     assert.deepEqual(sanitizeIntentFilters(l.page, l.filters), l.filters || {}, `${m} ${overdue}`);
   }
 });
+
+test('each module reports its total records beside its deadlines, in scope only', () => {
+  const r = selectUnifiedTasks(input({
+    maintenance: [maint({ id: 'a' }), maint({ id: 'b', defectStatus: 'Completed', action: 'Closed' }), maint({ id: 'c', site: 'Atlantic BW' })],
+    roomLog: [{ siteName: 'Brit Hotel' }, { siteName: 'Brit Hotel' }, { siteName: 'Nowhere' }],
+    dispersals: [{ id: 'd1', siteName: 'Brit Hotel', dispersalDate: '11/12/2026', travelled: 'Yes' } as any]
+  }), { allowedSiteIds: 'all', siteId: 'site-1' }, NOW);
+  assert.equal(r.totals.Maintenance, 2);          // total includes the closed one; outstanding does not
+  assert.equal(r.tasks.filter(t => t.module === 'Maintenance').length, 1);
+  assert.equal(r.totals['Room check'], 2);        // the unmatched site is not counted
+  assert.equal(r.totals.Dispersal, 1);            // departed, so not outstanding, still a record
+  assert.equal(selectUnifiedTasks(input({ maintenance: [maint()], visible: { ...visible, Maintenance: false } }), ALL, NOW).totals.Maintenance, undefined);
+});

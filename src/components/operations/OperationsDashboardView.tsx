@@ -205,8 +205,9 @@ export const OperationsDashboardView: React.FC = () => {
     ...opsInput, ...flowInput,
     roomRows: can.roomChecks ? roomObligations.rows : [], welfareRows: can.welfareChecks ? welfareObligations.rows : [],
     bills: can.finance ? financeBills : [], transport: can.publicTransport ? transportFundingRequests : [],
+    roomLog: can.roomChecks ? roomChecks : [], welfareLog: can.welfareChecks ? welfareChecks : [],
     visible
-  }, scope, now), [opsInput, flowInput, can.roomChecks, can.welfareChecks, can.finance, can.publicTransport, roomObligations.rows, welfareObligations.rows, financeBills, transportFundingRequests, scope, now]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, scope, now), [opsInput, flowInput, can.roomChecks, can.welfareChecks, can.finance, can.publicTransport, roomObligations.rows, welfareObligations.rows, financeBills, transportFundingRequests, roomChecks, welfareChecks, scope, now]); // eslint-disable-line react-hooks/exhaustive-deps
   const tasks = tasksResult.tasks;
   const counts = useMemo(() => countTasks(tasks), [tasks]);
 
@@ -259,15 +260,20 @@ export const OperationsDashboardView: React.FC = () => {
   );
 
   // ---- 2. Operations & deadlines: one tab per module, a few top records each; the module page holds the rest
+  interface ModuleCounts { outstanding: number; overdue: number; today: number; week: number; total: number | null }
   const byModule = useMemo(() => {
-    const m = new Map<TaskModule, { total: number; overdue: number }>();
+    const m = new Map<TaskModule, ModuleCounts>();
     for (const t of tasks) {
-      const c = m.get(t.module) || { total: 0, overdue: 0 };
-      c.total++; if (t.bucket === 'overdue') c.overdue++;
+      const c = m.get(t.module) || { outstanding: 0, overdue: 0, today: 0, week: 0, total: tasksResult.totals[t.module] ?? null };
+      c.outstanding++;
+      if (t.bucket === 'overdue') c.overdue++;
+      else if (t.bucket === 'today') c.today++;
+      else if (t.bucket === 'tomorrow' || t.bucket === 'week') c.week++;
       m.set(t.module, c);
     }
-    return [...m.entries()].sort((a, b) => b[1].overdue - a[1].overdue || b[1].total - a[1].total || a[0].localeCompare(b[0]));
-  }, [tasks]);
+    return [...m.entries()].sort((a, b) => b[1].overdue - a[1].overdue || b[1].outstanding - a[1].outstanding || a[0].localeCompare(b[0]));
+  }, [tasks, tasksResult.totals]);
+  const allCounts: ModuleCounts = { outstanding: counts.outstanding, overdue: counts.overdue, today: counts.dueToday, week: counts.dueThisWeek, total: null };
   // Log pages as tabs. A tab exists only for pages this user may open; only the open one is computed.
   const lists: Record<string, any[]> = {
     newArrivalsRecords, dailyRegisterRecords, referrals, vulnerableSUs, challengingSUs, welfareChecks, rfaWelfareRecords, mhComplaintWelfareRecords,
@@ -279,6 +285,7 @@ export const OperationsDashboardView: React.FC = () => {
   const activeRecord = opsRecordTabs.find(r => `rec:${r.key}` === tab) || null;
   // A remembered tab that no longer exists (module has no work now, or access changed) falls back to All.
   const taskTab: 'all' | TaskModule | null = activeRecord ? null : (tab !== 'all' && byModule.some(([m]) => m === tab) ? (tab as TaskModule) : 'all');
+  const activeCounts: ModuleCounts | null = taskTab === 'all' ? allCounts : taskTab ? (byModule.find(([m]) => m === taskTab)?.[1] ?? null) : null;
   const pool = useMemo(() => tasks.filter(t => (taskTab === 'all' || t.module === taskTab) && (!overdueOnly || t.bucket === 'overdue')), [tasks, taskTab, overdueOnly]);
   const shown = taskTab ? pool.slice(0, taskTab === 'all' ? ALL_ROWS : TAB_ROWS) : [];
   const landing = taskTab && taskTab !== 'all' ? moduleLanding(taskTab, overdueOnly) : null;
@@ -360,7 +367,7 @@ export const OperationsDashboardView: React.FC = () => {
           </label>
         </header>
         <div role="tablist" aria-label="Modules" className="flex flex-wrap items-center gap-x-1 border-b border-[#e1dfdd] px-1.5">
-          {[{ key: 'all', label: 'All', total: counts.outstanding, overdue: counts.overdue }, ...byModule.map(([m, c]) => ({ key: m as string, label: m as string, total: c.total, overdue: c.overdue }))].map(t => (
+          {[{ key: 'all', label: 'All', total: counts.outstanding, overdue: counts.overdue }, ...byModule.map(([m, c]) => ({ key: m as string, label: m as string, total: c.outstanding, overdue: c.overdue }))].map(t => (
             <button
               key={t.key} type="button" role="tab" aria-selected={taskTab === t.key} onClick={() => setTab(t.key)}
               className={`px-2 py-1.5 text-xs whitespace-nowrap border-b-2 ${taskTab === t.key ? 'border-[#0d9488] font-semibold text-[#242424]' : 'border-transparent text-[#605e5c] hover:text-[#242424]'}`}
@@ -377,6 +384,15 @@ export const OperationsDashboardView: React.FC = () => {
             >{r.label}</button>
           ))}
         </div>
+        {activeCounts && tasksReady && (
+          <p className="flex flex-wrap gap-x-4 gap-y-0.5 px-2.5 py-1.5 text-xs text-[#323130] border-b border-[#f3f2f1] tabular-nums" aria-label="Counts">
+            {activeCounts.total !== null && <span><span className="text-[#605e5c]">Total records</span> <strong>{n(activeCounts.total)}</strong></span>}
+            <span><span className="text-[#605e5c]">Outstanding</span> <strong>{n(activeCounts.outstanding)}</strong></span>
+            <span><span className="text-[#605e5c]">Overdue</span> <strong className={activeCounts.overdue > 0 ? 'text-[#a4262c]' : ''}>{n(activeCounts.overdue)}</strong></span>
+            <span><span className="text-[#605e5c]">Due today</span> <strong className={activeCounts.today > 0 ? 'text-[#7f6000]' : ''}>{n(activeCounts.today)}</strong></span>
+            <span><span className="text-[#605e5c]">Due this week</span> <strong>{n(activeCounts.week)}</strong></span>
+          </p>
+        )}
         {activeRecord && recordResult ? (
           <RecordPanel spec={activeRecord} result={recordResult} ready={!loading} onOpen={(page, id) => navigateWithIntent(page, { recordId: id })} />
         ) : !tasksReady ? (
@@ -438,38 +454,25 @@ export const OperationsDashboardView: React.FC = () => {
           <RecordPanel spec={activeFacility} result={facilityResult} ready={!loading} onOpen={(page, id) => navigateWithIntent(page, { recordId: id })} />
         </section>
       )}
-      {/* Analytics placed here by an earlier change: kept, but collapsed and only loaded when opened, so the page stays small */}
-      {(can.dailyRegisters || can.vulnerable || can.publicTransport) && (
-        <div className="bg-white border border-[#e1dfdd] rounded-xs">
-          <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen(v => !v)} className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-[#242424] hover:bg-[#f3f2f1]">
-            {moreOpen ? 'Hide' : 'Show'} guest statistics, priority safeguarding and transport
-          </button>
-          {moreOpen && <div className="space-y-2 p-2 border-t border-[#e1dfdd]">
+      {/* Always open. These are the only places this data appears: no tab above repeats them. */}
       {can.dailyRegisters && (
         <GuestAnalyticsWidget siteFilter={siteFilter} onNavigate={p => navigateWithIntent(p)} />
       )}
       {can.vulnerable && (
         <PriorityVulnerableWidget siteFilter={siteFilter} onNavigate={p => navigateWithIntent(p)} />
       )}
+
+      {/* Transport analytics (journeys, issues, funding) - collapsed and loaded only when opened */}
       {can.publicTransport && (
-        <section className="bg-white border border-[#e1dfdd] rounded-xs p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#edebe9] mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-[#242424]">Public Transport</h3>
-              <p className="text-xs text-[#605e5c]">Journeys, issues and funding requests</p>
+        <div className="bg-white border border-[#e1dfdd] rounded-xs">
+          <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen(v => !v)} className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-[#242424] hover:bg-[#f3f2f1]">
+            {moreOpen ? 'Hide' : 'Show'} transport analytics
+          </button>
+          {moreOpen && (
+            <div className="p-3 border-t border-[#e1dfdd]">
+              <TransportKPIDashboard selectedSiteFilter={siteFilter} onNavigate={p => navigateWithIntent(p)} />
             </div>
-            <button
-              type="button"
-              onClick={() => navigateWithIntent('publicTransport')}
-              className="text-xs font-semibold text-[#8764b8] hover:text-[#6b4f98] bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-xs self-start sm:self-auto cursor-pointer"
-            >
-              Open Transport Tracker
-            </button>
-          </div>
-          <TransportKPIDashboard selectedSiteFilter={siteFilter} onNavigate={p => navigateWithIntent(p)} />
-        </section>
-      )}
-          </div>}
+          )}
         </div>
       )}
 

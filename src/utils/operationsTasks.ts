@@ -65,6 +65,9 @@ export interface TaskInput extends OpsInput, FlowInput {
   welfareRows: CheckRow[];
   bills: FinanceBill[];
   transport: TransportFundingRequestRecord[];
+  /** Logged room / welfare checks (the pages' own records), used only for the "total records" count */
+  roomLog?: Array<{ siteName?: string }>;
+  welfareLog?: Array<{ siteName?: string }>;
   /** Modules the user may open; a module not listed is not read at all */
   visible: Partial<Record<TaskModule, boolean>>;
 }
@@ -103,7 +106,10 @@ const bump = (priority: TaskPriority, bucket: Bucket): TaskPriority =>
 const BILL_OUTSTANDING = new Set(['submitted', 'under_review', 'verification_pending', 'query_raised', 'awaiting_approval', 'payment_pending', 'partially_paid', 'reconciliation_pending']);
 const TRANSPORT_OUTSTANDING = new Set(['Submitted', 'Under Review', 'Clarification Required', 'Approved', 'Issued']);
 
-export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date = new Date()): { tasks: UnifiedTask[]; unreadableDates: Record<string, number> } {
+/** Records each module holds in the user's scope, whatever their state or date (the "total" next to its deadlines). */
+export type TaskTotals = Partial<Record<TaskModule, number>>;
+
+export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date = new Date()): { tasks: UnifiedTask[]; unreadableDates: Record<string, number>; totals: TaskTotals } {
   const facts = collectFacts(input, scope, now);
   const { ctx } = facts;
   const { wall: nowWall, date: today } = londonNow(now);
@@ -113,6 +119,9 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
     siteId !== null && (scope.allowedSiteIds === 'all' || scope.allowedSiteIds.has(siteId)) && (scope.siteId === 'all' || scope.siteId === siteId);
   const v = input.visible;
   const found = new Map<string, UnifiedTask>();
+  const totals: TaskTotals = {};
+  const countIn = (rows: Array<{ siteName?: string; site?: string }> | undefined) =>
+    (rows || []).filter(r => scoped(resolve(r.siteName || r.site))).length;
   const unreadable: Record<string, number> = {};
 
   const add = (t: Omit<UnifiedTask, 'siteName' | 'bucket' | 'remaining' | 'due' | 'priority'> & { dueRaw: string | null; priority: TaskPriority; keepFarFuture?: boolean }) => {
@@ -123,6 +132,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
   };
 
   if (v.Maintenance) {
+    totals.Maintenance = facts.maintenance.length;
     for (const m of facts.maintenance) {
       if (isMaintenanceClosed(m.r)) continue;
       const pr: TaskPriority = m.r.priority === 'CAT 1' ? 'Critical' : m.r.priority === 'CAT 2 - Interim' ? 'High' : 'Normal';
@@ -135,6 +145,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
   }
 
   if (v.Compliance) {
+    totals.Compliance = facts.compliance.length;
     for (const c of facts.compliance) {
       if (c.info.state === 'valid' || c.info.state === 'unknown' || !c.info.expiry) continue;
       const pr: TaskPriority = c.info.state === 'expired' ? 'Critical' : (c.info.days as number) <= 7 ? 'High' : 'Normal';
@@ -147,6 +158,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
   }
 
   if (v.Escalations) {
+    totals.Escalations = facts.escalations.length;
     for (const e of facts.escalations) {
       if (!isEscalationOpen(e.r)) continue;
       const pr: TaskPriority = e.r.urgency === 'Critical' ? 'Critical' : e.r.urgency === 'High' ? 'High' : 'Normal';
@@ -163,6 +175,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
   };
   for (const a of facts.actions) {
     const [module, page] = actionModule[a.kind];
+    if (v[module]) totals[module] = (totals[module] || 0) + 1;
     if (!v[module] || !a.dueDate) continue;
     add({
       key: `${module}:${a.recordId}`, module, page, recordId: a.recordId, openId: a.openId, priority: 'Normal',
@@ -187,6 +200,8 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
       }
     }
   };
+  if (v['Room check']) totals['Room check'] = countIn(input.roomLog);
+  if (v['Welfare check']) totals['Welfare check'] = countIn(input.welfareLog);
   checkTasks(input.roomRows, 'Room check', 'roomChecks');
   checkTasks(input.welfareRows, 'Welfare check', 'welfareChecks');
 
@@ -194,6 +209,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
     const flow = collectFlowFacts(input, scope);
     for (const [k, n] of Object.entries(flow.quality.unreadableDate)) unreadable[k] = (unreadable[k] || 0) + n;
     if (v.Dispersal) {
+      totals.Dispersal = flow.dispersals.length;
       for (const d of flow.dispersals) {
         if (d.left || !d.dueDate) continue;
         add({
@@ -204,6 +220,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
       }
     }
     if (v.Eviction) {
+      totals.Eviction = flow.evictions.filter(e => e.r.status !== 'Cancelled').length;
       for (const e of flow.evictions) {
         if (e.r.status !== 'Notice Issued' && e.r.status !== 'Appeal Pending') continue;
         add({
@@ -216,6 +233,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
   }
 
   if (v.Finance) {
+    totals.Finance = input.bills.filter(b => scoped(resolve(b.siteName || b.siteId))).length;
     for (const b of input.bills) {
       if (!BILL_OUTSTANDING.has(String(b.status))) continue;
       const siteId = resolve(b.siteName || b.siteId);
@@ -229,6 +247,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
   }
 
   if (v.Transport) {
+    totals.Transport = input.transport.filter(t => scoped(resolve(t.siteName))).length;
     for (const t of input.transport) {
       if (!TRANSPORT_OUTSTANDING.has(String(t.status))) continue;
       const siteId = resolve(t.siteName);
@@ -245,7 +264,7 @@ export function selectUnifiedTasks(input: TaskInput, scope: OpsScope, now: Date 
   const tasks = [...found.values()].sort((a, b) =>
     BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket] || PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] ||
     (a.due || '9').localeCompare(b.due || '9') || a.siteName.localeCompare(b.siteName) || a.key.localeCompare(b.key));
-  return { tasks, unreadableDates: unreadable };
+  return { tasks, unreadableDates: unreadable, totals };
 }
 
 /* ------------------------------------------------------------------ KPIs and filters (same list, same numbers) */

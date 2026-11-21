@@ -77,3 +77,10 @@ Not covered: archived/restored *rows* (these modules have no archive state; main
 * **Load:** only the open tab is computed (`utils/operationsRecords.ts`); only the top 5 rows are built; tab counts are shown for task tabs only; analytics stay collapsed and unmounted until opened.
 * **Caching (per profile, `utils/profileCache.ts`):** the dashboard's master data (properties, rooms, placements, room issues, PEEP, follow-ups) is kept in **memory** keyed by profile for 10 minutes; reopening paints from it at once, then re-reads behind it (only complete reads are kept). It is not written to browser storage, because the app's policy is that resident/operational data comes only from the live database; it is cleared on sign-out. Preferences (open tab, Facilities tab, site, overdue-only, analytics open) are remembered per profile in localStorage. The check-obligation data (needs resident names) is not persisted.
 * Tests: `tests/operationsRecords.test.ts` (6). Not verified in a browser.
+
+## 8. Update: no page appears twice, totals beside deadlines
+
+* **One place per page.** Pages with deadlines are tabs of Operations & deadlines. Removed the duplicate record tabs: Room checks (was also in Facilities), Welfare checks, Public transport (both already deadline tabs), Vulnerable (shown by Priority safeguarding) and Live register (shown by Guest statistics). The Facilities table now holds only pages found nowhere else.
+* **Each deadline tab shows its counts:** Total records, Outstanding, Overdue, Due today, Due this week. Total is every record the module holds in the user's scope (any state); the rest are the rows of the table (dated work more than 30 days away is in Total but not Outstanding). Follow-up modules (absence follow-ups, PEEP reviews, room issues, room inspections) show their open/active records as Total.
+* Guest statistics and Priority safeguarding are always open; transport analytics stay collapsed.
+* Known overlap kept on purpose: the KPI cards are the summary (e.g. Open maintenance, Overdue tasks) of the same figures the tabs break down.
