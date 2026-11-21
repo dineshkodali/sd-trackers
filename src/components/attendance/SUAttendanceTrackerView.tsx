@@ -265,12 +265,46 @@ export const SUAttendanceTrackerView: React.FC = () => {
   const switchTab = (id: string) => { setTab(id as Tab); setPage(1); };
   const sortBy = (k: string) => { if (k === sortKey) setSortAsc(a => !a); else { setSortKey(k); setSortAsc(true); } setPage(1); };
 
+  // What each resident's day looked like before the last mark made on this screen, so it can be undone.
+  const [lastMark, setLastMark] = useState<Record<string, { date: string; previous: { status: 'Present' | 'Absent'; notes: string } | null }>>({});
+
   const mark = async (suId: string, status: 'Present' | 'Absent') => {
+    const before = forDay.get(suId);
     setSaving(suId);
-    const res = await suTrackerService.saveAttendance({ suId, date: rollDate, status, notes: rollNotes[suId] ?? forDay.get(suId)?.additionalNotes ?? '' }, currentUserName);
+    const res = await suTrackerService.saveAttendance({ suId, date: rollDate, status, notes: rollNotes[suId] ?? before?.additionalNotes ?? '' }, currentUserName);
     setSaving(null);
-    if (!res.success) setNotice(res.error || 'Could not save.'); else { setNotice(null); load(); }
+    if (!res.success) { setNotice(res.error || 'Could not save.'); return; }
+    setNotice(null);
+    setLastMark(m => ({ ...m, [suId]: { date: rollDate, previous: before ? { status: before.attendanceStatus as 'Present' | 'Absent', notes: before.additionalNotes || '' } : null } }));
+    load();
   };
+
+  /** Puts the day back as it was before the last mark on this screen (or Not recorded if it had no record). */
+  const undoMark = async (suId: string, rec: AttendanceRecord) => {
+    const last = lastMark[suId];
+    if (!last || last.date !== rollDate) return;
+    setSaving(suId);
+    const res = last.previous
+      ? await suTrackerService.saveAttendance({ suId, date: rollDate, status: last.previous.status, notes: last.previous.notes }, currentUserName)
+      : await suTrackerService.deleteAttendance(rec.id);
+    setSaving(null);
+    if (!res.success) { setNotice(res.error || 'Could not undo.'); return; }
+    setNotice(null);
+    setLastMark(m => { const { [suId]: _gone, ...rest } = m; return rest; });
+    load();
+  };
+
+  /** For a mark made earlier (not on this screen): remove it so the day shows Not recorded again. */
+  const clearMark = (rec: AttendanceRecord, name: string) => requestConfirmation({
+    title: 'Clear attendance',
+    message: `Clear the attendance marked for ${name} on ${formatUkDate(rec.attendanceDate)}? It will show as Not recorded.`,
+    confirmLabel: 'Clear',
+    isDanger: true,
+    onConfirm: async () => {
+      const res = await suTrackerService.deleteAttendance(rec.id);
+      if (!res.success) setNotice(res.error || 'Could not clear the record.'); else { setNotice(null); load(); }
+    }
+  });
 
   const confirmDelete = (r: AttendanceRecord, name: string) => requestConfirmation({
     title: 'Delete attendance record',
@@ -791,6 +825,11 @@ export const SUAttendanceTrackerView: React.FC = () => {
                       <td className={actionsTdCls}>
                         <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Present')} className={`px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}`}>Present</button>
                         <button type="button" disabled={busy} onClick={() => mark(d.su.id, 'Absent')} className={`ml-1.5 px-2.5 py-1 rounded-xs border font-semibold cursor-pointer disabled:opacity-50 ${rec?.attendanceStatus === 'Absent' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-red-700 border-red-300 hover:bg-red-50'}`}>Absent</button>
+                        {rec && (
+                          lastMark[d.su.id]?.date === rollDate
+                            ? <button type="button" disabled={busy} onClick={() => undoMark(d.su.id, rec)} title="Put this day back as it was before your last change" className="ml-1.5 px-2.5 py-1 rounded-xs border border-[#8a8886] bg-white text-[#323130] font-semibold hover:bg-[#edebe9] cursor-pointer disabled:opacity-50">Undo</button>
+                            : <button type="button" disabled={busy} onClick={() => clearMark(rec, `${d.su.firstName} ${d.su.lastName}`)} title="Remove this mark so the day shows Not recorded" className="ml-1.5 px-2.5 py-1 rounded-xs border border-[#8a8886] bg-white text-[#323130] font-semibold hover:bg-[#edebe9] cursor-pointer disabled:opacity-50">Clear</button>
+                        )}
                       </td>
                     )}
                   </tr>
