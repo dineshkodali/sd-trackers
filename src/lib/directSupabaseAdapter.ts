@@ -1,5 +1,6 @@
 import { getBrowserSupabaseClient } from './supabaseClient';
 import { toDatabaseRow, fromDatabaseRow } from '../../server/schemaAdapter.ts';
+import { belongsToInactiveSite, inactiveSiteKeys, isActiveRecord } from '../config/recordLifecycle';
 import type { AuditDescriptor, AuditUserContext, DbEntityName, WriteResult } from '../services/apiService';
 
 const isPropertyLaundry = (r: any) => Boolean(r && (r.periodType || String(r.id || '').startsWith('prop-lau')));
@@ -326,6 +327,8 @@ async function fetchEntityBatch(
           rows = rows.filter(mapping.variant);
         }
 
+        rows = await applyLifecycleFilters(supabase, mapping.table, rows);
+
         const mappedData = rows.map(r => fromDatabaseRow(mapping.table, r));
         results[req.key] = { success: true, data: mappedData };
       } catch (err: any) {
@@ -336,6 +339,26 @@ async function fetchEntityBatch(
 
   const hasAnySuccess = Object.values(results).some(r => r.success);
   return { success: hasAnySuccess, results };
+}
+
+/** Archived / deleted sites; empty when migration 028 is not installed. Used to hide their Property Management rows. */
+async function loadInactiveSiteKeys(supabase: any): Promise<Set<string>> {
+  try {
+    const { data, error } = await supabase.from('sites').select('id, name').in('lifecycle_state', ['Archived', 'Deleted']);
+    return error ? new Set<string>() : inactiveSiteKeys(data);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+/** Active rows only for the lifecycle tables; Property Management rows follow their site's state. */
+async function applyLifecycleFilters(supabase: any, table: string, rows: any[]): Promise<any[]> {
+  if (table === 'sites' || table === 'profiles') return rows.filter(isActiveRecord);
+  if (table === 'properties') {
+    const keys = await loadInactiveSiteKeys(supabase);
+    return rows.filter(r => !belongsToInactiveSite(r, keys));
+  }
+  return rows;
 }
 
 export function directFetchEntityRecords<T = any>(
@@ -395,9 +418,7 @@ async function fetchEntityRecords<T>(
     }
 
     // Archived and deleted users / properties are not part of the active lists.
-    if (mapping.table === 'sites' || mapping.table === 'profiles') {
-      rows = rows.filter((r: any) => !r.lifecycle_state || r.lifecycle_state === 'Active');
-    }
+    rows = await applyLifecycleFilters(supabase, mapping.table, rows);
 
     const mapped = rows.map(r => fromDatabaseRow(mapping.table, r) as T);
     return { success: true, data: mapped };

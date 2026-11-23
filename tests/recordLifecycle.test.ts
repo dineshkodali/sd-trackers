@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
-  canCreateProperty, canRestoreRecords, checkTransition, checkUserWrite, hasGlobalScope, isLifecycleEditor, sitesWithinScope,
+  belongsToInactiveSite, canCreateProperty, canRestoreRecords, checkTransition, inactiveSiteKeys, isActiveRecord, checkUserWrite, hasGlobalScope, isLifecycleEditor, sitesWithinScope,
   type LifecycleActor, type LifecycleTarget,
 } from '../src/config/recordLifecycle';
 
@@ -100,4 +100,22 @@ test('migration 028: lifecycle is database-enforced, restore is Super Admin only
   assert.match(sql, /banned_until/);
   assert.ok(!/DROP TABLE/i.test(sql.split('-- ROLLBACK')[0]), 'no destructive statements outside the rollback notes');
   assert.ok(!/GRANT[^;]*lifecycle_apply\(TEXT, TEXT, TEXT, UUID, TEXT\)[^;]*TO[^;]*authenticated/i.test(sql), 'the actor-supplied function is not callable by browsers');
+});
+
+test('isActiveRecord hides archived and deleted rows however they are marked', () => {
+  assert.equal(isActiveRecord({ id: 's1', status: 'Operational' }), true, 'no lifecycle column (older database) stays active');
+  assert.equal(isActiveRecord({ lifecycle_state: 'Active', status: 'Active' }), true);
+  assert.equal(isActiveRecord({ lifecycle_state: 'Archived' }), false);
+  assert.equal(isActiveRecord({ lifecycle_state: 'Deleted' }), false);
+  assert.equal(isActiveRecord({ lifecycle_state: 'Active', status: 'Archived' }), false);
+  assert.equal(isActiveRecord(null), false);
+});
+
+test('a property of an archived site leaves Property Management too', () => {
+  const keys = inactiveSiteKeys([{ id: 'site-9', name: 'Hotel Nine' }]);
+  assert.equal(belongsToInactiveSite({ id: 'prop-1', site_id: 'site-9', property_name: 'Other' }, keys), true, 'by site id');
+  assert.equal(belongsToInactiveSite({ id: 'prop-9', site_id: null, property_name: 'x' }, keys), true, 'by prop- to site- id');
+  assert.equal(belongsToInactiveSite({ id: 'prop-2', site_id: 'site-2', property_name: ' hotel nine ' }, keys), true, 'by name');
+  assert.equal(belongsToInactiveSite({ id: 'prop-3', site_id: 'site-3', property_name: 'Hotel Three' }, keys), false);
+  assert.equal(belongsToInactiveSite({ id: 'prop-3', site_id: 'site-3', property_name: 'Hotel Three' }, new Set()), false, 'nothing archived');
 });

@@ -2,6 +2,7 @@ import { diagnosticLogger } from '../utils/diagnosticLogger';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
 import { INITIAL_USERS } from '../data/initialData';
 import { cachedRead, invalidateReads } from './readCache';
+import { isActiveRecord } from '../config/recordLifecycle';
 import {
   directBatchFetchEntities,
   directFetchEntityRecords,
@@ -1711,7 +1712,7 @@ export const apiService = {
             }
           });
 
-          const mapped = data.filter((p: any) => !p.lifecycle_state || p.lifecycle_state === 'Active').map((p: any) => {
+          const mapped = data.filter(isActiveRecord).map((p: any) => {
             let sites: string[] = [];
             if (p.assigned_site) {
               sites = p.assigned_site.includes(',')

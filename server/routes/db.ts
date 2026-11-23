@@ -1,5 +1,5 @@
 import { applyLifecycle } from './lifecycle.js';
-import { canCreateProperty, isLifecycleEditor } from '../../src/config/recordLifecycle.js';
+import { belongsToInactiveSite, canCreateProperty, inactiveSiteKeys, isActiveRecord, isLifecycleEditor } from '../../src/config/recordLifecycle.js';
 import { canConfigureInterconnecting } from '../../src/utils/interconnectingRooms.js';
 import { isOutOfUse } from '../../src/utils/roomManagementLogic.js';
 import fs from 'fs';
@@ -846,8 +846,15 @@ async function readEntityUnscopedChildren(client: SupabaseClient, def: EntityDef
     return { success: false as const, error: error.message, tableMissing: isMissingTableError(error), data: [] as any[] };
   }
   const hideInactive = def.table === 'sites' || def.table === 'profiles';
+  // Property Management rows follow their site: an archived or deleted site takes its property with it.
+  let inactiveSites = new Set<string>();
+  if (def.table === 'properties') {
+    const { data: inactive, error: inactiveErr } = await client.from('sites').select('id, name').in('lifecycle_state', ['Archived', 'Deleted']);
+    if (!inactiveErr) inactiveSites = inactiveSiteKeys(inactive);
+  }
   let rows = (data || [])
-    .filter((row: any) => !hideInactive || !row.lifecycle_state || row.lifecycle_state === 'Active')
+    .filter((row: any) => !hideInactive || isActiveRecord(row))
+    .filter((row: any) => !belongsToInactiveSite(row, inactiveSites))
     .map((row: any) => fromDatabaseRow(def.table, row));
   if (def.variant) rows = rows.filter(def.variant);
 

@@ -6,7 +6,7 @@ import { getAppBaseUrl } from '../urlHelper.js';
 import { signAdminToken } from '../tokenSigner.js';
 import { requireAuth, requireRole, resolveUser, invalidateTokenCache, ProfileLookupError } from '../middleware/requireAuth.js';
 import { applyLifecycle } from './lifecycle.js';
-import { LIFECYCLE_EDITOR_ROLES, checkUserWrite, sitesWithinScope } from '../../src/config/recordLifecycle.js';
+import { LIFECYCLE_EDITOR_ROLES, checkUserWrite, isActiveRecord, sitesWithinScope } from '../../src/config/recordLifecycle.js';
 
 const router = Router();
 
@@ -1344,7 +1344,7 @@ router.get('/users', requireAuth, async (req: Request, res: Response) => {
         if (!p || !p.id) return;
         seenIds.add(p.id);
         // Archived and deleted users are listed under Archived / Deleted Records, not in the directory.
-        if (p.lifecycle_state && p.lifecycle_state !== 'Active') return;
+        if (!isActiveRecord(p)) return;
         const email = (p.email || '').toLowerCase().trim();
         const authUser = authMap.get(p.id) || authMap.get(email);
 

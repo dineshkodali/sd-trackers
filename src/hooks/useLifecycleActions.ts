@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { lifecycleService } from '../services/lifecycleService';
+import { clearReadCache } from '../services/readCache';
 import { LIFECYCLE_ENTITY_LABEL, type LifecycleAction, type LifecycleEntity } from '../config/recordLifecycle';
 import type { LifecycleRequest } from '../components/common/LifecycleDialog';
 
@@ -39,6 +40,7 @@ export function useLifecycleActions(entity: LifecycleEntity) {
     setError(null);
     try {
       await lifecycleService.apply(entity, request.id, request.action, reason);
+      clearReadCache(); // archived / restored records must not be served from the 20-second list cache
       setRequest(null);
       setNotice({ type: 'success', text: `${LIFECYCLE_ENTITY_LABEL[entity]} ${request.label} ${PAST[request.action]}.` });
       setReloadKey(k => k + 1);

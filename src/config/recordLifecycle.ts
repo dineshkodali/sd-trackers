@@ -24,6 +24,42 @@ export const LIFECYCLE_ENTITY_LABEL: Record<LifecycleEntity, string> = {
   properties: 'Property',
 };
 
+/**
+ * Whether a raw `sites` / `profiles` database row is an active record. Archived and deleted rows are
+ * excluded from every normal list, dropdown, statistic and export. `lifecycle_state` is the source of truth;
+ * a `status` of Archived / Deleted is also treated as inactive so a row can never show in both places.
+ */
+export function isActiveRecord(row: any): boolean {
+  if (!row) return false;
+  const state = row.lifecycle_state ?? row.lifecycleState;
+  if (state === 'Archived' || state === 'Deleted') return false;
+  if (row.status === 'Archived' || row.status === 'Deleted') return false;
+  return true;
+}
+
+/** Lower-cased ids and names of the archived / deleted `sites` rows (from rows selected with id, name). */
+export function inactiveSiteKeys(rows: Array<{ id?: unknown; name?: unknown }> | null | undefined): Set<string> {
+  const keys = new Set<string>();
+  for (const r of rows || []) {
+    for (const v of [r?.id, r?.name]) {
+      const k = String(v ?? '').trim().toLowerCase();
+      if (k) keys.add(k);
+    }
+  }
+  return keys;
+}
+
+/**
+ * Property Management keeps its own `properties` table next to the Properties Directory (`sites`). A property
+ * whose site is archived or deleted must leave Property Management too. Raw `properties` row in, true = hide.
+ */
+export function belongsToInactiveSite(row: any, keys: Set<string>): boolean {
+  if (!row || keys.size === 0) return false;
+  const id = String(row.id ?? '').trim().toLowerCase();
+  const candidates = [row.site_id, row.id, id.replace(/^prop-/, 'site-'), row.property_name];
+  return candidates.some(c => keys.has(String(c ?? '').trim().toLowerCase()));
+}
+
 /** Higher number = more authority. A user can only act on users ranked below them. */
 export const ROLE_RANK: Record<string, number> = {
   'Super Admin': 6,
