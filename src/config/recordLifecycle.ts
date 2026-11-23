@@ -60,6 +60,12 @@ export function belongsToInactiveSite(row: any, keys: Set<string>): boolean {
   return candidates.some(c => keys.has(String(c ?? '').trim().toLowerCase()));
 }
 
+/** Whether a mapped site (`{ id, name }`) is one of the archived / deleted ones. */
+export function isInactiveSite(site: { id?: unknown; name?: unknown } | null | undefined, keys: Set<string>): boolean {
+  if (!site || keys.size === 0) return false;
+  return [site.id, site.name].some(v => keys.has(String(v ?? '').trim().toLowerCase()));
+}
+
 /** Higher number = more authority. A user can only act on users ranked below them. */
 export const ROLE_RANK: Record<string, number> = {
   'Super Admin': 6,

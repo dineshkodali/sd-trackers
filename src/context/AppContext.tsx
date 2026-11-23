@@ -94,6 +94,8 @@ import { emailNotificationService } from '../services/emailNotificationService';
 import { smartCache, fastIndices, SmartCacheStats } from '../utils/smartCache';
 import { roomKey, findRegisterRoom, deriveRoomOccupancy } from '../utils/roomAllocation';
 import { apiService, AuditDescriptor } from '../services/apiService';
+import { lifecycleService } from '../services/lifecycleService';
+import { isInactiveSite } from '../config/recordLifecycle';
 import { tableSchemaService } from '../services/tableSchemaService';
 import { migrateLegacyLocalData, hasLegacyLocalData, purgeAllLegacyLocalStorage } from '../services/legacyLocalDataMigration';
 import { getBrowserSupabaseClient } from '../lib/supabaseClient';
@@ -190,6 +192,8 @@ interface AppContextType {
   selectedSite: string;
   setSelectedSite: (site: string) => void;
   allowedSites: string[];
+  /** Lower-cased ids / names of archived and deleted properties; every site list and filter leaves them out. */
+  inactiveSiteKeys: Set<string>;
 
   // App Settings
   settings: AppSettings;
@@ -771,6 +775,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Entities — loaded strictly from the live database by syncFromDatabase
   const [sites, setSites] = useState<SiteInfo[]>(() => deduplicateSites(INITIAL_SITES));
+  const [inactiveSiteKeys, setInactiveSiteKeys] = useState<Set<string>>(() => new Set());
+  const inactiveSiteKeysRef = useRef<Set<string>>(new Set());
   const [referrals, setReferrals] = useState<SGReferral[]>(INITIAL_REFERRALS);
   const [vulnerableSUs, setVulnerableSUs] = useState<VulnerableSU[]>(INITIAL_VULNERABLE);
   const [challengingSUs, setChallengingSUs] = useState<ChallengingSU[]>(INITIAL_CHALLENGING);
@@ -1847,10 +1853,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
     try {
-      const [batch, supaUsersRes] = await Promise.all([
+      const [batch, supaUsersRes, inactiveKeysRes] = await Promise.all([
         apiService.batchFetchEntities(toRequests(firstPlan)),
-        apiService.fetchSupabaseUsers()
+        apiService.fetchSupabaseUsers(),
+        lifecycleService.inactiveSiteKeys().catch(() => null)
       ]);
+      // Archived / deleted properties: kept from the last good read if this one failed
+      const inactiveKeys: Set<string> = inactiveKeysRes ?? inactiveSiteKeysRef.current;
+      inactiveSiteKeysRef.current = inactiveKeys;
+      setInactiveSiteKeys(prev => (prev.size === inactiveKeys.size && [...inactiveKeys].every(k => prev.has(k)) ? prev : inactiveKeys));
 
       if (!batch.success) {
         const message = batch.status === 401
@@ -1882,7 +1893,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         apply<ChallengingSU>('challenging', setChallengingSUs);
         apply<MaintenanceRecord>('maintenance', setMaintenanceRecords);
         apply<SPCDRecord>('spcd', setSpcdRecords);
-        apply<SiteInfo>('sites', rows => setSites(deduplicateSites(rows)));
+        apply<SiteInfo>('sites', rows => setSites(deduplicateSites(rows).filter(site => !isInactiveSite(site, inactiveKeys))));
         apply<LaundryRecord>('laundry', setLaundryRecords);
         apply<PropertyLaundryLog>('property_laundry_logs', setPropertyLaundryLogs);
         apply<FoodRecord>('food', setFoodRecords);
@@ -2218,7 +2229,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   }, [currentUserRole, authProfile?.assignedSites]);
 
-  const allowedSites = useMemo(() => {
+  const allowedSitesRaw = useMemo(() => {
     const allSiteNames = (sites || [])
       .map(s => (typeof s === 'string' ? s : s?.name))
       .filter((name): name is string => Boolean(name && typeof name === 'string' && name.trim() !== ''));
@@ -2279,6 +2290,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (assignedSite && assignedSite !== 'All Sites' && assignedSite !== 'Pending Assignment') return [assignedSite];
     return uniqueAllSites;
   }, [currentUserRole, authProfile?.assignedSites, authProfile?.id, authProfile?.email, users, assignedSite, sites]);
+
+  // A person's assigned sites never include a property that has been archived or deleted.
+  const allowedSites = useMemo(
+    () => allowedSitesRaw.filter(name => !inactiveSiteKeys.has(String(name ?? '').trim().toLowerCase())),
+    [allowedSitesRaw, inactiveSiteKeys]
+  );
 
   const canSwitchSites = useCallback(() => {
     if (canAccessAllSites()) return true;
@@ -5892,6 +5909,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       selectedSite,
       setSelectedSite,
       allowedSites,
+      inactiveSiteKeys,
       settings,
       updateSettings,
       isPageUnderMaintenance,

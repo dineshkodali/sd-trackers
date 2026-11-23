@@ -4,6 +4,7 @@ import {
   LIFECYCLE_ENTITY_LABEL,
   LIFECYCLE_TABLE,
   cleanReason,
+  inactiveSiteKeys,
   type LifecycleAction,
   type LifecycleEntity,
   type LifecycleEvent,
@@ -94,6 +95,27 @@ export const lifecycleService = {
       }
       throw new Error(error.message);
     }
+  },
+
+  /** Lower-cased ids and names of archived / deleted properties (empty if migration 028 is not installed). */
+  async inactiveSiteKeys(): Promise<Set<string>> {
+    if (!useDirect()) {
+      try {
+        const json = await expressJson('/api/lifecycle/inactive-sites');
+        return new Set<string>(Array.isArray(json.keys) ? json.keys : []);
+      } catch (e) {
+        if (e instanceof ApiRefusal) throw e;
+        // Express unreachable: fall through to direct Supabase.
+      }
+    }
+    const sb = getBrowserSupabaseClient();
+    if (!sb) throw new Error('Database connection unavailable.');
+    const { data, error } = await sb.from('sites').select('id, name').in('lifecycle_state', ['Archived', 'Deleted']);
+    if (error) {
+      if (['42703', '42P01', 'PGRST205'].includes((error as any).code)) return new Set<string>();
+      throw new Error('Could not load records.');
+    }
+    return inactiveSiteKeys(data);
   },
 
   /** Lifecycle history for one record (Super Admin only). */

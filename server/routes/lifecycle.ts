@@ -9,6 +9,7 @@ import {
   checkTransition,
   cleanReason,
   hasGlobalScope,
+  inactiveSiteKeys,
   isLifecycleEditor,
   sitesWithinScope,
   type LifecycleAction,
@@ -116,6 +117,18 @@ function dbOr503(res: Response) {
   if (!c) res.status(503).json({ success: false, error: 'Database is not configured.' });
   return c;
 }
+
+// GET /api/lifecycle/inactive-sites - lower-cased ids and names of archived / deleted properties.
+// Any signed-in user may read it: every site filter and dropdown needs it to leave those properties out.
+router.get('/inactive-sites', async (_req: Request, res: Response) => {
+  const db = dbOr503(res); if (!db) return;
+  const { data, error } = await db.from('sites').select('id, name').in('lifecycle_state', ['Archived', 'Deleted']);
+  if (error) {
+    if (isMissingObject(error)) return res.json({ success: true, keys: [] });
+    return res.status(500).json({ success: false, error: 'Could not load records.' });
+  }
+  res.json({ success: true, keys: Array.from(inactiveSiteKeys(data)) });
+});
 
 // GET /api/lifecycle/:entity?state=Archived|Deleted - records in that state that the caller may see
 router.get('/:entity', async (req: Request, res: Response) => {

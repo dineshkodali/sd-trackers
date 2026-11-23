@@ -27,14 +27,23 @@ const propertyExportColumns: ExportColumnOption[] = [
 ];
 
 import { BulkActionToolbar } from '../common/BulkActionToolbar';
+import { belongsToInactiveSite } from '../../config/recordLifecycle';
 
 export const PropertyManagementView: React.FC = () => {
-  const { sites, canAccessAllSites, isSitePermitted, assignedSite, allowedSites, canManageProperties, requestConfirmation } = useApp();
+  const { sites, canAccessAllSites, isSitePermitted, assignedSite, allowedSites, inactiveSiteKeys, canManageProperties, requestConfirmation } = useApp();
   const canCRUD = canManageProperties();
 
-  const [properties, setProperties] = useState<PropertyMaster[]>([]);
-  const [rooms, setRooms] = useState<PropertyRoom[]>([]);
-  const [placements, setPlacements] = useState<Placement[]>([]);
+  const [allProperties, setProperties] = useState<PropertyMaster[]>([]);
+  const [allRooms, setRooms] = useState<PropertyRoom[]>([]);
+  const [allPlacements, setPlacements] = useState<Placement[]>([]);
+  // A property whose site is archived or deleted is not part of Property Management (its rooms and placements go with it).
+  const properties = useMemo(
+    () => allProperties.filter(p => !belongsToInactiveSite({ id: p.id, site_id: (p as any).siteId, property_name: (p as any).propertyName }, inactiveSiteKeys)),
+    [allProperties, inactiveSiteKeys]
+  );
+  const activePropertyIds = useMemo(() => new Set(properties.map(p => p.id)), [properties]);
+  const rooms = useMemo(() => allRooms.filter(r => activePropertyIds.has(r.propertyId)), [allRooms, activePropertyIds]);
+  const placements = useMemo(() => allPlacements.filter(pl => !(pl as any).propertyId || activePropertyIds.has((pl as any).propertyId)), [allPlacements, activePropertyIds]);
   const [loading, setLoading] = useState(false);
 
   // Initial site filter based on permissions

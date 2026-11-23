@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
-  belongsToInactiveSite, canCreateProperty, canRestoreRecords, checkTransition, inactiveSiteKeys, isActiveRecord, checkUserWrite, hasGlobalScope, isLifecycleEditor, sitesWithinScope,
+  belongsToInactiveSite, canCreateProperty, canRestoreRecords, checkTransition, inactiveSiteKeys, isActiveRecord, isInactiveSite, checkUserWrite, hasGlobalScope, isLifecycleEditor, sitesWithinScope,
   type LifecycleActor, type LifecycleTarget,
 } from '../src/config/recordLifecycle';
 
@@ -118,4 +118,12 @@ test('a property of an archived site leaves Property Management too', () => {
   assert.equal(belongsToInactiveSite({ id: 'prop-2', site_id: 'site-2', property_name: ' hotel nine ' }, keys), true, 'by name');
   assert.equal(belongsToInactiveSite({ id: 'prop-3', site_id: 'site-3', property_name: 'Hotel Three' }, keys), false);
   assert.equal(belongsToInactiveSite({ id: 'prop-3', site_id: 'site-3', property_name: 'Hotel Three' }, new Set()), false, 'nothing archived');
+});
+
+test('isInactiveSite matches an archived site by id or name, ignoring case and spaces', () => {
+  const keys = inactiveSiteKeys([{ id: 'site-9', name: 'Hotel Nine' }]);
+  assert.equal(isInactiveSite({ id: 'site-9', name: 'x' }, keys), true);
+  assert.equal(isInactiveSite({ id: 'other', name: ' HOTEL NINE ' }, keys), true);
+  assert.equal(isInactiveSite({ id: 'site-1', name: 'Hotel One' }, keys), false);
+  assert.equal(isInactiveSite({ id: 'site-9', name: 'Hotel Nine' }, new Set()), false);
 });
