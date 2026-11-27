@@ -27,6 +27,7 @@
     "node_modules",
     "dist",
     "build",
+    "application-map",
     ".testing/01_TEST_CASES_AND_PROCEDURES",
     ".testing/02_TEST_SUITES/playwright",
     ".testing/03_RESULTS_AND_REPORTS",

@@ -8,8 +8,7 @@ This directory contains technical and design documentation for the **SD Operatio
 - [**iOS Mobile Architecture & Implementation**](./ios.md): Native Capacitor 6 mobile app architecture, offline syncing, biometric security, and APNs.
 
 ## Audits & Design Plans
-- [**Overdue Management & Email Notifications Audit**](./SDTRACKER_OVERDUE_AND_NOTIFICATION_AUDIT.md): Module inventory, schema analysis, gaps and phased plan for overdue detection and automated email.
-- [**Central Operations Dashboard Audit & Design**](./SDTRACKER_CENTRAL_DASHBOARD_AUDIT_AND_DESIGN.md): KPI definitions, data sources, layout and roadmap for the Operations Dashboard.
+Audit reports now live in the local-only `application-map/` folder (git-ignored): `application-map/audit-progress/docs-audits/` holds the overdue/notification, central dashboard, operational workflow, route, room/welfare UI, SU data-integrity and design audits. Related planning and standards that remain here: [Implementation Roadmap](./SDTRACKER_IMPLEMENTATION_ROADMAP.md), [Operations Dashboard V2](./SDTRACKER_OPERATIONS_DASHBOARD_V2.md), [Global Form Standard](./SDTRACKER_GLOBAL_FORM_STANDARD.md), [Table & Navigation Standard](./SDTRACKER_TABLE_AND_NAVIGATION_STANDARD.md).
 
 ## Design System & UI
 - [**Brand Kit & UI Component Inventory**](./BRAND_KIT.md): Comprehensive design tokens, palette colors, component styles, and accessibility rules.

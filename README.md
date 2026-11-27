@@ -43,5 +43,4 @@ More detail: [docs/PROJECT_README.md](docs/PROJECT_README.md), [docs/AMPLIFY_HOS
 
 ## Audit and design documents
 
-- [Overdue management and email notifications: audit and plan](docs/SDTRACKER_OVERDUE_AND_NOTIFICATION_AUDIT.md)
-- [Central Operations Dashboard: audit and design](docs/SDTRACKER_CENTRAL_DASHBOARD_AUDIT_AND_DESIGN.md)
+Audit reports, the full application map (PDF, registers, diagrams, wireframes) and the root-cleanup report are kept in the local-only, git-ignored `application-map/` folder (see `application-map/README.md`). Design standards and plans remain in [docs/](docs/README.md); the iOS design pack is in `design/ios/`.
